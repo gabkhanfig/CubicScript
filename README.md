@@ -1,2 +1,3 @@
 # CubicScript
- Embeddable Scripting Language For Multiplayer Games
+
+Embeddable Scripting Language For Multiplayer Games
