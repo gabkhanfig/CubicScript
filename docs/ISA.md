@@ -3,7 +3,9 @@
 Instructions are variable width, but generally 4 bytes in size.
 All 4 byte bytecodes are in one of 3 patterns, where I is the 1 byte instructions
 > I A B C A = 1 byte operand, B = 1 byte operand, C = 1 byte operand
+>
 > I A B A   = 1 byte operand, B = 2 byte operand
+>
 > I A       = 3 byte operand
 
 ## General Instructions
