@@ -4,7 +4,15 @@ const std = @import("std");
 const assert = std.debug.assert;
 const expect = std.testing.expect;
 
+/// true = not 0, false = 0
+pub const Bool = i64;
+/// Signed 64 bit integer
+pub const Int = i64;
+/// 64 bit float
+pub const Float = f64;
+
 const AtomicOrder = std.builtin.AtomicOrder;
+
 const AtomicRefCount = extern struct {
     const Self = @This();
 
