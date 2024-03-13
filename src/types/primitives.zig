@@ -17,6 +17,7 @@ pub const String = extern struct {
     const Self = @This();
 
     /// If null, is just an empty string. This makes 0 initization viable.
+    /// TODO does this need to be atomic? It's possible one thread reads while another deinits on the same String reference (not inner reference)?
     inner: ?*anyopaque = null,
 
     pub fn initSlice(slice: [:0]const u8, allocator: Allocator) Allocator.Error!Self {
@@ -38,8 +39,9 @@ pub const String = extern struct {
 
     pub fn deinit(self: *Self, allocator: Allocator) void {
         if (self.inner != null) {
-            self.asInnerMut().decrementRefCount(allocator);
+            const inner = self.asInnerMut(); // Use this ordering in the event of weird synchronization issues.
             self.inner = null;
+            inner.decrementRefCount(allocator);
         }
     }
 
@@ -307,5 +309,53 @@ test "String clone" {
         try expect(s1.inner == s2.inner);
         try expect(std.mem.eql(u8, s1.toSlice(), "hello to this glorious world!"));
         try expect(std.mem.eql(u8, s2.toSlice(), "hello to this glorious world!"));
+    }
+}
+
+test "String clone thread safety" {
+    const allocator = std.testing.allocator;
+
+    const TestThreadHandler = struct {
+        fn makeClonesNTimes(ref: *String, n: usize, a: Allocator) void {
+            for (0..n) |_| {
+                var s1 = ref.clone();
+                defer s1.deinit(a);
+                var s2 = ref.clone();
+                defer s2.deinit(a);
+                var s3 = ref.clone();
+                defer s3.deinit(a);
+                var s4 = ref.clone();
+                defer s4.deinit(a);
+            }
+        }
+    };
+
+    {
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        const t1 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+        const t2 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+        const t3 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+        const t4 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+
+        t1.join();
+        t2.join();
+        t3.join();
+        t4.join();
+    }
+    {
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        const t1 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+        const t2 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+        const t3 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+        const t4 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+
+        t1.join();
+        t2.join();
+        t3.join();
+        t4.join();
     }
 }
