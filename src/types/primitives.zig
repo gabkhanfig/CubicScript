@@ -30,7 +30,8 @@ pub const String = extern struct {
         if (self.inner == null) {
             return Self{ .inner = null };
         } else {
-            self.asInnerMut().incrementRefCount();
+            var selfCopy = self; // should be optimized by LLVM
+            selfCopy.asInnerMut().incrementRefCount();
             return Self{ .inner = self.inner };
         }
     }
@@ -280,5 +281,31 @@ test "String from slice" {
 
         try expect(s.len() == 29);
         try expect(std.mem.eql(u8, s.toSlice(), "hello to this glorious world!"));
+    }
+}
+
+test "String clone" {
+    const allocator = std.testing.allocator;
+    {
+        var s1 = try String.initSlice("hello world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = s1.clone();
+        defer s2.deinit(allocator);
+
+        try expect(s1.inner == s2.inner);
+        try expect(std.mem.eql(u8, s1.toSlice(), "hello world!"));
+        try expect(std.mem.eql(u8, s2.toSlice(), "hello world!"));
+    }
+    {
+        var s1 = try String.initSlice("hello to this glorious world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = s1.clone();
+        defer s2.deinit(allocator);
+
+        try expect(s1.inner == s2.inner);
+        try expect(std.mem.eql(u8, s1.toSlice(), "hello to this glorious world!"));
+        try expect(std.mem.eql(u8, s2.toSlice(), "hello to this glorious world!"));
     }
 }
