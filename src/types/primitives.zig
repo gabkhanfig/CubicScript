@@ -80,6 +80,15 @@ pub const String = extern struct {
         return std.mem.eql(u8, self.toSlice(), other.toSlice());
     }
 
+    pub fn eqlSlice(self: *const Self, other: [:0]const u8) bool {
+        if (self.inner == null) {
+            return other.len == 0;
+        }
+
+        // TODO simd
+        return std.mem.eql(u8, self.toSlice(), other);
+    }
+
     fn asInner(self: Self) *const Inner {
         return @ptrCast(@alignCast(self.inner));
     }
@@ -482,5 +491,66 @@ test "String equal" {
         defer s2.deinit(allocator);
 
         try expect(!s1.eql(s2));
+    }
+}
+
+test "String equal slice" {
+    const allocator = std.testing.allocator;
+    { // null
+        var s = String{};
+        defer s.deinit(allocator);
+
+        try expect(s.eqlSlice(""));
+    }
+    { // sso
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.eqlSlice("hello world!"));
+    }
+    { // heap
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.eqlSlice("hello to this glorious world!"));
+    }
+    { // not equal empty
+        var s = String{};
+        defer s.deinit(allocator);
+
+        try expect(!s.eqlSlice("!"));
+    }
+    { // not equal empty sanity
+        var s = String{};
+        defer s.deinit(allocator);
+
+        try expect(!s.eqlSlice("!"));
+    }
+    { // not equal sso
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(!s.eqlSlice("hello warld!"));
+    }
+    { // not equal sso sanity
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(!s.eqlSlice("hello world! "));
+    }
+    { // not equal heap
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var s2 = try String.initSlice("hello to this glarious world!", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(!s.eqlSlice("hello to this glarious world!"));
+    }
+    { // not equal heap sanity
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(!s.eqlSlice("hello to this glorious world! "));
     }
 }
