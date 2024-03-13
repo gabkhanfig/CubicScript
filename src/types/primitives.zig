@@ -66,6 +66,20 @@ pub const String = extern struct {
         }
     }
 
+    pub fn eql(self: *const Self, other: Self) bool {
+        if (self.inner == other.inner) {
+            return true;
+        }
+
+        if (self.inner == null) { // other must not be null.
+            return other.len() == 0;
+        }
+
+        // Both are validated as non-null now
+        // TODO simd
+        return std.mem.eql(u8, self.toSlice(), other.toSlice());
+    }
+
     fn asInner(self: Self) *const Inner {
         return @ptrCast(@alignCast(self.inner));
     }
@@ -357,5 +371,116 @@ test "String clone thread safety" {
         t2.join();
         t3.join();
         t4.join();
+    }
+}
+
+test "String equal" {
+    const allocator = std.testing.allocator;
+    { // null
+        var s1 = String{};
+        defer s1.deinit(allocator);
+        var s2 = String{};
+        defer s2.deinit(allocator);
+
+        try expect(s1.eql(s2));
+    }
+    { // shared reference sso
+        var s1 = try String.initSlice("hello world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = s1.clone();
+        defer s2.deinit(allocator);
+
+        try expect(s1.eql(s2));
+    }
+    { // different reference sso
+        var s1 = try String.initSlice("hello world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = try String.initSlice("hello world!", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(s1.eql(s2));
+    }
+    { // shared reference heap
+        var s1 = try String.initSlice("hello to this glorious world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = s1.clone();
+        defer s2.deinit(allocator);
+
+        try expect(s1.eql(s2));
+    }
+    { // different reference heap
+        var s1 = try String.initSlice("hello to this glorious world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = try String.initSlice("hello to this glorious world!", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(s1.eql(s2));
+    }
+    { // not equal one null
+        var s1 = try String.initSlice("hello world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = String{};
+        defer s2.deinit(allocator);
+
+        try expect(!s1.eql(s2));
+    }
+    { // not equal one null sanity
+        var s1 = String{};
+        defer s1.deinit(allocator);
+
+        var s2 = try String.initSlice("hello world!", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(!s1.eql(s2));
+    }
+    { // not equal both sso
+        var s1 = try String.initSlice("hello world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = try String.initSlice("hello warld!", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(!s1.eql(s2));
+    }
+    { // not equal both sso sanity
+        var s1 = try String.initSlice("hello world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = try String.initSlice("hello world! ", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(!s1.eql(s2));
+    }
+    { // not equal both heap
+        var s1 = try String.initSlice("hello to this glorious world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = try String.initSlice("hello to this glarious world!", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(!s1.eql(s2));
+    }
+    { // not equal both heap sanity
+        var s1 = try String.initSlice("hello to this glorious world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = try String.initSlice("hello to this glorious world! ", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(!s1.eql(s2));
+    }
+    { // not equal mix
+        var s1 = try String.initSlice("hello world!", allocator);
+        defer s1.deinit(allocator);
+
+        var s2 = try String.initSlice("hello to this glorious world! ", allocator);
+        defer s2.deinit(allocator);
+
+        try expect(!s1.eql(s2));
     }
 }
