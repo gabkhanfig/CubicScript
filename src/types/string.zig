@@ -5,6 +5,13 @@ const expect = std.testing.expect;
 const AtomicRefCount = @import("atomic_ref_count.zig").AtomicRefCount;
 const Int = @import("primitives.zig").Int;
 
+/// See string_simd.cpp
+extern fn cubs_string_compare_equal_strings_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
+/// See string_simd.cpp
+extern fn cubs_string_compare_equal_string_and_slice_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
+/// See string_simd.cpp
+extern fn cubs_string_compute_hash_simd(selfBuffer: [*c]const u8, len: c_ulonglong) c_ulonglong;
+
 /// Immutable, ref counted string.
 pub const String = extern struct {
     const Self = @This();
@@ -69,13 +76,20 @@ pub const String = extern struct {
         }
 
         // Both are validated as non-null now
-        // TODO simd
-        return std.mem.eql(u8, self.toSlice(), other.toSlice());
-    }
+        if (!self.asInner().isSso() and !other.asInner().isSso()) {
+            const selfLength = self.len();
+            const otherLength = other.len();
+            if (selfLength != otherLength) {
+                return false;
+            }
 
-    pub fn hash(self: *const Self) usize {
-        _ = self;
-        @compileError("not yet implemented");
+            return cubs_string_compare_equal_strings_simd_heap_rep(
+                @ptrCast(self.asInner().rep.heap.data),
+                @ptrCast(other.asInner().rep.heap.data),
+                @intCast(selfLength),
+            );
+        }
+        return std.mem.eql(u8, self.toSlice(), other.toSlice());
     }
 
     pub fn eqlSlice(self: *const Self, other: [:0]const u8) bool {
@@ -85,6 +99,11 @@ pub const String = extern struct {
 
         // TODO simd
         return std.mem.eql(u8, self.toSlice(), other);
+    }
+
+    pub fn hash(self: *const Self) usize {
+        _ = self;
+        @compileError("not yet implemented");
     }
 
     fn asInner(self: Self) *const Inner {

@@ -17,6 +17,17 @@ pub fn build(b: *std.Build) void {
 
     const cubic_script = b.addModule("cubic_script", .{ .root_source_file = .{ .path = "src/root.zig" } });
 
+    if (target.result.cpu.arch.isX86()) {
+        cubic_script.addCMacro("X86_64", "1");
+    }
+    const c_flags = [_][]const u8{};
+    const c_source_files = @import("src/root.zig").cubic_script_c_sources;
+    for (c_source_files) |c_file| {
+        cubic_script.addCSourceFile(.{ .file = std.Build.LazyPath.relative(c_file), .flags = &c_flags });
+    }
+    cubic_script.link_libc = true;
+    cubic_script.link_libcpp = true;
+
     const lib = b.addStaticLibrary(.{
         .name = "CubicScript",
         // In this case the main source file is merely a path, however, in more
@@ -26,7 +37,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    lib.root_module.addImport("cubic_script", cubic_script);
+    linkCubicScriptLocal(cubic_script, lib);
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
@@ -78,6 +89,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    linkCubicScriptLocal(cubic_script, lib_unit_tests);
+
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
     // Similar to creating the run step earlier, this exposes a `test` step to
@@ -85,4 +98,23 @@ pub fn build(b: *std.Build) void {
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
+}
+
+pub fn linkCubicScriptLocal(cubic_script: *std.Build.Module, c: *std.Build.Step.Compile) void {
+    const c_flags = [_][]const u8{};
+
+    c.root_module.addImport("cubic_script", cubic_script);
+
+    if (c.rootModuleTarget().cpu.arch.isX86()) {
+        c.defineCMacro("X86_64", "1");
+    }
+
+    const c_source_files = @import("src/root.zig").cubic_script_c_sources;
+    c.addCSourceFiles(.{
+        .files = &c_source_files,
+        .flags = &c_flags,
+    });
+
+    c.linkLibC();
+    c.linkLibCpp();
 }
