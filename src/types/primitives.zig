@@ -46,7 +46,7 @@ pub const String = extern struct {
         if (self.inner == null) {
             return 0;
         } else {
-            return @intCast(self.asInner().len & ~Inner.FLAG_BIT);
+            return @intCast(self.asInner().lenAndFlag & ~Inner.FLAG_BIT);
         }
     }
 
@@ -54,7 +54,7 @@ pub const String = extern struct {
         if (self.inner == null) {
             return "";
         } else {
-            const length = self.asInner().len;
+            const length = self.asInner().lenAndFlag & ~Inner.FLAG_BIT;
             if (self.asInner().isSso()) {
                 return self.asInner().rep.sso.chars[0..length :0];
             } else {
@@ -75,7 +75,7 @@ pub const String = extern struct {
         const FLAG_BIT: usize = @shlExact(1, 63);
 
         refCount: AtomicRefCount = AtomicRefCount{},
-        len: usize,
+        lenAndFlag: usize,
         rep: StringRep = undefined,
 
         fn incrementRefCount(self: *Inner) void {
@@ -96,13 +96,13 @@ pub const String = extern struct {
         }
 
         fn isSso(self: *const Inner) bool {
-            return self.len & FLAG_BIT == 0;
+            return self.lenAndFlag & FLAG_BIT == 0;
         }
 
         fn initSlice(slice: [:0]const u8, allocator: Allocator) Allocator.Error!*Inner {
             const self = try allocator.create(Inner);
 
-            self.* = Inner{ .len = slice.len };
+            self.* = Inner{ .lenAndFlag = slice.len };
             self.refCount.addRef();
             try self.ensureTotalCapacity(allocator, slice.len + 1);
 
@@ -138,7 +138,7 @@ pub const String = extern struct {
             @memset(newSlice, 0);
             self.rep.heap.data = @ptrCast(newSlice.ptr);
             self.rep.heap.allocationSize = mallocCapacity;
-            self.len |= FLAG_BIT;
+            self.lenAndFlag |= FLAG_BIT;
             assert(!self.isSso());
         }
 
@@ -272,11 +272,13 @@ test "String from slice" {
         defer s.deinit(allocator);
 
         try expect(s.len() == 12);
+        try expect(std.mem.eql(u8, s.toSlice(), "hello world!"));
     }
     {
         var s = try String.initSlice("hello to this glorious world!", allocator);
         defer s.deinit(allocator);
 
         try expect(s.len() == 29);
+        try expect(std.mem.eql(u8, s.toSlice(), "hello to this glorious world!"));
     }
 }
