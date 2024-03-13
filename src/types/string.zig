@@ -97,7 +97,18 @@ pub const String = extern struct {
             return other.len == 0;
         }
 
-        // TODO simd
+        if (!self.asInner().isSso()) {
+            if (self.len() != other.len) {
+                return false;
+            }
+
+            return cubs_string_compare_equal_string_and_slice_simd_heap_rep(
+                @ptrCast(self.asInner().rep.heap.data),
+                @ptrCast(other.ptr),
+                @intCast(other.len),
+            );
+        }
+
         return std.mem.eql(u8, self.toSlice(), other);
     }
 
