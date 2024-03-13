@@ -21,8 +21,7 @@ pub fn build(b: *std.Build) void {
         cubic_script.addCMacro("X86_64", "1");
     }
     const c_flags = [_][]const u8{};
-    const c_source_files = @import("src/root.zig").cubic_script_c_sources;
-    for (c_source_files) |c_file| {
+    for (cubic_script_c_sources) |c_file| {
         cubic_script.addCSourceFile(.{ .file = std.Build.LazyPath.relative(c_file), .flags = &c_flags });
     }
     cubic_script.link_libc = true;
@@ -109,9 +108,8 @@ pub fn linkCubicScriptLocal(cubic_script: *std.Build.Module, c: *std.Build.Step.
         c.defineCMacro("X86_64", "1");
     }
 
-    const c_source_files = @import("src/root.zig").cubic_script_c_sources;
     c.addCSourceFiles(.{
-        .files = &c_source_files,
+        .files = &cubic_script_c_sources,
         .flags = &c_flags,
     });
 

@@ -83,13 +83,17 @@ static bool avx512CompareEqualStringAndSlice(const char* buffer, const char* sli
     __m512i otherVec; // initializing the memory is unnecessary = _mm512_movm_epi8(0);
 
     size_t i = 0;
-    for(; i <= (len - 64); i += 64) {
-		memcpy(&otherVec, sliceBuffer + i, 64);
-		if (_mm512_cmpeq_epi8_mask(*thisVec, otherVec) != equal64Bitmask) return false;
-		thisVec++;
+    if(len >= 64) { // This works. Is there a better way to do this though?
+        for(; i <= (len - 64); i += 64) {
+            memset(&otherVec, 0, 64);
+            memcpy(&otherVec, sliceBuffer + i, 64);
+            if (_mm512_cmpeq_epi8_mask(*thisVec, otherVec) != equal64Bitmask) {
+                return false;
+            }
+            thisVec++;
+        }
     }
-
-
+     
     for(; i < len; i++) {
         if(buffer[i] != sliceBuffer[i]) return false;
     }
