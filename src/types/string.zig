@@ -60,11 +60,6 @@ pub const String = extern struct {
     }
 
     pub fn eql(self: *const Self, other: Self) bool {
-        const simd = struct {
-            /// See string_simd.cpp
-            extern fn cubs_string_compare_equal_strings_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
-        };
-
         if (self.inner == other.inner) {
             return true;
         }
@@ -81,7 +76,7 @@ pub const String = extern struct {
                 return false;
             }
 
-            return simd.cubs_string_compare_equal_strings_simd_heap_rep(
+            return string_simd.cubs_string_compare_equal_strings_simd_heap_rep(
                 @ptrCast(self.asInner().rep.heap.data),
                 @ptrCast(other.asInner().rep.heap.data),
                 @intCast(selfLength),
@@ -91,11 +86,6 @@ pub const String = extern struct {
     }
 
     pub fn eqlSlice(self: *const Self, other: [:0]const u8) bool {
-        const simd = struct {
-            /// See string_simd.cpp
-            extern fn cubs_string_compare_equal_string_and_slice_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
-        };
-
         if (self.inner == null) {
             return other.len == 0;
         }
@@ -105,7 +95,7 @@ pub const String = extern struct {
                 return false;
             }
 
-            return simd.cubs_string_compare_equal_string_and_slice_simd_heap_rep(
+            return string_simd.cubs_string_compare_equal_string_and_slice_simd_heap_rep(
                 @ptrCast(self.asInner().rep.heap.data),
                 @ptrCast(other.ptr),
                 @intCast(other.len),
@@ -116,17 +106,11 @@ pub const String = extern struct {
     }
 
     pub fn hash(self: *const Self) usize {
-        const simd = struct {
-            /// See string_simd.cpp
-            extern fn cubs_string_compute_hash_simd(selfBuffer: [*c]const u8, len: c_ulonglong) c_ulonglong;
-        };
-
         const slice = self.toSlice();
-        return simd.cubs_string_compute_hash_simd(@ptrCast(slice.ptr), @intCast(slice.len));
+        return string_simd.cubs_string_compute_hash_simd(@ptrCast(slice.ptr), @intCast(slice.len));
     }
 
-    pub fn find(self: *const Self, other: Self) ?usize {
-        // TODO SIMD
+    pub fn find(self: *const Self, other: Self) ?Int {
         if (self.inner == null) {
             return null;
         } else {
@@ -135,16 +119,31 @@ pub const String = extern struct {
                 return null;
             }
             const selfBuffer = self.toSlice();
-            const index = std.mem.indexOf(u8, selfBuffer, otherBuffer);
-            if (index) |i| {
-                return i;
+            if (self.asInner().isSso()) {
+                const index = std.mem.indexOf(u8, selfBuffer, otherBuffer);
+                if (index) |i| {
+                    return @intCast(i);
+                } else {
+                    return null;
+                }
             } else {
-                return null;
+                const result = string_simd.cubs_string_find_str_slice(
+                    @ptrCast(selfBuffer.ptr),
+                    @intCast(selfBuffer.len),
+                    @ptrCast(otherBuffer.ptr),
+                    @intCast(otherBuffer.len),
+                );
+                const NOT_FOUND = ~@as(c_ulonglong, 0);
+                if (result == NOT_FOUND) {
+                    return null;
+                } else {
+                    return @intCast(result);
+                }
             }
         }
     }
 
-    pub fn findLiteral(self: *const Self, literal: [:0]const u8) ?usize {
+    pub fn findLiteral(self: *const Self, literal: [:0]const u8) ?Int {
         // TODO SIMD
         if (self.inner == null) {
             return null;
@@ -153,11 +152,26 @@ pub const String = extern struct {
                 return null;
             }
             const selfBuffer = self.toSlice();
-            const index = std.mem.indexOf(u8, selfBuffer, literal);
-            if (index) |i| {
-                return i;
+            if (self.asInner().isSso()) {
+                const index = std.mem.indexOf(u8, selfBuffer, literal);
+                if (index) |i| {
+                    return @intCast(i);
+                } else {
+                    return null;
+                }
             } else {
-                return null;
+                const result = string_simd.cubs_string_find_str_slice(
+                    @ptrCast(selfBuffer.ptr),
+                    @intCast(selfBuffer.len),
+                    @ptrCast(literal.ptr),
+                    @intCast(literal.len),
+                );
+                const NOT_FOUND = ~@as(c_ulonglong, 0);
+                if (result == NOT_FOUND) {
+                    return null;
+                } else {
+                    return @intCast(result);
+                }
             }
         }
     }
@@ -260,6 +274,14 @@ pub const String = extern struct {
             data: [*:0]align(64) u8,
             allocationSize: usize,
         };
+    };
+
+    /// See string_simd.cpp
+    const string_simd = struct {
+        extern fn cubs_string_compare_equal_strings_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
+        extern fn cubs_string_compare_equal_string_and_slice_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
+        extern fn cubs_string_compute_hash_simd(selfBuffer: [*c]const u8, len: c_ulonglong) c_ulonglong;
+        extern fn cubs_string_find_str_slice(selfBuffer: [*c]const u8, selfLength: c_ulonglong, sliceBuffer: [*c]const u8, sliceLength: c_ulonglong) c_ulonglong;
     };
 };
 

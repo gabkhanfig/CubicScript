@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "windows.h": "c"
+        "windows.h": "c",
+        "limits": "cpp",
+        "bit": "cpp"
     }
 }

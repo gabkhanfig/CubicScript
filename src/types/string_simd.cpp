@@ -1,3 +1,5 @@
+#define LOG_DYNAMIC_DISPATCH false
+
 #if defined(_WIN32) || defined(WIN32)
 
 #define NOMINMAX
@@ -8,11 +10,27 @@
 
 #define X86_64 1
 
+#include <bit>
+
 #ifdef X86_64
 
 #include <immintrin.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+static size_t calculateAvx512IterationsCount(size_t length) {
+	return ((length) % 64 == 0 ?
+		length :
+		length + (64 - (length % 64)))
+		/ 64;
+}
+
+static size_t calculateAvx2IterationsCount(size_t length) {
+	return ((length) % 32 == 0 ?
+		length :
+		length + (32 - (length % 32)))
+		/ 32;
+}
 
 extern "C" {
     bool is_avx512f_supported();
@@ -56,14 +74,14 @@ typedef bool (*CmpEqStringAndStringFunc)(const char*, const char*, size_t);
 
 static CmpEqStringAndStringFunc chooseOptimalCmpEqStringAndString() {
     if(is_avx512f_supported()) {
-        if(true) {
+        if(LOG_DYNAMIC_DISPATCH) {
             printf("[String function loader]: Using AVX-512 String-String comparison\n");
         }
 
         return avx512CompareEqualStringAndString;
     }
     else if(is_avx2_supported()) {
-        if(true) {
+        if(LOG_DYNAMIC_DISPATCH) {
             printf("[String function loader]: Using AVX-2 String-String comparison\n");
         }
 
@@ -123,14 +141,14 @@ typedef bool (*CmpEqStringAndSliceFunc)(const char*, const char*, size_t);
 
 static CmpEqStringAndSliceFunc chooseOptimalCmpEqStringAndSlice() {
     if(is_avx512f_supported()) {
-        if(true) {
+        if(LOG_DYNAMIC_DISPATCH) {
             printf("[String function loader]: Using AVX-512 String-Slice comparison\n");
         }
 
         return avx512CompareEqualStringAndSlice;
     }
     else if(is_avx2_supported()) {
-        if(true) {
+        if(LOG_DYNAMIC_DISPATCH) {
             printf("[String function loader]: Using AVX-2 String-Slice comparison\n");
         }
 
@@ -153,6 +171,72 @@ static __m256i stringHashIteration(const __m256i* vec, char num) {
 	const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
 	const __m256i partial = _mm256_and_si256(*vec, mask);
 	return _mm256_add_epi8(partial, numVec);
+}
+
+#include <iostream>
+
+static size_t avx512FindStrSliceInString(const char* buffer, size_t length, const char* sliceBuffer, size_t sliceLength) {
+    constexpr size_t NOT_FOUND = ~0ULL;
+
+    const __m512i firstChar = _mm512_set1_epi8(sliceBuffer[0]);
+    const __m512i* vecThis = reinterpret_cast<const __m512i*>(buffer);
+
+    const size_t iterationsToDo = calculateAvx512IterationsCount(length);
+       
+    for(size_t i = 0; i < iterationsToDo; i++) {
+		// First, try to find the first character within the string buffer.
+        size_t bitmask = _mm512_cmpeq_epi8_mask(firstChar, *vecThis);
+
+        while(true) {
+            unsigned long index;
+            if(!_BitScanForward64(&index, bitmask)) {
+                break;
+            }
+            bitmask = (bitmask & ~(1ULL << index));
+
+            const size_t actualIndex = index + (i * 64);
+            if((length - index) < sliceLength) return NOT_FOUND;
+
+            bool found = true;
+            for(size_t j = 0; j < sliceLength; j++) {
+                if(buffer[actualIndex + j] != sliceBuffer[j]) {
+                    found = false;
+                    break;
+                }
+            }
+
+            if(found) {
+                return actualIndex;
+            }
+        }
+
+        vecThis++;
+    }
+
+    return NOT_FOUND;
+}
+
+typedef size_t (*FindStrSliceInStringFunc)(const char*, size_t, const char*, size_t);
+
+static FindStrSliceInStringFunc chooseOptimalFindStrSliceInStringFunc() {
+    if(is_avx512f_supported()) {
+        if(LOG_DYNAMIC_DISPATCH) {
+            printf("[String function loader]: Using AVX-512 String-Slice comparison\n");
+        }
+
+        return avx512FindStrSliceInString;
+    }
+    else if(is_avx2_supported()) {
+        if(LOG_DYNAMIC_DISPATCH) {
+            printf("[String function loader]: Using AVX-2 String-Slice comparison\n");
+        }
+        exit(-1);
+        //return avx2CompareEqualStringAndSlice;
+    }
+    else {
+        printf("[String function loader]: ERROR\nCannot load string comparison functions if AVX-512 or AVX-2 aren't supported\n");
+        exit(-1);
+    }
 }
 
 #endif
@@ -223,3 +307,11 @@ extern "C" size_t cubs_string_compute_hash_simd(const char* selfBuffer, size_t l
 
 #endif
 }
+
+extern "C" size_t cubs_string_find_str_slice(const char* buffer, size_t length, const char* sliceBuffer, size_t sliceLength) {
+    static FindStrSliceInStringFunc func = chooseOptimalFindStrSliceInStringFunc();
+    return func(buffer, length, sliceBuffer, sliceLength);
+}
+
+
+
