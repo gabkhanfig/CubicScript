@@ -125,6 +125,43 @@ pub const String = extern struct {
         return simd.cubs_string_compute_hash_simd(@ptrCast(slice.ptr), @intCast(slice.len));
     }
 
+    pub fn find(self: *const Self, other: Self) ?usize {
+        // TODO SIMD
+        if (self.inner == null) {
+            return null;
+        } else {
+            const otherBuffer = other.toSlice();
+            if (otherBuffer.len == 0) {
+                return null;
+            }
+            const selfBuffer = self.toSlice();
+            const index = std.mem.indexOf(u8, selfBuffer, otherBuffer);
+            if (index) |i| {
+                return i;
+            } else {
+                return null;
+            }
+        }
+    }
+
+    pub fn findLiteral(self: *const Self, literal: [:0]const u8) ?usize {
+        // TODO SIMD
+        if (self.inner == null) {
+            return null;
+        } else {
+            if (literal.len == 0) {
+                return null;
+            }
+            const selfBuffer = self.toSlice();
+            const index = std.mem.indexOf(u8, selfBuffer, literal);
+            if (index) |i| {
+                return i;
+            } else {
+                return null;
+            }
+        }
+    }
+
     fn asInner(self: Self) *const Inner {
         return @ptrCast(@alignCast(self.inner));
     }
@@ -493,5 +530,271 @@ test "String equal slice" {
         defer s.deinit(allocator);
 
         try expect(!s.eqlSlice("hello to this glorious world! "));
+    }
+}
+
+test "String find" {
+    const allocator = std.testing.allocator;
+    { // null
+        var s = String{};
+        defer s.deinit(allocator);
+
+        var f = String{};
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == null);
+    }
+    { // sso valid, cant find empty
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = String{};
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == null);
+    }
+    { // heap valid, cant find empty
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = String{};
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == null);
+    }
+    { // sso valid, find at beginning 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("h", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 0);
+    }
+    { // heap valid, find at beginning 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("h", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 0);
+    }
+    { // sso valid, find in middle 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("o", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 4);
+    }
+    { // heap valid, find in middle 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("o", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 4);
+    }
+    { // sso valid, find at end 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("!", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 11);
+    }
+    { // heap valid, find at end 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("!", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 28);
+    }
+    { // sso valid, find at beginning multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("hel", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 0);
+    }
+    { // heap valid, find at beginning multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("hel", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 0);
+    }
+    { // sso valid, find in middle multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("o wo", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 4);
+    }
+    { // heap valid, find in middle multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("o to", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 4);
+    }
+    { // sso valid, find at end multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("ld!", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 9);
+    }
+    { // heap valid, find at end multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("ld!", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == 26);
+    }
+    { // sso, find longer null
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("hello world! ", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == null);
+    }
+    { // heap, find longer null
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        var f = try String.initSlice("hello to this glorious world! ", allocator);
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == null);
+    }
+}
+
+test "String find literal" {
+    const allocator = std.testing.allocator;
+    { // null
+        var s = String{};
+        defer s.deinit(allocator);
+
+        var f = String{};
+        defer f.deinit(allocator);
+
+        try expect(s.find(f) == null);
+    }
+    { // sso valid, cant find empty
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("") == null);
+    }
+    { // heap valid, cant find empty
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("") == null);
+    }
+    { // sso valid, find at beginning 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("h") == 0);
+    }
+    { // heap valid, find at beginning 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("h") == 0);
+    }
+    { // sso valid, find in middle 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("o") == 4);
+    }
+    { // heap valid, find in middle 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("o") == 4);
+    }
+    { // sso valid, find at end 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("!") == 11);
+    }
+    { // heap valid, find at end 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("!") == 28);
+    }
+    { // sso valid, find at beginning multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("hel") == 0);
+    }
+    { // heap valid, find at beginning multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("hel") == 0);
+    }
+    { // sso valid, find in middle multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("o wo") == 4);
+    }
+    { // heap valid, find in middle multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("o to") == 4);
+    }
+    { // sso valid, find at end multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("ld!") == 9);
+    }
+    { // heap valid, find at end multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("ld!") == 26);
+    }
+    { // sso, find longer null
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("hello world! ") == null);
+    }
+    { // heap, find longer null
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.findLiteral("hello to this glorious world! ") == null);
     }
 }
