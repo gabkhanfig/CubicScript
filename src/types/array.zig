@@ -6,6 +6,7 @@ const Int = @import("primitives.zig").Int;
 
 pub const Array = extern struct {
     const Self = @This();
+    const ELEMENT_ALIGN = 8;
 
     inner: ?*anyopaque = null,
 
@@ -22,7 +23,7 @@ pub const Array = extern struct {
     }
 
     fn headerMut(self: *Self) ?*Header {
-        return @ptrCast(self.inner);
+        return @ptrCast(@alignCast(self.inner));
     }
 
     fn arrayData(self: *const Self) ?[*]const anyopaque {
