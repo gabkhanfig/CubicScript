@@ -524,10 +524,7 @@ test "String find" {
         var s = String{};
         defer s.deinit(allocator);
 
-        var f = String{};
-        defer f.deinit(allocator);
-
-        try expect(s.find(f) == null);
+        try expect(s.find("") == null);
     }
     { // sso valid, cant find empty
         var s = try String.initSlice("hello world!", allocator);
