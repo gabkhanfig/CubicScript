@@ -139,6 +139,20 @@ pub const String = extern struct {
         }
     }
 
+    pub fn rfind(self: *const Self, literal: [:0]const u8) ?usize {
+        if (self.inner == null or literal.len == 0) {
+            return null;
+        } else {
+            const selfBuffer = self.toSlice();
+            const index = std.mem.lastIndexOf(u8, selfBuffer, literal);
+            if (index) |i| {
+                return i;
+            } else {
+                return null;
+            }
+        }
+    }
+
     fn asInner(self: Self) *const Inner {
         return @ptrCast(@alignCast(self.inner));
     }
@@ -621,5 +635,111 @@ test "String find" {
         defer s.deinit(allocator);
 
         try expect(s.find("hello to this glorious world! ") == null);
+    }
+}
+
+test "String reverse find" {
+    const allocator = std.testing.allocator;
+    { // null
+        var s = String{};
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("") == null);
+    }
+    { // sso valid, cant find empty
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("") == null);
+    }
+    { // heap valid, cant find empty
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("") == null);
+    }
+    { // sso valid, find at beginning 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("h") == 0);
+    }
+    { // heap valid, find at beginning 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("h") == 10);
+    }
+    { // sso valid, find in middle 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("o") == 7);
+    }
+    { // heap valid, find in middle 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("o") == 24);
+    }
+    { // sso valid, find at end 1 character
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("!") == 11);
+    }
+    { // heap valid, find at end 1 character
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("!") == 28);
+    }
+    { // sso valid, find at beginning multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("hel") == 0);
+    }
+    { // heap valid, find at beginning multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("hel") == 0);
+    }
+    { // sso valid, find in middle multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("o wo") == 4);
+    }
+    { // heap valid, find in middle multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("o to") == 4);
+    }
+    { // sso valid, find at end multiple characters
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("ld!") == 9);
+    }
+    { // heap valid, find at end multiple characters
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("ld!") == 26);
+    }
+    { // sso, find longer null
+        var s = try String.initSlice("hello world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("hello world! ") == null);
+    }
+    { // heap, find longer null
+        var s = try String.initSlice("hello to this glorious world!", allocator);
+        defer s.deinit(allocator);
+
+        try expect(s.rfind("hello to this glorious world! ") == null);
     }
 }
