@@ -28,6 +28,8 @@ else
 switch
 for
 while
+and
+or
 in
 continue
 break
