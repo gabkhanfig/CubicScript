@@ -111,12 +111,9 @@ pub const String = extern struct {
     }
 
     pub fn find(self: *const Self, literal: [:0]const u8) ?Int {
-        if (self.inner == null) {
+        if (self.inner == null or literal.len == 0) {
             return null;
         } else {
-            if (literal.len == 0) {
-                return null;
-            }
             const selfBuffer = self.toSlice();
             if (self.asInner().isSso()) {
                 const index = std.mem.indexOf(u8, selfBuffer, literal);
