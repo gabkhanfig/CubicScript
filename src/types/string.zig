@@ -144,7 +144,6 @@ pub const String = extern struct {
     }
 
     pub fn findLiteral(self: *const Self, literal: [:0]const u8) ?Int {
-        // TODO SIMD
         if (self.inner == null) {
             return null;
         } else {
@@ -175,6 +174,41 @@ pub const String = extern struct {
             }
         }
     }
+
+    // pub fn rfind(self: *const Self, other: Self) ?usize {
+    //     if (self.inner == null) {
+    //         return null;
+    //     } else {
+    //         const otherBuffer = other.toSlice();
+    //         if (otherBuffer.len == 0) {
+    //             return null;
+    //         }
+    //         const selfBuffer = self.toSlice();
+    //         const index = std.mem.lastIndexOf(u8, selfBuffer, otherBuffer);
+    //         if (index) |i| {
+    //             return i;
+    //         } else {
+    //             return null;
+    //         }
+    //     }
+    // }
+
+    // pub fn rfindLiteral(self: *const Self, literal: [:0]const u8) ?usize {
+    //     if (self.inner == null) {
+    //         return null;
+    //     } else {
+    //         if (literal.len == 0) {
+    //             return null;
+    //         }
+    //         const selfBuffer = self.toSlice();
+    //         const index = std.mem.lastIndexOf(u8, selfBuffer, literal);
+    //         if (index) |i| {
+    //             return i;
+    //         } else {
+    //             return null;
+    //         }
+    //     }
+    // }
 
     fn asInner(self: Self) *const Inner {
         return @ptrCast(@alignCast(self.inner));
