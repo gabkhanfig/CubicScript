@@ -7,8 +7,9 @@ const Int = @import("primitives.zig").Int;
 pub const Array = extern struct {
     const Self = @This();
     const ELEMENT_ALIGN = 8;
+    const ARRAY_ALLOC_ALIGN = 32;
 
-    inner: ?*anyopaque = null,
+    inner: ?*align(ARRAY_ALLOC_ALIGN) anyopaque = null,
 
     pub fn len(self: *const Self) Int {
         if (self.header()) |h| {
@@ -23,10 +24,10 @@ pub const Array = extern struct {
     }
 
     fn headerMut(self: *Self) ?*Header {
-        return @ptrCast(@alignCast(self.inner));
+        return @ptrCast(self.inner);
     }
 
-    fn arrayData(self: *const Self) ?[*]const anyopaque {
+    fn arrayData(self: *const Self) ?[*]align(ARRAY_ALLOC_ALIGN) anyopaque {
         const headerData = self.header();
         if (headerData) |h| {
             const asMultiplePtr: [*]const Header = @ptrCast(h);
@@ -36,7 +37,7 @@ pub const Array = extern struct {
         }
     }
 
-    fn arrayDataMut(self: *Self) ?[*]anyopaque {
+    fn arrayDataMut(self: *Self) ?[*]align(ARRAY_ALLOC_ALIGN) anyopaque {
         const headerData = self.headerMut();
         if (headerData) |h| {
             const asMultiplePtr: [*]Header = @ptrCast(h);
@@ -50,10 +51,16 @@ pub const Array = extern struct {
         sizeOfType: Int,
         length: Int,
         capacity: Int,
+        typeId: Int,
     };
 };
 
 // Tests
+
+test "Header size align" {
+    try expect(@sizeOf(Array.Header) == 32);
+    try expect(@alignOf(Array.Header) == 8);
+}
 
 test "Array default" {
     const arr = Array{};
