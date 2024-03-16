@@ -18,6 +18,23 @@ pub const Array = extern struct {
         return Self{ .inner = @intFromEnum(inTag) };
     }
 
+    pub fn deinit(self: *Self, allocator: Allocator) void {
+        if ((self.inner & Tag.TAG_BITMASK) == 0) {
+            return;
+        }
+
+        switch (self.tag()) {
+            .Bool, .Int, .Float => {
+                const allocation = self.getFullAllocation();
+                allocator.free(allocation);
+            },
+            else => {
+                @panic("Unsupported");
+            },
+        }
+        self.inner = 0;
+    }
+
     pub fn tag(self: *const Self) Tag {
         return @enumFromInt(self.inner & Tag.TAG_BITMASK);
     }
@@ -42,34 +59,34 @@ pub const Array = extern struct {
     }
 
     /// operator[], but returns an error instead of crashing if the value is out of bounds.
-    pub fn at(self: *const Self, index: Int) ArrayError.IndexOutOfBounds!*const Value {
+    pub fn at(self: *const Self, index: Int) Error.IndexOutOfBounds!*const Value {
         const h = self.header();
         if (h == null) {
-            return ArrayError.IndexOutOfBounds;
+            return Error.IndexOutOfBounds;
         }
 
         const arrData = self.asSlice().?;
         const headerData = h.?;
 
         if (index >= headerData.length) {
-            return ArrayError.IndexOutOfBounds;
+            return Error.IndexOutOfBounds;
         }
 
         return &arrData[index];
     }
 
     /// operator[], but returns an error instead of crashing if the value is out of bounds.
-    pub fn atMut(self: *Self, index: Int) ArrayError.IndexOutOfBounds!*Value {
+    pub fn atMut(self: *Self, index: Int) Error.IndexOutOfBounds!*Value {
         const h = self.header();
         if (h == null) {
-            return ArrayError.IndexOutOfBounds;
+            return Error.IndexOutOfBounds;
         }
 
         const arrData = self.asSliceMut().?;
         const headerData = h.?;
 
         if (index >= headerData.length) {
-            return ArrayError.IndexOutOfBounds;
+            return Error.IndexOutOfBounds;
         }
 
         return &arrData[index];
@@ -99,7 +116,8 @@ pub const Array = extern struct {
         if (headerData) |h| {
             const asMultiplePtr: [*]Header = @ptrCast(h);
             const asValueMultiPtr: [*]Value = @ptrCast(&asMultiplePtr[1]);
-            return asValueMultiPtr[0..headerData.?.length];
+            const length: usize = @intCast(headerData.?.length);
+            return asValueMultiPtr[0..length];
         } else {
             return null;
         }
@@ -119,20 +137,24 @@ pub const Array = extern struct {
             newHeader.length = headerData.length;
 
             const newArrayStart: [*]Value = @ptrCast(&@as([*]Header, @ptrCast(newHeader))[1]);
-            const oldArrayStart: [*]Value = @ptrCast(self.arrayDataMut().?.ptr);
+            const oldArrayStart: [*]Value = @ptrCast(self.asSliceMut().?.ptr);
 
-            const oldArraySlice: []Value = oldArrayStart[0..headerData.length];
+            const oldLength: usize = @intCast(headerData.length);
+            const oldCapacity: usize = @intCast(headerData.capacity);
+            const oldArraySlice: []Value = oldArrayStart[0..oldLength];
             @memcpy(newArrayStart, oldArraySlice);
 
             var oldAllocation: []usize = undefined;
-            oldAllocation.ptr = @ptrCast(self.inner & PTR_BITMASK);
-            oldAllocation.len = (headerData.capacity) + @sizeOf(Header);
+            oldAllocation.ptr = @ptrFromInt(self.inner & PTR_BITMASK);
+            oldAllocation.len = (oldCapacity) + @sizeOf(Header);
 
             allocator.free(oldAllocation); // dont need to call drop, cause its just memcpy and instantly free the other.
+
+            self.inner = (self.inner & Tag.TAG_BITMASK) | @intFromPtr(newData);
         } else {
             // here, it means the array has no data;
             const newData = try Header.init(minCapacity, allocator);
-            self.inner = newData;
+            self.inner = (self.inner & Tag.TAG_BITMASK) | @intFromPtr(newData);
         }
     }
 
@@ -151,19 +173,34 @@ pub const Array = extern struct {
             h.?.length += 1;
             const a = self.asSliceMut();
             if (a) |arrData| {
-                return &arrData[h.?.length];
+                const length: usize = @intCast(h.?.length);
+                return &arrData[length - 1];
             } else {
                 unreachable;
             }
         }
     }
 
-    fn growCapacity(current: usize, minimum: usize) usize {
+    fn growCapacity(current: Int, minimum: Int) Int {
         var new = current;
         while (true) {
-            new +|= new / 2 + 8;
+            new +|= @divTrunc(new, 2) + 8;
             if (new >= minimum)
                 return new;
+        }
+    }
+
+    fn getFullAllocation(self: *Self) []usize {
+        const h = self.headerMut();
+        if (h) |headerData| {
+            const capacity: usize = @intCast(headerData.capacity);
+
+            var outSlice: []usize = undefined;
+            outSlice.ptr = @ptrCast(headerData);
+            outSlice.len = capacity + @sizeOf(Header);
+            return outSlice;
+        } else {
+            unreachable;
         }
     }
 
@@ -173,9 +210,10 @@ pub const Array = extern struct {
 
         /// Creates a 0 initialized array with the correctly set header data.
         pub fn init(minCapacity: Int, allocator: Allocator) Allocator.Error!*align(ELEMENT_ALIGN) anyopaque {
+            const minCapacityUsize: usize = @intCast(minCapacity);
             const newData = try allocator.alloc(
                 usize,
-                (minCapacity * @sizeOf(Value)) + @sizeOf(Header), // allocate space for the header
+                minCapacityUsize + @sizeOf(Header), // allocate space for the header
             );
             @memset(newData, 0);
             const headerPtr: *Header = @ptrCast(newData.ptr);
@@ -183,10 +221,10 @@ pub const Array = extern struct {
             return @ptrCast(newData.ptr);
         }
     };
-};
 
-pub const ArrayError = error{
-    IndexOutOfBounds,
+    const Error = error{
+        IndexOutOfBounds,
+    };
 };
 
 // Tests
@@ -201,4 +239,13 @@ test "Array default" {
         const arr = Array.init(@enumFromInt(f.value));
         try expect(arr.len() == 0);
     }
+}
+
+test "Array push int" {
+    const allocator = std.testing.allocator;
+    var arr = Array.init(Tag.Int);
+    defer arr.deinit(allocator);
+
+    var pushValue = Value{ .int = 5 };
+    try arr.push(&pushValue, Tag.Int, allocator);
 }
