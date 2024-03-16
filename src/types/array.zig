@@ -49,7 +49,7 @@ pub const Array = extern struct {
 
     /// Takes ownership of `ownedElement`, doing a memcpy of the data, and then memsetting the original to 0.
     /// It is undefined behaviour to access the `ownedElement` passed in.
-    pub fn push(self: *Self, ownedElement: *Value, inTag: Tag, allocator: Allocator) Allocator.Error!void {
+    pub fn add(self: *Self, ownedElement: *Value, inTag: Tag, allocator: Allocator) Allocator.Error!void {
         assert(inTag == self.tag());
         const copyDest = try self.addOne(allocator);
 
@@ -241,7 +241,7 @@ test "Array default" {
     }
 }
 
-test "Array push int" {
+test "Array add int" {
     const allocator = std.testing.allocator;
     var arr = Array.init(Tag.Int);
     defer arr.deinit(allocator);
