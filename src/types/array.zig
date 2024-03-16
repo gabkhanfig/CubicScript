@@ -2,14 +2,25 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 const expect = std.testing.expect;
-const Int = @import("primitives.zig").Int;
+const primitives = @import("primitives.zig");
+const Value = primitives.Value;
+const Tag = primitives.Tag;
+const Int = primitives.Int;
 
 pub const Array = extern struct {
     const Self = @This();
     const ELEMENT_ALIGN = 8;
-    const ARRAY_ALLOC_ALIGN = 32;
+    const PTR_BITMASK = 0xFFFFFFFFFFFF;
 
-    inner: ?*align(ARRAY_ALLOC_ALIGN) anyopaque = null,
+    inner: usize,
+
+    pub fn init(inTag: Tag) Self {
+        return Self{ .inner = @intFromEnum(inTag) };
+    }
+
+    pub fn tag(self: *const Self) Tag {
+        return @enumFromInt(self.inner & Tag.TAG_BITMASK);
+    }
 
     pub fn len(self: *const Self) Int {
         if (self.header()) |h| {
@@ -19,50 +30,175 @@ pub const Array = extern struct {
         }
     }
 
+    /// Takes ownership of `ownedElement`, doing a memcpy of the data, and then memsetting the original to 0.
+    /// It is undefined behaviour to access the `ownedElement` passed in.
+    pub fn push(self: *Self, ownedElement: *Value, inTag: Tag, allocator: Allocator) Allocator.Error!void {
+        assert(inTag == self.tag());
+        const copyDest = try self.addOne(allocator);
+
+        copyDest.* = ownedElement.*;
+        const src: *usize = @ptrCast(ownedElement);
+        src.* = 0;
+    }
+
+    /// operator[], but returns an error instead of crashing if the value is out of bounds.
+    pub fn at(self: *const Self, index: Int) ArrayError.IndexOutOfBounds!*const Value {
+        const h = self.header();
+        if (h == null) {
+            return ArrayError.IndexOutOfBounds;
+        }
+
+        const arrData = self.asSlice().?;
+        const headerData = h.?;
+
+        if (index >= headerData.length) {
+            return ArrayError.IndexOutOfBounds;
+        }
+
+        return &arrData[index];
+    }
+
+    /// operator[], but returns an error instead of crashing if the value is out of bounds.
+    pub fn atMut(self: *Self, index: Int) ArrayError.IndexOutOfBounds!*Value {
+        const h = self.header();
+        if (h == null) {
+            return ArrayError.IndexOutOfBounds;
+        }
+
+        const arrData = self.asSliceMut().?;
+        const headerData = h.?;
+
+        if (index >= headerData.length) {
+            return ArrayError.IndexOutOfBounds;
+        }
+
+        return &arrData[index];
+    }
+
     fn header(self: *const Self) ?*const Header {
-        return @ptrCast(self.inner);
+        return @ptrFromInt(self.inner & PTR_BITMASK);
     }
 
     fn headerMut(self: *Self) ?*Header {
-        return @ptrCast(self.inner);
+        return @ptrFromInt(self.inner & PTR_BITMASK);
     }
 
-    fn arrayData(self: *const Self) ?[*]align(ARRAY_ALLOC_ALIGN) anyopaque {
+    fn asSlice(self: *const Self) ?[]const Value {
         const headerData = self.header();
         if (headerData) |h| {
             const asMultiplePtr: [*]const Header = @ptrCast(h);
-            return @ptrCast(&asMultiplePtr[1]);
+            const asValueMultiPtr: [*]const Value = @ptrCast(&asMultiplePtr[1]);
+            return asValueMultiPtr[0..headerData.?.length];
         } else {
             return null;
         }
     }
 
-    fn arrayDataMut(self: *Self) ?[*]align(ARRAY_ALLOC_ALIGN) anyopaque {
+    fn asSliceMut(self: *Self) ?[]Value {
         const headerData = self.headerMut();
         if (headerData) |h| {
             const asMultiplePtr: [*]Header = @ptrCast(h);
-            return @ptrCast(&asMultiplePtr[1]);
+            const asValueMultiPtr: [*]Value = @ptrCast(&asMultiplePtr[1]);
+            return asValueMultiPtr[0..headerData.?.length];
         } else {
             return null;
+        }
+    }
+
+    fn ensureTotalCapacity(self: *Self, minCapacity: Int, allocator: Allocator) Allocator.Error!void {
+        const h = self.headerMut();
+        if (h) |headerData| {
+            if (headerData.capacity >= minCapacity) {
+                return;
+            }
+
+            const grownCapacity = growCapacity(headerData.capacity, minCapacity);
+            const newData = try Header.init(grownCapacity, allocator);
+
+            const newHeader: *Header = @ptrCast(newData);
+            newHeader.length = headerData.length;
+
+            const newArrayStart: [*]Value = @ptrCast(&@as([*]Header, @ptrCast(newHeader))[1]);
+            const oldArrayStart: [*]Value = @ptrCast(self.arrayDataMut().?.ptr);
+
+            const oldArraySlice: []Value = oldArrayStart[0..headerData.length];
+            @memcpy(newArrayStart, oldArraySlice);
+
+            var oldAllocation: []usize = undefined;
+            oldAllocation.ptr = @ptrCast(self.inner & PTR_BITMASK);
+            oldAllocation.len = (headerData.capacity) + @sizeOf(Header);
+
+            allocator.free(oldAllocation); // dont need to call drop, cause its just memcpy and instantly free the other.
+        } else {
+            // here, it means the array has no data;
+            const newData = try Header.init(minCapacity, allocator);
+            self.inner = newData;
+        }
+    }
+
+    /// Potentially reallocates. Increases the array length by one, returning a buffer to memcpy the element to.
+    fn addOne(self: *Self, allocator: Allocator) Allocator.Error!*Value {
+        {
+            const h = self.header();
+            if (h) |headerData| {
+                try self.ensureTotalCapacity(headerData.length + 1, allocator);
+            } else {
+                try self.ensureTotalCapacity(1, allocator);
+            }
+        }
+        {
+            const h = self.headerMut();
+            h.?.length += 1;
+            const a = self.asSliceMut();
+            if (a) |arrData| {
+                return &arrData[h.?.length];
+            } else {
+                unreachable;
+            }
+        }
+    }
+
+    fn growCapacity(current: usize, minimum: usize) usize {
+        var new = current;
+        while (true) {
+            new +|= new / 2 + 8;
+            if (new >= minimum)
+                return new;
         }
     }
 
     const Header = extern struct {
-        sizeOfType: Int,
         length: Int,
         capacity: Int,
-        typeId: Int,
+
+        /// Creates a 0 initialized array with the correctly set header data.
+        pub fn init(minCapacity: Int, allocator: Allocator) Allocator.Error!*align(ELEMENT_ALIGN) anyopaque {
+            const newData = try allocator.alloc(
+                usize,
+                (minCapacity * @sizeOf(Value)) + @sizeOf(Header), // allocate space for the header
+            );
+            @memset(newData, 0);
+            const headerPtr: *Header = @ptrCast(newData.ptr);
+            headerPtr.capacity = minCapacity;
+            return @ptrCast(newData.ptr);
+        }
     };
+};
+
+pub const ArrayError = error{
+    IndexOutOfBounds,
 };
 
 // Tests
 
 test "Header size align" {
-    try expect(@sizeOf(Array.Header) == 32);
+    try expect(@sizeOf(Array.Header) == 16);
     try expect(@alignOf(Array.Header) == 8);
 }
 
 test "Array default" {
-    const arr = Array{};
-    try expect(arr.len() == 0);
+    inline for (@typeInfo(Tag).Enum.fields) |f| {
+        const arr = Array.init(@enumFromInt(f.value));
+        try expect(arr.len() == 0);
+    }
 }
