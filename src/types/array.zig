@@ -58,38 +58,42 @@ pub const Array = extern struct {
         src.* = 0;
     }
 
-    /// operator[], but returns an error instead of crashing if the value is out of bounds.
-    pub fn at(self: *const Self, index: Int) Error.IndexOutOfBounds!*const Value {
+    /// operator[]. If `index` is out of bounds, returns `Array.Error.OutOfBounds`.
+    /// Otherwise, an immutable reference to the value at the index is returned.
+    pub fn at(self: *const Self, index: Int) Error!*const Value {
         const h = self.header();
         if (h == null) {
-            return Error.IndexOutOfBounds;
+            return Error.OutOfBounds;
         }
 
         const arrData = self.asSlice().?;
         const headerData = h.?;
 
         if (index >= headerData.length) {
-            return Error.IndexOutOfBounds;
+            return Error.OutOfBounds;
         }
 
-        return &arrData[index];
+        const indexAsUsize: usize = @intCast(index);
+        return &arrData[indexAsUsize];
     }
 
-    /// operator[], but returns an error instead of crashing if the value is out of bounds.
-    pub fn atMut(self: *Self, index: Int) Error.IndexOutOfBounds!*Value {
+    /// operator[]. If `index` is out of bounds, returns `Array.Error.OutOfBounds`.
+    /// Otherwise, a mutable reference to the value at the index is returned.
+    pub fn atMut(self: *Self, index: Int) Error!*Value {
         const h = self.header();
         if (h == null) {
-            return Error.IndexOutOfBounds;
+            return Error.OutOfBounds;
         }
 
         const arrData = self.asSliceMut().?;
         const headerData = h.?;
 
         if (index >= headerData.length) {
-            return Error.IndexOutOfBounds;
+            return Error.OutOfBounds;
         }
 
-        return &arrData[index];
+        const indexAsUsize: usize = @intCast(index);
+        return &arrData[indexAsUsize];
     }
 
     fn header(self: *const Self) ?*const Header {
@@ -105,7 +109,8 @@ pub const Array = extern struct {
         if (headerData) |h| {
             const asMultiplePtr: [*]const Header = @ptrCast(h);
             const asValueMultiPtr: [*]const Value = @ptrCast(&asMultiplePtr[1]);
-            return asValueMultiPtr[0..headerData.?.length];
+            const length: usize = @intCast(headerData.?.length);
+            return asValueMultiPtr[0..length];
         } else {
             return null;
         }
@@ -223,7 +228,7 @@ pub const Array = extern struct {
     };
 
     const Error = error{
-        IndexOutOfBounds,
+        OutOfBounds,
     };
 };
 
@@ -248,4 +253,27 @@ test "Array add int" {
 
     var pushValue = Value{ .int = 5 };
     try arr.add(&pushValue, Tag.Int, allocator);
+}
+
+test "Array at int" {
+    const allocator = std.testing.allocator;
+    var arr = Array.init(Tag.Int);
+    defer arr.deinit(allocator);
+
+    if (arr.at(0)) |_| {
+        try expect(false);
+    } else |_| {}
+
+    var pushValue = Value{ .int = 5 };
+    try arr.add(&pushValue, Tag.Int, allocator);
+
+    if (arr.at(0)) |value| {
+        try expect(value.int == 5);
+    } else |_| {
+        try expect(false);
+    }
+
+    if (arr.at(1)) |_| {
+        try expect(false);
+    } else |_| {}
 }
