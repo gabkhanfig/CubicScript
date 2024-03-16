@@ -37,7 +37,7 @@ import
 impl
 pub
 enum
-struct
+class
 true
 false
 null
@@ -52,17 +52,17 @@ Sync primitives, async, and threads are not provided by default, but the underly
 - Const
 - Mutable
 
-In a const context, which is defined by the top level function being `const fn`, any struct that implements the `Const` interface may not be mutated through the call stack. More info about this can be found down below. For example, in a game engine, this allows having a `tick()` and `mutableTick()` implementations. `tick()` can have a message collector, which will collect any future operations that need to happen, while `mutableTick()` can immediately modify data, having the concurrency properly handled by the owning program. The values referenced by references, even mutable references, may not be mutated in a const context.
+In a const context, which is defined by the top level function being `const fn`, any class that implements the `Const` interface may not be mutated through the call stack. More info about this can be found down below. For example, in a game engine, this allows having a `tick()` and `mutableTick()` implementations. `tick()` can have a message collector, which will collect any future operations that need to happen, while `mutableTick()` can immediately modify data, having the concurrency properly handled by the owning program. The values referenced by references, even mutable references, may not be mutated in a const context.
 
-## Structs
+## Classes
 
-Structs are the way data is contained. They are also just classes. Structs can implement interfaces, which will use dynamic dispatch where appropriate. Structs allocate in-place by default (arrays and maps and stuff are heap allocated), but the API can move (`memcpy`) the struct onto the heap when ownership of the struct is taken appropriately.
+Classes are the way data is contained. They are also just classes. Classes can implement interfaces, which will use dynamic dispatch where appropriate. Classes allocate on the heap always.
 
 Example:
 
 ```text
-// Use pub specifier to allow this struct to be used by other files
-pub struct Person {
+// Use pub specifier to allow this class to be used by other files
+pub class Person {
     // Same applies with members. pub(const) means this member is read-only outside of this file.
     pub(const) name: String,
     age: Int,
@@ -72,12 +72,12 @@ pub struct Person {
 
 ## Functions
 
-Functions can be free functions, or as a member of a struct (which is technically still a free function but with some nice syntax).
+Functions can be free functions, or as a member of a class (which is technically still a free function but with some nice syntax).
 
-Example: (using Person struct from above):
+Example: (using Person class from above):
 
 ```text
-pub struct Person { ... };
+pub class Person { ... };
 
 impl Person {
     // Use pub specifier to allow this function to be called by other files.
@@ -89,12 +89,12 @@ impl Person {
 
 ### const fn
 
-Const functions are a contract ensuring read-only access to structs that implement the `Const` interface. The entire callstack beginning at a `const fn` is validated to not mutate any structs that implement `Const`, as well as no mutable references to it's members. This ensures that full multithreading can be used.
+Const functions are a contract ensuring read-only access to classes that implement the `Const` interface. The entire callstack beginning at a `const fn` is validated to not mutate any classes that implement `Const`, as well as no mutable references to it's members. This ensures that full multithreading can be used.
 
-Example: (using Person struct from above):
+Example: (using Person class from above):
 
 ```text
-pub struct Person { ... };
+pub class Person { ... };
 
 impl Const for Person;
 
@@ -108,18 +108,18 @@ pub const fn calculateSomeStuff() {
 
 ## Interfaces
 
-Interfaces specify functions that implementing structs support. Default implementations can be specified, as well as specifying them as non-overridable. A function without an implementation must be implemented by the implementing struct.
-Interfaces MAYBE can also have struct members. TODO decide if this is best.
-Interfaces can force structs to also implement other interfaces.
+Interfaces specify functions that implementing classes support. Default implementations can be specified, as well as specifying them as non-overridable. A function without an implementation must be implemented by the implementing class.
+Interfaces MAYBE can also have class members. TODO decide if this is best.
+Interfaces can force classes to also implement other interfaces.
 
-Example (using Person struct from above):
+Example (using Person class from above):
 
 ```text
-pub struct Person { ... };
+pub class Person { ... };
 
 // Use pub specifier to allow this interface to be used by other files.
 pub interface Aging {
-    // Use pub specifier to allow this interface function to be called by non-implementing structs/functions.
+    // Use pub specifier to allow this interface function to be called by non-implementing classes/functions.
     pub const fn getAge(self: *Self) Int;
 };
 
@@ -136,7 +136,7 @@ Cube Universe Script uses an ownership model, similar to rust. Variables "own" t
 
 ### Copying
 
-A type or struct is considered trivially copyable if it is a trivially clonable primitive type, or a struct whose members is made up of only trivially copyable primitive types. Function calling, or struct member assignment follows this logic.
+A type or class is considered trivially copyable if it is a trivially clonable primitive type, or a class whose members is made up of only trivially copyable primitive types. Function calling, or class member assignment follows this logic.
 
 > Is type trivially copyable?
 > Yes: copy without programmer typing `.copy()`
@@ -144,11 +144,11 @@ A type or struct is considered trivially copyable if it is a trivially clonable 
 
 For non-trivially copyable types, they must implement the `Copy` interface, (this is done by default for trivially copyable types). This is done to make copies explicit to the programmer in situations where they can have meaningful performance implications.
 
-Struct members will **never** be moved, only copied.
+class members will **never** be moved, only copied.
 
 ## References
 
-Reference (pointers) are always either immutable `*` or mutable `*mut`, but in a const context, will be forced to be immutable for structs that implement the `Const` interface, even if a mutable reference is alive. Unlike rust, there are no restrictions to how many references can be alive. This is done for the sake of ease of use. Since there are no concerns with data races due to `const fn`, this is reasonable.
+Reference (pointers) are always either immutable `*` or mutable `*mut`, but in a const context, will be forced to be immutable for classes that implement the `Const` interface, even if a mutable reference is alive. Unlike rust, there are no restrictions to how many references can be alive. This is done for the sake of ease of use. Since there are no concerns with data races due to `const fn`, this is reasonable.
 
 References have their held data be assigned, or have the actual pointer address be assigned. To assign the actual held value, the point must be dereferenced using the `variable.* =` syntax.
 
@@ -177,7 +177,7 @@ assert(ptr2 == 2);
 
 Pointer arithmetic is not allowed.
 
-References, or primitive types (Array, Map, Set) containing references, may **never** be stored in structs, with the one exception being shared references.
+References, or primitive types (Array, Map, Set) containing references, may **never** be stored in classes, with the one exception being shared references.
 
 ### Shared References
 
@@ -188,7 +188,7 @@ Shared references are trivially copyable.
 Example:
 
 ```text
-struct SharedRefExample {
+class SharedRefExample {
     someData: Shared(Int)
 };
 
@@ -243,7 +243,7 @@ const examplev6 = IpAddress.V6("::1");
 
 // Tagged unions don't have to have additional data for a field
 
-struct Flight {
+class Flight {
     speed: Float,
     airResistance: Float,
 }
