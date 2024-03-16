@@ -112,15 +112,7 @@ pub const Array = extern struct {
         return &arrData[indexAsUsize];
     }
 
-    fn header(self: *const Self) ?*const Header {
-        return @ptrFromInt(self.inner & PTR_BITMASK);
-    }
-
-    fn headerMut(self: *Self) ?*Header {
-        return @ptrFromInt(self.inner & PTR_BITMASK);
-    }
-
-    fn asSlice(self: *const Self) ?[]const Value {
+    pub fn asSlice(self: *const Self) ?[]const Value {
         const headerData = self.header();
         if (headerData) |h| {
             const asMultiplePtr: [*]const Header = @ptrCast(h);
@@ -132,7 +124,7 @@ pub const Array = extern struct {
         }
     }
 
-    fn asSliceMut(self: *Self) ?[]Value {
+    pub fn asSliceMut(self: *Self) ?[]Value {
         const headerData = self.headerMut();
         if (headerData) |h| {
             const asMultiplePtr: [*]Header = @ptrCast(h);
@@ -142,6 +134,14 @@ pub const Array = extern struct {
         } else {
             return null;
         }
+    }
+
+    fn header(self: *const Self) ?*const Header {
+        return @ptrFromInt(self.inner & PTR_BITMASK);
+    }
+
+    fn headerMut(self: *Self) ?*Header {
+        return @ptrFromInt(self.inner & PTR_BITMASK);
     }
 
     fn ensureTotalCapacity(self: *Self, minCapacity: Int, allocator: Allocator) Allocator.Error!void {
