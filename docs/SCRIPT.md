@@ -254,3 +254,17 @@ enum Movement {
     Flying(Flight),
 }
 ```
+
+## Null
+
+All types are not nullable. Nullability is only present in the case of option types. It is an error to get the optional value when it is `null`.
+
+Calling the operator `.?` will get a mutable reference to the held option data. To explicitly take ownership of the optional, call `.take()`.
+
+### Null Primitives
+
+Optional primitives will have their "some" data allocated to the heap, so if the optional is null, it's holding a null pointer.
+
+### Null Classes
+
+Optional classes just means the pointer to the class may be null.
