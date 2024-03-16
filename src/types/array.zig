@@ -247,5 +247,5 @@ test "Array add int" {
     defer arr.deinit(allocator);
 
     var pushValue = Value{ .int = 5 };
-    try arr.push(&pushValue, Tag.Int, allocator);
+    try arr.add(&pushValue, Tag.Int, allocator);
 }
