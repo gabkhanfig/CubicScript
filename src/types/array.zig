@@ -19,19 +19,35 @@ pub const Array = extern struct {
     }
 
     pub fn deinit(self: *Self, allocator: Allocator) void {
-        if ((self.inner & Tag.TAG_BITMASK) == 0) {
+        if ((self.inner & PTR_BITMASK) == 0) {
             return;
         }
+        // Here, there are actually values.
 
         switch (self.tag()) {
-            .Bool, .Int, .Float => {
-                const allocation = self.getFullAllocation();
-                allocator.free(allocation);
+            .Bool, .Int, .Float => {},
+            .String => {
+                const stringsOpt = self.asSliceMut();
+                if (stringsOpt) |strings| {
+                    for (0..strings.len) |i| { // use indexing to get the mutable reference
+                        strings[i].string.deinit(allocator);
+                    }
+                }
+            },
+            .Array => {
+                const arraysOpt = self.asSliceMut();
+                if (arraysOpt) |arrays| {
+                    for (0..arrays.len) |i| { // use indexing to get the mutable reference
+                        arrays[i].array.deinit(allocator);
+                    }
+                }
             },
             else => {
                 @panic("Unsupported");
             },
         }
+        const allocation = self.getFullAllocation();
+        allocator.free(allocation);
         self.inner = 0;
     }
 
@@ -269,6 +285,112 @@ test "Array at int" {
 
     if (arr.at(0)) |value| {
         try expect(value.int == 5);
+    } else |_| {
+        try expect(false);
+    }
+
+    if (arr.at(1)) |_| {
+        try expect(false);
+    } else |_| {}
+}
+
+test "Array bool sanity" {
+    const allocator = std.testing.allocator;
+    var arr = Array.init(Tag.Bool);
+    defer arr.deinit(allocator);
+
+    if (arr.at(0)) |_| {
+        try expect(false);
+    } else |_| {}
+
+    var pushValue = Value{ .boolean = primitives.TRUE };
+    try arr.add(&pushValue, Tag.Bool, allocator);
+
+    if (arr.at(0)) |value| {
+        try expect(value.boolean == primitives.TRUE);
+    } else |_| {
+        try expect(false);
+    }
+
+    if (arr.at(1)) |_| {
+        try expect(false);
+    } else |_| {}
+}
+
+test "Array float sanity" {
+    const allocator = std.testing.allocator;
+    var arr = Array.init(Tag.Float);
+    defer arr.deinit(allocator);
+
+    if (arr.at(0)) |_| {
+        try expect(false);
+    } else |_| {}
+
+    var pushValue = Value{ .float = 5 };
+    try arr.add(&pushValue, Tag.Float, allocator);
+
+    if (arr.at(0)) |value| {
+        try expect(value.float == 5);
+    } else |_| {
+        try expect(false);
+    }
+
+    if (arr.at(1)) |_| {
+        try expect(false);
+    } else |_| {}
+}
+
+test "Array string sanity" {
+    const allocator = std.testing.allocator;
+    var arr = Array.init(Tag.String);
+    defer arr.deinit(allocator);
+
+    if (arr.at(0)) |_| {
+        try expect(false);
+    } else |_| {}
+
+    var pushValue = Value{ .string = try primitives.String.initSlice("hello world!", allocator) };
+    try arr.add(&pushValue, Tag.String, allocator);
+
+    if (arr.at(0)) |value| {
+        try expect(value.string.eqlSlice("hello world!"));
+    } else |_| {
+        try expect(false);
+    }
+
+    if (arr.at(1)) |_| {
+        try expect(false);
+    } else |_| {}
+}
+
+test "Array nested array sanity" {
+    const allocator = std.testing.allocator;
+    var arr = Array.init(Tag.Array);
+    defer arr.deinit(allocator);
+
+    if (arr.at(0)) |_| {
+        try expect(false);
+    } else |_| {}
+
+    var pushValue: Value = undefined;
+    {
+        var nestedArr = Array.init(Tag.Bool);
+        defer arr.deinit(allocator);
+
+        var nestedValue = Value{ .boolean = primitives.TRUE };
+        try nestedArr.add(&nestedValue, Tag.Bool, allocator);
+
+        pushValue = Value{ .array = nestedArr };
+    }
+    try arr.add(&pushValue, Tag.Array, allocator);
+
+    if (arr.at(0)) |value| {
+        try expect(value.array.len() == 1);
+        if (value.array.at(0)) |nestedValue| {
+            try expect(nestedValue.boolean == primitives.TRUE);
+        } else |_| {
+            try expect(false);
+        }
     } else |_| {
         try expect(false);
     }

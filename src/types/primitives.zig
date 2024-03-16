@@ -26,6 +26,9 @@ pub const Tag = enum(usize) {
     Class = @shlExact(13, PTR_SHIFT),
 };
 
+pub const FALSE: Bool = 0;
+pub const TRUE: Bool = 1;
+
 /// true = not 0, false = 0
 pub const Bool = i64;
 /// Signed 64 bit integer
