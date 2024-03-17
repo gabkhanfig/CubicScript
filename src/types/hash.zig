@@ -41,6 +41,27 @@ pub fn combineHash(lhs: *usize, rhs: usize) void {
     ).@"0";
 }
 
+pub const HashGroupBitmask = struct {
+    const BITMASK = 18446744073709551488; // ~0b1111111 as usize
+
+    value: usize,
+
+    fn init(hashCode: usize) HashGroupBitmask {
+        return HashGroupBitmask{ .value = @shrExact(hashCode & BITMASK, 7) };
+    }
+};
+
+pub const HashPairBitmask = struct {
+    const BITMASK = 127; // 0b1111111
+    const SET_FLAG = 0b10000000;
+
+    value: u8,
+
+    fn init(hashCode: usize) HashPairBitmask {
+        return HashPairBitmask{ .value = @intCast((hashCode & BITMASK) | SET_FLAG) };
+    }
+};
+
 test "hash bool" {
     {
         const value1 = Value{ .boolean = primitives.TRUE };
