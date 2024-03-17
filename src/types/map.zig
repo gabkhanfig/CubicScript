@@ -523,3 +523,20 @@ test "map find empty" {
         try expect(map.find(findValue) == null);
     }
 }
+
+test "map insert one element" {
+    const allocator = std.testing.allocator;
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Int);
+        defer map.deinit(allocator);
+
+        var addKey = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var addValue = TaggedValue.initInt(1);
+        try map.insert(&addKey, &addValue, allocator);
+
+        var findValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        defer findValue.deinit(allocator);
+
+        try expect(map.find(findValue) != null);
+    }
+}
