@@ -138,7 +138,7 @@ pub const Map = extern struct {
 
             inner.count -= 1;
 
-            return inner.groups[groupIndex].erase(key.value, key.tag, allocator);
+            return inner.groups[groupIndex].erase(key.value, key.tag, self.valueTag(), hashCode, allocator);
         } else {
             unreachable;
         }
@@ -385,8 +385,8 @@ const Group = struct {
     }
 
     /// Returns false if the entry doesn't exist, and true if the entry does exist and was successfully erased.
-    fn erase(self: *Group, key: PrimitiveValue, tag: ValueTag, hashCode: usize, allocator: Allocator) bool {
-        const found = self.find(key, tag, hashCode);
+    fn erase(self: *Group, key: PrimitiveValue, keyTag: ValueTag, valueTag: ValueTag, hashCode: usize, allocator: Allocator) bool {
+        const found = self.find(key, keyTag, hashCode);
 
         if (found == null) {
             return false;
@@ -394,19 +394,10 @@ const Group = struct {
 
         const selfHashMasksAsBytePtr: [*]u8 = @ptrCast(self.hashMasks);
         selfHashMasksAsBytePtr[found.?] = 0;
+        self.pairs[found.?].key.deinit(keyTag, allocator);
+        self.pairs[found.?].value.deinit(valueTag, allocator);
         allocator.destroy(self.pairs[found.?]);
         self.pairCount -= 1;
-
-        if (self.pairCount == 0) {
-            const currentAllocationSize = calculateChunksHashGroupAllocationSize(self.capacity);
-
-            var allocSlice: []align(ALIGNMENT) u8 = undefined;
-            allocSlice.ptr = @ptrCast(self.hashMasks);
-            allocSlice.len = currentAllocationSize;
-
-            allocator.free(allocSlice);
-            allocator.destroy(self);
-        }
 
         return true;
     }
