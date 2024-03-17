@@ -34,6 +34,8 @@ pub const Map = extern struct {
             for (inner.groups) |*group| {
                 group.deinit(allocator, self.keyTag(), self.valueTag());
             }
+            allocator.free(inner.groups);
+            allocator.destroy(inner);
             self.inner = 0;
         }
     }
@@ -82,9 +84,9 @@ pub const Map = extern struct {
         assert(key.tag == self.keyTag());
 
         if (self.asInner()) |inner| {
-            const hashCode = computeHash(key.value, key.tag, hash.TEST_SEED_VALUE);
+            const hashCode = computeHash(&key.value, key.tag, hash.TEST_SEED_VALUE);
             const groupBitmask = HashGroupBitmask.init(hashCode);
-            const groupIndex = @mod(groupBitmask.value, self.groups.len);
+            const groupIndex = @mod(groupBitmask.value, inner.groups.len);
 
             const found = inner.groups[groupIndex].find(key.value, key.tag, hashCode);
             if (found == null) {
@@ -105,14 +107,14 @@ pub const Map = extern struct {
         assert(value.tag == self.valueTag());
 
         const elemSize = self.size();
-        try self.ensureTotalCapacity(elemSize + 1, allocator);
+        try self.ensureTotalCapacity(@as(usize, @intCast(elemSize)) + 1, allocator);
 
         if (self.asInnerMut()) |inner| {
-            const hashCode = computeHash(key.value, key.tag, hash.TEST_SEED_VALUE);
+            const hashCode = computeHash(&key.value, key.tag, hash.TEST_SEED_VALUE);
             const groupBitmask = HashGroupBitmask.init(hashCode);
-            const groupIndex = @mod(groupBitmask.value, self.groups.len);
+            const groupIndex = @mod(groupBitmask.value, inner.groups.len);
 
-            try inner.groups[groupIndex].insert(key.value, value.tag, key.tag, allocator);
+            try inner.groups[groupIndex].insert(key, value, hashCode, allocator);
             inner.count += 1;
         } else {
             unreachable;
@@ -130,9 +132,9 @@ pub const Map = extern struct {
         }
 
         if (self.asInnerMut()) |inner| {
-            const hashCode = computeHash(key.value, key.tag, hash.TEST_SEED_VALUE);
+            const hashCode = computeHash(&key.value, key.tag, hash.TEST_SEED_VALUE);
             const groupBitmask = HashGroupBitmask.init(hashCode);
-            const groupIndex = @mod(groupBitmask.value, self.groups.len);
+            const groupIndex = @mod(groupBitmask.value, inner.groups.len);
 
             inner.count -= 1;
 
@@ -156,8 +158,10 @@ pub const Map = extern struct {
         }
 
         const newGroupCount = calculateNewGroupCount(minCapacity);
-        if (newGroupCount <= self.groups.len) {
-            return;
+        if (self.asInner()) |inner| {
+            if (newGroupCount <= inner.groups.len) {
+                return;
+            }
         }
 
         const newGroups = try allocator.alloc(Group, newGroupCount);
@@ -176,7 +180,7 @@ pub const Map = extern struct {
 
                     const pair = oldGroup.pairs[i];
                     const groupBitmask = HashGroupBitmask.init(pair.hash);
-                    const groupIndex = @mod(groupBitmask.value, self.groups.len);
+                    const groupIndex = @mod(groupBitmask.value, inner.groups.len);
 
                     const newGroup = &newGroups[groupIndex];
 
@@ -203,8 +207,7 @@ pub const Map = extern struct {
             newInner.groups = newGroups;
             newInner.count = 0;
 
-            const newTaggedPtr: usize = @as(usize, @intFromEnum(self.tag())) | @intFromPtr(newInner);
-            self.inner = @ptrFromInt(newTaggedPtr);
+            self.inner = (self.inner & (KEY_TAG_BITMASK | VALUE_TAG_BITMASK)) | @intFromPtr(newInner);
         }
     }
 
@@ -249,7 +252,7 @@ const Group = struct {
         @memset(memory, 0);
 
         const hashMasks: [*]@Vector(32, u8) = @ptrCast(@alignCast(memory.ptr));
-        const pairs: [*]*Pair = @ptrCast(&memory.ptr[GROUP_ALLOC_SIZE]);
+        const pairs: [*]*Pair = @ptrCast(@alignCast(&memory.ptr[GROUP_ALLOC_SIZE]));
 
         return Group{
             .hashMasks = hashMasks,
@@ -332,15 +335,15 @@ const Group = struct {
     /// If the entry already exists, will replace the existing held value with `value`.
     /// Takes ownership of `key` and `value`, setting the original references to 0.
     /// Expects that `allocator` was also used for `key` and `value`.
-    fn insert(self: *Group, key: *PrimitiveValue, value: *PrimitiveValue, tag: ValueTag, hashCode: usize, allocator: Allocator) Allocator.Error!void {
-        const existingIndex = self.find(key, hashCode);
+    fn insert(self: *Group, key: *TaggedValue, value: *TaggedValue, hashCode: usize, allocator: Allocator) Allocator.Error!void {
+        const existingIndex = self.find(key.value, key.tag, hashCode);
         const alreadyExists = existingIndex != null;
         if (alreadyExists) {
-            self.pairs[existingIndex.?].value.deinit(tag, allocator);
-            self.pairs[existingIndex.?].value = value.*;
+            self.pairs[existingIndex.?].value.deinit(value.tag, allocator);
+            self.pairs[existingIndex.?].value = value.value;
 
-            key.deinit(tag, allocator); // don't need duplicate.
-            value.int = 0; // force existing reference to 0 / null, taking ownership
+            key.deinit(allocator); // don't need duplicate.
+            value.value.int = 0; // force existing reference to 0 / null, taking ownership
             return;
         }
 
@@ -363,18 +366,18 @@ const Group = struct {
                 continue;
             } else {
                 const newPair = try allocator.create(Pair);
-                newPair.key = key.*;
-                newPair.value = value.*;
+                newPair.key = key.value;
+                newPair.value = value.value;
                 newPair.hash = hashCode;
 
-                key.int = 0; // force existing reference to 0 / null, taking ownership
-                value.int = 0; // force existing reference to 0 / null, taking ownership
+                key.value.int = 0; // force existing reference to 0 / null, taking ownership
+                value.value.int = 0; // force existing reference to 0 / null, taking ownership
 
                 selfHashMasksAsBytePtr[i] = mask.value;
                 self.pairs[i] = newPair;
                 self.pairCount += 1;
 
-                return null;
+                return;
             }
         }
 
