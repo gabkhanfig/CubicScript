@@ -540,3 +540,25 @@ test "map insert one element" {
         }
     }
 }
+
+test "map erase one element" {
+    const allocator = std.testing.allocator;
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Int);
+        defer map.deinit(allocator);
+
+        var addKey = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var addValue = TaggedValue.initInt(1);
+        try map.insert(&addKey, &addValue, allocator);
+
+        var eraseValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        defer eraseValue.deinit(allocator);
+
+        try expect(map.erase(eraseValue, allocator));
+
+        var findValue = TaggedValue.initString(eraseValue.value.string.clone());
+        defer findValue.deinit(allocator);
+
+        try expect(map.find(findValue) == null);
+    }
+}
