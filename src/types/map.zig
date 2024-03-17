@@ -538,5 +538,14 @@ test "map insert one element" {
         defer findValue.deinit(allocator);
 
         try expect(map.find(findValue) != null);
+        const found = map.find(findValue);
+        switch (found.?.tag) {
+            .Int => {
+                try expect(found.?.value.int == 1);
+            },
+            else => {
+                try expect(false);
+            },
+        }
     }
 }
