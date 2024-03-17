@@ -174,7 +174,7 @@ pub const Array = extern struct {
             },
             .String => {
                 for (0..selfSlice.len) |i| {
-                    if (selfSlice[i].string.eql(otherSlice[i].string)) {
+                    if (!selfSlice[i].string.eql(otherSlice[i].string)) {
                         return false;
                     }
                 }
@@ -182,7 +182,7 @@ pub const Array = extern struct {
             },
             .Array => {
                 for (0..selfSlice.len) |i| {
-                    if (selfSlice[i].array.eql(otherSlice[i].array)) {
+                    if (!selfSlice[i].array.eql(otherSlice[i].array)) {
                         return false;
                     }
                 }
