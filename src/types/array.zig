@@ -7,6 +7,7 @@ const Value = primitives.Value;
 const Tag = primitives.Tag;
 const Int = primitives.Int;
 
+/// Array primitive that requires an explicit allocator.
 pub const Array = extern struct {
     const Self = @This();
     const ELEMENT_ALIGN = 8;
@@ -27,19 +28,15 @@ pub const Array = extern struct {
         switch (self.tag()) {
             .Bool, .Int, .Float => {},
             .String => {
-                const stringsOpt = self.asSliceMut();
-                if (stringsOpt) |strings| {
-                    for (0..strings.len) |i| { // use indexing to get the mutable reference
-                        strings[i].string.deinit(allocator);
-                    }
+                const strings = self.asSliceMut();
+                for (0..strings.len) |i| { // use indexing to get the mutable reference
+                    strings[i].string.deinit(allocator);
                 }
             },
             .Array => {
-                const arraysOpt = self.asSliceMut();
-                if (arraysOpt) |arrays| {
-                    for (0..arrays.len) |i| { // use indexing to get the mutable reference
-                        arrays[i].array.deinit(allocator);
-                    }
+                const arrays = self.asSliceMut();
+                for (0..arrays.len) |i| { // use indexing to get the mutable reference
+                    arrays[i].array.deinit(allocator);
                 }
             },
             else => {
@@ -77,42 +74,34 @@ pub const Array = extern struct {
     /// operator[]. If `index` is out of bounds, returns `Array.Error.OutOfBounds`.
     /// Otherwise, an immutable reference to the value at the index is returned.
     pub fn at(self: *const Self, index: Int) Error!*const Value {
-        const h = self.header();
-        if (h == null) {
+        if (index < 0) {
             return Error.OutOfBounds;
         }
-
-        const arrData = self.asSlice().?;
-        const headerData = h.?;
-
-        if (index >= headerData.length) {
-            return Error.OutOfBounds;
-        }
-
+        const arrData = self.asSlice();
         const indexAsUsize: usize = @intCast(index);
+        if (indexAsUsize >= arrData.len) {
+            return Error.OutOfBounds;
+        }
+
         return &arrData[indexAsUsize];
     }
 
     /// operator[]. If `index` is out of bounds, returns `Array.Error.OutOfBounds`.
     /// Otherwise, a mutable reference to the value at the index is returned.
     pub fn atMut(self: *Self, index: Int) Error!*Value {
-        const h = self.header();
-        if (h == null) {
+        if (index < 0) {
             return Error.OutOfBounds;
         }
-
-        const arrData = self.asSliceMut().?;
-        const headerData = h.?;
-
-        if (index >= headerData.length) {
-            return Error.OutOfBounds;
-        }
-
+        const arrData = self.asSliceMut();
         const indexAsUsize: usize = @intCast(index);
+        if (indexAsUsize >= arrData.len) {
+            return Error.OutOfBounds;
+        }
+
         return &arrData[indexAsUsize];
     }
 
-    pub fn asSlice(self: *const Self) ?[]const Value {
+    pub fn asSlice(self: *const Self) []const Value {
         const headerData = self.header();
         if (headerData) |h| {
             const asMultiplePtr: [*]const Header = @ptrCast(h);
@@ -120,11 +109,13 @@ pub const Array = extern struct {
             const length: usize = @intCast(headerData.?.length);
             return asValueMultiPtr[0..length];
         } else {
-            return null;
+            var outSlice: []const Value = undefined;
+            outSlice.len = 0;
+            return outSlice;
         }
     }
 
-    pub fn asSliceMut(self: *Self) ?[]Value {
+    pub fn asSliceMut(self: *Self) []Value {
         const headerData = self.headerMut();
         if (headerData) |h| {
             const asMultiplePtr: [*]Header = @ptrCast(h);
@@ -132,7 +123,9 @@ pub const Array = extern struct {
             const length: usize = @intCast(headerData.?.length);
             return asValueMultiPtr[0..length];
         } else {
-            return null;
+            var outSlice: []Value = undefined;
+            outSlice.len = 0;
+            return outSlice;
         }
     }
 
@@ -145,64 +138,51 @@ pub const Array = extern struct {
         const selfSlice = self.asSlice();
         const otherSlice = other.asSlice();
 
-        if (selfSlice == null) {
-            if (otherSlice == null) {
-                return true;
-            } else {
-                return otherSlice.?.len == 0;
-            }
-        }
-
-        const length = selfSlice.?.len;
-        if (otherSlice == null) {
-            return length == 0;
-        }
-
-        if (length == 0 and otherSlice.?.len == 0) {
-            return true;
-        }
-        if (length != otherSlice.?.len) {
+        if (selfSlice.len != otherSlice.len) {
             return false;
+        }
+        if (selfSlice.len == 0 and otherSlice.len == 0) {
+            return true;
         }
 
         // At this point, both are guaranteed to have elements, and are the same length.
 
         switch (self.tag()) {
             .Bool => {
-                for (0..length) |i| {
-                    if (selfSlice.?[i].boolean != selfSlice.?[i].boolean) {
+                for (0..selfSlice.len) |i| {
+                    if (selfSlice[i].boolean != otherSlice[i].boolean) {
                         return false;
                     }
                 }
                 return true;
             },
             .Int => {
-                for (0..length) |i| {
-                    if (selfSlice.?[i].int != selfSlice.?[i].int) {
+                for (0..selfSlice.len) |i| {
+                    if (selfSlice[i].int != otherSlice[i].int) {
                         return false;
                     }
                 }
                 return true;
             },
             .Float => {
-                for (0..length) |i| {
-                    if (selfSlice.?[i].float != selfSlice.?[i].float) {
+                for (0..selfSlice.len) |i| {
+                    if (selfSlice[i].float != otherSlice[i].float) {
                         return false;
                     }
                 }
                 return true;
             },
             .String => {
-                for (0..length) |i| {
-                    if (selfSlice.?[i].string.eql(selfSlice.?[i].string)) {
+                for (0..selfSlice.len) |i| {
+                    if (selfSlice[i].string.eql(otherSlice[i].string)) {
                         return false;
                     }
                 }
                 return true;
             },
             .Array => {
-                for (0..length) |i| {
-                    if (selfSlice.?[i].array.eql(selfSlice.?[i].array)) {
+                for (0..selfSlice.len) |i| {
+                    if (selfSlice[i].array.eql(otherSlice[i].array)) {
                         return false;
                     }
                 }
@@ -236,7 +216,7 @@ pub const Array = extern struct {
             newHeader.length = headerData.length;
 
             const newArrayStart: [*]Value = @ptrCast(&@as([*]Header, @ptrCast(newHeader))[1]);
-            const oldArrayStart: [*]Value = @ptrCast(self.asSliceMut().?.ptr);
+            const oldArrayStart: [*]Value = @ptrCast(self.asSliceMut().ptr);
 
             const oldLength: usize = @intCast(headerData.length);
             const oldCapacity: usize = @intCast(headerData.capacity);
@@ -270,13 +250,9 @@ pub const Array = extern struct {
         {
             const h = self.headerMut();
             h.?.length += 1;
-            const a = self.asSliceMut();
-            if (a) |arrData| {
-                const length: usize = @intCast(h.?.length);
-                return &arrData[length - 1];
-            } else {
-                unreachable;
-            }
+            const arrData = self.asSliceMut();
+            const length: usize = @intCast(h.?.length);
+            return &arrData[length - 1];
         }
     }
 
@@ -502,12 +478,22 @@ const TestCreateArray = struct {
                     arr.add(&pushValue, tag, a) catch unreachable;
                 }
             },
-            // .String => {
-            //     for (0..n) |i| {
-            //         var pushValue = Value{ .float  };
-            //         arr.add(&pushValue, tag, a) catch unreachable;
-            //     }
-            // },
+            .String => {
+                for (0..n) |i| {
+                    const slice = std.fmt.allocPrint(a, "{}", .{i}) catch unreachable;
+                    defer a.free(slice);
+                    var pushValue = Value{
+                        .string = primitives.String.initSlice(slice, a) catch unreachable,
+                    };
+                    arr.add(&pushValue, tag, a) catch unreachable;
+                }
+            },
+            .Array => {
+                for (0..n) |_| {
+                    var pushValue = makeArray(Tag.Int, 10, a);
+                    arr.add(&pushValue, tag, a) catch unreachable;
+                }
+            },
             else => {
                 @compileError("Unsupported array tag type");
             },

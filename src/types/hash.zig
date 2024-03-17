@@ -17,10 +17,8 @@ pub fn computeHash(value: *const Value, tag: Tag, seed: usize) usize {
         },
         .Array => {
             const slice = value.array.asSlice();
-            if (slice) |s| {
-                for (s) |val| {
-                    combineHash(&hashCombine, computeHash(&val, value.array.tag(), seed));
-                }
+            for (slice) |val| {
+                combineHash(&hashCombine, computeHash(&val, value.array.tag(), seed));
             }
         },
         else => {

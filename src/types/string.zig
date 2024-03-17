@@ -13,7 +13,7 @@ pub const String = extern struct {
     /// TODO does this need to be atomic? It's possible one thread reads while another deinits on the same String reference (not inner reference)?
     inner: ?*anyopaque = null,
 
-    pub fn initSlice(slice: [:0]const u8, allocator: Allocator) Allocator.Error!Self {
+    pub fn initSlice(slice: []const u8, allocator: Allocator) Allocator.Error!Self {
         assert(slice.len != 0);
 
         const inner = try Inner.initSlice(slice, allocator);
@@ -153,6 +153,16 @@ pub const String = extern struct {
         }
     }
 
+    // append
+    // substr
+    // split
+    // insert
+    // remove
+    // toInt
+    // toFloat
+    // fromInt
+    // fromFloat
+
     fn asInner(self: Self) *const Inner {
         return @ptrCast(@alignCast(self.inner));
     }
@@ -189,7 +199,7 @@ pub const String = extern struct {
             return self.lenAndFlag & FLAG_BIT == 0;
         }
 
-        fn initSlice(slice: [:0]const u8, allocator: Allocator) Allocator.Error!*Inner {
+        fn initSlice(slice: []const u8, allocator: Allocator) Allocator.Error!*Inner {
             const self = try allocator.create(Inner);
 
             self.* = Inner{ .lenAndFlag = slice.len };
