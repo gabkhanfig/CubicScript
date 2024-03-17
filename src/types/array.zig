@@ -4,7 +4,7 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const primitives = @import("primitives.zig");
 const Value = primitives.Value;
-const Tag = primitives.Tag;
+const ValueTag = primitives.ValueTag;
 const Int = primitives.Int;
 
 /// Array primitive that requires an explicit allocator.
@@ -12,11 +12,12 @@ pub const Array = extern struct {
     const Self = @This();
     const ELEMENT_ALIGN = 8;
     const PTR_BITMASK = 0xFFFFFFFFFFFF;
+    const TAG_BITMASK: usize = ~@as(usize, PTR_BITMASK);
 
     inner: usize,
 
-    pub fn init(inTag: Tag) Self {
-        return Self{ .inner = @intFromEnum(inTag) };
+    pub fn init(inTag: ValueTag) Self {
+        return Self{ .inner = @shlExact(@intFromEnum(inTag), 48) };
     }
 
     /// Clones the array, along with making clones of it's elements. Any elements that require an allocator to clone
@@ -34,31 +35,31 @@ pub const Array = extern struct {
             .Bool => {
                 for (slice) |value| {
                     var pushValue = Value{ .boolean = value.boolean };
-                    copy.add(&pushValue, Tag.Bool, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.Bool, allocator) catch unreachable;
                 }
             },
             .Int => {
                 for (slice) |value| {
                     var pushValue = Value{ .int = value.int };
-                    copy.add(&pushValue, Tag.Int, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.Int, allocator) catch unreachable;
                 }
             },
             .Float => {
                 for (slice) |value| {
                     var pushValue = Value{ .float = value.float };
-                    copy.add(&pushValue, Tag.Float, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.Float, allocator) catch unreachable;
                 }
             },
             .String => {
                 for (slice) |value| {
                     var pushValue = Value{ .string = value.string.clone() };
-                    copy.add(&pushValue, Tag.String, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.String, allocator) catch unreachable;
                 }
             },
             .Array => {
                 for (slice) |value| {
                     var pushValue = Value{ .array = try value.array.clone(allocator) };
-                    copy.add(&pushValue, Tag.Array, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.Array, allocator) catch unreachable;
                 }
             },
             else => {
@@ -98,8 +99,8 @@ pub const Array = extern struct {
         self.inner = 0;
     }
 
-    pub fn tag(self: *const Self) Tag {
-        return @enumFromInt(self.inner & Tag.TAG_BITMASK);
+    pub fn tag(self: *const Self) ValueTag {
+        return @enumFromInt(@shrExact(self.inner & TAG_BITMASK, 48));
     }
 
     pub fn len(self: *const Self) Int {
@@ -112,7 +113,7 @@ pub const Array = extern struct {
 
     /// Takes ownership of `ownedElement`, doing a memcpy of the data, and then memsetting the original to 0.
     /// It is undefined behaviour to access the `ownedElement` passed in.
-    pub fn add(self: *Self, ownedElement: *Value, inTag: Tag, allocator: Allocator) Allocator.Error!void {
+    pub fn add(self: *Self, ownedElement: *Value, inTag: ValueTag, allocator: Allocator) Allocator.Error!void {
         assert(inTag == self.tag());
         const copyDest = try self.addOne(allocator);
 
@@ -279,11 +280,11 @@ pub const Array = extern struct {
 
             allocator.free(oldAllocation); // dont need to call drop, cause its just memcpy and instantly free the other.
 
-            self.inner = (self.inner & Tag.TAG_BITMASK) | @intFromPtr(newData);
+            self.inner = (self.inner & TAG_BITMASK) | @intFromPtr(newData);
         } else {
             // here, it means the array has no data;
             const newData = try Header.init(minCapacity, allocator);
-            self.inner = (self.inner & Tag.TAG_BITMASK) | @intFromPtr(newData);
+            self.inner = (self.inner & TAG_BITMASK) | @intFromPtr(newData);
         }
     }
 
@@ -360,7 +361,7 @@ test "Header size align" {
 }
 
 test "Array default" {
-    inline for (@typeInfo(Tag).Enum.fields) |f| {
+    inline for (@typeInfo(ValueTag).Enum.fields) |f| {
         const arr = Array.init(@enumFromInt(f.value));
         try expect(arr.len() == 0);
     }
@@ -368,16 +369,16 @@ test "Array default" {
 
 test "Array add int" {
     const allocator = std.testing.allocator;
-    var arr = Array.init(Tag.Int);
+    var arr = Array.init(ValueTag.Int);
     defer arr.deinit(allocator);
 
     var pushValue = Value{ .int = 5 };
-    try arr.add(&pushValue, Tag.Int, allocator);
+    try arr.add(&pushValue, ValueTag.Int, allocator);
 }
 
 test "Array at int" {
     const allocator = std.testing.allocator;
-    var arr = Array.init(Tag.Int);
+    var arr = Array.init(ValueTag.Int);
     defer arr.deinit(allocator);
 
     if (arr.at(0)) |_| {
@@ -385,7 +386,7 @@ test "Array at int" {
     } else |_| {}
 
     var pushValue = Value{ .int = 5 };
-    try arr.add(&pushValue, Tag.Int, allocator);
+    try arr.add(&pushValue, ValueTag.Int, allocator);
 
     if (arr.at(0)) |value| {
         try expect(value.int == 5);
@@ -400,7 +401,7 @@ test "Array at int" {
 
 test "Array bool sanity" {
     const allocator = std.testing.allocator;
-    var arr = Array.init(Tag.Bool);
+    var arr = Array.init(ValueTag.Bool);
     defer arr.deinit(allocator);
 
     if (arr.at(0)) |_| {
@@ -408,7 +409,7 @@ test "Array bool sanity" {
     } else |_| {}
 
     var pushValue = Value{ .boolean = primitives.TRUE };
-    try arr.add(&pushValue, Tag.Bool, allocator);
+    try arr.add(&pushValue, ValueTag.Bool, allocator);
 
     if (arr.at(0)) |value| {
         try expect(value.boolean == primitives.TRUE);
@@ -423,7 +424,7 @@ test "Array bool sanity" {
 
 test "Array float sanity" {
     const allocator = std.testing.allocator;
-    var arr = Array.init(Tag.Float);
+    var arr = Array.init(ValueTag.Float);
     defer arr.deinit(allocator);
 
     if (arr.at(0)) |_| {
@@ -431,7 +432,7 @@ test "Array float sanity" {
     } else |_| {}
 
     var pushValue = Value{ .float = 5 };
-    try arr.add(&pushValue, Tag.Float, allocator);
+    try arr.add(&pushValue, ValueTag.Float, allocator);
 
     if (arr.at(0)) |value| {
         try expect(value.float == 5);
@@ -446,7 +447,7 @@ test "Array float sanity" {
 
 test "Array string sanity" {
     const allocator = std.testing.allocator;
-    var arr = Array.init(Tag.String);
+    var arr = Array.init(ValueTag.String);
     defer arr.deinit(allocator);
 
     if (arr.at(0)) |_| {
@@ -454,7 +455,7 @@ test "Array string sanity" {
     } else |_| {}
 
     var pushValue = Value{ .string = try primitives.String.initSlice("hello world!", allocator) };
-    try arr.add(&pushValue, Tag.String, allocator);
+    try arr.add(&pushValue, ValueTag.String, allocator);
 
     if (arr.at(0)) |value| {
         try expect(value.string.eqlSlice("hello world!"));
@@ -469,7 +470,7 @@ test "Array string sanity" {
 
 test "Array nested array sanity" {
     const allocator = std.testing.allocator;
-    var arr = Array.init(Tag.Array);
+    var arr = Array.init(ValueTag.Array);
     defer arr.deinit(allocator);
 
     if (arr.at(0)) |_| {
@@ -478,15 +479,15 @@ test "Array nested array sanity" {
 
     var pushValue: Value = undefined;
     {
-        var nestedArr = Array.init(Tag.Bool);
+        var nestedArr = Array.init(ValueTag.Bool);
         defer arr.deinit(allocator);
 
         var nestedValue = Value{ .boolean = primitives.TRUE };
-        try nestedArr.add(&nestedValue, Tag.Bool, allocator);
+        try nestedArr.add(&nestedValue, ValueTag.Bool, allocator);
 
         pushValue = Value{ .array = nestedArr };
     }
-    try arr.add(&pushValue, Tag.Array, allocator);
+    try arr.add(&pushValue, ValueTag.Array, allocator);
 
     if (arr.at(0)) |value| {
         try expect(value.array.len() == 1);
@@ -505,7 +506,7 @@ test "Array nested array sanity" {
 }
 
 const TestCreateArray = struct {
-    fn makeArray(comptime tag: Tag, n: usize, a: Allocator) Value {
+    fn makeArray(comptime tag: ValueTag, n: usize, a: Allocator) Value {
         var arr = Array.init(tag);
         switch (tag) {
             .Bool => {
@@ -540,7 +541,7 @@ const TestCreateArray = struct {
             },
             .Array => {
                 for (0..n) |_| {
-                    var pushValue = makeArray(Tag.Int, 10, a);
+                    var pushValue = makeArray(ValueTag.Int, 10, a);
                     arr.add(&pushValue, tag, a) catch unreachable;
                 }
             },
@@ -555,24 +556,24 @@ const TestCreateArray = struct {
 test "Array equal" {
     const allocator = std.testing.allocator;
 
-    var arrEmpty1 = Value{ .array = Array.init(Tag.Int) };
+    var arrEmpty1 = Value{ .array = Array.init(ValueTag.Int) };
     defer arrEmpty1.array.deinit(allocator);
-    var arrEmpty2 = Value{ .array = Array.init(Tag.Int) };
+    var arrEmpty2 = Value{ .array = Array.init(ValueTag.Int) };
     defer arrEmpty2.array.deinit(allocator);
 
-    var arrContains1 = TestCreateArray.makeArray(Tag.Int, 10, allocator);
+    var arrContains1 = TestCreateArray.makeArray(ValueTag.Int, 10, allocator);
     defer arrContains1.array.deinit(allocator);
-    var arrContains2 = TestCreateArray.makeArray(Tag.Int, 10, allocator);
+    var arrContains2 = TestCreateArray.makeArray(ValueTag.Int, 10, allocator);
     defer arrContains2.array.deinit(allocator);
 
-    var arrContains3 = TestCreateArray.makeArray(Tag.Int, 20, allocator);
+    var arrContains3 = TestCreateArray.makeArray(ValueTag.Int, 20, allocator);
     defer arrContains3.array.deinit(allocator);
-    var arrContains4 = TestCreateArray.makeArray(Tag.Int, 20, allocator);
+    var arrContains4 = TestCreateArray.makeArray(ValueTag.Int, 20, allocator);
     defer arrContains4.array.deinit(allocator);
 
-    var arrOtherType1 = TestCreateArray.makeArray(Tag.Float, 10, allocator);
+    var arrOtherType1 = TestCreateArray.makeArray(ValueTag.Float, 10, allocator);
     defer arrOtherType1.array.deinit(allocator);
-    var arrOtherType2 = TestCreateArray.makeArray(Tag.Float, 10, allocator);
+    var arrOtherType2 = TestCreateArray.makeArray(ValueTag.Float, 10, allocator);
     defer arrOtherType2.array.deinit(allocator);
 
     try expect(arrEmpty1.array.eql(arrEmpty2.array));
@@ -589,7 +590,7 @@ test "Array equal" {
 test "Array clone" {
     const allocator = std.testing.allocator;
     {
-        var arr1 = TestCreateArray.makeArray(Tag.Bool, 4, allocator);
+        var arr1 = TestCreateArray.makeArray(ValueTag.Bool, 4, allocator);
         defer arr1.array.deinit(allocator);
 
         var arr2 = try arr1.array.clone(allocator);
@@ -598,7 +599,7 @@ test "Array clone" {
         try expect(arr1.array.eql(arr2));
     }
     {
-        var arr1 = TestCreateArray.makeArray(Tag.Int, 4, allocator);
+        var arr1 = TestCreateArray.makeArray(ValueTag.Int, 4, allocator);
         defer arr1.array.deinit(allocator);
 
         var arr2 = try arr1.array.clone(allocator);
@@ -607,7 +608,7 @@ test "Array clone" {
         try expect(arr1.array.eql(arr2));
     }
     {
-        var arr1 = TestCreateArray.makeArray(Tag.Float, 4, allocator);
+        var arr1 = TestCreateArray.makeArray(ValueTag.Float, 4, allocator);
         defer arr1.array.deinit(allocator);
 
         var arr2 = try arr1.array.clone(allocator);
@@ -617,7 +618,7 @@ test "Array clone" {
     }
 
     {
-        var arr1 = TestCreateArray.makeArray(Tag.String, 4, allocator);
+        var arr1 = TestCreateArray.makeArray(ValueTag.String, 4, allocator);
         defer arr1.array.deinit(allocator);
 
         var arr2 = try arr1.array.clone(allocator);
@@ -626,7 +627,7 @@ test "Array clone" {
         try expect(arr1.array.eql(arr2));
     }
     {
-        var arr1 = TestCreateArray.makeArray(Tag.Array, 4, allocator);
+        var arr1 = TestCreateArray.makeArray(ValueTag.Array, 4, allocator);
         defer arr1.array.deinit(allocator);
 
         var arr2 = try arr1.array.clone(allocator);
