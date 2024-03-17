@@ -40,12 +40,12 @@ pub const Map = extern struct {
 
     pub fn keyTag(self: *const Self) ValueTag {
         const mask = self.inner & KEY_TAG_BITMASK;
-        return @enumFromInt(mask);
+        return @enumFromInt(@shrExact(mask, 48));
     }
 
     pub fn valueTag(self: *const Self) ValueTag {
         const mask = self.inner & VALUE_TAG_BITMASK;
-        return @enumFromInt(@shrExact(mask, VALUE_SHIFT));
+        return @enumFromInt(@shrExact(mask, 56));
     }
 
     /// Get the number of entries in the hashmap.
@@ -62,9 +62,9 @@ pub const Map = extern struct {
         assert(key.tag == self.keyTag());
 
         if (self.asInner()) |inner| {
-            const hashCode = computeHash(key.value, key.tag, hash.TEST_SEED_VALUE);
+            const hashCode = computeHash(&key.value, key.tag, hash.TEST_SEED_VALUE);
             const groupBitmask = HashGroupBitmask.init(hashCode);
-            const groupIndex = @mod(groupBitmask.value, self.groups.len);
+            const groupIndex = @mod(groupBitmask.value, inner.groups.len);
 
             const found = inner.groups[groupIndex].find(key.value, key.tag, hashCode);
             if (found == null) {

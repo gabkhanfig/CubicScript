@@ -46,7 +46,7 @@ pub const HashGroupBitmask = struct {
 
     value: usize,
 
-    fn init(hashCode: usize) HashGroupBitmask {
+    pub fn init(hashCode: usize) HashGroupBitmask {
         return HashGroupBitmask{ .value = @shrExact(hashCode & BITMASK, 7) };
     }
 };
@@ -57,7 +57,7 @@ pub const HashPairBitmask = struct {
 
     value: u8,
 
-    fn init(hashCode: usize) HashPairBitmask {
+    pub fn init(hashCode: usize) HashPairBitmask {
         return HashPairBitmask{ .value = @intCast((hashCode & BITMASK) | SET_FLAG) };
     }
 };
