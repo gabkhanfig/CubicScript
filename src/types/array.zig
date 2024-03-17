@@ -478,37 +478,74 @@ test "Array nested array sanity" {
     } else |_| {}
 }
 
-test "Array equal" {
-    const create = struct {
-        fn makeArray(n: usize, a: Allocator) Value {
-            var arr = Array.init(Tag.Int);
-            for (0..n) |i| {
-                var pushValue = Value{ .int = @intCast(i) };
-                arr.add(&pushValue, Tag.Int, a) catch unreachable;
-            }
-            return Value{ .array = arr };
+const TestCreateArray = struct {
+    fn makeArray(comptime tag: Tag, n: usize, a: Allocator) Value {
+        var arr = Array.init(tag);
+        switch (tag) {
+            .Bool => {
+                for (0..n) |i| {
+                    var pushValue = Value{
+                        .boolean = if (@mod(i, 2) == 0) primitives.TRUE else primitives.FALSE,
+                    };
+                    arr.add(&pushValue, tag, a) catch unreachable;
+                }
+            },
+            .Int => {
+                for (0..n) |i| {
+                    var pushValue = Value{ .int = @intCast(i) };
+                    arr.add(&pushValue, tag, a) catch unreachable;
+                }
+            },
+            .Float => {
+                for (0..n) |i| {
+                    var pushValue = Value{ .float = @floatFromInt(i) };
+                    arr.add(&pushValue, tag, a) catch unreachable;
+                }
+            },
+            // .String => {
+            //     for (0..n) |i| {
+            //         var pushValue = Value{ .float  };
+            //         arr.add(&pushValue, tag, a) catch unreachable;
+            //     }
+            // },
+            else => {
+                @compileError("Unsupported array tag type");
+            },
         }
-    };
+        return Value{ .array = arr };
+    }
+};
 
+test "Array equal" {
     const allocator = std.testing.allocator;
+
     var arrEmpty1 = Value{ .array = Array.init(Tag.Int) };
     defer arrEmpty1.array.deinit(allocator);
     var arrEmpty2 = Value{ .array = Array.init(Tag.Int) };
     defer arrEmpty2.array.deinit(allocator);
-    var arrContains1 = create.makeArray(10, allocator);
+
+    var arrContains1 = TestCreateArray.makeArray(Tag.Int, 10, allocator);
     defer arrContains1.array.deinit(allocator);
-    var arrContains2 = create.makeArray(10, allocator);
+    var arrContains2 = TestCreateArray.makeArray(Tag.Int, 10, allocator);
     defer arrContains2.array.deinit(allocator);
-    var arrContains3 = create.makeArray(20, allocator);
+
+    var arrContains3 = TestCreateArray.makeArray(Tag.Int, 20, allocator);
     defer arrContains3.array.deinit(allocator);
-    var arrContains4 = create.makeArray(20, allocator);
+    var arrContains4 = TestCreateArray.makeArray(Tag.Int, 20, allocator);
     defer arrContains4.array.deinit(allocator);
+
+    var arrOtherType1 = TestCreateArray.makeArray(Tag.Float, 10, allocator);
+    defer arrOtherType1.array.deinit(allocator);
+    var arrOtherType2 = TestCreateArray.makeArray(Tag.Float, 10, allocator);
+    defer arrOtherType2.array.deinit(allocator);
 
     try expect(arrEmpty1.array.eql(arrEmpty2.array));
     try expect(arrContains1.array.eql(arrContains2.array));
     try expect(arrContains3.array.eql(arrContains4.array));
+    try expect(arrOtherType1.array.eql(arrOtherType2.array));
 
     try expect(!arrEmpty1.array.eql(arrContains1.array));
     try expect(!arrContains1.array.eql(arrContains3.array));
     try expect(!arrContains3.array.eql(arrEmpty1.array));
+    try expect(!arrOtherType1.array.eql(arrContains1.array));
 }
