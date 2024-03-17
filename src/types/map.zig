@@ -507,3 +507,16 @@ test "map init" {
         defer map.deinit(allocator);
     }
 }
+
+test "map find empty" {
+    const allocator = std.testing.allocator;
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Int);
+        defer map.deinit(allocator);
+
+        var findValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        defer findValue.deinit(allocator);
+
+        try expect(map.find(findValue) == null);
+    }
+}
