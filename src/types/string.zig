@@ -3,7 +3,9 @@ const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 const expect = std.testing.expect;
 const AtomicRefCount = @import("atomic_ref_count.zig").AtomicRefCount;
-const Int = @import("primitives.zig").Int;
+const primitives = @import("primitives.zig");
+const Int = primitives.Int;
+const ValueTag = primitives.ValueTag;
 
 /// Immutable, ref counted string.
 pub const String = extern struct {
@@ -162,6 +164,40 @@ pub const String = extern struct {
     // toFloat
     // fromInt
     // fromFloat
+
+    pub fn fromInt(num: Int, allocator: Allocator) Allocator.Error!Self {
+        if (num == 0) {
+            return Self.initSlice("0", allocator); // TODO can the 0 string become a global?
+        }
+
+        var numLocal = num;
+
+        //onst digits = "9876543210123456789";
+        const digits = "1234567890123456789";
+        const zeroDigit = 9;
+        const maxChars = 20;
+
+        var tempNums: [maxChars]u8 = undefined;
+        var tempAt: usize = maxChars;
+
+        while (numLocal != 0) {
+            tempAt -= 1;
+            const index: usize = @intCast(@mod(numLocal, 10));
+            if (num < 0) { // can this conditional be avoided? maybe
+                tempNums[tempAt] = digits[zeroDigit - index];
+            } else {
+                tempNums[tempAt] = digits[zeroDigit + index];
+            }
+            numLocal = @divTrunc(numLocal, 10);
+        }
+        if (num < 0) {
+            tempAt -= 1;
+            tempNums[tempAt] = '-';
+        }
+
+        const length: usize = maxChars - tempAt;
+        return Self.initSlice(tempNums[tempAt..][0..length], allocator);
+    }
 
     fn asInner(self: Self) *const Inner {
         return @ptrCast(@alignCast(self.inner));
@@ -751,5 +787,64 @@ test "String reverse find" {
         defer s.deinit(allocator);
 
         try expect(s.rfind("hello to this glorious world! ") == null);
+    }
+}
+
+test "String from int" {
+    const allocator = std.testing.allocator;
+    {
+        var s = try String.fromInt(0, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("0"));
+    }
+    {
+        var s = try String.fromInt(1, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("1"));
+    }
+    {
+        var s = try String.fromInt(2, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("2"));
+    }
+    {
+        var s = try String.fromInt(21, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("21"));
+    }
+    {
+        var s = try String.fromInt(500, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("500"));
+    }
+    {
+        var s = try String.fromInt(std.math.maxInt(Int), allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("9223372036854775807"));
+    }
+    {
+        var s = try String.fromInt(-1, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("-1"));
+    }
+    {
+        var s = try String.fromInt(-2, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("-2"));
+    }
+    {
+        var s = try String.fromInt(-21, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("-21"));
+    }
+    {
+        var s = try String.fromInt(-500, allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("-500"));
+    }
+    {
+        var s = try String.fromInt(std.math.minInt(Int), allocator);
+        defer s.deinit(allocator);
+        try expect(s.eqlSlice("-9223372036854775808"));
     }
 }
