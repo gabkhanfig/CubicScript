@@ -19,6 +19,56 @@ pub const Array = extern struct {
         return Self{ .inner = @intFromEnum(inTag) };
     }
 
+    /// Clones the array, along with making clones of it's elements. Any elements that require an allocator to clone
+    /// will use `allocator`, along with the copy of the array itself.
+    pub fn clone(self: *const Self, allocator: Allocator) Allocator.Error!Self {
+        var copy = Self.init(self.tag());
+        const slice = self.asSlice();
+        if (slice.len == 0) {
+            return copy;
+        }
+
+        try copy.ensureTotalCapacity(@intCast(slice.len), allocator);
+
+        switch (self.tag()) {
+            .Bool => {
+                for (slice) |value| {
+                    var pushValue = Value{ .boolean = value.boolean };
+                    copy.add(&pushValue, Tag.Bool, allocator) catch unreachable;
+                }
+            },
+            .Int => {
+                for (slice) |value| {
+                    var pushValue = Value{ .int = value.int };
+                    copy.add(&pushValue, Tag.Int, allocator) catch unreachable;
+                }
+            },
+            .Float => {
+                for (slice) |value| {
+                    var pushValue = Value{ .float = value.float };
+                    copy.add(&pushValue, Tag.Float, allocator) catch unreachable;
+                }
+            },
+            .String => {
+                for (slice) |value| {
+                    var pushValue = Value{ .string = value.string.clone() };
+                    copy.add(&pushValue, Tag.String, allocator) catch unreachable;
+                }
+            },
+            .Array => {
+                for (slice) |value| {
+                    var pushValue = Value{ .array = try value.array.clone(allocator) };
+                    copy.add(&pushValue, Tag.Array, allocator) catch unreachable;
+                }
+            },
+            else => {
+                @panic("Unsupported");
+            },
+        }
+
+        return copy;
+    }
+
     pub fn deinit(self: *Self, allocator: Allocator) void {
         if ((self.inner & PTR_BITMASK) == 0) {
             return;
@@ -534,4 +584,54 @@ test "Array equal" {
     try expect(!arrContains1.array.eql(arrContains3.array));
     try expect(!arrContains3.array.eql(arrEmpty1.array));
     try expect(!arrOtherType1.array.eql(arrContains1.array));
+}
+
+test "Array clone" {
+    const allocator = std.testing.allocator;
+    {
+        var arr1 = TestCreateArray.makeArray(Tag.Bool, 4, allocator);
+        defer arr1.array.deinit(allocator);
+
+        var arr2 = try arr1.array.clone(allocator);
+        defer arr2.deinit(allocator);
+
+        try expect(arr1.array.eql(arr2));
+    }
+    {
+        var arr1 = TestCreateArray.makeArray(Tag.Int, 4, allocator);
+        defer arr1.array.deinit(allocator);
+
+        var arr2 = try arr1.array.clone(allocator);
+        defer arr2.deinit(allocator);
+
+        try expect(arr1.array.eql(arr2));
+    }
+    {
+        var arr1 = TestCreateArray.makeArray(Tag.Float, 4, allocator);
+        defer arr1.array.deinit(allocator);
+
+        var arr2 = try arr1.array.clone(allocator);
+        defer arr2.deinit(allocator);
+
+        try expect(arr1.array.eql(arr2));
+    }
+
+    {
+        var arr1 = TestCreateArray.makeArray(Tag.String, 4, allocator);
+        defer arr1.array.deinit(allocator);
+
+        var arr2 = try arr1.array.clone(allocator);
+        defer arr2.deinit(allocator);
+
+        try expect(arr1.array.eql(arr2));
+    }
+    {
+        var arr1 = TestCreateArray.makeArray(Tag.Array, 4, allocator);
+        defer arr1.array.deinit(allocator);
+
+        var arr2 = try arr1.array.clone(allocator);
+        defer arr2.deinit(allocator);
+
+        try expect(arr1.array.eql(arr2));
+    }
 }
