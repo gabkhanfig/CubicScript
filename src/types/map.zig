@@ -19,13 +19,13 @@ pub const Map = extern struct {
     const VALUE_TAG_BITMASK: usize = @shlExact(@as(usize, 0xFF), 56);
     const VALUE_SHIFT = 8;
 
-    inner: usize,
+    inner: ?*anyopaque,
 
     /// Initialize a new Map instance.
     pub fn init(inKeyTag: ValueTag, inValueTag: ValueTag) Self {
         const keyTagInt: usize = @intFromEnum(inKeyTag);
         const valueTagInt: usize = @intFromEnum(inValueTag);
-        return Self{ .inner = @shlExact(keyTagInt, 48) | @shlExact(valueTagInt, 56) };
+        return Self{ .inner = @ptrFromInt(@shlExact(keyTagInt, 48) | @shlExact(valueTagInt, 56)) };
     }
 
     /// Free the memory allocated for this map, as well as deinit'ing the values it owns.
@@ -36,17 +36,17 @@ pub const Map = extern struct {
             }
             allocator.free(inner.groups);
             allocator.destroy(inner);
-            self.inner = 0;
+            self.inner = null;
         }
     }
 
     pub fn keyTag(self: *const Self) ValueTag {
-        const mask = self.inner & KEY_TAG_BITMASK;
+        const mask = @intFromPtr(self.inner) & KEY_TAG_BITMASK;
         return @enumFromInt(@shrExact(mask, 48));
     }
 
     pub fn valueTag(self: *const Self) ValueTag {
-        const mask = self.inner & VALUE_TAG_BITMASK;
+        const mask = @intFromPtr(self.inner) & VALUE_TAG_BITMASK;
         return @enumFromInt(@shrExact(mask, 56));
     }
 
@@ -145,11 +145,11 @@ pub const Map = extern struct {
     }
 
     fn asInner(self: *const Self) ?*const Inner {
-        return @ptrFromInt(self.inner & PTR_BITMASK);
+        return @ptrFromInt(@intFromPtr(self.inner) & @as(usize, PTR_BITMASK));
     }
 
     fn asInnerMut(self: *Self) ?*Inner {
-        return @ptrFromInt(self.inner & PTR_BITMASK);
+        return @ptrFromInt(@intFromPtr(self.inner) & @as(usize, PTR_BITMASK));
     }
 
     fn ensureTotalCapacity(self: *Self, minCapacity: usize, allocator: Allocator) Allocator.Error!void {
@@ -207,7 +207,7 @@ pub const Map = extern struct {
             newInner.groups = newGroups;
             newInner.count = 0;
 
-            self.inner = (self.inner & (KEY_TAG_BITMASK | VALUE_TAG_BITMASK)) | @intFromPtr(newInner);
+            self.inner = @ptrFromInt((@intFromPtr(self.inner) & (KEY_TAG_BITMASK | VALUE_TAG_BITMASK)) | @intFromPtr(newInner));
         }
     }
 
