@@ -136,6 +136,84 @@ pub const Array = extern struct {
         }
     }
 
+    pub fn eql(self: *const Self, other: Self) bool {
+        const selfTag = self.tag();
+        if (selfTag != other.tag()) {
+            return false;
+        }
+
+        const selfSlice = self.asSlice();
+        const otherSlice = other.asSlice();
+
+        if (selfSlice == null) {
+            if (otherSlice == null) {
+                return true;
+            } else {
+                return otherSlice.?.len == 0;
+            }
+        }
+
+        const length = selfSlice.?.len;
+        if (otherSlice == null) {
+            return length == 0;
+        }
+
+        if (length == 0 and otherSlice.?.len == 0) {
+            return true;
+        }
+        if (length != otherSlice.?.len) {
+            return false;
+        }
+
+        // At this point, both are guaranteed to have elements, and are the same length.
+
+        switch (self.tag()) {
+            .Bool => {
+                for (0..length) |i| {
+                    if (selfSlice.?[i].boolean != selfSlice.?[i].boolean) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            .Int => {
+                for (0..length) |i| {
+                    if (selfSlice.?[i].int != selfSlice.?[i].int) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            .Float => {
+                for (0..length) |i| {
+                    if (selfSlice.?[i].float != selfSlice.?[i].float) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            .String => {
+                for (0..length) |i| {
+                    if (selfSlice.?[i].string.eql(selfSlice.?[i].string)) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            .Array => {
+                for (0..length) |i| {
+                    if (selfSlice.?[i].array.eql(selfSlice.?[i].array)) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            else => {
+                @panic("Unsupported");
+            },
+        }
+    }
+
     fn header(self: *const Self) ?*const Header {
         return @ptrFromInt(self.inner & PTR_BITMASK);
     }
@@ -398,4 +476,39 @@ test "Array nested array sanity" {
     if (arr.at(1)) |_| {
         try expect(false);
     } else |_| {}
+}
+
+test "Array equal" {
+    const create = struct {
+        fn makeArray(n: usize, a: Allocator) Value {
+            var arr = Array.init(Tag.Int);
+            for (0..n) |i| {
+                var pushValue = Value{ .int = @intCast(i) };
+                arr.add(&pushValue, Tag.Int, a) catch unreachable;
+            }
+            return Value{ .array = arr };
+        }
+    };
+
+    const allocator = std.testing.allocator;
+    var arrEmpty1 = Value{ .array = Array.init(Tag.Int) };
+    defer arrEmpty1.array.deinit(allocator);
+    var arrEmpty2 = Value{ .array = Array.init(Tag.Int) };
+    defer arrEmpty2.array.deinit(allocator);
+    var arrContains1 = create.makeArray(10, allocator);
+    defer arrContains1.array.deinit(allocator);
+    var arrContains2 = create.makeArray(10, allocator);
+    defer arrContains2.array.deinit(allocator);
+    var arrContains3 = create.makeArray(20, allocator);
+    defer arrContains3.array.deinit(allocator);
+    var arrContains4 = create.makeArray(20, allocator);
+    defer arrContains4.array.deinit(allocator);
+
+    try expect(arrEmpty1.array.eql(arrEmpty2.array));
+    try expect(arrContains1.array.eql(arrContains2.array));
+    try expect(arrContains3.array.eql(arrContains4.array));
+
+    try expect(!arrEmpty1.array.eql(arrContains1.array));
+    try expect(!arrContains1.array.eql(arrContains3.array));
+    try expect(!arrContains3.array.eql(arrEmpty1.array));
 }
