@@ -37,7 +37,7 @@ pub const String = @import("string.zig").String;
 
 pub const Array = @import("array.zig").Array;
 
-// Untagged union
+pub const Map = @import("map.zig").Map;
 
 /// Untagged union representing all primitive value types and classes.
 pub const Value = extern union {
@@ -46,7 +46,77 @@ pub const Value = extern union {
     float: Float,
     string: String,
     array: Array,
+    map: Map,
     // TODO other primitive types
+
+    /// In some cases, it's more convenient to just deinit here.
+    pub fn deinit(self: *Value, tag: ValueTag, allocator: Allocator) void {
+        switch (tag) {
+            .Bool, .Int, .Float => {},
+            .String => {
+                self.string.deinit(allocator);
+            },
+            .Array => {
+                self.array.deinit(allocator);
+            },
+            .Map => {
+                self.map.deinit(allocator);
+            },
+            else => {
+                @panic("Unsupported");
+            },
+        }
+    }
+};
+
+/// Compatible with C
+pub const TaggedValue = extern struct {
+    value: Value,
     tag: ValueTag,
+
+    /// For zig/c compatibility
+    pub fn initBool(inBool: Bool) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Bool, .value = Value{ .boolean = inBool } };
+    }
+    /// For zig/c compatibility
+    pub fn initInt(inInt: Int) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Int, .value = Value{ .int = inInt } };
+    }
+
+    /// For zig/c compatibility
+    pub fn initFloat(inFloat: Float) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Float, .value = Value{ .float = inFloat } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inString`.
+    pub fn initString(inString: String) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.String, .value = Value{ .string = inString } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inArray`.
+    pub fn initArray(inArray: Array) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Array, .value = Value{ .array = inArray } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inMap`.
+    pub fn initMap(inMap: Map) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Map, .value = Value{ .map = inMap } };
+    }
+
+    pub fn deinit(self: *TaggedValue, allocator: Allocator) void {
+        self.value.deinit(self.tag, allocator);
+    }
+};
+
+pub const TaggedValueMutRef = extern struct {
+    value: *Value,
+    tag: ValueTag,
+};
+
+pub const TaggedValueConstRef = extern struct {
     value: *const Value,
+    tag: ValueTag,
 };
