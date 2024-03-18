@@ -23,7 +23,9 @@ pub const Map = @import("types/map.zig").Map;
 
 pub const Set = @import("types/set.zig").Set;
 
-pub const ValueTag = enum(usize) {
+pub const Vec2i = vector_types.Vec2i;
+
+pub const ValueTag = enum(c_uint) { // Reasonable default enum size for C
     Bool = 0,
     Int = 1,
     Float = 2,
@@ -37,7 +39,8 @@ pub const ValueTag = enum(usize) {
     Vec2f = 10,
     Vec3f = 11,
     Vec4f = 12,
-    Class = 13,
+    Mat4f = 13,
+    Class = 14,
 };
 
 /// Untagged union representing all primitive value types and classes.
