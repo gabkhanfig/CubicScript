@@ -3,11 +3,12 @@ const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 const expect = std.testing.expect;
 const AtomicRefCount = @import("atomic_ref_count.zig").AtomicRefCount;
-const primitives = @import("primitives.zig");
-const Int = primitives.Int;
-const ValueTag = primitives.ValueTag;
+const root = @import("../root.zig");
+const Int = root.Int;
+const ValueTag = root.ValueTag;
 
-/// Immutable, ref counted string.
+/// Immutable, ref counted string. This is the string implementation for scripts.
+/// Corresponds with the struct `CubsString` in `cubic_script.h`.
 pub const String = extern struct {
     const Self = @This();
 
