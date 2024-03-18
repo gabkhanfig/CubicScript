@@ -13,7 +13,7 @@ const computeHash = hash.computeHash;
 const TaggedValue = root.TaggedValue;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
 
-/// This is the hash map implementation for scripts.
+/// This is the hashmap implementation for scripts.
 /// Corresponds with the struct `CubsMap` in `cubic_script.h`.
 pub const Map = extern struct {
     const Self = @This();
