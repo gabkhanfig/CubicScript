@@ -244,8 +244,6 @@ static FindStrSliceInStringFunc chooseOptimalFindStrSliceInStringFunc() {
 //! EXTERN FUNCTIONS TO ACCESS IN ZIG
 // C++ is used for static variables within functions.
 
-#include <iostream>
-
 extern "C" bool cubs_string_compare_equal_strings_simd_heap_rep(const char* selfBuffer, const char* otherBuffer, size_t len) {
     static CmpEqStringAndStringFunc func = chooseOptimalCmpEqStringAndString();
     return func(selfBuffer, otherBuffer, len);
