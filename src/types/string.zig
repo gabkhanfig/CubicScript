@@ -155,6 +155,25 @@ pub const String = extern struct {
         }
     }
 
+    pub fn fromScriptValue(value: root.TaggedValueConstRef, allocator: Allocator) Allocator.Error!Self {
+        switch (value.tag) {
+            .Bool => {
+                if (value.value.boolean == root.TRUE) {
+                    return try Self.initSlice("true", allocator);
+                } else {
+                    return try Self.initSlice("false", allocator);
+                }
+            },
+            .Int => {
+                return Self.fromInt(value.value.*, allocator);
+            },
+            .Float => {},
+            else => {
+                @panic("unsupported");
+            },
+        }
+    }
+
     // append
     // substr
     // split

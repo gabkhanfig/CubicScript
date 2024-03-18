@@ -1,12 +1,12 @@
 const std = @import("std");
 const expect = std.testing.expect;
-const primitives = @import("primitives.zig");
-const ValueTag = primitives.ValueTag;
-const Value = primitives.Value;
+const root = @import("../root.zig");
+const ValueTag = root.ValueTag;
+const RawValue = root.RawValue;
 
 pub const TEST_SEED_VALUE = 0x4857372859619FA;
 
-pub fn computeHash(value: *const Value, tag: ValueTag, seed: usize) usize {
+pub fn computeHash(value: *const RawValue, tag: ValueTag, seed: usize) usize {
     var hashCombine: usize = seed;
     switch (tag) {
         .Bool, .Float, .Int => { // simply cast to a usize ptr, and dereference. Maybe change this behaviour for ints?
@@ -64,8 +64,8 @@ pub const HashPairBitmask = struct {
 
 test "hash bool" {
     {
-        const value1 = Value{ .boolean = primitives.TRUE };
-        const value2 = Value{ .boolean = primitives.TRUE };
+        const value1 = RawValue{ .boolean = root.TRUE };
+        const value2 = RawValue{ .boolean = root.TRUE };
 
         const h1 = computeHash(&value1, ValueTag.Bool, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Bool, TEST_SEED_VALUE);
@@ -73,8 +73,8 @@ test "hash bool" {
         try expect(h1 == h2);
     }
     {
-        const value1 = Value{ .boolean = primitives.FALSE };
-        const value2 = Value{ .boolean = primitives.FALSE };
+        const value1 = RawValue{ .boolean = root.FALSE };
+        const value2 = RawValue{ .boolean = root.FALSE };
 
         const h1 = computeHash(&value1, ValueTag.Bool, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Bool, TEST_SEED_VALUE);
@@ -82,8 +82,8 @@ test "hash bool" {
         try expect(h1 == h2);
     }
     {
-        const value1 = Value{ .boolean = primitives.FALSE };
-        const value2 = Value{ .boolean = primitives.TRUE };
+        const value1 = RawValue{ .boolean = root.FALSE };
+        const value2 = RawValue{ .boolean = root.TRUE };
 
         const h1 = computeHash(&value1, ValueTag.Bool, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Bool, TEST_SEED_VALUE);
@@ -94,8 +94,8 @@ test "hash bool" {
 
 test "hash int" {
     {
-        const value1 = Value{ .int = 100 };
-        const value2 = Value{ .int = 100 };
+        const value1 = RawValue{ .int = 100 };
+        const value2 = RawValue{ .int = 100 };
 
         const h1 = computeHash(&value1, ValueTag.Int, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Int, TEST_SEED_VALUE);
@@ -103,8 +103,8 @@ test "hash int" {
         try expect(h1 == h2);
     }
     {
-        const value1 = Value{ .int = 101 };
-        const value2 = Value{ .int = 101 };
+        const value1 = RawValue{ .int = 101 };
+        const value2 = RawValue{ .int = 101 };
 
         const h1 = computeHash(&value1, ValueTag.Int, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Int, TEST_SEED_VALUE);
@@ -112,8 +112,8 @@ test "hash int" {
         try expect(h1 == h2);
     }
     {
-        const value1 = Value{ .int = 100 };
-        const value2 = Value{ .int = 101 };
+        const value1 = RawValue{ .int = 100 };
+        const value2 = RawValue{ .int = 101 };
 
         const h1 = computeHash(&value1, ValueTag.Int, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Int, TEST_SEED_VALUE);
@@ -124,8 +124,8 @@ test "hash int" {
 
 test "hash float" {
     {
-        const value1 = Value{ .float = 999.51 };
-        const value2 = Value{ .float = 999.51 };
+        const value1 = RawValue{ .float = 999.51 };
+        const value2 = RawValue{ .float = 999.51 };
 
         const h1 = computeHash(&value1, ValueTag.Float, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Float, TEST_SEED_VALUE);
@@ -133,8 +133,8 @@ test "hash float" {
         try expect(h1 == h2);
     }
     {
-        const value1 = Value{ .float = 1000.51 };
-        const value2 = Value{ .float = 1000.51 };
+        const value1 = RawValue{ .float = 1000.51 };
+        const value2 = RawValue{ .float = 1000.51 };
 
         const h1 = computeHash(&value1, ValueTag.Float, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Float, TEST_SEED_VALUE);
@@ -142,8 +142,8 @@ test "hash float" {
         try expect(h1 == h2);
     }
     {
-        const value1 = Value{ .float = 999.51 };
-        const value2 = Value{ .float = 1000.51 };
+        const value1 = RawValue{ .float = 999.51 };
+        const value2 = RawValue{ .float = 1000.51 };
 
         const h1 = computeHash(&value1, ValueTag.Float, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Float, TEST_SEED_VALUE);
@@ -155,8 +155,8 @@ test "hash float" {
 test "hash string" {
     const allocator = std.testing.allocator;
     {
-        const value1 = Value{ .string = primitives.String{} };
-        const value2 = Value{ .string = primitives.String{} };
+        const value1 = RawValue{ .string = root.String{} };
+        const value2 = RawValue{ .string = root.String{} };
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.String, TEST_SEED_VALUE);
@@ -164,9 +164,9 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = Value{ .string = try primitives.String.initSlice("hello world!", allocator) };
+        var value1 = RawValue{ .string = try root.String.initSlice("hello world!", allocator) };
         defer value1.string.deinit(allocator);
-        var value2 = Value{ .string = try primitives.String.initSlice("hello world!", allocator) };
+        var value2 = RawValue{ .string = try root.String.initSlice("hello world!", allocator) };
         defer value2.string.deinit(allocator);
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
@@ -175,9 +175,9 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = Value{ .string = try primitives.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
+        var value1 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
         defer value1.string.deinit(allocator);
-        var value2 = Value{ .string = try primitives.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
+        var value2 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
         defer value2.string.deinit(allocator);
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
@@ -186,9 +186,9 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = Value{ .string = try primitives.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly !", allocator) };
+        var value1 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly !", allocator) };
         defer value1.string.deinit(allocator);
-        var value2 = Value{ .string = try primitives.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
+        var value2 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
         defer value2.string.deinit(allocator);
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
@@ -200,41 +200,41 @@ test "hash string" {
 
 test "hash array" {
     const makeArraysForTest = struct {
-        fn makeArray1(a: std.mem.Allocator) Value {
-            var array = primitives.Array.init(ValueTag.Float);
-            var pushValue1 = primitives.Value{ .float = -1.0 };
-            var pushValue2 = primitives.Value{ .float = 1005.6 };
+        fn makeArray1(a: std.mem.Allocator) RawValue {
+            var array = root.Array.init(ValueTag.Float);
+            var pushValue1 = root.RawValue{ .float = -1.0 };
+            var pushValue2 = root.RawValue{ .float = 1005.6 };
 
             array.add(&pushValue1, ValueTag.Float, a) catch unreachable;
             array.add(&pushValue2, ValueTag.Float, a) catch unreachable;
-            return Value{ .array = array };
+            return RawValue{ .array = array };
         }
 
-        fn makeArray2(a: std.mem.Allocator) Value {
-            var array = primitives.Array.init(ValueTag.Float);
-            var pushValue1 = primitives.Value{ .float = -1.0 };
-            var pushValue2 = primitives.Value{ .float = 1005.6 };
-            var pushValue3 = primitives.Value{ .float = 0 };
+        fn makeArray2(a: std.mem.Allocator) RawValue {
+            var array = root.Array.init(ValueTag.Float);
+            var pushValue1 = root.RawValue{ .float = -1.0 };
+            var pushValue2 = root.RawValue{ .float = 1005.6 };
+            var pushValue3 = root.RawValue{ .float = 0 };
 
             array.add(&pushValue1, ValueTag.Float, a) catch unreachable;
             array.add(&pushValue2, ValueTag.Float, a) catch unreachable;
             array.add(&pushValue3, ValueTag.Float, a) catch unreachable;
-            return Value{ .array = array };
+            return RawValue{ .array = array };
         }
     };
 
     const allocator = std.testing.allocator;
-    var arrEmpty1 = Value{ .array = primitives.Array.init(ValueTag.Float) };
+    var arrEmpty1 = RawValue{ .array = root.Array.init(ValueTag.Float) };
     defer arrEmpty1.array.deinit(allocator);
-    var arrEmpty2 = Value{ .array = primitives.Array.init(ValueTag.Float) };
+    var arrEmpty2 = RawValue{ .array = root.Array.init(ValueTag.Float) };
     defer arrEmpty1.array.deinit(allocator);
-    var arrContains1: Value = makeArraysForTest.makeArray1(allocator);
+    var arrContains1 = makeArraysForTest.makeArray1(allocator);
     defer arrContains1.array.deinit(allocator);
-    var arrContains2: Value = makeArraysForTest.makeArray1(allocator);
+    var arrContains2 = makeArraysForTest.makeArray1(allocator);
     defer arrContains2.array.deinit(allocator);
-    var arrContains3: Value = makeArraysForTest.makeArray2(allocator);
+    var arrContains3 = makeArraysForTest.makeArray2(allocator);
     defer arrContains3.array.deinit(allocator);
-    var arrContains4: Value = makeArraysForTest.makeArray2(allocator);
+    var arrContains4 = makeArraysForTest.makeArray2(allocator);
     defer arrContains4.array.deinit(allocator);
 
     {

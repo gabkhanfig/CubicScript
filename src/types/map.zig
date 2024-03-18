@@ -2,16 +2,18 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 const expect = std.testing.expect;
-const primitives = @import("primitives.zig");
-const PrimitiveValue = primitives.Value;
-const ValueTag = primitives.ValueTag;
-const Int = primitives.Int;
+const root = @import("../root.zig");
+const RawValue = root.RawValue;
+const ValueTag = root.ValueTag;
+const Int = root.Int;
 const hash = @import("hash.zig");
 const HashGroupBitmask = hash.HashGroupBitmask;
 const HashPairBitmask = hash.HashPairBitmask;
 const computeHash = hash.computeHash;
-const TaggedValue = primitives.TaggedValue;
+const TaggedValue = root.TaggedValue;
 
+/// This is the hash map implementation for scripts.
+/// Corresponds with the struct `CubsMap` in `cubic_script.h`.
 pub const Map = extern struct {
     const Self = @This();
     const PTR_BITMASK = 0xFFFFFFFFFFFF;
@@ -60,7 +62,7 @@ pub const Map = extern struct {
     }
 
     /// The returned reference may become invalidated when this `Map` is mutated.
-    pub fn find(self: *const Self, key: TaggedValue) ?primitives.TaggedValueConstRef {
+    pub fn find(self: *const Self, key: TaggedValue) ?root.TaggedValueConstRef {
         assert(key.tag == self.keyTag());
 
         if (self.asInner()) |inner| {
@@ -80,7 +82,7 @@ pub const Map = extern struct {
     }
 
     /// The returned reference may become invalidated when this `Map` is mutated.
-    pub fn findMut(self: *Self, key: TaggedValue) ?primitives.TaggedValueMutRef {
+    pub fn findMut(self: *Self, key: TaggedValue) ?root.TaggedValueMutRef {
         assert(key.tag == self.keyTag());
 
         if (self.asInner()) |inner| {
@@ -282,7 +284,7 @@ const Group = struct {
         self.capacity = undefined;
     }
 
-    fn find(self: *const Self, key: PrimitiveValue, tag: ValueTag, hashCode: usize) ?usize {
+    fn find(self: *const Self, key: RawValue, tag: ValueTag, hashCode: usize) ?usize {
         const mask = HashPairBitmask.init(hashCode);
         const maskVec: @Vector(32, u8) = @splat(mask.value);
 
@@ -386,7 +388,7 @@ const Group = struct {
     }
 
     /// Returns false if the entry doesn't exist, and true if the entry does exist and was successfully erased.
-    fn erase(self: *Group, key: PrimitiveValue, keyTag: ValueTag, valueTag: ValueTag, hashCode: usize, allocator: Allocator) bool {
+    fn erase(self: *Group, key: RawValue, keyTag: ValueTag, valueTag: ValueTag, hashCode: usize, allocator: Allocator) bool {
         const found = self.find(key, keyTag, hashCode);
 
         if (found == null) {
@@ -464,8 +466,8 @@ const Group = struct {
 };
 
 const Pair = struct {
-    key: PrimitiveValue,
-    value: PrimitiveValue,
+    key: RawValue,
+    value: RawValue,
     hash: usize,
 };
 
@@ -509,7 +511,7 @@ test "map find empty" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit(allocator);
 
-        var findValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", allocator));
         defer findValue.deinit(allocator);
 
         try expect(map.find(findValue) == null);
@@ -522,11 +524,11 @@ test "map insert one element" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit(allocator);
 
-        var addKey = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var addKey = TaggedValue.initString(try root.String.initSlice("hello world!", allocator));
         var addValue = TaggedValue.initInt(1);
         try map.insert(&addKey, &addValue, allocator);
 
-        var findValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", allocator));
         defer findValue.deinit(allocator);
 
         try expect(map.find(findValue) != null);
@@ -548,11 +550,11 @@ test "map erase one element" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit(allocator);
 
-        var addKey = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var addKey = TaggedValue.initString(try root.String.initSlice("hello world!", allocator));
         var addValue = TaggedValue.initInt(1);
         try map.insert(&addKey, &addValue, allocator);
 
-        var eraseValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var eraseValue = TaggedValue.initString(try root.String.initSlice("hello world!", allocator));
         defer eraseValue.deinit(allocator);
 
         try expect(map.erase(eraseValue, allocator));
@@ -571,7 +573,7 @@ test "Map add more than 32 elements" {
         defer map.deinit(allocator);
 
         for (0..36) |i| {
-            var addKey = TaggedValue.initString(try primitives.String.fromInt(@as(Int, @intCast(i)), allocator));
+            var addKey = TaggedValue.initString(try root.String.fromInt(@as(Int, @intCast(i)), allocator));
             var addValue = TaggedValue.initInt(@as(Int, @intCast(i)));
 
             try map.insert(&addKey, &addValue, allocator);

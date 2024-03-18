@@ -2,12 +2,13 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 const expect = std.testing.expect;
-const primitives = @import("primitives.zig");
-const Value = primitives.Value;
-const ValueTag = primitives.ValueTag;
-const Int = primitives.Int;
+const root = @import("../root.zig");
+const RawValue = root.RawValue;
+const ValueTag = root.ValueTag;
+const Int = root.Int;
 
-/// Array primitive that requires an explicit allocator.
+/// This is the Array implementation for scripts.
+/// Corresponds with the struct `CubsArray` in `cubic_script.h`.
 pub const Array = extern struct {
     const Self = @This();
     const ELEMENT_ALIGN = 8;
@@ -34,31 +35,31 @@ pub const Array = extern struct {
         switch (self.tag()) {
             .Bool => {
                 for (slice) |value| {
-                    var pushValue = Value{ .boolean = value.boolean };
+                    var pushValue = RawValue{ .boolean = value.boolean };
                     copy.add(&pushValue, ValueTag.Bool, allocator) catch unreachable;
                 }
             },
             .Int => {
                 for (slice) |value| {
-                    var pushValue = Value{ .int = value.int };
+                    var pushValue = RawValue{ .int = value.int };
                     copy.add(&pushValue, ValueTag.Int, allocator) catch unreachable;
                 }
             },
             .Float => {
                 for (slice) |value| {
-                    var pushValue = Value{ .float = value.float };
+                    var pushValue = RawValue{ .float = value.float };
                     copy.add(&pushValue, ValueTag.Float, allocator) catch unreachable;
                 }
             },
             .String => {
                 for (slice) |value| {
-                    var pushValue = Value{ .string = value.string.clone() };
+                    var pushValue = RawValue{ .string = value.string.clone() };
                     copy.add(&pushValue, ValueTag.String, allocator) catch unreachable;
                 }
             },
             .Array => {
                 for (slice) |value| {
-                    var pushValue = Value{ .array = try value.array.clone(allocator) };
+                    var pushValue = RawValue{ .array = try value.array.clone(allocator) };
                     copy.add(&pushValue, ValueTag.Array, allocator) catch unreachable;
                 }
             },
@@ -113,7 +114,7 @@ pub const Array = extern struct {
 
     /// Takes ownership of `ownedElement`, doing a memcpy of the data, and then memsetting the original to 0.
     /// It is undefined behaviour to access the `ownedElement` passed in.
-    pub fn add(self: *Self, ownedElement: *Value, inTag: ValueTag, allocator: Allocator) Allocator.Error!void {
+    pub fn add(self: *Self, ownedElement: *RawValue, inTag: ValueTag, allocator: Allocator) Allocator.Error!void {
         assert(inTag == self.tag());
         const copyDest = try self.addOne(allocator);
 
@@ -124,7 +125,7 @@ pub const Array = extern struct {
 
     /// operator[]. If `index` is out of bounds, returns `Array.Error.OutOfBounds`.
     /// Otherwise, an immutable reference to the value at the index is returned.
-    pub fn at(self: *const Self, index: Int) Error!*const Value {
+    pub fn at(self: *const Self, index: Int) Error!*const RawValue {
         if (index < 0) {
             return Error.OutOfBounds;
         }
@@ -139,7 +140,7 @@ pub const Array = extern struct {
 
     /// operator[]. If `index` is out of bounds, returns `Array.Error.OutOfBounds`.
     /// Otherwise, a mutable reference to the value at the index is returned.
-    pub fn atMut(self: *Self, index: Int) Error!*Value {
+    pub fn atMut(self: *Self, index: Int) Error!*RawValue {
         if (index < 0) {
             return Error.OutOfBounds;
         }
@@ -152,29 +153,29 @@ pub const Array = extern struct {
         return &arrData[indexAsUsize];
     }
 
-    pub fn asSlice(self: *const Self) []const Value {
+    pub fn asSlice(self: *const Self) []const RawValue {
         const headerData = self.header();
         if (headerData) |h| {
             const asMultiplePtr: [*]const Header = @ptrCast(h);
-            const asValueMultiPtr: [*]const Value = @ptrCast(&asMultiplePtr[1]);
+            const asValueMultiPtr: [*]const RawValue = @ptrCast(&asMultiplePtr[1]);
             const length: usize = @intCast(headerData.?.length);
             return asValueMultiPtr[0..length];
         } else {
-            var outSlice: []const Value = undefined;
+            var outSlice: []const RawValue = undefined;
             outSlice.len = 0;
             return outSlice;
         }
     }
 
-    pub fn asSliceMut(self: *Self) []Value {
+    pub fn asSliceMut(self: *Self) []RawValue {
         const headerData = self.headerMut();
         if (headerData) |h| {
             const asMultiplePtr: [*]Header = @ptrCast(h);
-            const asValueMultiPtr: [*]Value = @ptrCast(&asMultiplePtr[1]);
+            const asValueMultiPtr: [*]RawValue = @ptrCast(&asMultiplePtr[1]);
             const length: usize = @intCast(headerData.?.length);
             return asValueMultiPtr[0..length];
         } else {
-            var outSlice: []Value = undefined;
+            var outSlice: []RawValue = undefined;
             outSlice.len = 0;
             return outSlice;
         }
@@ -266,12 +267,12 @@ pub const Array = extern struct {
             const newHeader: *Header = @ptrCast(newData);
             newHeader.length = headerData.length;
 
-            const newArrayStart: [*]Value = @ptrCast(&@as([*]Header, @ptrCast(newHeader))[1]);
-            const oldArrayStart: [*]Value = @ptrCast(self.asSliceMut().ptr);
+            const newArrayStart: [*]RawValue = @ptrCast(&@as([*]Header, @ptrCast(newHeader))[1]);
+            const oldArrayStart: [*]RawValue = @ptrCast(self.asSliceMut().ptr);
 
             const oldLength: usize = @intCast(headerData.length);
             const oldCapacity: usize = @intCast(headerData.capacity);
-            const oldArraySlice: []Value = oldArrayStart[0..oldLength];
+            const oldArraySlice: []RawValue = oldArrayStart[0..oldLength];
             @memcpy(newArrayStart, oldArraySlice);
 
             var oldAllocation: []usize = undefined;
@@ -289,7 +290,7 @@ pub const Array = extern struct {
     }
 
     /// Potentially reallocates. Increases the array length by one, returning a buffer to memcpy the element to.
-    fn addOne(self: *Self, allocator: Allocator) Allocator.Error!*Value {
+    fn addOne(self: *Self, allocator: Allocator) Allocator.Error!*RawValue {
         {
             const h = self.header();
             if (h) |headerData| {
@@ -372,7 +373,7 @@ test "Array add int" {
     var arr = Array.init(ValueTag.Int);
     defer arr.deinit(allocator);
 
-    var pushValue = Value{ .int = 5 };
+    var pushValue = RawValue{ .int = 5 };
     try arr.add(&pushValue, ValueTag.Int, allocator);
 }
 
@@ -385,7 +386,7 @@ test "Array at int" {
         try expect(false);
     } else |_| {}
 
-    var pushValue = Value{ .int = 5 };
+    var pushValue = RawValue{ .int = 5 };
     try arr.add(&pushValue, ValueTag.Int, allocator);
 
     if (arr.at(0)) |value| {
@@ -408,11 +409,11 @@ test "Array bool sanity" {
         try expect(false);
     } else |_| {}
 
-    var pushValue = Value{ .boolean = primitives.TRUE };
+    var pushValue = RawValue{ .boolean = root.TRUE };
     try arr.add(&pushValue, ValueTag.Bool, allocator);
 
     if (arr.at(0)) |value| {
-        try expect(value.boolean == primitives.TRUE);
+        try expect(value.boolean == root.TRUE);
     } else |_| {
         try expect(false);
     }
@@ -431,7 +432,7 @@ test "Array float sanity" {
         try expect(false);
     } else |_| {}
 
-    var pushValue = Value{ .float = 5 };
+    var pushValue = RawValue{ .float = 5 };
     try arr.add(&pushValue, ValueTag.Float, allocator);
 
     if (arr.at(0)) |value| {
@@ -454,7 +455,7 @@ test "Array string sanity" {
         try expect(false);
     } else |_| {}
 
-    var pushValue = Value{ .string = try primitives.String.initSlice("hello world!", allocator) };
+    var pushValue = RawValue{ .string = try root.String.initSlice("hello world!", allocator) };
     try arr.add(&pushValue, ValueTag.String, allocator);
 
     if (arr.at(0)) |value| {
@@ -477,22 +478,22 @@ test "Array nested array sanity" {
         try expect(false);
     } else |_| {}
 
-    var pushValue: Value = undefined;
+    var pushValue: RawValue = undefined;
     {
         var nestedArr = Array.init(ValueTag.Bool);
         defer arr.deinit(allocator);
 
-        var nestedValue = Value{ .boolean = primitives.TRUE };
+        var nestedValue = RawValue{ .boolean = root.TRUE };
         try nestedArr.add(&nestedValue, ValueTag.Bool, allocator);
 
-        pushValue = Value{ .array = nestedArr };
+        pushValue = RawValue{ .array = nestedArr };
     }
     try arr.add(&pushValue, ValueTag.Array, allocator);
 
     if (arr.at(0)) |value| {
         try expect(value.array.len() == 1);
         if (value.array.at(0)) |nestedValue| {
-            try expect(nestedValue.boolean == primitives.TRUE);
+            try expect(nestedValue.boolean == root.TRUE);
         } else |_| {
             try expect(false);
         }
@@ -506,26 +507,26 @@ test "Array nested array sanity" {
 }
 
 const TestCreateArray = struct {
-    fn makeArray(comptime tag: ValueTag, n: usize, a: Allocator) Value {
+    fn makeArray(comptime tag: ValueTag, n: usize, a: Allocator) RawValue {
         var arr = Array.init(tag);
         switch (tag) {
             .Bool => {
                 for (0..n) |i| {
-                    var pushValue = Value{
-                        .boolean = if (@mod(i, 2) == 0) primitives.TRUE else primitives.FALSE,
+                    var pushValue = RawValue{
+                        .boolean = if (@mod(i, 2) == 0) root.TRUE else root.FALSE,
                     };
                     arr.add(&pushValue, tag, a) catch unreachable;
                 }
             },
             .Int => {
                 for (0..n) |i| {
-                    var pushValue = Value{ .int = @intCast(i) };
+                    var pushValue = RawValue{ .int = @intCast(i) };
                     arr.add(&pushValue, tag, a) catch unreachable;
                 }
             },
             .Float => {
                 for (0..n) |i| {
-                    var pushValue = Value{ .float = @floatFromInt(i) };
+                    var pushValue = RawValue{ .float = @floatFromInt(i) };
                     arr.add(&pushValue, tag, a) catch unreachable;
                 }
             },
@@ -533,8 +534,8 @@ const TestCreateArray = struct {
                 for (0..n) |i| {
                     const slice = std.fmt.allocPrint(a, "{}", .{i}) catch unreachable;
                     defer a.free(slice);
-                    var pushValue = Value{
-                        .string = primitives.String.initSlice(slice, a) catch unreachable,
+                    var pushValue = RawValue{
+                        .string = root.String.initSlice(slice, a) catch unreachable,
                     };
                     arr.add(&pushValue, tag, a) catch unreachable;
                 }
@@ -549,16 +550,16 @@ const TestCreateArray = struct {
                 @compileError("Unsupported array tag type");
             },
         }
-        return Value{ .array = arr };
+        return RawValue{ .array = arr };
     }
 };
 
 test "Array equal" {
     const allocator = std.testing.allocator;
 
-    var arrEmpty1 = Value{ .array = Array.init(ValueTag.Int) };
+    var arrEmpty1 = RawValue{ .array = Array.init(ValueTag.Int) };
     defer arrEmpty1.array.deinit(allocator);
-    var arrEmpty2 = Value{ .array = Array.init(ValueTag.Int) };
+    var arrEmpty2 = RawValue{ .array = Array.init(ValueTag.Int) };
     defer arrEmpty2.array.deinit(allocator);
 
     var arrContains1 = TestCreateArray.makeArray(ValueTag.Int, 10, allocator);
