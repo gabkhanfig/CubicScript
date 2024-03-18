@@ -473,13 +473,119 @@ const Pair = struct {
 
 test "map init" {
     const allocator = std.testing.allocator;
-    var map = Map.init(ValueTag.String, ValueTag.Int);
-    defer map.deinit(allocator);
+    {
+        var map = Map.init(ValueTag.Bool, ValueTag.Bool);
+        defer map.deinit(allocator);
+    }
+    {
+        var map = Map.init(ValueTag.Int, ValueTag.Bool);
+        defer map.deinit(allocator);
+    }
+    {
+        var map = Map.init(ValueTag.Bool, ValueTag.Int);
+        defer map.deinit(allocator);
+    }
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Int);
+        defer map.deinit(allocator);
+    }
+    {
+        var map = Map.init(ValueTag.Int, ValueTag.String);
+        defer map.deinit(allocator);
+    }
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Array);
+        defer map.deinit(allocator);
+    }
+    {
+        var map = Map.init(ValueTag.Map, ValueTag.Int);
+        defer map.deinit(allocator);
+    }
+}
 
-    for (0..2) |i| {
-        var addKey = TaggedValue.initString(try primitives.String.fromInt(@as(Int, @intCast(i)), allocator));
-        var addValue = TaggedValue.initInt(@as(Int, @intCast(i)));
+test "map find empty" {
+    const allocator = std.testing.allocator;
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Int);
+        defer map.deinit(allocator);
 
+        var findValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        defer findValue.deinit(allocator);
+
+        try expect(map.find(findValue) == null);
+    }
+}
+
+test "map insert one element" {
+    const allocator = std.testing.allocator;
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Int);
+        defer map.deinit(allocator);
+
+        var addKey = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var addValue = TaggedValue.initInt(1);
         try map.insert(&addKey, &addValue, allocator);
+
+        var findValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        defer findValue.deinit(allocator);
+
+        try expect(map.find(findValue) != null);
+        const found = map.find(findValue);
+        switch (found.?.tag) {
+            .Int => {
+                try expect(found.?.value.int == 1);
+            },
+            else => {
+                try expect(false);
+            },
+        }
+    }
+}
+
+test "map erase one element" {
+    const allocator = std.testing.allocator;
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Int);
+        defer map.deinit(allocator);
+
+        var addKey = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        var addValue = TaggedValue.initInt(1);
+        try map.insert(&addKey, &addValue, allocator);
+
+        var eraseValue = TaggedValue.initString(try primitives.String.initSlice("hello world!", allocator));
+        defer eraseValue.deinit(allocator);
+
+        try expect(map.erase(eraseValue, allocator));
+
+        var findValue = TaggedValue.initString(eraseValue.value.string.clone());
+        defer findValue.deinit(allocator);
+
+        try expect(map.find(findValue) == null);
+    }
+}
+
+test "Map add more than 32 elements" {
+    const allocator = std.testing.allocator;
+    {
+        var map = Map.init(ValueTag.String, ValueTag.Int);
+        defer map.deinit(allocator);
+
+        for (0..36) |i| {
+            var addKey = TaggedValue.initString(try primitives.String.fromInt(@as(Int, @intCast(i)), allocator));
+            var addValue = TaggedValue.initInt(@as(Int, @intCast(i)));
+
+            try map.insert(&addKey, &addValue, allocator);
+        }
+    }
+    {
+        var map = Map.init(ValueTag.Int, ValueTag.Float);
+        defer map.deinit(allocator);
+
+        for (0..34) |i| {
+            var addKey = TaggedValue.initInt(@as(Int, @intCast(i)));
+            var addValue = TaggedValue.initFloat(@floatFromInt(i));
+
+            try map.insert(&addKey, &addValue, allocator);
+        }
     }
 }
