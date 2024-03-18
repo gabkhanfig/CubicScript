@@ -21,6 +21,8 @@ pub const Array = @import("types/array.zig").Array;
 
 pub const Map = @import("types/map.zig").Map;
 
+pub const Set = @import("types/set.zig").Set;
+
 pub const ValueTag = enum(usize) {
     Bool = 0,
     Int = 1,
@@ -46,6 +48,7 @@ pub const RawValue = extern union {
     string: String,
     array: Array,
     map: Map,
+    set: Set,
     // TODO other primitive types
 
     /// In some cases, it's more convenient to just deinit here.
@@ -60,6 +63,9 @@ pub const RawValue = extern union {
             },
             .Map => {
                 self.map.deinit(state);
+            },
+            .Set => {
+                self.set.deinit(state);
             },
             else => {
                 @panic("Unsupported");
