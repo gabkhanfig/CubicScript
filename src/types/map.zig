@@ -266,17 +266,20 @@ const Group = struct {
 
     fn deinit(self: *Self, state: *const CubicScriptState, keyTag: ValueTag, valueTag: ValueTag) void {
         var i: usize = 0;
-        for (self.hashMasksSlice()) |mask| {
-            if (mask == 0) {
-                i += 1;
-                continue;
-            }
+        if (self.pairCount > 0) {
+            for (self.hashMasksSlice()) |mask| {
+                if (mask == 0) {
+                    i += 1;
+                    continue;
+                }
 
-            self.pairs[i].key.deinit(keyTag, state);
-            self.pairs[i].value.deinit(valueTag, state);
-            state.allocator.destroy(self.pairs[i]);
-            i += 1;
+                self.pairs[i].key.deinit(keyTag, state);
+                self.pairs[i].value.deinit(valueTag, state);
+                state.allocator.destroy(self.pairs[i]);
+                i += 1;
+            }
         }
+
         state.allocator.free(self.getFullAllocation());
         // Ensure that any use after free will be caught.
         self.hashMasks = undefined;
@@ -517,6 +520,7 @@ test "map find empty" {
         var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
         defer findValue.deinit(state);
 
+        try expect(map.size() == 0);
         try expect(map.find(findValue) == null);
     }
 }
@@ -535,6 +539,7 @@ test "map insert one element" {
         var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
         defer findValue.deinit(state);
 
+        try expect(map.size() == 1);
         try expect(map.find(findValue) != null);
         const found = map.find(findValue);
         switch (found.?.tag) {
@@ -589,7 +594,7 @@ test "Map add more than 32 elements" {
         var map = Map.init(ValueTag.Int, ValueTag.Float);
         defer map.deinit(state);
 
-        for (0..34) |i| {
+        for (0..36) |i| {
             var addKey = TaggedValue.initInt(@as(Int, @intCast(i)));
             var addValue = TaggedValue.initFloat(@floatFromInt(i));
 
