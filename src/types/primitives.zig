@@ -5,7 +5,6 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const Allocator = std.mem.Allocator;
 
-/// In some situations, tagged pointers can be useful. The `PrimitiveType` enum values can be used as ptr tags.
 pub const ValueTag = enum(usize) {
     Bool = 0,
     Int = 1,
