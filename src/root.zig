@@ -3,6 +3,8 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const Allocator = std.mem.Allocator;
 
+pub const CubicScriptState = @import("state/CubicScriptState.zig");
+
 pub const FALSE: Bool = 0;
 pub const TRUE: Bool = 1;
 
@@ -47,17 +49,17 @@ pub const RawValue = extern union {
     // TODO other primitive types
 
     /// In some cases, it's more convenient to just deinit here.
-    pub fn deinit(self: *RawValue, tag: ValueTag, allocator: Allocator) void {
+    pub fn deinit(self: *RawValue, tag: ValueTag, state: *const CubicScriptState) void {
         switch (tag) {
             .Bool, .Int, .Float => {},
             .String => {
-                self.string.deinit(allocator);
+                self.string.deinit(state);
             },
             .Array => {
-                self.array.deinit(allocator);
+                self.array.deinit(state);
             },
             .Map => {
-                self.map.deinit(allocator);
+                self.map.deinit(state);
             },
             else => {
                 @panic("Unsupported");
@@ -103,8 +105,8 @@ pub const TaggedValue = extern struct {
         return TaggedValue{ .tag = ValueTag.Map, .value = .{ .map = inMap } };
     }
 
-    pub fn deinit(self: *TaggedValue, allocator: Allocator) void {
-        self.value.deinit(self.tag, allocator);
+    pub fn deinit(self: *TaggedValue, state: *const CubicScriptState) void {
+        self.value.deinit(self.tag, state);
     }
 };
 

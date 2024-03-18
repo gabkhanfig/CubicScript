@@ -6,6 +6,7 @@ const AtomicRefCount = @import("atomic_ref_count.zig").AtomicRefCount;
 const root = @import("../root.zig");
 const Int = root.Int;
 const ValueTag = root.ValueTag;
+const CubicScriptState = @import("../state/CubicScriptState.zig");
 
 /// Immutable, ref counted string. This is the string implementation for scripts.
 /// Corresponds with the struct `CubsString` in `cubic_script.h`.
@@ -16,10 +17,10 @@ pub const String = extern struct {
     /// TODO does this need to be atomic? It's possible one thread reads while another deinits on the same String reference (not inner reference)?
     inner: ?*anyopaque = null,
 
-    pub fn initSlice(slice: []const u8, allocator: Allocator) Allocator.Error!Self {
+    pub fn initSlice(slice: []const u8, state: *const CubicScriptState) Allocator.Error!Self {
         assert(slice.len != 0);
 
-        const inner = try Inner.initSlice(slice, allocator);
+        const inner = try Inner.initSlice(slice, state);
         return Self{ .inner = @ptrCast(inner) };
     }
 
@@ -33,11 +34,11 @@ pub const String = extern struct {
         }
     }
 
-    pub fn deinit(self: *Self, allocator: Allocator) void {
+    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
         if (self.inner != null) {
             const inner = self.asInnerMut(); // Use this ordering in the event of weird synchronization issues.
             self.inner = null;
-            inner.decrementRefCount(allocator);
+            inner.decrementRefCount(state);
         }
     }
 
@@ -156,17 +157,17 @@ pub const String = extern struct {
         }
     }
 
-    pub fn fromScriptValue(value: root.TaggedValueConstRef, allocator: Allocator) Allocator.Error!Self {
+    pub fn fromScriptValue(value: root.TaggedValueConstRef, state: *const CubicScriptState) Allocator.Error!Self {
         switch (value.tag) {
             .Bool => {
                 if (value.value.boolean == root.TRUE) {
-                    return try Self.initSlice("true", allocator);
+                    return try Self.initSlice("true", state.allocator);
                 } else {
-                    return try Self.initSlice("false", allocator);
+                    return try Self.initSlice("false", state.allocator);
                 }
             },
             .Int => {
-                return Self.fromInt(value.value.*, allocator);
+                return Self.fromInt(value.value.*, state.allocator);
             },
             .Float => {},
             else => {
@@ -185,9 +186,9 @@ pub const String = extern struct {
     // fromInt
     // fromFloat
 
-    pub fn fromInt(num: Int, allocator: Allocator) Allocator.Error!Self {
+    pub fn fromInt(num: Int, state: *const CubicScriptState) Allocator.Error!Self {
         if (num == 0) {
-            return Self.initSlice("0", allocator); // TODO can the 0 string become a global?
+            return Self.initSlice("0", state); // TODO can the 0 string become a global?
         }
 
         var numLocal = num;
@@ -216,7 +217,7 @@ pub const String = extern struct {
         }
 
         const length: usize = maxChars - tempAt;
-        return Self.initSlice(tempNums[tempAt..][0..length], allocator);
+        return Self.initSlice(tempNums[tempAt..][0..length], state);
     }
 
     fn asInner(self: Self) *const Inner {
@@ -238,29 +239,29 @@ pub const String = extern struct {
             self.refCount.addRef();
         }
 
-        fn decrementRefCount(self: *Inner, allocator: Allocator) void {
+        fn decrementRefCount(self: *Inner, state: *const CubicScriptState) void {
             if (!self.refCount.removeRef()) {
                 return;
             }
 
             if (!self.isSso()) {
-                allocator.free(self.rep.heap.data[0..(self.rep.heap.allocationSize - 1) :0]);
+                state.allocator.free(self.rep.heap.data[0..(self.rep.heap.allocationSize - 1) :0]);
                 self.rep.heap.data = undefined;
                 self.rep.heap.allocationSize = 0;
             }
-            allocator.destroy(self);
+            state.allocator.destroy(self);
         }
 
         fn isSso(self: *const Inner) bool {
             return self.lenAndFlag & FLAG_BIT == 0;
         }
 
-        fn initSlice(slice: []const u8, allocator: Allocator) Allocator.Error!*Inner {
-            const self = try allocator.create(Inner);
+        fn initSlice(slice: []const u8, state: *const CubicScriptState) Allocator.Error!*Inner {
+            const self = try state.allocator.create(Inner);
 
             self.* = Inner{ .lenAndFlag = slice.len };
             self.refCount.addRef();
-            try self.ensureTotalCapacity(allocator, slice.len + 1);
+            try self.ensureTotalCapacity(state, slice.len + 1);
 
             if (self.isSso()) {
                 for (0..slice.len) |i| {
@@ -275,7 +276,7 @@ pub const String = extern struct {
         }
 
         /// Can only be executed once per instance.
-        fn ensureTotalCapacity(self: *Inner, allocator: Allocator, minCapacity: usize) Allocator.Error!void {
+        fn ensureTotalCapacity(self: *Inner, state: *const CubicScriptState, minCapacity: usize) Allocator.Error!void {
             // The strings are immutable, so cannot override.
             // This check ensures long strings don't get overridden, which can be caught by tests.
             //assert(!self.isSso());
@@ -290,7 +291,7 @@ pub const String = extern struct {
             if (remainder != 0) {
                 mallocCapacity = mallocCapacity + (64 - remainder);
             }
-            const newSlice: []align(64) u8 = try allocator.alignedAlloc(u8, 64, mallocCapacity);
+            const newSlice: []align(64) u8 = try state.allocator.alignedAlloc(u8, 64, mallocCapacity);
             @memset(newSlice, 0);
             self.rep.heap.data = @ptrCast(newSlice.ptr);
             self.rep.heap.allocationSize = mallocCapacity;
@@ -335,17 +336,18 @@ test "String default init" {
 }
 
 test "String from slice" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     {
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.len() == 12);
         try expect(std.mem.eql(u8, s.toSlice(), "hello world!"));
     }
     {
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.len() == 29);
         try expect(std.mem.eql(u8, s.toSlice(), "hello to this glorious world!"));
@@ -353,24 +355,25 @@ test "String from slice" {
 }
 
 test "String clone" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     {
-        var s1 = try String.initSlice("hello world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello world!", state);
+        defer s1.deinit(state);
 
         var s2 = s1.clone();
-        defer s2.deinit(allocator);
+        defer s2.deinit(state);
 
         try expect(s1.inner == s2.inner);
         try expect(std.mem.eql(u8, s1.toSlice(), "hello world!"));
         try expect(std.mem.eql(u8, s2.toSlice(), "hello world!"));
     }
     {
-        var s1 = try String.initSlice("hello to this glorious world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello to this glorious world!", state);
+        defer s1.deinit(state);
 
         var s2 = s1.clone();
-        defer s2.deinit(allocator);
+        defer s2.deinit(state);
 
         try expect(s1.inner == s2.inner);
         try expect(std.mem.eql(u8, s1.toSlice(), "hello to this glorious world!"));
@@ -379,31 +382,32 @@ test "String clone" {
 }
 
 test "String clone thread safety" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
 
     const TestThreadHandler = struct {
-        fn makeClonesNTimes(ref: *String, n: usize, a: Allocator) void {
+        fn makeClonesNTimes(ref: *String, n: usize, s: *const CubicScriptState) void {
             for (0..n) |_| {
                 var s1 = ref.clone();
-                defer s1.deinit(a);
+                defer s1.deinit(s);
                 var s2 = ref.clone();
-                defer s2.deinit(a);
+                defer s2.deinit(s);
                 var s3 = ref.clone();
-                defer s3.deinit(a);
+                defer s3.deinit(s);
                 var s4 = ref.clone();
-                defer s4.deinit(a);
+                defer s4.deinit(s);
             }
         }
     };
 
     {
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
-        const t1 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
-        const t2 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
-        const t3 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
-        const t4 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+        const t1 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, state });
+        const t2 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, state });
+        const t3 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, state });
+        const t4 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, state });
 
         t1.join();
         t2.join();
@@ -411,13 +415,13 @@ test "String clone thread safety" {
         t4.join();
     }
     {
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
-        const t1 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
-        const t2 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
-        const t3 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
-        const t4 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, allocator });
+        const t1 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, state });
+        const t2 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, state });
+        const t3 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, state });
+        const t4 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000, state });
 
         t1.join();
         t2.join();
@@ -427,444 +431,449 @@ test "String clone thread safety" {
 }
 
 test "String equal" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     { // null
         var s1 = String{};
-        defer s1.deinit(allocator);
+        defer s1.deinit(state);
         var s2 = String{};
-        defer s2.deinit(allocator);
+        defer s2.deinit(state);
 
         try expect(s1.eql(s2));
     }
     { // shared reference sso
-        var s1 = try String.initSlice("hello world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello world!", state);
+        defer s1.deinit(state);
 
         var s2 = s1.clone();
-        defer s2.deinit(allocator);
+        defer s2.deinit(state);
 
         try expect(s1.eql(s2));
     }
     { // different reference sso
-        var s1 = try String.initSlice("hello world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello world!", state);
+        defer s1.deinit(state);
 
-        var s2 = try String.initSlice("hello world!", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello world!", state);
+        defer s2.deinit(state);
 
         try expect(s1.eql(s2));
     }
     { // shared reference heap
-        var s1 = try String.initSlice("hello to this glorious world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello to this glorious world!", state);
+        defer s1.deinit(state);
 
         var s2 = s1.clone();
-        defer s2.deinit(allocator);
+        defer s2.deinit(state);
 
         try expect(s1.eql(s2));
     }
     { // different reference heap
-        var s1 = try String.initSlice("hello to this glorious world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello to this glorious world!", state);
+        defer s1.deinit(state);
 
-        var s2 = try String.initSlice("hello to this glorious world!", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello to this glorious world!", state);
+        defer s2.deinit(state);
 
         try expect(s1.eql(s2));
     }
     { // not equal one null
-        var s1 = try String.initSlice("hello world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello world!", state);
+        defer s1.deinit(state);
 
         var s2 = String{};
-        defer s2.deinit(allocator);
+        defer s2.deinit(state);
 
         try expect(!s1.eql(s2));
     }
     { // not equal one null sanity
         var s1 = String{};
-        defer s1.deinit(allocator);
+        defer s1.deinit(state);
 
-        var s2 = try String.initSlice("hello world!", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello world!", state);
+        defer s2.deinit(state);
 
         try expect(!s1.eql(s2));
     }
     { // not equal both sso
-        var s1 = try String.initSlice("hello world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello world!", state);
+        defer s1.deinit(state);
 
-        var s2 = try String.initSlice("hello warld!", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello warld!", state);
+        defer s2.deinit(state);
 
         try expect(!s1.eql(s2));
     }
     { // not equal both sso sanity
-        var s1 = try String.initSlice("hello world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello world!", state);
+        defer s1.deinit(state);
 
-        var s2 = try String.initSlice("hello world! ", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello world! ", state);
+        defer s2.deinit(state);
 
         try expect(!s1.eql(s2));
     }
     { // not equal both heap
-        var s1 = try String.initSlice("hello to this glorious world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello to this glorious world!", state);
+        defer s1.deinit(state);
 
-        var s2 = try String.initSlice("hello to this glarious world!", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello to this glarious world!", state);
+        defer s2.deinit(state);
 
         try expect(!s1.eql(s2));
     }
     { // not equal both heap sanity
-        var s1 = try String.initSlice("hello to this glorious world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello to this glorious world!", state);
+        defer s1.deinit(state);
 
-        var s2 = try String.initSlice("hello to this glorious world! ", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello to this glorious world! ", state);
+        defer s2.deinit(state);
 
         try expect(!s1.eql(s2));
     }
     { // not equal mix
-        var s1 = try String.initSlice("hello world!", allocator);
-        defer s1.deinit(allocator);
+        var s1 = try String.initSlice("hello world!", state);
+        defer s1.deinit(state);
 
-        var s2 = try String.initSlice("hello to this glorious world! ", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello to this glorious world! ", state);
+        defer s2.deinit(state);
 
         try expect(!s1.eql(s2));
     }
 }
 
 test "String equal slice" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     { // null
         var s = String{};
-        defer s.deinit(allocator);
+        defer s.deinit(state);
 
         try expect(s.eqlSlice(""));
     }
     { // sso
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.eqlSlice("hello world!"));
     }
     { // heap
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.eqlSlice("hello to this glorious world!"));
     }
     { // not equal empty
         var s = String{};
-        defer s.deinit(allocator);
+        defer s.deinit(state);
 
         try expect(!s.eqlSlice("!"));
     }
     { // not equal empty sanity
         var s = String{};
-        defer s.deinit(allocator);
+        defer s.deinit(state);
 
         try expect(!s.eqlSlice("!"));
     }
     { // not equal sso
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(!s.eqlSlice("hello warld!"));
     }
     { // not equal sso sanity
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(!s.eqlSlice("hello world! "));
     }
     { // not equal heap
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
-        var s2 = try String.initSlice("hello to this glarious world!", allocator);
-        defer s2.deinit(allocator);
+        var s2 = try String.initSlice("hello to this glarious world!", state);
+        defer s2.deinit(state);
 
         try expect(!s.eqlSlice("hello to this glarious world!"));
     }
     { // not equal heap sanity
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(!s.eqlSlice("hello to this glorious world! "));
     }
 }
 
 test "String find" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     { // null
         var s = String{};
-        defer s.deinit(allocator);
+        defer s.deinit(state);
 
         try expect(s.find("") == null);
     }
     { // sso valid, cant find empty
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("") == null);
     }
     { // heap valid, cant find empty
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("") == null);
     }
     { // sso valid, find at beginning 1 character
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("h") == 0);
     }
     { // heap valid, find at beginning 1 character
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("h") == 0);
     }
     { // sso valid, find in middle 1 character
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("o") == 4);
     }
     { // heap valid, find in middle 1 character
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("o") == 4);
     }
     { // sso valid, find at end 1 character
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("!") == 11);
     }
     { // heap valid, find at end 1 character
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("!") == 28);
     }
     { // sso valid, find at beginning multiple characters
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("hel") == 0);
     }
     { // heap valid, find at beginning multiple characters
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("hel") == 0);
     }
     { // sso valid, find in middle multiple characters
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("o wo") == 4);
     }
     { // heap valid, find in middle multiple characters
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("o to") == 4);
     }
     { // sso valid, find at end multiple characters
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("ld!") == 9);
     }
     { // heap valid, find at end multiple characters
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("ld!") == 26);
     }
     { // sso, find longer null
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("hello world! ") == null);
     }
     { // heap, find longer null
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.find("hello to this glorious world! ") == null);
     }
 }
 
 test "String reverse find" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     { // null
         var s = String{};
-        defer s.deinit(allocator);
+        defer s.deinit(state);
 
         try expect(s.rfind("") == null);
     }
     { // sso valid, cant find empty
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("") == null);
     }
     { // heap valid, cant find empty
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("") == null);
     }
     { // sso valid, find at beginning 1 character
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("h") == 0);
     }
     { // heap valid, find at beginning 1 character
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("h") == 10);
     }
     { // sso valid, find in middle 1 character
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("o") == 7);
     }
     { // heap valid, find in middle 1 character
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("o") == 24);
     }
     { // sso valid, find at end 1 character
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("!") == 11);
     }
     { // heap valid, find at end 1 character
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("!") == 28);
     }
     { // sso valid, find at beginning multiple characters
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("hel") == 0);
     }
     { // heap valid, find at beginning multiple characters
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("hel") == 0);
     }
     { // sso valid, find in middle multiple characters
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("o wo") == 4);
     }
     { // heap valid, find in middle multiple characters
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("o to") == 4);
     }
     { // sso valid, find at end multiple characters
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("ld!") == 9);
     }
     { // heap valid, find at end multiple characters
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("ld!") == 26);
     }
     { // sso, find longer null
-        var s = try String.initSlice("hello world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("hello world! ") == null);
     }
     { // heap, find longer null
-        var s = try String.initSlice("hello to this glorious world!", allocator);
-        defer s.deinit(allocator);
+        var s = try String.initSlice("hello to this glorious world!", state);
+        defer s.deinit(state);
 
         try expect(s.rfind("hello to this glorious world! ") == null);
     }
 }
 
 test "String from int" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     {
-        var s = try String.fromInt(0, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(0, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("0"));
     }
     {
-        var s = try String.fromInt(1, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(1, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("1"));
     }
     {
-        var s = try String.fromInt(2, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(2, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("2"));
     }
     {
-        var s = try String.fromInt(21, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(21, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("21"));
     }
     {
-        var s = try String.fromInt(500, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(500, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("500"));
     }
     {
-        var s = try String.fromInt(std.math.maxInt(Int), allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(std.math.maxInt(Int), state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("9223372036854775807"));
     }
     {
-        var s = try String.fromInt(-1, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(-1, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("-1"));
     }
     {
-        var s = try String.fromInt(-2, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(-2, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("-2"));
     }
     {
-        var s = try String.fromInt(-21, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(-21, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("-21"));
     }
     {
-        var s = try String.fromInt(-500, allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(-500, state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("-500"));
     }
     {
-        var s = try String.fromInt(std.math.minInt(Int), allocator);
-        defer s.deinit(allocator);
+        var s = try String.fromInt(std.math.minInt(Int), state);
+        defer s.deinit(state);
         try expect(s.eqlSlice("-9223372036854775808"));
     }
 }

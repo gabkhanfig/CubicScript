@@ -6,6 +6,7 @@ const root = @import("../root.zig");
 const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
 const Int = root.Int;
+const CubicScriptState = @import("../state/CubicScriptState.zig");
 
 /// This is the Array implementation for scripts.
 /// Corresponds with the struct `CubsArray` in `cubic_script.h`.
@@ -23,44 +24,44 @@ pub const Array = extern struct {
 
     /// Clones the array, along with making clones of it's elements. Any elements that require an allocator to clone
     /// will use `allocator`, along with the copy of the array itself.
-    pub fn clone(self: *const Self, allocator: Allocator) Allocator.Error!Self {
+    pub fn clone(self: *const Self, state: *const CubicScriptState) Allocator.Error!Self {
         var copy = Self.init(self.tag());
         const slice = self.asSlice();
         if (slice.len == 0) {
             return copy;
         }
 
-        try copy.ensureTotalCapacity(@intCast(slice.len), allocator);
+        try copy.ensureTotalCapacity(@intCast(slice.len), state);
 
         switch (self.tag()) {
             .Bool => {
                 for (slice) |value| {
                     var pushValue = RawValue{ .boolean = value.boolean };
-                    copy.add(&pushValue, ValueTag.Bool, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.Bool, state) catch unreachable;
                 }
             },
             .Int => {
                 for (slice) |value| {
                     var pushValue = RawValue{ .int = value.int };
-                    copy.add(&pushValue, ValueTag.Int, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.Int, state) catch unreachable;
                 }
             },
             .Float => {
                 for (slice) |value| {
                     var pushValue = RawValue{ .float = value.float };
-                    copy.add(&pushValue, ValueTag.Float, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.Float, state) catch unreachable;
                 }
             },
             .String => {
                 for (slice) |value| {
                     var pushValue = RawValue{ .string = value.string.clone() };
-                    copy.add(&pushValue, ValueTag.String, allocator) catch unreachable;
+                    copy.add(&pushValue, ValueTag.String, state) catch unreachable;
                 }
             },
             .Array => {
                 for (slice) |value| {
-                    var pushValue = RawValue{ .array = try value.array.clone(allocator) };
-                    copy.add(&pushValue, ValueTag.Array, allocator) catch unreachable;
+                    var pushValue = RawValue{ .array = try value.array.clone(state) };
+                    copy.add(&pushValue, ValueTag.Array, state) catch unreachable;
                 }
             },
             else => {
@@ -71,7 +72,7 @@ pub const Array = extern struct {
         return copy;
     }
 
-    pub fn deinit(self: *Self, allocator: Allocator) void {
+    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
         if ((self.inner & PTR_BITMASK) == 0) {
             return;
         }
@@ -82,13 +83,13 @@ pub const Array = extern struct {
             .String => {
                 const strings = self.asSliceMut();
                 for (0..strings.len) |i| { // use indexing to get the mutable reference
-                    strings[i].string.deinit(allocator);
+                    strings[i].string.deinit(state);
                 }
             },
             .Array => {
                 const arrays = self.asSliceMut();
                 for (0..arrays.len) |i| { // use indexing to get the mutable reference
-                    arrays[i].array.deinit(allocator);
+                    arrays[i].array.deinit(state);
                 }
             },
             else => {
@@ -96,7 +97,7 @@ pub const Array = extern struct {
             },
         }
         const allocation = self.getFullAllocation();
-        allocator.free(allocation);
+        state.allocator.free(allocation);
         self.inner = 0;
     }
 
@@ -114,9 +115,9 @@ pub const Array = extern struct {
 
     /// Takes ownership of `ownedElement`, doing a memcpy of the data, and then memsetting the original to 0.
     /// It is undefined behaviour to access the `ownedElement` passed in.
-    pub fn add(self: *Self, ownedElement: *RawValue, inTag: ValueTag, allocator: Allocator) Allocator.Error!void {
+    pub fn add(self: *Self, ownedElement: *RawValue, inTag: ValueTag, state: *const CubicScriptState) Allocator.Error!void {
         assert(inTag == self.tag());
-        const copyDest = try self.addOne(allocator);
+        const copyDest = try self.addOne(state);
 
         copyDest.* = ownedElement.*;
         const src: *usize = @ptrCast(ownedElement);
@@ -254,7 +255,7 @@ pub const Array = extern struct {
         return @ptrFromInt(self.inner & PTR_BITMASK);
     }
 
-    fn ensureTotalCapacity(self: *Self, minCapacity: Int, allocator: Allocator) Allocator.Error!void {
+    fn ensureTotalCapacity(self: *Self, minCapacity: Int, state: *const CubicScriptState) Allocator.Error!void {
         const h = self.headerMut();
         if (h) |headerData| {
             if (headerData.capacity >= minCapacity) {
@@ -262,7 +263,7 @@ pub const Array = extern struct {
             }
 
             const grownCapacity = growCapacity(headerData.capacity, minCapacity);
-            const newData = try Header.init(grownCapacity, allocator);
+            const newData = try Header.init(grownCapacity, state);
 
             const newHeader: *Header = @ptrCast(newData);
             newHeader.length = headerData.length;
@@ -279,24 +280,24 @@ pub const Array = extern struct {
             oldAllocation.ptr = @ptrFromInt(self.inner & PTR_BITMASK);
             oldAllocation.len = (oldCapacity) + @sizeOf(Header);
 
-            allocator.free(oldAllocation); // dont need to call drop, cause its just memcpy and instantly free the other.
+            state.allocator.free(oldAllocation); // dont need to call drop, cause its just memcpy and instantly free the other.
 
             self.inner = (self.inner & TAG_BITMASK) | @intFromPtr(newData);
         } else {
             // here, it means the array has no data;
-            const newData = try Header.init(minCapacity, allocator);
+            const newData = try Header.init(minCapacity, state);
             self.inner = (self.inner & TAG_BITMASK) | @intFromPtr(newData);
         }
     }
 
     /// Potentially reallocates. Increases the array length by one, returning a buffer to memcpy the element to.
-    fn addOne(self: *Self, allocator: Allocator) Allocator.Error!*RawValue {
+    fn addOne(self: *Self, state: *const CubicScriptState) Allocator.Error!*RawValue {
         {
             const h = self.header();
             if (h) |headerData| {
-                try self.ensureTotalCapacity(headerData.length + 1, allocator);
+                try self.ensureTotalCapacity(headerData.length + 1, state);
             } else {
-                try self.ensureTotalCapacity(1, allocator);
+                try self.ensureTotalCapacity(1, state);
             }
         }
         {
@@ -336,9 +337,9 @@ pub const Array = extern struct {
         capacity: Int,
 
         /// Creates a 0 initialized array with the correctly set header data.
-        pub fn init(minCapacity: Int, allocator: Allocator) Allocator.Error!*align(ELEMENT_ALIGN) anyopaque {
+        pub fn init(minCapacity: Int, state: *const CubicScriptState) Allocator.Error!*align(ELEMENT_ALIGN) anyopaque {
             const minCapacityUsize: usize = @intCast(minCapacity);
-            const newData = try allocator.alloc(
+            const newData = try state.allocator.alloc(
                 usize,
                 minCapacityUsize + @sizeOf(Header), // allocate space for the header
             );
@@ -369,25 +370,29 @@ test "Array default" {
 }
 
 test "Array add int" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+
     var arr = Array.init(ValueTag.Int);
-    defer arr.deinit(allocator);
+    defer arr.deinit(state);
 
     var pushValue = RawValue{ .int = 5 };
-    try arr.add(&pushValue, ValueTag.Int, allocator);
+    try arr.add(&pushValue, ValueTag.Int, state);
 }
 
 test "Array at int" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+
     var arr = Array.init(ValueTag.Int);
-    defer arr.deinit(allocator);
+    defer arr.deinit(state);
 
     if (arr.at(0)) |_| {
         try expect(false);
     } else |_| {}
 
     var pushValue = RawValue{ .int = 5 };
-    try arr.add(&pushValue, ValueTag.Int, allocator);
+    try arr.add(&pushValue, ValueTag.Int, state);
 
     if (arr.at(0)) |value| {
         try expect(value.int == 5);
@@ -401,16 +406,18 @@ test "Array at int" {
 }
 
 test "Array bool sanity" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+
     var arr = Array.init(ValueTag.Bool);
-    defer arr.deinit(allocator);
+    defer arr.deinit(state);
 
     if (arr.at(0)) |_| {
         try expect(false);
     } else |_| {}
 
     var pushValue = RawValue{ .boolean = root.TRUE };
-    try arr.add(&pushValue, ValueTag.Bool, allocator);
+    try arr.add(&pushValue, ValueTag.Bool, state);
 
     if (arr.at(0)) |value| {
         try expect(value.boolean == root.TRUE);
@@ -424,16 +431,18 @@ test "Array bool sanity" {
 }
 
 test "Array float sanity" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+
     var arr = Array.init(ValueTag.Float);
-    defer arr.deinit(allocator);
+    defer arr.deinit(state);
 
     if (arr.at(0)) |_| {
         try expect(false);
     } else |_| {}
 
     var pushValue = RawValue{ .float = 5 };
-    try arr.add(&pushValue, ValueTag.Float, allocator);
+    try arr.add(&pushValue, ValueTag.Float, state);
 
     if (arr.at(0)) |value| {
         try expect(value.float == 5);
@@ -447,16 +456,18 @@ test "Array float sanity" {
 }
 
 test "Array string sanity" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+
     var arr = Array.init(ValueTag.String);
-    defer arr.deinit(allocator);
+    defer arr.deinit(state);
 
     if (arr.at(0)) |_| {
         try expect(false);
     } else |_| {}
 
-    var pushValue = RawValue{ .string = try root.String.initSlice("hello world!", allocator) };
-    try arr.add(&pushValue, ValueTag.String, allocator);
+    var pushValue = RawValue{ .string = try root.String.initSlice("hello world!", state) };
+    try arr.add(&pushValue, ValueTag.String, state);
 
     if (arr.at(0)) |value| {
         try expect(value.string.eqlSlice("hello world!"));
@@ -470,9 +481,11 @@ test "Array string sanity" {
 }
 
 test "Array nested array sanity" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+
     var arr = Array.init(ValueTag.Array);
-    defer arr.deinit(allocator);
+    defer arr.deinit(state);
 
     if (arr.at(0)) |_| {
         try expect(false);
@@ -481,14 +494,14 @@ test "Array nested array sanity" {
     var pushValue: RawValue = undefined;
     {
         var nestedArr = Array.init(ValueTag.Bool);
-        defer arr.deinit(allocator);
+        defer arr.deinit(state);
 
         var nestedValue = RawValue{ .boolean = root.TRUE };
-        try nestedArr.add(&nestedValue, ValueTag.Bool, allocator);
+        try nestedArr.add(&nestedValue, ValueTag.Bool, state);
 
         pushValue = RawValue{ .array = nestedArr };
     }
-    try arr.add(&pushValue, ValueTag.Array, allocator);
+    try arr.add(&pushValue, ValueTag.Array, state);
 
     if (arr.at(0)) |value| {
         try expect(value.array.len() == 1);
@@ -507,7 +520,7 @@ test "Array nested array sanity" {
 }
 
 const TestCreateArray = struct {
-    fn makeArray(comptime tag: ValueTag, n: usize, a: Allocator) RawValue {
+    fn makeArray(comptime tag: ValueTag, n: usize, state: *const CubicScriptState) RawValue {
         var arr = Array.init(tag);
         switch (tag) {
             .Bool => {
@@ -515,35 +528,35 @@ const TestCreateArray = struct {
                     var pushValue = RawValue{
                         .boolean = if (@mod(i, 2) == 0) root.TRUE else root.FALSE,
                     };
-                    arr.add(&pushValue, tag, a) catch unreachable;
+                    arr.add(&pushValue, tag, state) catch unreachable;
                 }
             },
             .Int => {
                 for (0..n) |i| {
                     var pushValue = RawValue{ .int = @intCast(i) };
-                    arr.add(&pushValue, tag, a) catch unreachable;
+                    arr.add(&pushValue, tag, state) catch unreachable;
                 }
             },
             .Float => {
                 for (0..n) |i| {
                     var pushValue = RawValue{ .float = @floatFromInt(i) };
-                    arr.add(&pushValue, tag, a) catch unreachable;
+                    arr.add(&pushValue, tag, state) catch unreachable;
                 }
             },
             .String => {
                 for (0..n) |i| {
-                    const slice = std.fmt.allocPrint(a, "{}", .{i}) catch unreachable;
-                    defer a.free(slice);
+                    const slice = std.fmt.allocPrint(state.allocator, "{}", .{i}) catch unreachable;
+                    defer state.allocator.free(slice);
                     var pushValue = RawValue{
-                        .string = root.String.initSlice(slice, a) catch unreachable,
+                        .string = root.String.initSlice(slice, state) catch unreachable,
                     };
-                    arr.add(&pushValue, tag, a) catch unreachable;
+                    arr.add(&pushValue, tag, state) catch unreachable;
                 }
             },
             .Array => {
                 for (0..n) |_| {
-                    var pushValue = makeArray(ValueTag.Int, 10, a);
-                    arr.add(&pushValue, tag, a) catch unreachable;
+                    var pushValue = makeArray(ValueTag.Int, 10, state);
+                    arr.add(&pushValue, tag, state) catch unreachable;
                 }
             },
             else => {
@@ -555,27 +568,28 @@ const TestCreateArray = struct {
 };
 
 test "Array equal" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
 
     var arrEmpty1 = RawValue{ .array = Array.init(ValueTag.Int) };
-    defer arrEmpty1.array.deinit(allocator);
+    defer arrEmpty1.array.deinit(state);
     var arrEmpty2 = RawValue{ .array = Array.init(ValueTag.Int) };
-    defer arrEmpty2.array.deinit(allocator);
+    defer arrEmpty2.array.deinit(state);
 
-    var arrContains1 = TestCreateArray.makeArray(ValueTag.Int, 10, allocator);
-    defer arrContains1.array.deinit(allocator);
-    var arrContains2 = TestCreateArray.makeArray(ValueTag.Int, 10, allocator);
-    defer arrContains2.array.deinit(allocator);
+    var arrContains1 = TestCreateArray.makeArray(ValueTag.Int, 10, state);
+    defer arrContains1.array.deinit(state);
+    var arrContains2 = TestCreateArray.makeArray(ValueTag.Int, 10, state);
+    defer arrContains2.array.deinit(state);
 
-    var arrContains3 = TestCreateArray.makeArray(ValueTag.Int, 20, allocator);
-    defer arrContains3.array.deinit(allocator);
-    var arrContains4 = TestCreateArray.makeArray(ValueTag.Int, 20, allocator);
-    defer arrContains4.array.deinit(allocator);
+    var arrContains3 = TestCreateArray.makeArray(ValueTag.Int, 20, state);
+    defer arrContains3.array.deinit(state);
+    var arrContains4 = TestCreateArray.makeArray(ValueTag.Int, 20, state);
+    defer arrContains4.array.deinit(state);
 
-    var arrOtherType1 = TestCreateArray.makeArray(ValueTag.Float, 10, allocator);
-    defer arrOtherType1.array.deinit(allocator);
-    var arrOtherType2 = TestCreateArray.makeArray(ValueTag.Float, 10, allocator);
-    defer arrOtherType2.array.deinit(allocator);
+    var arrOtherType1 = TestCreateArray.makeArray(ValueTag.Float, 10, state);
+    defer arrOtherType1.array.deinit(state);
+    var arrOtherType2 = TestCreateArray.makeArray(ValueTag.Float, 10, state);
+    defer arrOtherType2.array.deinit(state);
 
     try expect(arrEmpty1.array.eql(arrEmpty2.array));
     try expect(arrContains1.array.eql(arrContains2.array));
@@ -589,50 +603,51 @@ test "Array equal" {
 }
 
 test "Array clone" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     {
-        var arr1 = TestCreateArray.makeArray(ValueTag.Bool, 4, allocator);
-        defer arr1.array.deinit(allocator);
+        var arr1 = TestCreateArray.makeArray(ValueTag.Bool, 4, state);
+        defer arr1.array.deinit(state);
 
-        var arr2 = try arr1.array.clone(allocator);
-        defer arr2.deinit(allocator);
+        var arr2 = try arr1.array.clone(state);
+        defer arr2.deinit(state);
 
         try expect(arr1.array.eql(arr2));
     }
     {
-        var arr1 = TestCreateArray.makeArray(ValueTag.Int, 4, allocator);
-        defer arr1.array.deinit(allocator);
+        var arr1 = TestCreateArray.makeArray(ValueTag.Int, 4, state);
+        defer arr1.array.deinit(state);
 
-        var arr2 = try arr1.array.clone(allocator);
-        defer arr2.deinit(allocator);
-
-        try expect(arr1.array.eql(arr2));
-    }
-    {
-        var arr1 = TestCreateArray.makeArray(ValueTag.Float, 4, allocator);
-        defer arr1.array.deinit(allocator);
-
-        var arr2 = try arr1.array.clone(allocator);
-        defer arr2.deinit(allocator);
-
-        try expect(arr1.array.eql(arr2));
-    }
-
-    {
-        var arr1 = TestCreateArray.makeArray(ValueTag.String, 4, allocator);
-        defer arr1.array.deinit(allocator);
-
-        var arr2 = try arr1.array.clone(allocator);
-        defer arr2.deinit(allocator);
+        var arr2 = try arr1.array.clone(state);
+        defer arr2.deinit(state);
 
         try expect(arr1.array.eql(arr2));
     }
     {
-        var arr1 = TestCreateArray.makeArray(ValueTag.Array, 4, allocator);
-        defer arr1.array.deinit(allocator);
+        var arr1 = TestCreateArray.makeArray(ValueTag.Float, 4, state);
+        defer arr1.array.deinit(state);
 
-        var arr2 = try arr1.array.clone(allocator);
-        defer arr2.deinit(allocator);
+        var arr2 = try arr1.array.clone(state);
+        defer arr2.deinit(state);
+
+        try expect(arr1.array.eql(arr2));
+    }
+
+    {
+        var arr1 = TestCreateArray.makeArray(ValueTag.String, 4, state);
+        defer arr1.array.deinit(state);
+
+        var arr2 = try arr1.array.clone(state);
+        defer arr2.deinit(state);
+
+        try expect(arr1.array.eql(arr2));
+    }
+    {
+        var arr1 = TestCreateArray.makeArray(ValueTag.Array, 4, state);
+        defer arr1.array.deinit(state);
+
+        var arr2 = try arr1.array.clone(state);
+        defer arr2.deinit(state);
 
         try expect(arr1.array.eql(arr2));
     }

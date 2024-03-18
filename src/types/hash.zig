@@ -3,6 +3,7 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const ValueTag = root.ValueTag;
 const RawValue = root.RawValue;
+const CubicScriptState = @import("../state/CubicScriptState.zig");
 
 pub const TEST_SEED_VALUE = 0x4857372859619FA;
 
@@ -153,7 +154,8 @@ test "hash float" {
 }
 
 test "hash string" {
-    const allocator = std.testing.allocator;
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
     {
         const value1 = RawValue{ .string = root.String{} };
         const value2 = RawValue{ .string = root.String{} };
@@ -164,10 +166,10 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = try root.String.initSlice("hello world!", allocator) };
-        defer value1.string.deinit(allocator);
-        var value2 = RawValue{ .string = try root.String.initSlice("hello world!", allocator) };
-        defer value2.string.deinit(allocator);
+        var value1 = RawValue{ .string = try root.String.initSlice("hello world!", state) };
+        defer value1.string.deinit(state);
+        var value2 = RawValue{ .string = try root.String.initSlice("hello world!", state) };
+        defer value2.string.deinit(state);
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.String, TEST_SEED_VALUE);
@@ -175,10 +177,10 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
-        defer value1.string.deinit(allocator);
-        var value2 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
-        defer value2.string.deinit(allocator);
+        var value1 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", state) };
+        defer value1.string.deinit(state);
+        var value2 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", state) };
+        defer value2.string.deinit(state);
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.String, TEST_SEED_VALUE);
@@ -186,10 +188,10 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly !", allocator) };
-        defer value1.string.deinit(allocator);
-        var value2 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", allocator) };
-        defer value2.string.deinit(allocator);
+        var value1 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly !", state) };
+        defer value1.string.deinit(state);
+        var value2 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", state) };
+        defer value2.string.deinit(state);
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.String, TEST_SEED_VALUE);
@@ -199,43 +201,45 @@ test "hash string" {
 }
 
 test "hash array" {
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+
     const makeArraysForTest = struct {
-        fn makeArray1(a: std.mem.Allocator) RawValue {
+        fn makeArray1(s: *const CubicScriptState) RawValue {
             var array = root.Array.init(ValueTag.Float);
             var pushValue1 = root.RawValue{ .float = -1.0 };
             var pushValue2 = root.RawValue{ .float = 1005.6 };
 
-            array.add(&pushValue1, ValueTag.Float, a) catch unreachable;
-            array.add(&pushValue2, ValueTag.Float, a) catch unreachable;
+            array.add(&pushValue1, ValueTag.Float, s) catch unreachable;
+            array.add(&pushValue2, ValueTag.Float, s) catch unreachable;
             return RawValue{ .array = array };
         }
 
-        fn makeArray2(a: std.mem.Allocator) RawValue {
+        fn makeArray2(s: *const CubicScriptState) RawValue {
             var array = root.Array.init(ValueTag.Float);
             var pushValue1 = root.RawValue{ .float = -1.0 };
             var pushValue2 = root.RawValue{ .float = 1005.6 };
             var pushValue3 = root.RawValue{ .float = 0 };
 
-            array.add(&pushValue1, ValueTag.Float, a) catch unreachable;
-            array.add(&pushValue2, ValueTag.Float, a) catch unreachable;
-            array.add(&pushValue3, ValueTag.Float, a) catch unreachable;
+            array.add(&pushValue1, ValueTag.Float, s) catch unreachable;
+            array.add(&pushValue2, ValueTag.Float, s) catch unreachable;
+            array.add(&pushValue3, ValueTag.Float, s) catch unreachable;
             return RawValue{ .array = array };
         }
     };
 
-    const allocator = std.testing.allocator;
     var arrEmpty1 = RawValue{ .array = root.Array.init(ValueTag.Float) };
-    defer arrEmpty1.array.deinit(allocator);
+    defer arrEmpty1.array.deinit(state);
     var arrEmpty2 = RawValue{ .array = root.Array.init(ValueTag.Float) };
-    defer arrEmpty1.array.deinit(allocator);
-    var arrContains1 = makeArraysForTest.makeArray1(allocator);
-    defer arrContains1.array.deinit(allocator);
-    var arrContains2 = makeArraysForTest.makeArray1(allocator);
-    defer arrContains2.array.deinit(allocator);
-    var arrContains3 = makeArraysForTest.makeArray2(allocator);
-    defer arrContains3.array.deinit(allocator);
-    var arrContains4 = makeArraysForTest.makeArray2(allocator);
-    defer arrContains4.array.deinit(allocator);
+    defer arrEmpty1.array.deinit(state);
+    var arrContains1 = makeArraysForTest.makeArray1(state);
+    defer arrContains1.array.deinit(state);
+    var arrContains2 = makeArraysForTest.makeArray1(state);
+    defer arrContains2.array.deinit(state);
+    var arrContains3 = makeArraysForTest.makeArray2(state);
+    defer arrContains3.array.deinit(state);
+    var arrContains4 = makeArraysForTest.makeArray2(state);
+    defer arrContains4.array.deinit(state);
 
     {
         const h1 = computeHash(&arrEmpty1, ValueTag.Array, TEST_SEED_VALUE);
