@@ -4,4 +4,6 @@ comptime {
     _ = @import("types/array.zig");
     _ = @import("types/hash.zig");
     _ = @import("types/map.zig");
+    _ = @import("types/vector.zig");
+    _ = @import("types/math.zig");
 }
