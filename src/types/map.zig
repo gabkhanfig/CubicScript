@@ -191,6 +191,7 @@ pub const Map = extern struct {
                     newHashMasksAsBytePtr[newGroup.pairCount] = hashMask;
                     newGroup.pairs[newGroup.pairCount] = pair; // move pair allocation
                     newGroup.pairCount += 1;
+                    i += 1;
                 }
 
                 const oldGroupAllocation = oldGroup.getFullAllocation();
@@ -417,7 +418,7 @@ const Group = struct {
         @memset(memory, 0);
 
         const hashMasks: [*]@Vector(32, u8) = @ptrCast(@alignCast(memory.ptr));
-        const pairs: [*]*Pair = @ptrCast(memory.ptr + GROUP_ALLOC_SIZE);
+        const pairs: [*]*Pair = @ptrCast(@alignCast(&memory.ptr[mallocCapacity]));
 
         var movedIter: usize = 0;
         var i: usize = 0;
