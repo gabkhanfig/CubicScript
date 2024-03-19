@@ -6,4 +6,5 @@ comptime {
     _ = @import("types/map.zig");
     _ = @import("types/vector.zig");
     _ = @import("types/math.zig");
+    _ = @import("types/option.zig");
 }

@@ -3,6 +3,10 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const Allocator = std.mem.Allocator;
 
+comptime {
+    _ = @import("c_export.zig");
+}
+
 pub const CubicScriptState = @import("state/CubicScriptState.zig");
 
 pub const FALSE: Bool = 0;
@@ -25,22 +29,41 @@ pub const Set = @import("types/set.zig").Set;
 
 pub const Vec2i = vector_types.Vec2i;
 
+pub const Vec3i = vector_types.Vec3i;
+
+pub const Vec4i = vector_types.Vec4i;
+
+pub const Vec2f = vector_types.Vec2f;
+
+pub const Vec3f = vector_types.Vec3f;
+
+pub const Vec4f = vector_types.Vec4f;
+
+pub const Option = @import("types/option.zig").Option;
+
+pub const vector_types = @import("types/vector.zig");
+
 pub const ValueTag = enum(c_uint) { // Reasonable default enum size for C
-    Bool = 0,
-    Int = 1,
-    Float = 2,
-    String = 3,
-    Array = 4,
-    Map = 5,
-    Set = 6,
-    Vec2i = 7,
-    Vec3i = 8,
-    Vec4i = 9,
-    Vec2f = 10,
-    Vec3f = 11,
-    Vec4f = 12,
-    Mat4f = 13,
-    Class = 14,
+    Null = 0,
+    Bool = 1,
+    Int = 2,
+    Float = 3,
+    String = 4,
+    Array = 5,
+    Map = 6,
+    Set = 7,
+    Vec2i = 8,
+    Vec3i = 9,
+    Vec4i = 10,
+    Vec2f = 11,
+    Vec3f = 12,
+    Vec4f = 13,
+    Mat4f = 14,
+    ConstRef = 15,
+    MutRef = 16,
+    Option = 17,
+    Error = 18,
+    Class = 19,
 };
 
 /// Untagged union representing all primitive value types and classes.
@@ -52,6 +75,12 @@ pub const RawValue = extern union {
     array: Array,
     map: Map,
     set: Set,
+    vec2i: Vec2i,
+    vec3i: Vec3i,
+    vec4i: Vec4i,
+    vec2f: Vec2f,
+    vec3f: Vec3f,
+    vec4f: Vec4f,
     // TODO other primitive types
 
     /// In some cases, it's more convenient to just deinit here.
@@ -69,6 +98,24 @@ pub const RawValue = extern union {
             },
             .Set => {
                 self.set.deinit(state);
+            },
+            .Vec2i => {
+                self.vec2i.deinit(state);
+            },
+            .Vec3i => {
+                self.vec3i.deinit(state);
+            },
+            .Vec4i => {
+                self.vec4i.deinit(state);
+            },
+            .Vec2f => {
+                self.vec2f.deinit(state);
+            },
+            .Vec3f => {
+                self.vec3f.deinit(state);
+            },
+            .Vec4f => {
+                self.vec4f.deinit(state);
             },
             else => {
                 @panic("Unsupported");
@@ -112,6 +159,42 @@ pub const TaggedValue = extern struct {
     /// Takes ownership of `inMap`.
     pub fn initMap(inMap: Map) TaggedValue {
         return TaggedValue{ .tag = ValueTag.Map, .value = .{ .map = inMap } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inVec`.
+    pub fn initVec2i(inVec: Vec2i) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Vec2i, .value = .{ .vec2i = inVec } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inVec`.
+    pub fn initVec3i(inVec: Vec3i) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Vec3i, .value = .{ .vec3i = inVec } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inVec`.
+    pub fn initVec4i(inVec: Vec4i) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Vec4i, .value = .{ .vec4i = inVec } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inVec`.
+    pub fn initVec2f(inVec: Vec2f) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Vec2f, .value = .{ .vec2f = inVec } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inVec`.
+    pub fn initVec3f(inVec: Vec3f) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Vec3f, .value = .{ .vec3f = inVec } };
+    }
+
+    /// For zig/c compatibility.
+    /// Takes ownership of `inVec`.
+    pub fn initVec4f(inVec: Vec4f) TaggedValue {
+        return TaggedValue{ .tag = ValueTag.Vec4f, .value = .{ .vec4f = inVec } };
     }
 
     pub fn deinit(self: *TaggedValue, state: *const CubicScriptState) void {
