@@ -1088,3 +1088,74 @@ pub fn Vector4FloatImpl() type {
         }
     };
 }
+
+test "Vec2i" {
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+    {
+        var v = Vec2i{};
+        defer v.deinit(state);
+
+        try expect(v.x() == 0);
+        try expect(v.y() == 0);
+
+        const result = v.add(.{ .x = 0, .y = 0 });
+        try expect(result.@"0".x == 0);
+        try expect(result.@"0".y == 0);
+        try expect(result.@"1" == false);
+
+        var vClone = try v.clone(state);
+        defer vClone.deinit(state);
+
+        try expect(vClone.x() == 0);
+        try expect(vClone.y() == 0);
+    }
+    {
+        var v = try Vec2i.init(1, 1, state);
+        defer v.deinit(state);
+
+        try expect(v.x() == 1);
+        try expect(v.y() == 1);
+
+        const result = v.add(.{ .x = -1, .y = 1 });
+        try expect(result.@"0".x == 0);
+        try expect(result.@"0".y == 2);
+        try expect(result.@"1" == false);
+
+        var vClone = try v.clone(state);
+        defer vClone.deinit(state);
+
+        try expect(vClone.x() == 1);
+        try expect(vClone.y() == 1);
+    }
+    {
+        var v = try Vec2i.init(MAX_INT, MIN_INT, state);
+        defer v.deinit(state);
+
+        try expect(v.x() == MAX_INT);
+        try expect(v.y() == MIN_INT);
+
+        const result = v.add(.{ .x = 1, .y = 1 });
+        try expect(result.@"0".x == MIN_INT);
+        try expect(result.@"0".y == MIN_INT + 1);
+        try expect(result.@"1" == true);
+
+        var vClone = try v.clone(state);
+        defer vClone.deinit(state);
+
+        try expect(vClone.x() == MAX_INT);
+        try expect(vClone.y() == MIN_INT);
+    }
+    {
+        var v = try Vec2i.init(MAX_INT, MIN_INT, state);
+        defer v.deinit(state);
+
+        try expect(v.x() == MAX_INT);
+        try expect(v.y() == MIN_INT);
+
+        const result = v.add(.{ .x = -1, .y = -1 });
+        try expect(result.@"0".x == MAX_INT - 1);
+        try expect(result.@"0".y == MAX_INT);
+        try expect(result.@"1" == true);
+    }
+}
