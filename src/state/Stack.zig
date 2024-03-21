@@ -46,7 +46,7 @@ pub fn asInnerMut(self: *Self) *Inner {
 
 const Inner = struct {
     state: *const CubicScriptState,
-    stack: [STACK_SPACES]RawValue align(64) = undefined,
+    stack: [STACK_SPACES]RawValue align(64),
 };
 
 test "init deinit" {
