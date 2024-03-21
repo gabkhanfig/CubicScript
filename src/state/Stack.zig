@@ -24,15 +24,15 @@ inner: *align(@alignOf(Inner)) anyopaque,
 
 pub fn init(state: *const CubicScriptState) Allocator.Error!Self {
     const inner = try state.allocator.create(Inner);
-    inner.* = Inner{
-        .state = state,
-        .stack = std.mem.zeroes([STACK_SPACES]RawValue),
-    };
+    // Cannot do inner.* = Inner{...} because of stack overflow. This is the next best option
+    inner.state = state;
+    @memset(&inner.stack, std.mem.zeroes(RawValue));
     return Self{ .inner = @ptrCast(inner) };
 }
 
 pub fn deinit(self: Self) void {
-    const inner = self.asInnerMut();
+    var mutSelf = self;
+    const inner = mutSelf.asInnerMut();
     inner.state.allocator.destroy(inner);
 }
 
@@ -46,5 +46,13 @@ pub fn asInnerMut(self: *Self) *Inner {
 
 const Inner = struct {
     state: *const CubicScriptState,
-    stack: [STACK_SPACES]RawValue align(64),
+    stack: [STACK_SPACES]RawValue align(64) = undefined,
 };
+
+test "init deinit" {
+    var state = try CubicScriptState.init(std.testing.allocator);
+    defer state.deinit();
+
+    const stack = try Self.init(state);
+    defer stack.deinit();
+}

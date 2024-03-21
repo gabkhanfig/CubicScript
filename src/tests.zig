@@ -7,4 +7,6 @@ comptime {
     _ = @import("types/vector.zig");
     _ = @import("types/math.zig");
     _ = @import("types/option.zig");
+    _ = @import("state/CubicScriptState.zig");
+    _ = @import("state/Stack.zig");
 }
