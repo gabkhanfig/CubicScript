@@ -44,7 +44,7 @@ pub const Option = @import("types/option.zig").Option;
 pub const vector_types = @import("types/vector.zig");
 
 pub const ValueTag = enum(c_uint) { // Reasonable default enum size for C
-    Null = 0,
+    None = 0,
     Bool = 1,
     Int = 2,
     Float = 3,
