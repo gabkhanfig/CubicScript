@@ -53,6 +53,10 @@ pub const OpCode = enum(u8) {
     /// Return from the calling function, moving the instruction pointer back to the calling function,
     /// or terminating the script if it was called by an owning process.
     Return,
+    /// Call a function at `src`, moving the stack pointer, and setting the return address.
+    Call,
+    /// Call a function from the host process at `src`, moving the stack pointer and setting the return address.
+    CallExtern,
 
     // == Int Instructions (Some Bool compatible) ==
 
