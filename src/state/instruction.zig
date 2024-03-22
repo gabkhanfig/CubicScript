@@ -50,6 +50,9 @@ pub const OpCode = enum(u8) {
     JumpIfZero,
     /// Jump to `dst` if `src` is NOT 0
     JumpIfNotZero,
+    /// Return from the calling function, moving the instruction pointer back to the calling function,
+    /// or terminating the script if it was called by an owning process.
+    Return,
 
     // == Int Instructions (Some Bool compatible) ==
 
