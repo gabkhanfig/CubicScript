@@ -19,39 +19,23 @@ pub const STACK_SIZE: comptime_int = @sizeOf(RawValue) * STACK_SPACES;
 
 const Self = @This();
 
-/// Use *anyopaque to make simple compatibility with C / other languages.
-/// The address this points to will never change during it's lifetime.
-inner: *align(@alignOf(Inner)) anyopaque,
+state: *const CubicScriptState,
+stack: [STACK_SPACES]RawValue align(64),
 
-pub fn init(state: *const CubicScriptState) Allocator.Error!Self {
-    const inner = try state.allocator.create(Inner);
+pub fn init(state: *const CubicScriptState) Allocator.Error!*Self {
+    const self = try state.allocator.create(Self);
     // Cannot do inner.* = Inner{...} because of stack overflow. This is the next best option
-    inner.state = state;
-    @memset(&inner.stack, std.mem.zeroes(RawValue));
-    return Self{ .inner = @ptrCast(inner) };
+    self.state = state;
+    @memset(&self.stack, std.mem.zeroes(RawValue));
+    return self;
 }
 
-pub fn deinit(self: Self) void {
-    var mutSelf = self;
-    const inner = mutSelf.asInnerMut();
-    inner.state.allocator.destroy(inner);
+pub fn deinit(self: *Self) void {
+    self.state.allocator.destroy(self);
 }
-
-pub fn asInner(self: Self) *const Inner {
-    return @ptrCast(self.inner);
-}
-
-pub fn asInnerMut(self: *Self) *Inner {
-    return @ptrCast(self.inner);
-}
-
-const Inner = struct {
-    state: *const CubicScriptState,
-    stack: [STACK_SPACES]RawValue align(64),
-};
 
 test "init deinit" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    const state = try CubicScriptState.init(std.testing.allocator);
     defer state.deinit();
 
     const stack = try Self.init(state);
