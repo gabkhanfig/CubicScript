@@ -11,7 +11,8 @@ const RawValue = root.RawValue;
 
 // https://the-ravi-programming-language.readthedocs.io/en/latest/lua_bytecode_reference.html
 
-pub const MAX_FUNCTION_LOCAL_VARIABLES = 256;
+/// Up to 256 different `RawValue`'s can be stored per stack frame.
+pub const MAX_STACK_FRAME_SIZE = 256;
 const STACK_SPACES: comptime_int = 1024 * 1024 * 2;
 /// About 16 Megabytes
 pub const STACK_SIZE: comptime_int = @sizeOf(RawValue) * STACK_SPACES;

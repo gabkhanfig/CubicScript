@@ -80,11 +80,11 @@ pub const OpCode = enum(u8) {
     /// Inverts the bits of integer `src`, storing the result in `dst`.
     IntNot,
     /// Bitwise AND between integers `src1 & src2`, storing the result in `dst`.
-    IntAnd,
+    And,
     /// Bitwise OR between integers `src1 | src2`, storing the result in `dst`.
-    IntOr,
+    Or,
     /// Bitwise XOR between integers `src1 ^ src2`, storing the result in `dst`.
-    IntXor,
+    Xor,
     /// Bit left-shift of `src1 << src2`, storing the result in `dst`. `src2` may not be negative,
     /// and may not be greater than 63. If either error conditions are met, an error will have to be handled
     BitShiftLeft,
