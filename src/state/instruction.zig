@@ -9,20 +9,74 @@ pub const Bytecode = extern struct {
 
     value: u32,
 
-    pub fn opcode(self: Self) OpCode {
-        return @enumFromInt(self & 0xFF);
+    pub fn encodeABC(opcode: OpCode, a: u8, b: u8, c: u8) Self {
+        const opcodeNum = @as(u32, @intFromEnum(opcode));
+        const aShifted = @shlExact(@as(u32, @intCast(a)), 8);
+        const bShifted = @shlExact(@as(u32, @intCast(b)), 16);
+        const cShifted = @shlExact(@as(u32, @intCast(c)), 24);
+        return Self{ .value = opcodeNum | aShifted | bShifted | cShifted };
     }
+
+    pub fn encodeAB(opcode: OpCode, a: u8, b: u8) Self {
+        const opcodeNum = @as(u32, @intFromEnum(opcode));
+        const aShifted = @shlExact(@as(u32, @intCast(a)), 8);
+        const bShifted = @shlExact(@as(u32, @intCast(b)), 16);
+        return Self{ .value = opcodeNum | aShifted | bShifted };
+    }
+
+    pub fn encodeA(opcode: OpCode, a: u8) Self {
+        const opcodeNum = @as(u32, @intFromEnum(opcode));
+        const aShifted = @shlExact(@as(u32, @intCast(a)), 8);
+        return Self{ .value = opcodeNum | aShifted };
+    }
+
+    pub fn decodeABC(self: Self) OperandsABC {
+        const a: u8 = @intCast(@shrExact(self.value & 0xFF00, 8));
+        const b: u8 = @intCast(@shrExact(self.value & 0xFF0000, 16));
+        const c: u8 = @intCast(@shrExact(self.value & 0xFF000000, 24));
+        return .{ .a = a, .b = b, .c = c };
+    }
+
+    pub fn decodeAB(self: Self) OperandsAB {
+        const a: u8 = @intCast(@shrExact(self.value & 0xFF00, 8));
+        const b: u8 = @intCast(@shrExact(self.value & 0xFF0000, 16));
+        return .{ .a = a, .b = b };
+    }
+
+    pub fn decodeA(self: Self) u8 {
+        const a: u8 = @intCast(@shrExact(self.value & 0xFF00, 8));
+        return a;
+    }
+
+    /// For multiple byte-code wide instructions, getting the opcode is undefined behaviour.
+    pub fn getOpCode(self: Self) OpCode {
+        return @enumFromInt(self.value & 0xFF);
+    }
+
+    const OperandsABC = struct {
+        a: u8,
+        b: u8,
+        c: u8,
+    };
+
+    const OperandsAB = struct {
+        a: u8,
+        b: u8,
+    };
 };
 
 // https://the-ravi-programming-language.readthedocs.io/en/latest/lua_bytecode_reference.html
 
 /// Instructions are variable width, but generally 4 bytes in size.
 /// All 4 byte bytecodes are in one of 3 patterns, where Op is the 1 byte instruction
-/// > Op A B C A = 1 byte operand, B = 1 byte operand, C = 1 byte operand
+/// > Op A B C
 /// >
-/// > Op A B A   = 1 byte operand, B = 2 byte operand
+/// > Op A B
 /// >
-/// > Op A       = 3 byte operand
+/// > Op A
+///
+/// All Bytecodes follow the format I, dst, src1, src2, where DST is always A, src1 is always B, and src2 is always C.
+/// If there is only one `src`, and there is a `dst`, `src` occupies B.
 pub const OpCode = enum(u8) {
     // == GENERAL INSTRUCTIONS ==
 
@@ -30,10 +84,12 @@ pub const OpCode = enum(u8) {
     Nop,
     /// End of script, return control to calling program
     Exit,
-    /// Copy value between registers
+    /// Copy value between registers src and dst.
     Move,
+    ///// Copy value `src` to `dst`, and set `src` to 0.
+    //Take,
     /// Copy the value at the address held at src into dst
-    Load,
+    Load, // TODO is this actually necessary. Maybe it would be better to use class indexing?
     /// Copy the value at the address held at `src + offset` into `dst`. `offset` is a sign extended immediate.
     LoadOffset,
     /// Set the register `dst` to zero
@@ -64,13 +120,13 @@ pub const OpCode = enum(u8) {
     IntIsEqual,
     /// WORKS WITH BOOLS. Int/Bool inequality comparison between `sr1` and `src2`. Stores the result on `dst`.
     IntIsNotEqual,
-    /// WORKS WITH BOOOS. Int/Bool less than comparison. Stores a bool result in `dst` register being the condition `src1` is less than `src2`.
+    /// WORKS WITH BOOLS. Int/Bool less than comparison. Stores a bool result in `dst` register being the condition `src1` is less than `src2`.
     IntIsLessThan,
-    /// WORKS WITH BOOOS. Int/Bool greater than comparison. Stores a bool result in `dst` register being the condition `src1` is greater than `src2`.
+    /// WORKS WITH BOOLS. Int/Bool greater than comparison. Stores a bool result in `dst` register being the condition `src1` is greater than `src2`.
     IntIsGreaterThan,
-    /// WORKS WITH BOOOS. Int/Bool less than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is less than or equal to `src2`.
+    /// WORKS WITH BOOLS. Int/Bool less than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is less than or equal to `src2`.
     IntIsLessOrEqual,
-    /// WORKS WITH BOOOS. Int/Bool greater than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is greater than or equal to `src2`.
+    /// WORKS WITH BOOLS. Int/Bool greater than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is greater than or equal to `src2`.
     IntIsGreaterOrEqual,
     /// Add integers `src1` and `src2`, storing the result in `dst`.
     IntAdd,
