@@ -68,6 +68,7 @@ pub const ValueTag = enum(c_uint) { // Reasonable default enum size for C
 
 /// Untagged union representing all primitive value types and classes.
 pub const RawValue = extern union {
+    actualValue: usize,
     boolean: Bool,
     int: Int,
     float: Float,
