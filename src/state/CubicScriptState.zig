@@ -29,7 +29,7 @@ pub fn deinit(self: *Self) void {
         return;
     }
 
-    @panic("not yet implemented");
+    @panic("deinit using custom external allocator not yet implemented");
 }
 
 pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) void {
