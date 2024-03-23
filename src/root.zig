@@ -8,6 +8,8 @@ comptime {
 }
 
 pub const CubicScriptState = @import("state/CubicScriptState.zig");
+pub const Stack = @import("state/Stack.zig");
+pub const instruction = @import("state/instruction.zig");
 
 pub const FALSE: Bool = 0;
 pub const TRUE: Bool = 1;
