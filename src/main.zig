@@ -6,8 +6,8 @@ const Map = cubic_script.Map;
 const TaggedValue = cubic_script.TaggedValue;
 const CubicScriptState = cubic_script.CubicScriptState;
 const Stack = cubic_script.Stack;
-const OpCode = cubic_script.instruction.OpCode;
-const Bytecode = cubic_script.instruction.Bytecode;
+const Bytecode = cubic_script.Bytecode;
+const OpCode = Bytecode.OpCode;
 
 pub fn main() !void {
     const state = try CubicScriptState.init(std.heap.c_allocator);
@@ -15,7 +15,7 @@ pub fn main() !void {
 
     const instructions = [_]Bytecode{
         Bytecode.encode(OpCode.Nop, void, {}),
-        Bytecode.encode(OpCode.LoadImmediate, OpCode.OperandsOnlyDst, OpCode.OperandsOnlyDst{ .dst = 0 }),
+        Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
         Bytecode{ .value = 0xFFFFFFFF },
         Bytecode{ .value = 0xFFFFFFFF },
     };
@@ -25,7 +25,7 @@ pub fn main() !void {
     std.debug.print("{}\n", .{stack.stack[0].actualValue});
 
     state.run(stack, &.{
-        Bytecode.encode(OpCode.LoadZero, OpCode.OperandsOnlyDst, OpCode.OperandsOnlyDst{ .dst = 0 }),
+        Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
     });
 
     std.debug.print("{}\n", .{stack.stack[0].actualValue});

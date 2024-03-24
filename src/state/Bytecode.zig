@@ -2,44 +2,40 @@ const std = @import("std");
 const assert = std.debug.assert;
 const expect = std.testing.expect;
 
-/// The overwhelming majority of instructions are 4 bytes, but there are a few multibyte instructions.
-/// Therefore simply iterating through is not valid.
-pub const Bytecode = extern struct {
-    const Self = @This();
+const Self = @This();
 
-    value: u32,
+value: u32,
 
-    pub fn encode(opcode: OpCode, comptime OperandsT: type, operands: OperandsT) Self {
-        if (OperandsT == void) {
-            return Self{ .value = @as(u32, @intFromEnum(opcode)) };
-        } else {
-            if (@bitSizeOf(OperandsT) > 24) {
-                @compileError("Operands type must be a packed struct with a bit size <= 24");
-            }
-
-            const operandsAsNum: IntegerFromBitWidth(@bitSizeOf(OperandsT)) = @bitCast(operands);
-            const operandsAsU32: u32 = @intCast(operandsAsNum);
-            return Self{ .value = @as(u32, @intFromEnum(opcode)) | @shlExact(operandsAsU32, 8) };
+pub fn encode(opcode: OpCode, comptime OperandsT: type, operands: OperandsT) Self {
+    if (OperandsT == void) {
+        return Self{ .value = @as(u32, @intFromEnum(opcode)) };
+    } else {
+        if (@bitSizeOf(OperandsT) > 24) {
+            @compileError("Operands type must be a packed struct with a bit size <= 24");
         }
-    }
 
-    pub fn decode(self: *const Self, comptime OperandsT: type) OperandsT {
-        if (OperandsT == void) {
-            return;
-        } else {
-            if (@bitSizeOf(OperandsT) > 24) {
-                @compileError("Operands type must be a packed struct with a bit size <= 24");
-            }
-            const operands = @shrExact(self.value & 0xFFFFFF00, 8);
-            return @bitCast(@as(IntegerFromBitWidth(@bitSizeOf(OperandsT)), @intCast(operands)));
+        const operandsAsNum: IntegerFromBitWidth(@bitSizeOf(OperandsT)) = @bitCast(operands);
+        const operandsAsU32: u32 = @intCast(operandsAsNum);
+        return Self{ .value = @as(u32, @intFromEnum(opcode)) | @shlExact(operandsAsU32, 8) };
+    }
+}
+
+pub fn decode(self: *const Self, comptime OperandsT: type) OperandsT {
+    if (OperandsT == void) {
+        return;
+    } else {
+        if (@bitSizeOf(OperandsT) > 24) {
+            @compileError("Operands type must be a packed struct with a bit size <= 24");
         }
+        const operands = @shrExact(self.value & 0xFFFFFF00, 8);
+        return @bitCast(@as(IntegerFromBitWidth(@bitSizeOf(OperandsT)), @intCast(operands)));
     }
+}
 
-    /// For multiple byte-code wide instructions, getting the opcode is undefined behaviour.
-    pub fn getOpCode(self: Self) OpCode {
-        return @enumFromInt(self.value & 0xFF);
-    }
-};
+/// For multiple byte-code wide instructions, getting the opcode is undefined behaviour.
+pub fn getOpCode(self: Self) OpCode {
+    return @enumFromInt(self.value & 0xFF);
+}
 
 // https://the-ravi-programming-language.readthedocs.io/en/latest/lua_bytecode_reference.html
 
@@ -144,10 +140,10 @@ pub const OpCode = enum(u8) {
     BoolNot,
     /// Convert bool `src` into a new string, storing the result in `dst`.
     BoolToString,
-
-    pub const OperandsMove = packed struct { dst: u9, src: u8 };
-    pub const OperandsOnlyDst = packed struct { dst: u8 };
 };
+
+pub const OperandsMove = packed struct { dst: u9, src: u8 };
+pub const OperandsOnlyDst = packed struct { dst: u8 };
 
 fn IntegerFromBitWidth(comptime width: comptime_int) type {
     switch (width) {
