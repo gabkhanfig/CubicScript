@@ -9,60 +9,36 @@ pub const Bytecode = extern struct {
 
     value: u32,
 
-    pub fn encodeABC(opcode: OpCode, a: u8, b: u8, c: u8) Self {
-        const opcodeNum = @as(u32, @intFromEnum(opcode));
-        const aShifted = @shlExact(@as(u32, @intCast(a)), 8);
-        const bShifted = @shlExact(@as(u32, @intCast(b)), 16);
-        const cShifted = @shlExact(@as(u32, @intCast(c)), 24);
-        return Self{ .value = opcodeNum | aShifted | bShifted | cShifted };
+    pub fn encode(opcode: OpCode, comptime OperandsT: type, operands: OperandsT) Self {
+        if (OperandsT == void) {
+            return Self{ .value = @as(u32, @intFromEnum(opcode)) };
+        } else {
+            if (@bitSizeOf(OperandsT) > 24) {
+                @compileError("Operands type must be a packed struct with a bit size <= 24");
+            }
+
+            const operandsAsNum: IntegerFromBitWidth(@bitSizeOf(OperandsT)) = @bitCast(operands);
+            const operandsAsU32: u32 = @intCast(operandsAsNum);
+            return Self{ .value = @as(u32, @intFromEnum(opcode)) | @shlExact(operandsAsU32, 8) };
+        }
     }
 
-    pub fn encodeAB(opcode: OpCode, a: u8, b: u8) Self {
-        const opcodeNum = @as(u32, @intFromEnum(opcode));
-        const aShifted = @shlExact(@as(u32, @intCast(a)), 8);
-        const bShifted = @shlExact(@as(u32, @intCast(b)), 16);
-        return Self{ .value = opcodeNum | aShifted | bShifted };
-    }
-
-    pub fn encodeA(opcode: OpCode, a: u8) Self {
-        const opcodeNum = @as(u32, @intFromEnum(opcode));
-        const aShifted = @shlExact(@as(u32, @intCast(a)), 8);
-        return Self{ .value = opcodeNum | aShifted };
-    }
-
-    pub fn decodeABC(self: Self) OperandsABC {
-        const a: u8 = @intCast(@shrExact(self.value & 0xFF00, 8));
-        const b: u8 = @intCast(@shrExact(self.value & 0xFF0000, 16));
-        const c: u8 = @intCast(@shrExact(self.value & 0xFF000000, 24));
-        return .{ .a = a, .b = b, .c = c };
-    }
-
-    pub fn decodeAB(self: Self) OperandsAB {
-        const a: u8 = @intCast(@shrExact(self.value & 0xFF00, 8));
-        const b: u8 = @intCast(@shrExact(self.value & 0xFF0000, 16));
-        return .{ .a = a, .b = b };
-    }
-
-    pub fn decodeA(self: Self) u8 {
-        const a: u8 = @intCast(@shrExact(self.value & 0xFF00, 8));
-        return a;
+    pub fn decode(self: *const Self, comptime OperandsT: type) OperandsT {
+        if (OperandsT == void) {
+            return;
+        } else {
+            if (@bitSizeOf(OperandsT) > 24) {
+                @compileError("Operands type must be a packed struct with a bit size <= 24");
+            }
+            const operands = @shrExact(self.value & 0xFFFFFF00, 8);
+            return @bitCast(@as(IntegerFromBitWidth(@bitSizeOf(OperandsT)), @intCast(operands)));
+        }
     }
 
     /// For multiple byte-code wide instructions, getting the opcode is undefined behaviour.
     pub fn getOpCode(self: Self) OpCode {
         return @enumFromInt(self.value & 0xFF);
     }
-
-    const OperandsABC = struct {
-        a: u8,
-        b: u8,
-        c: u8,
-    };
-
-    const OperandsAB = struct {
-        a: u8,
-        b: u8,
-    };
 };
 
 // https://the-ravi-programming-language.readthedocs.io/en/latest/lua_bytecode_reference.html
@@ -86,8 +62,7 @@ pub const OpCode = enum(u8) {
     Exit,
     /// Copy value between registers src and dst.
     Move,
-    ///// Copy value `src` to `dst`, and set `src` to 0.
-    //Take,
+
     /// Copy the value at the address held at src into dst
     Load, // TODO is this actually necessary. Maybe it would be better to use class indexing?
     /// Copy the value at the address held at `src + offset` into `dst`. `offset` is a sign extended immediate.
@@ -169,4 +144,41 @@ pub const OpCode = enum(u8) {
     BoolNot,
     /// Convert bool `src` into a new string, storing the result in `dst`.
     BoolToString,
+
+    pub const OperandsMove = packed struct { dst: u9, src: u8 };
+    pub const OperandsOnlyDst = packed struct { dst: u8 };
 };
+
+fn IntegerFromBitWidth(comptime width: comptime_int) type {
+    switch (width) {
+        1 => return u1,
+        2 => return u2,
+        3 => return u3,
+        4 => return u4,
+        5 => return u5,
+        6 => return u6,
+        7 => return u7,
+        8 => return u8,
+        9 => return u9,
+        10 => return u10,
+        11 => return u11,
+        12 => return u12,
+        13 => return u13,
+        14 => return u14,
+        15 => return u15,
+        16 => return u16,
+        17 => return u17,
+        18 => return u18,
+        19 => return u19,
+        20 => return u20,
+        21 => return u21,
+        22 => return u22,
+        23 => return u23,
+        24 => return u24,
+        25 => return u25,
+        26 => return u26,
+        else => {
+            @compileError("Incompatible bit width type for bytecode operands");
+        },
+    }
+}

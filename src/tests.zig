@@ -9,4 +9,5 @@ comptime {
     _ = @import("types/option.zig");
     _ = @import("state/CubicScriptState.zig");
     _ = @import("state/Stack.zig");
+    _ = @import("state/instruction.zig");
 }

@@ -14,8 +14,8 @@ pub fn main() !void {
     const stack = try Stack.init(state);
 
     const instructions = [_]Bytecode{
-        Bytecode{ .value = @intFromEnum(OpCode.Nop) },
-        Bytecode.encodeA(OpCode.LoadImmediate, 0),
+        Bytecode.encode(OpCode.Nop, void, {}),
+        Bytecode.encode(OpCode.LoadImmediate, OpCode.OperandsOnlyDst, OpCode.OperandsOnlyDst{ .dst = 0 }),
         Bytecode{ .value = 0xFFFFFFFF },
         Bytecode{ .value = 0xFFFFFFFF },
     };
@@ -24,7 +24,9 @@ pub fn main() !void {
 
     std.debug.print("{}\n", .{stack.stack[0].actualValue});
 
-    state.run(stack, &.{Bytecode.encodeA(OpCode.LoadZero, 0)});
+    state.run(stack, &.{
+        Bytecode.encode(OpCode.LoadZero, OpCode.OperandsOnlyDst, OpCode.OperandsOnlyDst{ .dst = 0 }),
+    });
 
     std.debug.print("{}\n", .{stack.stack[0].actualValue});
 }
