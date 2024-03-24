@@ -38,6 +38,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
     // This is done to use positive offsets to avoid any obscure exploits or issues from using
     // negative offsets and inadverently mutating the stack frame of the calling script function.
     const stackPointer: usize = 0; // NOTE will be var instead of const when functions come into play
+    const currentStackFrameSize: usize = 256;
 
     while (instructionPointer < instructions.len) {
         const bytecode = instructions[instructionPointer];
@@ -51,16 +52,21 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
             },
             .Move => {
                 const operands = bytecode.decode(Bytecode.OperandsMove);
-                //const operands = instruction.decodeAB();
-                const dstRegisterPos = stackPointer + @as(usize, @intCast(operands.dst));
+                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
                 const srcRegisterPos = stackPointer + @as(usize, @intCast(operands.src));
-                std.debug.print("Move: copying value at src[{}] to dst[{}]\n", .{ operands.src, operands.dst });
+
+                assert(@as(usize, operands.src) < currentStackFrameSize); // Dont bother checking the dst, because that can extend past the stack frame.
                 assert(dstRegisterPos != srcRegisterPos); // Cannot be the same location
+
+                std.debug.print("Move: copying value at src[{}] to dst[{}]\n", .{ operands.src, operands.dst });
                 stack.stack[dstRegisterPos] = stack.stack[srcRegisterPos];
             },
             .LoadZero => {
                 const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
                 const dstRegisterPos = stackPointer + @as(usize, @intCast(operand.dst));
+
+                assert(@as(usize, operand.dst) < currentStackFrameSize); // Dont bother checking the dst, because that can extend past the stack frame.
+
                 std.debug.print("LoadZero: setting dst[{}] to 0\n", .{operand.dst});
                 stack.stack[dstRegisterPos] = std.mem.zeroes(RawValue);
             },
@@ -68,6 +74,9 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 // NOTE the two bytecodes after `LoadImmediate` are the 64 bit immediate values, thus the instruction
                 // pointer will need to be further incremented.
                 const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
+
+                assert(@as(usize, operand.dst) < currentStackFrameSize); // Dont bother checking the dst, because that can extend past the stack frame.
+
                 const dstRegisterPos = stackPointer + @as(usize, @intCast(operand.dst));
                 const immediate: usize =
                     @as(usize, @intCast(instructions[instructionPointer + 1].value)) |
