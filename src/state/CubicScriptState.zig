@@ -211,6 +211,20 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
     }
 }
 
+test "nop" {
+    const state = try Self.init(std.testing.allocator);
+    defer state.deinit();
+
+    const stack = try Stack.init(state);
+    defer stack.deinit();
+
+    const instructions = [_]Bytecode{
+        Bytecode.encode(OpCode.Nop, void, {}),
+    };
+
+    state.run(stack, &instructions);
+}
+
 test "int comparisons" {
     const IntComparisonTester = struct {
         fn intCompare(state: *const Self, stack: *Stack, opcode: OpCode, src1Value: root.Int, src2Value: root.Int, shouldBeTrue: bool) !void {
