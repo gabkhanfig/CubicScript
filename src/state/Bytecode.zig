@@ -140,6 +140,7 @@ pub const OpCode = enum(u8) {
 /// next stack frame for function calls.
 pub const OperandsMove = packed struct { dst: u9, src: u8 };
 pub const OperandsOnlyDst = packed struct { dst: u8 };
+pub const OperandsDstTwoSrc = packed struct { dst: u8, src1: u8, src2: u8 };
 
 fn IntegerFromBitWidth(comptime width: comptime_int) type {
     switch (width) {

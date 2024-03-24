@@ -7,6 +7,8 @@ const RawValue = root.RawValue;
 const Stack = @import("Stack.zig");
 const Bytecode = @import("Bytecode.zig");
 const OpCode = Bytecode.OpCode;
+const Bool = root.Bool;
+const math = @import("../types/math.zig");
 
 const Self = @This();
 
@@ -65,7 +67,8 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
                 const dstRegisterPos = stackPointer + @as(usize, @intCast(operand.dst));
 
-                assert(@as(usize, operand.dst) < currentStackFrameSize); // Dont bother checking the dst, because that can extend past the stack frame.
+                // Dont bother checking the dst, because that can extend past the stack frame.
+                assert(@as(usize, operand.dst) < currentStackFrameSize);
 
                 std.debug.print("LoadZero: setting dst[{}] to 0\n", .{operand.dst});
                 stack.stack[dstRegisterPos] = std.mem.zeroes(RawValue);
@@ -85,6 +88,121 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 stack.stack[dstRegisterPos].actualValue = immediate;
                 instructionPointer += 2;
             },
+            .IntIsEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+                assert(@as(usize, operands.dst) < currentStackFrameSize);
+                assert(@as(usize, operands.src1) < currentStackFrameSize);
+                assert(@as(usize, operands.src2) < currentStackFrameSize);
+
+                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
+                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+
+                // TODO decide if registers should be allowed to overlap. Probably not
+                assert(dstRegisterPos != src1RegisterPos);
+                assert(dstRegisterPos != src2RegisterPos);
+                assert(src1RegisterPos != src2RegisterPos);
+
+                // This also works for bools because of the bit representation of signed and unsigned ints.
+                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int == stack.stack[src2RegisterPos].int);
+            },
+            .IntIsNotEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+                assert(@as(usize, operands.dst) < currentStackFrameSize);
+                assert(@as(usize, operands.src1) < currentStackFrameSize);
+                assert(@as(usize, operands.src2) < currentStackFrameSize);
+
+                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
+                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+
+                // TODO decide if registers should be allowed to overlap. Probably not
+                assert(dstRegisterPos != src1RegisterPos);
+                assert(dstRegisterPos != src2RegisterPos);
+                assert(src1RegisterPos != src2RegisterPos);
+
+                // This also works for bools because of the bit representation of signed and unsigned ints.
+                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int != stack.stack[src2RegisterPos].int);
+            },
+            .IntIsLessThan => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+                assert(@as(usize, operands.dst) < currentStackFrameSize);
+                assert(@as(usize, operands.src1) < currentStackFrameSize);
+                assert(@as(usize, operands.src2) < currentStackFrameSize);
+
+                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
+                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+
+                // TODO decide if registers should be allowed to overlap. Probably not
+                assert(dstRegisterPos != src1RegisterPos);
+                assert(dstRegisterPos != src2RegisterPos);
+                assert(src1RegisterPos != src2RegisterPos);
+
+                // This also works for bools because of the bit representation of signed and unsigned ints.
+                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int < stack.stack[src2RegisterPos].int);
+            },
+            .IntIsGreaterThan => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+                assert(@as(usize, operands.dst) < currentStackFrameSize);
+                assert(@as(usize, operands.src1) < currentStackFrameSize);
+                assert(@as(usize, operands.src2) < currentStackFrameSize);
+
+                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
+                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+
+                // TODO decide if registers should be allowed to overlap. Probably not
+                assert(dstRegisterPos != src1RegisterPos);
+                assert(dstRegisterPos != src2RegisterPos);
+                assert(src1RegisterPos != src2RegisterPos);
+
+                // This also works for bools because of the bit representation of signed and unsigned ints.
+                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int > stack.stack[src2RegisterPos].int);
+            },
+            .IntIsLessOrEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+                assert(@as(usize, operands.dst) < currentStackFrameSize);
+                assert(@as(usize, operands.src1) < currentStackFrameSize);
+                assert(@as(usize, operands.src2) < currentStackFrameSize);
+
+                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
+                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+
+                // TODO decide if registers should be allowed to overlap. Probably not
+                assert(dstRegisterPos != src1RegisterPos);
+                assert(dstRegisterPos != src2RegisterPos);
+                assert(src1RegisterPos != src2RegisterPos);
+
+                // This also works for bools because of the bit representation of signed and unsigned ints.
+                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int <= stack.stack[src2RegisterPos].int);
+            },
+            .IntIsGreaterOrEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+                assert(@as(usize, operands.dst) < currentStackFrameSize);
+                assert(@as(usize, operands.src1) < currentStackFrameSize);
+                assert(@as(usize, operands.src2) < currentStackFrameSize);
+
+                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
+                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+
+                // TODO decide if registers should be allowed to overlap. Probably not
+                assert(dstRegisterPos != src1RegisterPos);
+                assert(dstRegisterPos != src2RegisterPos);
+                assert(src1RegisterPos != src2RegisterPos);
+
+                // This also works for bools because of the bit representation of signed and unsigned ints.
+                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int >= stack.stack[src2RegisterPos].int);
+            },
+
             else => {
                 @panic("not implemented");
             },
@@ -92,3 +210,22 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
         instructionPointer += 1;
     }
 }
+
+test "int comparisons" {
+    const IntComparisonTester = struct {
+        fn intCompare(state: *const Self, stack: *Stack, opcode: OpCode, src1Value: root.Int, src2Value: root.Int, shouldBeTrue: bool) !void {
+            const LOW_MASK = 0xFFFFFFFF;
+            const HIGH_MASK: usize = @shlExact(0xFFFFFFFF, 32);
+            const src1: usize = @bitCast(src1Value);
+            const src2: usize = @bitCast(src2Value);
+
+            const instructions = [_]Bytecode{
+                Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+                Bytecode{ .value = @intCast(src1 & LOW_MASK) },
+                Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
+                Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+                Bytecode{ .value = @intCast(src2 & LOW_MASK) },
+                Bytecode{ .value = @intCast(@shrExact(src2 & HIGH_MASK, 32)) },
+                Bytecode.encode(opcode, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+            };
+
