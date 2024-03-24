@@ -81,6 +81,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 const immediate: usize =
                     @as(usize, @intCast(instructions[instructionPointer + 1].value)) |
                     @shlExact(@as(usize, @intCast(instructions[instructionPointer + 1].value)), 32);
+                    @shlExact(@as(usize, @intCast(instructions[instructionPointer + 2].value)), 32);
                 std.debug.print("LoadImmediate: copying immediate value [decimal: {}, hex: 0x{x}] to dst[{}]\n", .{ immediate, immediate, operand.dst });
                 stack.stack[dstRegisterPos].actualValue = immediate;
                 instructionPointer += 2;
