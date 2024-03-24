@@ -39,6 +39,9 @@ pub fn getOpCode(self: Self) OpCode {
 
 // https://the-ravi-programming-language.readthedocs.io/en/latest/lua_bytecode_reference.html
 
+// ! Load and store operations are not necessary since the script will not do direct memory access,
+// ! instead they will go through classes, arrays, or other structures.
+
 /// Instructions are variable width, but generally 4 bytes in size.
 /// All 4 byte bytecodes are in one of 3 patterns, where Op is the 1 byte instruction
 /// > Op A B C
@@ -58,19 +61,10 @@ pub const OpCode = enum(u8) {
     Exit,
     /// Copy value between registers src and dst.
     Move,
-
-    /// Copy the value at the address held at src into dst
-    Load, // TODO is this actually necessary. Maybe it would be better to use class indexing?
-    /// Copy the value at the address held at `src + offset` into `dst`. `offset` is a sign extended immediate.
-    LoadOffset,
     /// Set the register `dst` to zero
     LoadZero,
     /// Load the 64 bit immediate into `dst`. This is a 12 byte instruction.
     LoadImmediate,
-    /// Copy value at `src` into the address held at `dst`
-    Store,
-    /// Copy value at `src + offset` into the address held at `dst`. `offset` is a sign extended immediate.
-    StoreOffset,
     /// Unconditionally jump to `dst`
     Jump,
     /// Jump to `dst` if `src` is 0
