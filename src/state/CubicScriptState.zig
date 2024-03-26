@@ -10,6 +10,7 @@ const OpCode = Bytecode.OpCode;
 const Bool = root.Bool;
 const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
+const allocPrint = std.fmt.allocPrint;
 
 pub const RuntimeError = Error.RuntimeError;
 pub const ErrorSeverity = Error.Severity;
@@ -68,6 +69,21 @@ pub fn deinit(self: *Self) void {
     @panic("deinit using custom external allocator not yet implemented");
 }
 
+fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
+    if (self._zigApiErrorCallback) |zigErrCallback| {
+        zigErrCallback(err, severity, message);
+    } else if (self._cApiErrorCallback) |cErrCallback| {
+        cErrCallback(@intFromEnum(err), @intFromEnum(severity), @ptrCast(message.ptr), message.len);
+    } else {
+        unreachable;
+    }
+}
+
+/// Running out of memory is considered fatal and shouuld be immediately handled.
+fn outOfMemory(self: *const Self) void {
+    runtimeError(self, RuntimeError.OutOfMemory, ErrorSeverity.Fatal, "");
+}
+
 fn defaultZigErrorCallback(err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
     _ = err;
     _ = severity;
@@ -75,7 +91,6 @@ fn defaultZigErrorCallback(err: RuntimeError, severity: ErrorSeverity, message: 
 }
 
 pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) void {
-    _ = self;
     var instructionPointer: usize = 0;
     // The stack pointer points to the beginning of the stack frame.
     // This is done to use positive offsets to avoid any obscure exploits or issues from using
@@ -237,7 +252,32 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 // This also works for bools because of the bit representation of signed and unsigned ints.
                 stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int >= stack.stack[src2RegisterPos].int);
             },
+            .IntAdd => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
+                assert(@as(usize, operands.dst) < currentStackFrameSize);
+                assert(@as(usize, operands.src1) < currentStackFrameSize);
+                assert(@as(usize, operands.src2) < currentStackFrameSize);
+
+                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
+                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
+
+                const lhs = stack.stack[src1RegisterPos].int;
+                const rhs = stack.stack[src2RegisterPos].int;
+
+                const temp = math.addOverflow(lhs, rhs);
+                if (temp.@"1") {
+                    const message = allocPrint(self.allocator, "Numbers lhs[{}] + rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" }) catch {
+                        self.outOfMemory();
+                        return;
+                    };
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
+                }
+                stack.stack[dstRegisterPos].int = temp.@"0";
+            },
             else => {
                 @panic("not implemented");
             },
