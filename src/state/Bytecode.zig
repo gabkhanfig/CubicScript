@@ -61,7 +61,9 @@ pub const OpCode = enum(u8) {
     Exit,
     /// Copy value between registers src and dst.
     Move,
-    /// Set the register `dst` to zero
+    /// Set the register `dst` to zero.
+    /// # Asserts
+    /// Registers may not overlap.
     LoadZero,
     /// Load the 64 bit immediate into `dst`. This is a 12 byte instruction.
     LoadImmediate,
@@ -82,16 +84,28 @@ pub const OpCode = enum(u8) {
     // == Int Instructions (Some Bool compatible) ==
 
     /// WORKS WITH BOOLS. Int/Bool equality comparison between `src1` and `src2`. Stores the result in `dst`.
+    /// # Asserts
+    /// Registers may not overlap
     IntIsEqual,
     /// WORKS WITH BOOLS. Int/Bool inequality comparison between `sr1` and `src2`. Stores the result on `dst`.
+    /// # Asserts
+    /// Registers may not overlap
     IntIsNotEqual,
     /// WORKS WITH BOOLS. Int/Bool less than comparison. Stores a bool result in `dst` register being the condition `src1` is less than `src2`.
+    /// # Asserts
+    /// Registers may not overlap
     IntIsLessThan,
     /// WORKS WITH BOOLS. Int/Bool greater than comparison. Stores a bool result in `dst` register being the condition `src1` is greater than `src2`.
+    /// # Asserts
+    /// Registers may not overlap
     IntIsGreaterThan,
     /// WORKS WITH BOOLS. Int/Bool less than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is less than or equal to `src2`.
+    /// # Asserts
+    /// Registers may not overlap
     IntIsLessOrEqual,
     /// WORKS WITH BOOLS. Int/Bool greater than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is greater than or equal to `src2`.
+    /// # Asserts
+    /// Registers may not overlap
     IntIsGreaterOrEqual,
     /// Add integers `src1` and `src2`, storing the result in `dst`.
     IntAdd,
