@@ -57,8 +57,6 @@ pub const OpCode = enum(u8) {
 
     /// No operation. Allows 0 set memory to be a technically valid program.
     Nop,
-    /// End of script, return control to calling program
-    Exit,
     /// Copy value between registers src and dst.
     Move,
     /// Set the register `dst` to zero.

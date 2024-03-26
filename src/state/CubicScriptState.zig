@@ -8,9 +8,11 @@ const Stack = @import("Stack.zig");
 const Bytecode = @import("Bytecode.zig");
 const OpCode = Bytecode.OpCode;
 const Bool = root.Bool;
+const Int = root.Int;
 const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
 const allocPrint = std.fmt.allocPrint;
+const runtime_safety: bool = std.debug.runtime_safety;
 
 pub const RuntimeError = Error.RuntimeError;
 pub const ErrorSeverity = Error.Severity;
@@ -27,6 +29,10 @@ _zigApiErrorCallback: ?RuntimeErrorCallback,
 /// If this is null, _zigApiErrorCallback MUST be non-null.
 _cApiErrorCallback: ?CRuntimeErrorCallback,
 
+/// Create a new state with an allocator and an optional error callback.
+/// If a `null` error callback is provided, the default one will be used, which
+/// with `std.debug.runtime_safety`, will log all messages. Without runtime safety,
+/// no messages will be logged.
 pub fn init(allocator: Allocator, errorCallback: ?RuntimeErrorCallback) Allocator.Error!*Self {
     const self = try allocator.create(Self);
     self.* = Self{
@@ -80,9 +86,9 @@ fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, m
 }
 
 fn defaultZigErrorCallback(err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
-    _ = err;
-    _ = severity;
-    _ = message;
+    if (runtime_safety) {
+        std.debug.print("Cubic Script {s}: {s}\n\t{s}\n", .{ @tagName(severity), @tagName(err), message });
+    }
 }
 
 pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) Allocator.Error!void {
@@ -99,10 +105,6 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
             .Nop => {
                 std.debug.print("no operation\n", .{});
             },
-            .Exit => {
-                std.debug.print("forcefully exiting script\n", .{});
-                return;
-            },
             .Move => {
                 const operands = bytecode.decode(Bytecode.OperandsMove);
                 const dstRegisterPos = stackPointer + @as(usize, operands.dst);
@@ -111,7 +113,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 assert(@as(usize, operands.src) < currentStackFrameSize); // Dont bother checking the dst, because that can extend past the stack frame.
                 assert(dstRegisterPos != srcRegisterPos); // Cannot be the same location
 
-                std.debug.print("Move: copying value at src[{}] to dst[{}]\n", .{ operands.src, operands.dst });
+                //std.debug.print("Move: copying value at src[{}] to dst[{}]\n", .{ operands.src, operands.dst });
                 stack.stack[dstRegisterPos] = stack.stack[srcRegisterPos];
             },
             .LoadZero => {
@@ -135,7 +137,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 const immediate: usize =
                     @as(usize, @intCast(instructions[instructionPointer + 1].value)) |
                     @shlExact(@as(usize, @intCast(instructions[instructionPointer + 2].value)), 32);
-                std.debug.print("LoadImmediate: copying immediate value [decimal: {}, hex: 0x{x}] to dst[{}]\n", .{ immediate, immediate, operand.dst });
+                //std.debug.print("LoadImmediate: copying immediate value [decimal: {}, hex: 0x{x}] to dst[{}]\n", .{ immediate, immediate, operand.dst });
                 stack.stack[dstRegisterPos].actualValue = immediate;
                 instructionPointer += 2;
             },
@@ -289,7 +291,7 @@ test "nop" {
         Bytecode.encode(OpCode.Nop, void, {}),
     };
 
-    state.run(stack, &instructions);
+    try state.run(stack, &instructions);
 }
 
 test "int comparisons" {
@@ -310,7 +312,7 @@ test "int comparisons" {
                 Bytecode.encode(opcode, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
             };
 
-            state.run(stack, &instructions);
+            try state.run(stack, &instructions);
 
             if (shouldBeTrue) {
                 try expect(stack.stack[2].boolean == root.TRUE);
@@ -349,4 +351,41 @@ test "int comparisons" {
         try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, std.math.maxInt(root.Int), 123456789, true);
         try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, -1, std.math.maxInt(root.Int), false);
     }
+}
+
+test "int addition" {
+    const ErrorHandler = struct {
+        fn ExpectRuntimeError(comptime expectedErr: RuntimeError) type {
+            return struct {
+                fn expectRuntimeError(err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
+                    _ = message;
+                    _ = severity;
+                    expect(err == expectedErr) catch unreachable;
+                }
+            };
+        }
+    };
+
+    const state = try Self.init(std.testing.allocator, ErrorHandler.ExpectRuntimeError(RuntimeError.AdditionIntegerOverflow).expectRuntimeError);
+    defer state.deinit();
+
+    const stack = try Stack.init(state);
+    defer stack.deinit();
+
+    const LOW_MASK = 0xFFFFFFFF;
+    const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+
+    const src1: Int = std.math.maxInt(Int);
+
+    const instructions = [_]Bytecode{
+        Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+        Bytecode{ .value = @intCast(src1 & LOW_MASK) },
+        Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
+        Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+        Bytecode{ .value = 1 }, // store decimal 1
+        Bytecode{ .value = 0 },
+        Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+    };
+
+    try state.run(stack, &instructions);
 }
