@@ -1,5 +1,4 @@
 pub const RuntimeError = enum(c_uint) {
-    OutOfMemory,
     NullDereference,
     AdditionIntegerOverflow,
     SubtractionIntegerOverflow,

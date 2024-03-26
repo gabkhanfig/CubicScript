@@ -79,18 +79,13 @@ fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, m
     }
 }
 
-/// Running out of memory is considered fatal and shouuld be immediately handled.
-fn outOfMemory(self: *const Self) void {
-    runtimeError(self, RuntimeError.OutOfMemory, ErrorSeverity.Fatal, "");
-}
-
 fn defaultZigErrorCallback(err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
     _ = err;
     _ = severity;
     _ = message;
 }
 
-pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) void {
+pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) Allocator.Error!void {
     var instructionPointer: usize = 0;
     // The stack pointer points to the beginning of the stack frame.
     // This is done to use positive offsets to avoid any obscure exploits or issues from using
@@ -268,10 +263,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
 
                 const temp = math.addOverflow(lhs, rhs);
                 if (temp.@"1") {
-                    const message = allocPrint(self.allocator, "Numbers lhs[{}] + rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" }) catch {
-                        self.outOfMemory();
-                        return;
-                    };
+                    const message = try allocPrint(self.allocator, "Numbers lhs[{}] + rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
