@@ -55,7 +55,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
             .Move => {
                 const operands = bytecode.decode(Bytecode.OperandsMove);
                 const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const srcRegisterPos = stackPointer + @as(usize, @intCast(operands.src));
+                const srcRegisterPos = stackPointer + @as(usize, operands.src);
 
                 assert(@as(usize, operands.src) < currentStackFrameSize); // Dont bother checking the dst, because that can extend past the stack frame.
                 assert(dstRegisterPos != srcRegisterPos); // Cannot be the same location
@@ -65,7 +65,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
             },
             .LoadZero => {
                 const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
-                const dstRegisterPos = stackPointer + @as(usize, @intCast(operand.dst));
+                const dstRegisterPos = stackPointer + @as(usize, operand.dst);
 
                 // Dont bother checking the dst, because that can extend past the stack frame.
                 assert(@as(usize, operand.dst) < currentStackFrameSize);
@@ -96,10 +96,9 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 assert(@as(usize, operands.src2) < currentStackFrameSize);
 
                 const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
-                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
+                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
 
-                // TODO decide if registers should be allowed to overlap. Probably not
                 assert(dstRegisterPos != src1RegisterPos);
                 assert(dstRegisterPos != src2RegisterPos);
                 assert(src1RegisterPos != src2RegisterPos);
@@ -115,10 +114,9 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 assert(@as(usize, operands.src2) < currentStackFrameSize);
 
                 const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
-                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
+                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
 
-                // TODO decide if registers should be allowed to overlap. Probably not
                 assert(dstRegisterPos != src1RegisterPos);
                 assert(dstRegisterPos != src2RegisterPos);
                 assert(src1RegisterPos != src2RegisterPos);
@@ -134,10 +132,9 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 assert(@as(usize, operands.src2) < currentStackFrameSize);
 
                 const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
-                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
+                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
 
-                // TODO decide if registers should be allowed to overlap. Probably not
                 assert(dstRegisterPos != src1RegisterPos);
                 assert(dstRegisterPos != src2RegisterPos);
                 assert(src1RegisterPos != src2RegisterPos);
@@ -153,10 +150,9 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 assert(@as(usize, operands.src2) < currentStackFrameSize);
 
                 const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
-                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
+                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
 
-                // TODO decide if registers should be allowed to overlap. Probably not
                 assert(dstRegisterPos != src1RegisterPos);
                 assert(dstRegisterPos != src2RegisterPos);
                 assert(src1RegisterPos != src2RegisterPos);
@@ -172,10 +168,9 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 assert(@as(usize, operands.src2) < currentStackFrameSize);
 
                 const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
-                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
+                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
 
-                // TODO decide if registers should be allowed to overlap. Probably not
                 assert(dstRegisterPos != src1RegisterPos);
                 assert(dstRegisterPos != src2RegisterPos);
                 assert(src1RegisterPos != src2RegisterPos);
@@ -191,10 +186,9 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
                 assert(@as(usize, operands.src2) < currentStackFrameSize);
 
                 const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, @intCast(operands.src1));
-                const src2RegisterPos = stackPointer + @as(usize, @intCast(operands.src2));
+                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
+                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
 
-                // TODO decide if registers should be allowed to overlap. Probably not
                 assert(dstRegisterPos != src1RegisterPos);
                 assert(dstRegisterPos != src2RegisterPos);
                 assert(src1RegisterPos != src2RegisterPos);
