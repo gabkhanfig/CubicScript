@@ -336,7 +336,7 @@ test "String default init" {
 }
 
 test "String from slice" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var s = try String.initSlice("hello world!", state);
@@ -355,7 +355,7 @@ test "String from slice" {
 }
 
 test "String clone" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var s1 = try String.initSlice("hello world!", state);
@@ -382,7 +382,7 @@ test "String clone" {
 }
 
 test "String clone thread safety" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     const TestThreadHandler = struct {
@@ -431,7 +431,7 @@ test "String clone thread safety" {
 }
 
 test "String equal" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     { // null
         var s1 = String{};
@@ -543,7 +543,7 @@ test "String equal" {
 }
 
 test "String equal slice" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     { // null
         var s = String{};
@@ -605,7 +605,7 @@ test "String equal slice" {
 }
 
 test "String find" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     { // null
         var s = String{};
@@ -712,7 +712,7 @@ test "String find" {
 }
 
 test "String reverse find" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     { // null
         var s = String{};
@@ -819,7 +819,7 @@ test "String reverse find" {
 }
 
 test "String from int" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var s = try String.fromInt(0, state);

@@ -370,7 +370,7 @@ test "Array default" {
 }
 
 test "Array add int" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var arr = Array.init(ValueTag.Int);
@@ -381,7 +381,7 @@ test "Array add int" {
 }
 
 test "Array at int" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var arr = Array.init(ValueTag.Int);
@@ -406,7 +406,7 @@ test "Array at int" {
 }
 
 test "Array bool sanity" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var arr = Array.init(ValueTag.Bool);
@@ -431,7 +431,7 @@ test "Array bool sanity" {
 }
 
 test "Array float sanity" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var arr = Array.init(ValueTag.Float);
@@ -456,7 +456,7 @@ test "Array float sanity" {
 }
 
 test "Array string sanity" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var arr = Array.init(ValueTag.String);
@@ -481,7 +481,7 @@ test "Array string sanity" {
 }
 
 test "Array nested array sanity" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var arr = Array.init(ValueTag.Array);
@@ -568,7 +568,7 @@ const TestCreateArray = struct {
 };
 
 test "Array equal" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var arrEmpty1 = RawValue{ .array = Array.init(ValueTag.Int) };
@@ -603,7 +603,7 @@ test "Array equal" {
 }
 
 test "Array clone" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var arr1 = TestCreateArray.makeArray(ValueTag.Bool, 4, state);

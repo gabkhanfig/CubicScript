@@ -37,7 +37,7 @@ pub fn deinit(self: *Self) void {
 }
 
 test "init deinit" {
-    const state = try CubicScriptState.init(std.testing.allocator);
+    const state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     const stack = try Self.init(state);

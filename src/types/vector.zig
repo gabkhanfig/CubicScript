@@ -1090,7 +1090,7 @@ pub fn Vector4FloatImpl() type {
 }
 
 test "Vec2i" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var v = Vec2i{};

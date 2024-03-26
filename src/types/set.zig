@@ -438,7 +438,7 @@ const KeyAndHash = struct {
 // Tests
 
 test "set init" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     inline for (@typeInfo(ValueTag).Enum.fields) |f| {
         var set = Set.init(@enumFromInt(f.value));
@@ -447,7 +447,7 @@ test "set init" {
 }
 
 test "set contains empty" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var set = Set.init(ValueTag.String);
@@ -461,7 +461,7 @@ test "set contains empty" {
 }
 
 test "set insert one element" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var set = Set.init(ValueTag.String);
@@ -478,7 +478,7 @@ test "set insert one element" {
 }
 
 test "set erase one element" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var set = Set.init(ValueTag.String);
@@ -500,7 +500,7 @@ test "set erase one element" {
 }
 
 test "set add more than 32 elements" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var set = Set.init(ValueTag.String);

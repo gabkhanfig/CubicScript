@@ -478,7 +478,7 @@ const Pair = struct {
 // Tests
 
 test "map init" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var map = Map.init(ValueTag.Bool, ValueTag.Bool);
@@ -511,7 +511,7 @@ test "map init" {
 }
 
 test "map find empty" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);
@@ -526,7 +526,7 @@ test "map find empty" {
 }
 
 test "map insert one element" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);
@@ -554,7 +554,7 @@ test "map insert one element" {
 }
 
 test "map erase one element" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);
@@ -577,7 +577,7 @@ test "map erase one element" {
 }
 
 test "Map add more than 32 elements" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);

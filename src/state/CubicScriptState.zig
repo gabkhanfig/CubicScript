@@ -9,17 +9,52 @@ const Bytecode = @import("Bytecode.zig");
 const OpCode = Bytecode.OpCode;
 const Bool = root.Bool;
 const math = @import("../types/math.zig");
+const Error = @import("Errors.zig");
+
+pub const RuntimeError = Error.RuntimeError;
+pub const ErrorSeverity = Error.Severity;
+// https://github.com/ziglang/zig/issues/16419
+pub const RuntimeErrorCallback = *const fn (err: RuntimeError, severity: ErrorSeverity, message: []const u8) void;
+pub const CRuntimeErrorCallback = *const fn (err: c_uint, severity: c_uint, message: ?[*c]const u8, messageLength: usize) void;
 
 const Self = @This();
 
 allocator: Allocator,
 _usingExternalAllocator: bool,
+/// If this is null, _cApiErrorCallback MUST be non-null.
+_zigApiErrorCallback: ?RuntimeErrorCallback,
+/// If this is null, _zigApiErrorCallback MUST be non-null.
+_cApiErrorCallback: ?CRuntimeErrorCallback,
 
-pub fn init(allocator: Allocator) Allocator.Error!*Self {
+pub fn init(allocator: Allocator, errorCallback: ?RuntimeErrorCallback) Allocator.Error!*Self {
     const self = try allocator.create(Self);
     self.* = Self{
         ._usingExternalAllocator = false,
         .allocator = allocator,
+        ._zigApiErrorCallback = if (errorCallback) |errCallback| errCallback else defaultZigErrorCallback,
+        ._cApiErrorCallback = null,
+    };
+    return self;
+}
+
+/// With runtime safety on, will catch double frees.
+/// When off, just uses the C allocator.
+pub fn initExternC(errorCallback: ?CRuntimeErrorCallback) *Self {
+    const allocator = blk: {
+        if (std.debug.runtime_safety) {
+            var gpa = std.heap.GeneralPurposeAllocator(.{});
+            break :blk gpa.allocator();
+        } else {
+            break :blk std.heap.c_allocator;
+        }
+    };
+
+    const self = allocator.create(Self) catch unreachable;
+    self.* = Self{
+        ._usingExternalAllocator = false,
+        .allocator = allocator,
+        ._zigApiErrorCallback = if (errorCallback) |_| null else defaultZigErrorCallback,
+        ._cErrorCallback = if (errorCallback) |errCallback| errCallback else null,
     };
     return self;
 }
@@ -31,6 +66,12 @@ pub fn deinit(self: *Self) void {
     }
 
     @panic("deinit using custom external allocator not yet implemented");
+}
+
+fn defaultZigErrorCallback(err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
+    _ = err;
+    _ = severity;
+    _ = message;
 }
 
 pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) void {
@@ -206,7 +247,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) voi
 }
 
 test "nop" {
-    const state = try Self.init(std.testing.allocator);
+    const state = try Self.init(std.testing.allocator, null);
     defer state.deinit();
 
     const stack = try Stack.init(state);
@@ -248,7 +289,7 @@ test "int comparisons" {
     };
 
     {
-        const state = try Self.init(std.testing.allocator);
+        const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
 
         const stack = try Stack.init(state);

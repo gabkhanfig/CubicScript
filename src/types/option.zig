@@ -48,7 +48,7 @@ pub const Option = extern struct {
 };
 
 test "null" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var opt = Option{ .value = null };
@@ -60,7 +60,7 @@ test "null" {
 }
 
 test "not null" {
-    var state = try CubicScriptState.init(std.testing.allocator);
+    var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
     var opt = try Option.init(TaggedValue.initString(try root.String.initSlice("aa", state)), state);
