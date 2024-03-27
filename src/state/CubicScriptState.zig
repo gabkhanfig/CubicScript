@@ -126,111 +126,63 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
             },
             .IntIsEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(@as(usize, operands.dst) < currentStackFrameSize);
-                assert(@as(usize, operands.src1) < currentStackFrameSize);
-                assert(@as(usize, operands.src2) < currentStackFrameSize);
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
 
-                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
-                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
-
-                assert(dstRegisterPos != src1RegisterPos);
-                assert(dstRegisterPos != src2RegisterPos);
-                assert(src1RegisterPos != src2RegisterPos);
-
-                // This also works for bools because of the bit representation of signed and unsigned ints.
-                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int == stack.stack[src2RegisterPos].int);
+                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int == stack.stack[registers.src2].int);
             },
             .IntIsNotEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(@as(usize, operands.dst) < currentStackFrameSize);
-                assert(@as(usize, operands.src1) < currentStackFrameSize);
-                assert(@as(usize, operands.src2) < currentStackFrameSize);
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
 
-                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
-                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
-
-                assert(dstRegisterPos != src1RegisterPos);
-                assert(dstRegisterPos != src2RegisterPos);
-                assert(src1RegisterPos != src2RegisterPos);
-
-                // This also works for bools because of the bit representation of signed and unsigned ints.
-                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int != stack.stack[src2RegisterPos].int);
+                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int != stack.stack[registers.src2].int);
             },
             .IntIsLessThan => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(@as(usize, operands.dst) < currentStackFrameSize);
-                assert(@as(usize, operands.src1) < currentStackFrameSize);
-                assert(@as(usize, operands.src2) < currentStackFrameSize);
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
 
-                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
-                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
-
-                assert(dstRegisterPos != src1RegisterPos);
-                assert(dstRegisterPos != src2RegisterPos);
-                assert(src1RegisterPos != src2RegisterPos);
-
-                // This also works for bools because of the bit representation of signed and unsigned ints.
-                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int < stack.stack[src2RegisterPos].int);
+                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int < stack.stack[registers.src2].int);
             },
             .IntIsGreaterThan => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(@as(usize, operands.dst) < currentStackFrameSize);
-                assert(@as(usize, operands.src1) < currentStackFrameSize);
-                assert(@as(usize, operands.src2) < currentStackFrameSize);
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
 
-                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
-                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
-
-                assert(dstRegisterPos != src1RegisterPos);
-                assert(dstRegisterPos != src2RegisterPos);
-                assert(src1RegisterPos != src2RegisterPos);
-
-                // This also works for bools because of the bit representation of signed and unsigned ints.
-                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int > stack.stack[src2RegisterPos].int);
+                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int > stack.stack[registers.src2].int);
             },
             .IntIsLessOrEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(@as(usize, operands.dst) < currentStackFrameSize);
-                assert(@as(usize, operands.src1) < currentStackFrameSize);
-                assert(@as(usize, operands.src2) < currentStackFrameSize);
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
 
-                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
-                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
-
-                assert(dstRegisterPos != src1RegisterPos);
-                assert(dstRegisterPos != src2RegisterPos);
-                assert(src1RegisterPos != src2RegisterPos);
-
-                // This also works for bools because of the bit representation of signed and unsigned ints.
-                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int <= stack.stack[src2RegisterPos].int);
+                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int <= stack.stack[registers.src2].int);
             },
             .IntIsGreaterOrEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(@as(usize, operands.dst) < currentStackFrameSize);
-                assert(@as(usize, operands.src1) < currentStackFrameSize);
-                assert(@as(usize, operands.src2) < currentStackFrameSize);
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
 
-                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
-                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
-
-                assert(dstRegisterPos != src1RegisterPos);
-                assert(dstRegisterPos != src2RegisterPos);
-                assert(src1RegisterPos != src2RegisterPos);
-
-                // This also works for bools because of the bit representation of signed and unsigned ints.
-                stack.stack[dstRegisterPos].boolean = @intFromBool(stack.stack[src1RegisterPos].int >= stack.stack[src2RegisterPos].int);
+                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int >= stack.stack[registers.src2].int);
             },
             .IntAdd => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
