@@ -13,82 +13,67 @@ const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
 const allocPrintZ = std.fmt.allocPrintZ;
 const runtime_safety: bool = std.debug.runtime_safety;
+const Mutex = std.Thread.Mutex;
 
 pub const RuntimeError = Error.RuntimeError;
 pub const ErrorSeverity = Error.Severity;
 // https://github.com/ziglang/zig/issues/16419
 pub const RuntimeErrorCallback = *const fn (err: RuntimeError, severity: ErrorSeverity, message: []const u8) void;
-pub const CRuntimeErrorCallback = *const fn (err: c_uint, severity: c_uint, message: ?[*c]const u8, messageLength: usize) void;
+pub const CRuntimeErrorCallback = *const fn (err: c_int, severity: c_int, message: ?[*c]const u8, messageLength: usize) void;
 
 const Self = @This();
 
 allocator: Allocator,
-_usingExternalAllocator: bool,
-/// If this is null, _cApiErrorCallback MUST be non-null.
-_zigApiErrorCallback: ?RuntimeErrorCallback,
-/// If this is null, _zigApiErrorCallback MUST be non-null.
-_cApiErrorCallback: ?CRuntimeErrorCallback,
+_context: ScriptContext,
+_contextMutex: Mutex = .{},
 
 /// Create a new state with an allocator and an optional error callback.
 /// If a `null` error callback is provided, the default one will be used, which
 /// with `std.debug.runtime_safety`, will log all messages. Without runtime safety,
 /// no messages will be logged.
-pub fn init(allocator: Allocator, errorCallback: ?RuntimeErrorCallback) Allocator.Error!*Self {
+pub fn init(allocator: Allocator, context: ?ScriptContext) Allocator.Error!*Self {
     const self = try allocator.create(Self);
     self.* = Self{
-        ._usingExternalAllocator = false,
         .allocator = allocator,
-        ._zigApiErrorCallback = if (errorCallback) |errCallback| errCallback else defaultZigErrorCallback,
-        ._cApiErrorCallback = null,
+        ._context = if (context) |ctx| ctx else default_context,
     };
     return self;
 }
 
-/// With runtime safety on, will catch double frees.
-/// When off, just uses the C allocator.
-pub fn initExternC(errorCallback: ?CRuntimeErrorCallback) *Self {
-    const allocator = blk: {
-        if (std.debug.runtime_safety) {
-            var gpa = std.heap.GeneralPurposeAllocator(.{});
-            break :blk gpa.allocator();
-        } else {
-            break :blk std.heap.c_allocator;
-        }
-    };
+// /// With runtime safety on, will catch double frees.
+// /// When off, just uses the C allocator.
+// /// Returns null if allocation failed.
+// pub fn initExternC(context: ?ScriptContext) ?*Self {
+//     const allocator = blk: {
+//         if (std.debug.runtime_safety) {
+//             var gpa = std.heap.GeneralPurposeAllocator(.{});
+//             break :blk gpa.allocator();
+//         } else {
+//             break :blk std.heap.c_allocator;
+//         }
+//     };
 
-    const self = allocator.create(Self) catch unreachable;
-    self.* = Self{
-        ._usingExternalAllocator = false,
-        .allocator = allocator,
-        ._zigApiErrorCallback = if (errorCallback) |_| null else defaultZigErrorCallback,
-        ._cErrorCallback = if (errorCallback) |errCallback| errCallback else null,
-    };
-    return self;
-}
+//     const self = Self.init(allocator, context) catch return null;
+//     return self;
+// }
 
 pub fn deinit(self: *Self) void {
-    if (!self._usingExternalAllocator) {
-        self.allocator.destroy(self);
-        return;
+    if (self._context.vtable.deinit) |deinit_func| {
+        deinit_func(@ptrCast(&self._context));
     }
 
-    @panic("deinit using custom external allocator not yet implemented");
+    self.allocator.destroy(self);
+    return;
 }
 
 fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
-    if (self._zigApiErrorCallback) |zigErrCallback| {
-        zigErrCallback(err, severity, message);
-    } else if (self._cApiErrorCallback) |cErrCallback| {
-        cErrCallback(@intFromEnum(err), @intFromEnum(severity), @ptrCast(message.ptr), message.len);
-    } else {
-        unreachable;
-    }
-}
+    // Only the mutex and the data it owns are modified here, so removing the const is fine.
+    const contextMutex: *Mutex = @constCast(&self._contextMutex);
+    contextMutex.lock();
+    defer contextMutex.unlock();
 
-fn defaultZigErrorCallback(err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
-    if (runtime_safety) {
-        std.debug.print("Cubic Script {s}: {s}\n\t{s}\n", .{ @tagName(severity), @tagName(err), message });
-    }
+    const context: *ScriptContext = @constCast(&self._context);
+    context.runtimeError(self, err, severity, message);
 }
 
 pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) Allocator.Error!void {
@@ -280,6 +265,45 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
     }
 }
 
+pub const ScriptContext = extern struct {
+    ptr: *anyopaque,
+    vtable: *const VTable,
+
+    pub const VTable = extern struct {
+        errorCallback: *const fn (self: *anyopaque, state: *const Self, err: RuntimeError, severity: ErrorSeverity, message: [*c]const u8, messageLength: usize) callconv(.C) void,
+        deinit: ?*const fn (self: *anyopaque) callconv(.C) void,
+    };
+
+    pub fn runtimeError(self: *ScriptContext, state: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
+        self.vtable.errorCallback(
+            @ptrCast(self.ptr),
+            state,
+            err,
+            severity,
+            @ptrCast(message.ptr),
+            message.len,
+        );
+    }
+};
+
+const default_context = ScriptContext{
+    .ptr = undefined,
+    .vtable = &.{
+        .errorCallback = defaultContextErrorCallback,
+        .deinit = null,
+    },
+};
+
+fn defaultContextErrorCallback(_: *anyopaque, _: *const Self, err: RuntimeError, severity: ErrorSeverity, message: [*c]const u8, messageLength: usize) callconv(.C) void {
+    if (runtime_safety) {
+        if (messageLength > 0) {
+            std.debug.print("Cubic Script {s}: {s}\n\t{s}\n", .{ @tagName(severity), @tagName(err), message });
+        } else {
+            std.debug.print("Cubic Script {s}: {s}\n", .{ @tagName(severity), @tagName(err) });
+        }
+    }
+}
+
 test "nop" {
     const state = try Self.init(std.testing.allocator, null);
     defer state.deinit();
@@ -353,39 +377,86 @@ test "int comparisons" {
     }
 }
 
-test "int addition" {
-    const ErrorHandler = struct {
-        fn ExpectRuntimeError(comptime expectedErr: RuntimeError) type {
-            return struct {
-                fn expectRuntimeError(err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
-                    _ = message;
-                    _ = severity;
-                    expect(err == expectedErr) catch unreachable;
-                }
+/// Used for testing to validate that certain errors happened.
+fn ScriptTestingContextError(comptime ErrTag: RuntimeError) type {
+    return struct {
+        shouldExpectError: bool,
+        didErrorHappen: bool = false,
+
+        fn errorCallback(self: *@This(), _: *const Self, err: RuntimeError, _: ErrorSeverity, _: [*c]const u8, _: usize) callconv(.C) void {
+            if (err == ErrTag) {
+                self.didErrorHappen = true;
+            }
+        }
+
+        fn deinit(self: *@This()) callconv(.C) void {
+            if (self.shouldExpectError) {
+                expect(self.didErrorHappen) catch unreachable;
+            } else {
+                expect(!self.didErrorHappen) catch unreachable;
+            }
+        }
+
+        fn asContext(self: *@This()) ScriptContext {
+            return ScriptContext{
+                .ptr = @ptrCast(self),
+                .vtable = &.{ .errorCallback = @ptrCast(&@This().errorCallback), .deinit = @ptrCast(&@This().deinit) },
             };
         }
     };
+}
 
-    const state = try Self.init(std.testing.allocator, ErrorHandler.ExpectRuntimeError(RuntimeError.AdditionIntegerOverflow).expectRuntimeError);
-    defer state.deinit();
+test "int addition" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = false };
 
-    const stack = try Stack.init(state);
-    defer stack.deinit();
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
 
-    const LOW_MASK = 0xFFFFFFFF;
-    const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const stack = try Stack.init(state);
+        defer stack.deinit();
 
-    const src1: Int = std.math.maxInt(Int);
+        const LOW_MASK = 0xFFFFFFFF;
+        const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
 
-    const instructions = [_]Bytecode{
-        Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-        Bytecode{ .value = @intCast(src1 & LOW_MASK) },
-        Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
-        Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-        Bytecode{ .value = 1 }, // store decimal 1
-        Bytecode{ .value = 0 },
-        Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-    };
+        const src1: Int = 10;
 
-    try state.run(stack, &instructions);
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode{ .value = @intCast(src1 & LOW_MASK) },
+            Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode{ .value = 1 }, // store decimal 1
+            Bytecode{ .value = 0 },
+            Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+    }
+    { // validate integer overflow is reported
+        var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const LOW_MASK = 0xFFFFFFFF;
+        const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+
+        const src1: Int = std.math.maxInt(Int);
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode{ .value = @intCast(src1 & LOW_MASK) },
+            Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode{ .value = 1 }, // store decimal 1
+            Bytecode{ .value = 0 },
+            Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+    }
 }

@@ -1,4 +1,4 @@
-pub const RuntimeError = enum(c_uint) {
+pub const RuntimeError = enum(c_int) {
     NullDereference,
     AdditionIntegerOverflow,
     SubtractionIntegerOverflow,
@@ -7,7 +7,7 @@ pub const RuntimeError = enum(c_uint) {
     ModuloByZero,
 };
 
-pub const Severity = enum(c_uint) {
+pub const Severity = enum(c_int) {
     Warning,
     Error,
     Fatal,
