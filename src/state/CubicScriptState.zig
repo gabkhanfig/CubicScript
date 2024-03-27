@@ -58,7 +58,7 @@ pub fn init(allocator: Allocator, context: ?ScriptContext) Allocator.Error!*Self
 // }
 
 pub fn deinit(self: *Self) void {
-    self._context.vtable.deinit(@ptrCast(&self._context));
+    self._context.deinit();
 
     self.allocator.destroy(self);
     return;
@@ -277,13 +277,17 @@ pub const ScriptContext = extern struct {
 
     pub fn runtimeError(self: *ScriptContext, state: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
         self.vtable.errorCallback(
-            @ptrCast(self.ptr), // I have literally no idea why this is required, but it is
+            self.ptr,
             state,
             err,
             severity,
             @ptrCast(message.ptr),
             message.len,
         );
+    }
+
+    pub fn deinit(self: *ScriptContext) void {
+        self.vtable.deinit(self.ptr);
     }
 };
 
@@ -389,6 +393,8 @@ fn ScriptTestingContextError(comptime ErrTag: RuntimeError) type {
         fn errorCallback(self: *@This(), _: *const Self, err: RuntimeError, _: ErrorSeverity, _: [*c]const u8, _: usize) callconv(.C) void {
             if (err == ErrTag) {
                 self.didErrorHappen = true;
+            } else {
+                @panic("unexpected error");
             }
         }
 
