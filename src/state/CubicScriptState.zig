@@ -58,9 +58,7 @@ pub fn init(allocator: Allocator, context: ?ScriptContext) Allocator.Error!*Self
 // }
 
 pub fn deinit(self: *Self) void {
-    if (self._context.vtable.deinit) |deinit_func| {
-        deinit_func(@ptrCast(&self._context));
-    }
+    self._context.vtable.deinit(@ptrCast(&self._context));
 
     self.allocator.destroy(self);
     return;
@@ -265,13 +263,16 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
     }
 }
 
+/// Handles reporting errors, and other user specific data.
+/// In `CubicScriptState.zig`, an example of implementing this can be found with `ScriptTestingContextError`.
 pub const ScriptContext = extern struct {
     ptr: *anyopaque,
     vtable: *const VTable,
 
     pub const VTable = extern struct {
         errorCallback: *const fn (self: *anyopaque, state: *const Self, err: RuntimeError, severity: ErrorSeverity, message: [*c]const u8, messageLength: usize) callconv(.C) void,
-        deinit: ?*const fn (self: *anyopaque) callconv(.C) void,
+        /// Deinitializes the script context object itself. Can be used to call C++ destructors, Rust drop, or whatever else.
+        deinit: *const fn (self: *anyopaque) callconv(.C) void,
     };
 
     pub fn runtimeError(self: *ScriptContext, state: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
