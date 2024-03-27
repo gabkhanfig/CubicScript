@@ -234,17 +234,10 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
             },
             .IntAdd => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(@as(usize, operands.dst) < currentStackFrameSize);
-                assert(@as(usize, operands.src1) < currentStackFrameSize);
-                assert(@as(usize, operands.src2) < currentStackFrameSize);
-
-                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const src1RegisterPos = stackPointer + @as(usize, operands.src1);
-                const src2RegisterPos = stackPointer + @as(usize, operands.src2);
-
-                const lhs = stack.stack[src1RegisterPos].int;
-                const rhs = stack.stack[src2RegisterPos].int;
+                const lhs = stack.stack[registers.src1].int;
+                const rhs = stack.stack[registers.src2].int;
 
                 const temp = math.addOverflow(lhs, rhs);
                 if (temp.@"1") {
@@ -253,7 +246,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                     self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
                 }
-                stack.stack[dstRegisterPos].int = temp.@"0";
+                stack.stack[registers.dst].int = temp.@"0";
             },
             else => {
                 @panic("not implemented");
@@ -263,6 +256,18 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
     }
 }
 
+fn getAndValidateDstTwoSrcRegisterPos(stackPointer: usize, currentStackFrameSize: usize, operands: Bytecode.OperandsDstTwoSrc) struct { dst: usize, src1: usize, src2: usize } {
+    assert(@as(usize, operands.dst) < currentStackFrameSize);
+    assert(@as(usize, operands.src1) < currentStackFrameSize);
+    assert(@as(usize, operands.src2) < currentStackFrameSize);
+
+    const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+    const src1RegisterPos = stackPointer + @as(usize, operands.src1);
+    const src2RegisterPos = stackPointer + @as(usize, operands.src2);
+
+    return .{ .dst = dstRegisterPos, .src1 = src1RegisterPos, .src2 = src2RegisterPos };
+}
+
 /// Handles reporting errors, and other user specific data.
 /// In `CubicScriptState.zig`, an example of implementing this can be found with `ScriptTestingContextError`.
 pub const ScriptContext = extern struct {
@@ -270,6 +275,7 @@ pub const ScriptContext = extern struct {
     vtable: *const VTable,
 
     pub const VTable = extern struct {
+        /// `message` will be a null terminated string, using `messageLength` bytes excluding null terminator (number of UTF-8 bytes NOT code points).
         errorCallback: *const fn (self: *anyopaque, state: *const Self, err: RuntimeError, severity: ErrorSeverity, message: [*c]const u8, messageLength: usize) callconv(.C) void,
         /// Deinitializes the script context object itself. Can be used to call C++ destructors, Rust drop, or whatever else.
         deinit: *const fn (self: *anyopaque) callconv(.C) void,
