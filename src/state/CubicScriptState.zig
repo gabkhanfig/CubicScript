@@ -11,7 +11,7 @@ const Bool = root.Bool;
 const Int = root.Int;
 const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
-const allocPrint = std.fmt.allocPrint;
+const allocPrintZ = std.fmt.allocPrintZ;
 const runtime_safety: bool = std.debug.runtime_safety;
 
 pub const RuntimeError = Error.RuntimeError;
@@ -265,7 +265,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 const temp = math.addOverflow(lhs, rhs);
                 if (temp.@"1") {
-                    const message = try allocPrint(self.allocator, "Numbers lhs[{}] + rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] + rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
