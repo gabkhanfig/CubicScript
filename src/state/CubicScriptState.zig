@@ -86,7 +86,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
         const bytecode = instructions[instructionPointer];
         switch (bytecode.getOpCode()) {
             .Nop => {
-                std.debug.print("no operation\n", .{});
+                //std.debug.print("no operation\n", .{});
             },
             .Move => {
                 const operands = bytecode.decode(Bytecode.OperandsMove);
