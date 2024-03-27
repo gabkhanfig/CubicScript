@@ -277,7 +277,7 @@ pub const ScriptContext = extern struct {
 
     pub fn runtimeError(self: *ScriptContext, state: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
         self.vtable.errorCallback(
-            @ptrCast(self.ptr),
+            @ptrCast(self.ptr), // I have literally no idea why this is required, but it is
             state,
             err,
             severity,
@@ -291,7 +291,7 @@ const default_context = ScriptContext{
     .ptr = undefined,
     .vtable = &.{
         .errorCallback = defaultContextErrorCallback,
-        .deinit = null,
+        .deinit = defaultContextDeinit,
     },
 };
 
@@ -304,6 +304,8 @@ fn defaultContextErrorCallback(_: *anyopaque, _: *const Self, err: RuntimeError,
         }
     }
 }
+
+fn defaultContextDeinit(_: *anyopaque) callconv(.C) void {}
 
 test "nop" {
     const state = try Self.init(std.testing.allocator, null);
