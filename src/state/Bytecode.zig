@@ -20,6 +20,27 @@ pub fn encode(opcode: OpCode, comptime OperandsT: type, operands: OperandsT) Sel
     }
 }
 
+const LOW_MASK = 0xFFFFFFFF;
+const HIGH_MASK = @shlExact(0xFFFFFFFF, 32);
+
+pub fn encodeImmediateLower(comptime T: type, immediate: T) Self {
+    if (@sizeOf(T) != 8) {
+        @compileError("Invalid immediate type. Must be 8 bytes in size");
+    }
+
+    const immediateBits: usize = @bitCast(immediate);
+    return Self{ .value = @intCast(immediateBits & LOW_MASK) };
+}
+
+pub fn encodeImmediateUpper(comptime T: type, immediate: T) Self {
+    if (@sizeOf(T) != 8) {
+        @compileError("Invalid immediate type. Must be 8 bytes in size");
+    }
+
+    const immediateBits: usize = @bitCast(immediate);
+    return Self{ .value = @intCast(@shrExact(immediateBits & HIGH_MASK, 32)) };
+}
+
 pub fn decode(self: *const Self, comptime OperandsT: type) OperandsT {
     if (OperandsT == void) {
         return;
@@ -118,11 +139,11 @@ pub const OpCode = enum(u8) {
     /// https://core.ac.uk/download/pdf/187613369.pdf
     IntDivideTrunc,
     /// Divides integers `src2` from `src1`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
-    /// The behaviour is rounding down to the nearest integer. This is equivalent to `src1 / src2` in Python.
+    /// The behaviour is rounding down to the nearest integer. This is equivalent to `src1 / src2` in Python. Maybe operator should be `/_`.
     /// https://python-history.blogspot.com/2010/08/why-pythons-integer-division-floors.html
     IntDivideFloor,
     /// Modulus operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
-    /// This is equivalent to `src1 % src2` in python, where the sign of `dst` is the sign of `src2`.
+    /// This is equivalent to `src1 % src2` in python, where the sign of `dst` is the sign of `src2`. Maybe operator should be `%_`.
     /// https://core.ac.uk/download/pdf/187613369.pdf
     IntModulo,
     /// Remainder operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
