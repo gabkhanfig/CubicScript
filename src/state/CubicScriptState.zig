@@ -281,7 +281,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                     self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
                     stack.stack[registers.dst].int = math.MIN_INT; // zig doesnt have divison overflow operator
                 } else {
-                    stack.stack[registers.dst].int = @divTrunc(lhs, rhs);
+                    stack.stack[registers.dst].int = @divFloor(lhs, rhs);
                 }
             },
             else => {
@@ -524,15 +524,12 @@ test "int subtraction" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const LOW_MASK = 0xFFFFFFFF;
-        const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
-
         const src1: Int = 10;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode{ .value = @intCast(src1 & LOW_MASK) },
-            Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
             Bytecode{ .value = 1 }, // store decimal 1
             Bytecode{ .value = 0 },
@@ -626,5 +623,145 @@ test "int multiplication" {
 
         try state.run(stack, &instructions);
         try expect(stack.stack[2].int == -2); // this ends up being the wrap around. same as unsigned bitshift left by 1 then bitcasted to signed
+    }
+}
+
+test "int division truncation" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = -5;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 2),
+            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == -2);
+    }
+    { // validate integer overflow
+        var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, math.MIN_INT),
+            Bytecode.encodeImmediateUpper(Int, math.MIN_INT),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, -1),
+            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == math.MIN_INT);
+    }
+    { // validate divide by zero
+        var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 1),
+            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 0),
+            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+    }
+}
+
+test "int division floor" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = -5;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 2),
+            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == -3);
+    }
+    { // validate integer overflow
+        var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, math.MIN_INT),
+            Bytecode.encodeImmediateUpper(Int, math.MIN_INT),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, -1),
+            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == math.MIN_INT);
+    }
+    { // validate divide by zero
+        var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 1),
+            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 0),
+            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
     }
 }
