@@ -245,6 +245,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
+
                 if (lhs == math.MIN_INT and rhs == -1) {
                     // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
                     // interestingly the wrap around result would just be MIN_INT.
@@ -270,6 +271,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
+
                 if (lhs == math.MIN_INT and rhs == -1) {
                     // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
                     // interestingly the wrap around result would just be MIN_INT.
