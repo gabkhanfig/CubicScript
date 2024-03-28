@@ -207,6 +207,8 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 const lhs = stack.stack[registers.src1].int;
                 const rhs = stack.stack[registers.src2].int;
 
+                std.debug.print("{} - {}\n", .{ lhs, rhs });
+
                 const temp = math.subOverflow(lhs, rhs);
                 if (temp.@"1") {
                     const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] - rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
@@ -459,5 +461,63 @@ test "int addition" {
 
         try state.run(stack, &instructions);
         try expect(stack.stack[2].int == math.MIN_INT);
+    }
+}
+
+test "int subtraction" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const LOW_MASK = 0xFFFFFFFF;
+        const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+
+        const src1: Int = 10;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode{ .value = @intCast(src1 & LOW_MASK) },
+            Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode{ .value = 1 }, // store decimal 1
+            Bytecode{ .value = 0 },
+            Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 9);
+    }
+    { // validate integer overflow is reported
+        var contextObject = ScriptTestingContextError(RuntimeError.SubtractionIntegerOverflow){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const LOW_MASK = 0xFFFFFFFF;
+        const HIGH_MASK: usize = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+
+        const src1: Int = math.MIN_INT;
+        const srcAsUsize: usize = @bitCast(src1);
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode{ .value = @intCast(srcAsUsize & LOW_MASK) },
+            Bytecode{ .value = @intCast(@shrExact(srcAsUsize & HIGH_MASK, 32)) },
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode{ .value = 1 }, // store decimal 1
+            Bytecode{ .value = 0 },
+            Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == math.MAX_INT);
     }
 }
