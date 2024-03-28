@@ -431,6 +431,7 @@ test "int addition" {
         };
 
         try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 11);
     }
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = true };
@@ -444,7 +445,7 @@ test "int addition" {
         const LOW_MASK = 0xFFFFFFFF;
         const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
 
-        const src1: Int = std.math.maxInt(Int);
+        const src1: Int = math.MAX_INT;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -457,5 +458,6 @@ test "int addition" {
         };
 
         try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == math.MIN_INT);
     }
 }
