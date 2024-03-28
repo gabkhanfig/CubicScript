@@ -193,7 +193,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 const temp = math.addOverflow(lhs, rhs);
                 if (temp.@"1") {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] + rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] + rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
@@ -209,7 +209,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 const temp = math.subOverflow(lhs, rhs);
                 if (temp.@"1") {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] - rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] - rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.SubtractionIntegerOverflow, ErrorSeverity.Warning, message);
@@ -225,12 +225,62 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 const temp = math.mulOverflow(lhs, rhs);
                 if (temp.@"1") {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] * rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] * rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.MultiplicationIntegerOverflow, ErrorSeverity.Warning, message);
                 }
                 stack.stack[registers.dst].int = temp.@"0";
+            },
+            .IntDivideTrunc => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                const lhs = stack.stack[registers.src1].int;
+                const rhs = stack.stack[registers.src2].int;
+                if (rhs == 0) {
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing truncation division", .{ lhs, rhs });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
+                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                }
+                if (lhs == math.MIN_INT and rhs == -1) {
+                    // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
+                    // interestingly the wrap around result would just be MIN_INT.
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing truncation division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
+                    stack.stack[registers.dst].int = math.MIN_INT; // zig doesnt have divison overflow operator
+                } else {
+                    stack.stack[registers.dst].int = @divTrunc(lhs, rhs);
+                }
+            },
+            .IntDivideFloor => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                const lhs = stack.stack[registers.src1].int;
+                const rhs = stack.stack[registers.src2].int;
+                if (rhs == 0) {
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing floor division", .{ lhs, rhs });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
+                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                }
+                if (lhs == math.MIN_INT and rhs == -1) {
+                    // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
+                    // interestingly the wrap around result would just be MIN_INT.
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing floor division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
+                    stack.stack[registers.dst].int = math.MIN_INT; // zig doesnt have divison overflow operator
+                } else {
+                    stack.stack[registers.dst].int = @divTrunc(lhs, rhs);
+                }
             },
             else => {
                 @panic("not implemented");
