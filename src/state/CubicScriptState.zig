@@ -200,6 +200,38 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 }
                 stack.stack[registers.dst].int = temp.@"0";
             },
+            .IntSubtract => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                const lhs = stack.stack[registers.src1].int;
+                const rhs = stack.stack[registers.src2].int;
+
+                const temp = math.subOverflow(lhs, rhs);
+                if (temp.@"1") {
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] - rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.SubtractionIntegerOverflow, ErrorSeverity.Warning, message);
+                }
+                stack.stack[registers.dst].int = temp.@"0";
+            },
+            .IntMultiply => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                const lhs = stack.stack[registers.src1].int;
+                const rhs = stack.stack[registers.src2].int;
+
+                const temp = math.mulOverflow(lhs, rhs);
+                if (temp.@"1") {
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] * rhs[{}]. Using wrap around result of {}", .{ lhs, rhs, temp.@"0" });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.MultiplicationIntegerOverflow, ErrorSeverity.Warning, message);
+                }
+                stack.stack[registers.dst].int = temp.@"0";
+            },
             else => {
                 @panic("not implemented");
             },
