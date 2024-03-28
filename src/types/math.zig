@@ -8,7 +8,7 @@ pub const MIN_INT = std.math.minInt(Int);
 
 // https://ziglang.org/documentation/master/#Wrapping-Operations
 
-/// Returns a tuple of the resulting addition, as well as a bool for if integer overflow occurred.
+/// Returns a tuple of the resulting addition, as well as a bool for if integer overflow (or underflow) occurred.
 /// If overflow occurrs, the result is wrapped around.
 pub fn addOverflow(a: Int, b: Int) struct { Int, bool } {
     var didOverflow = false;
@@ -26,7 +26,7 @@ pub fn addOverflow(a: Int, b: Int) struct { Int, bool } {
     return .{ temp, didOverflow };
 }
 
-/// Returns a tuple of the resulting subtraction, as well as a bool for if integer overflow occurred.
+/// Returns a tuple of the resulting subtraction, as well as a bool for if integer overflow (or underflow) occurred.
 /// If overflow occurrs, the result is wrapped around.
 pub fn subOverflow(a: Int, b: Int) struct { Int, bool } {
     // https://stackoverflow.com/questions/1633561/how-to-detect-overflow-when-subtracting-two-signed-32-bit-numbers-in-c
@@ -42,11 +42,16 @@ pub fn subOverflow(a: Int, b: Int) struct { Int, bool } {
     return .{ temp, didOverflow };
 }
 
-/// Returns a tuple of the resulting multiplication, as well as a bool for if integer overflow occurred.
+/// Returns a tuple of the resulting multiplication, as well as a bool for if integer overflow (or underflow) occurred.
 /// If overflow occurrs, the result is wrapped around.
 pub fn mulOverflow(a: Int, b: Int) struct { Int, bool } {
     // https://stackoverflow.com/questions/54318815/integer-overflow-w-multiplication-in-c
     var didOverflow = false;
+
+    if (a == MIN_INT and b == -1) {
+        return .{ MIN_INT, true };
+    }
+
     if (b > 0) {
         if (a > @divTrunc(MAX_INT, b) or a < @divTrunc(MIN_INT, b)) {
             didOverflow = true;
