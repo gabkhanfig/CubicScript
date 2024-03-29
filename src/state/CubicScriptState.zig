@@ -9,6 +9,8 @@ const Bytecode = @import("Bytecode.zig");
 const OpCode = Bytecode.OpCode;
 const Bool = root.Bool;
 const Int = root.Int;
+const Float = root.Float;
+const String = root.String;
 const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
 const allocPrintZ = std.fmt.allocPrintZ;
@@ -400,6 +402,24 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 }
 
                 stack.stack[registers.dst].int = stack.stack[registers.src1].int >> @intCast(stack.stack[registers.src2].int & MASK);
+            },
+            .IntToBool => {
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].boolean = if (stack.stack[registers.src].int != 0) root.TRUE else root.FALSE;
+            },
+            .IntToFloat => {
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].float = @floatFromInt(stack.stack[registers.src].int);
+            },
+            .IntToString => {
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].string = try String.fromInt(stack.stack[registers.src].int, self);
             },
             else => {
                 @panic("not implemented");
@@ -1283,5 +1303,199 @@ test "bitshift right" {
 
         try state.run(stack, &instructions);
         try expect(stack.stack[2].int == 0b011);
+    }
+}
+
+test "int to bool" {
+    { // 0 -> false
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].boolean == root.FALSE);
+    }
+    { // 1 -> true
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 1),
+            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].boolean == root.TRUE);
+    }
+    { // non-zero -> true
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 33),
+            Bytecode.encodeImmediateUpper(Int, 33),
+            Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].boolean == root.TRUE);
+    }
+}
+
+test "int to float" {
+    { // 0
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].float == 0.0);
+    }
+    { // 1
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 1),
+            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].float == 1.0);
+    }
+    { // -1
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, -1),
+            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].float == -1.0);
+    }
+    { // arbitrary value
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, -2398712938),
+            Bytecode.encodeImmediateUpper(Int, -2398712938),
+            Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].float == -2398712938.0);
+    }
+}
+
+test "int to string" {
+    { // 0
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].string.eqlSlice("0"));
+        stack.stack[1].string.deinit(state);
+    }
+    { // 1
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 1),
+            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].string.eqlSlice("1"));
+        stack.stack[1].string.deinit(state);
+    }
+    { // -1
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, -1),
+            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].string.eqlSlice("-1"));
+        stack.stack[1].string.deinit(state);
+    }
+    { // arbitrary value
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, -2398712938),
+            Bytecode.encodeImmediateUpper(Int, -2398712938),
+            Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].string.eqlSlice("-2398712938"));
+        stack.stack[1].string.deinit(state);
     }
 }
