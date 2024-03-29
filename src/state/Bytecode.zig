@@ -159,11 +159,11 @@ pub const OpCode = enum(u8) {
     BitwiseOr,
     /// Bitwise XOR between integers `src1 ^ src2`, storing the result in `dst`.
     BitwiseXor,
-    /// Bit left-shift of `src1 << src2`, storing the result in `dst`. `src2` may not be negative,
-    /// and may not be greater than 63. If either error conditions are met, an error will have to be handled
+    /// Bit left-shift of `src1 << src2`, storing the result in `dst`.
     BitShiftLeft,
-    /// Bit left-shift of `src1 >> src2`, storing the result in `dst`. `src2` may not be negative,
-    /// and may not be greater than 63. If either error conditions are met, an error will have to be handled
+    /// Bit left-shift of `src1 >> src2`, storing the result in `dst`.
+    /// https://learn.microsoft.com/en-us/cpp/cpp/left-shift-and-right-shift-operators-input-and-output?view=msvc-170#right-shifts
+    /// TODO maybe bitwise operations should only be allowed on a special type?
     BitShiftRight,
     /// Convert an integer `src` to a bool, storing the result in `dst`.
     /// If `src` is non-zero, `true` is stored. If `src` is zero, `false` is stored.
