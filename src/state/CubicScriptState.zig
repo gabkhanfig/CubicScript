@@ -106,7 +106,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 // Dont bother checking the dst, because that can extend past the stack frame.
                 assert(@as(usize, operand.dst) < currentStackFrameSize);
 
-                std.debug.print("LoadZero: setting dst[{}] to 0\n", .{operand.dst});
+                //std.debug.print("LoadZero: setting dst[{}] to 0\n", .{operand.dst});
                 stack.stack[dstRegisterPos] = std.mem.zeroes(RawValue);
             },
             .LoadImmediate => {
@@ -341,6 +341,12 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
             },
+            .IntBitwiseComplement => {
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].int = ~stack.stack[registers.src].int;
+            },
             else => {
                 @panic("not implemented");
             },
@@ -359,6 +365,16 @@ fn getAndValidateDstTwoSrcRegisterPos(stackPointer: usize, currentStackFrameSize
     const src2RegisterPos = stackPointer + @as(usize, operands.src2);
 
     return .{ .dst = dstRegisterPos, .src1 = src1RegisterPos, .src2 = src2RegisterPos };
+}
+
+fn getAndValidateDstSrcRegisterPos(stackPointer: usize, currentStackFrameSize: usize, operands: Bytecode.OperandsDstSrc) struct { dst: usize, src: usize } {
+    assert(@as(usize, operands.dst) < currentStackFrameSize);
+    assert(@as(usize, operands.src) < currentStackFrameSize);
+
+    const dstRegisterPos = stackPointer + @as(usize, operands.dst);
+    const srcRegisterPos = stackPointer + @as(usize, operands.src);
+
+    return .{ .dst = dstRegisterPos, .src = srcRegisterPos };
 }
 
 /// Handles reporting errors, and other user specific data.
@@ -1013,5 +1029,42 @@ test "int power" {
         };
 
         try state.run(stack, &instructions);
+    }
+}
+
+test "int bitwise complement" {
+    {
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encode(OpCode.IntBitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].int == -1); // ~0
+    }
+    {
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = 1;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.IntBitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].int == -2); // ~1
     }
 }
