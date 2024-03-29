@@ -71,6 +71,60 @@ pub fn mulOverflow(a: Int, b: Int) struct { Int, bool } {
     return .{ temp, didOverflow };
 }
 
+/// Returns a tuple of the resulting multiplication, as well as a bool for if integer overflow (or underflow) occurred.
+/// If overflow occurrs, the result is wrapped around.
+/// If `base == 0` and `exp < 0`, this is a hard error as 0 raised to a negative exponent is undefined.
+/// For `b < 0`, the returning value will be 0 without an overflow, since it is a mathetically correct exponentiation floored.
+pub fn powOverflow(base: Int, exp: Int) error{ZeroPowNegative}!struct { Int, bool } {
+    if (base == 0 and exp < 0) {
+        return error.ZeroPowNegative;
+    }
+    if (base == 1 or exp == 0) {
+        return .{ 1, false };
+    }
+    if (base == -1 or base == 0) {
+        return .{ base, false };
+    }
+
+    // base >= 2 or base <= -2 from this point
+    if (exp < 0) {
+        return .{ 0, false }; // basically like float exponent floored
+    }
+
+    var didOverflow = false;
+    var baseLoop = base;
+    var expLoop = exp;
+    var accumulate: Int = 1;
+    while (expLoop > 1) {
+        if (expLoop & 1 == 1) {
+            const temp = mulOverflow(accumulate, baseLoop);
+            if (temp[1] == true) {
+                didOverflow = true;
+            }
+            accumulate = temp[0];
+        }
+
+        expLoop >>= 1;
+        {
+            const temp = mulOverflow(baseLoop, baseLoop);
+            if (temp[1] == true) {
+                didOverflow = true;
+            }
+            baseLoop = temp[0];
+        }
+    }
+
+    if (expLoop == 1) {
+        const temp = mulOverflow(accumulate, baseLoop);
+        if (temp[1] == true) {
+            didOverflow = true;
+        }
+        accumulate = temp[0];
+    }
+
+    return .{ accumulate, didOverflow };
+}
+
 test "add overflow" {
     {
         const result = addOverflow(1, 1);
@@ -217,5 +271,80 @@ test "mul overflow" {
     {
         const result = mulOverflow(MAX_INT, -2); // actually overflow
         try expect(result.@"1" == true);
+    }
+}
+
+test "pow overflow" {
+    {
+        const result = try powOverflow(1, 1);
+        try expect(result[0] == 1);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(2, 3);
+        try expect(result[0] == 8);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(-2, 3);
+        try expect(result[0] == -8);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(1, 0);
+        try expect(result[0] == 1);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(2, 0);
+        try expect(result[0] == 1);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(2, -1);
+        try expect(result[0] == 0);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(2, -3);
+        try expect(result[0] == 0);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(2, 0);
+        try expect(result[0] == 1);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(1, 3);
+        try expect(result[0] == 1);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(1, -1);
+        try expect(result[0] == 1);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(1, -2);
+        try expect(result[0] == 1);
+        try expect(result[1] == false);
+    }
+    {
+        const result = try powOverflow(MAX_INT, 2);
+        try expect(result[0] == @mulWithOverflow(@as(Int, MAX_INT), @as(Int, MAX_INT))[0]);
+        try expect(result[1] == true);
+    }
+    {
+        const result = try powOverflow(-2, 65);
+        try expect(result[1] == true);
+    }
+    {
+        if (powOverflow(0, -1)) |_| {
+            try expect(false);
+        } else |_| {}
+        if (powOverflow(0, -2)) |_| {
+            try expect(false);
+        } else |_| {}
     }
 }
