@@ -284,6 +284,38 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                     stack.stack[registers.dst].int = @divFloor(lhs, rhs);
                 }
             },
+            .IntModulo => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                const lhs = stack.stack[registers.src1].int;
+                const rhs = stack.stack[registers.src2].int;
+                if (rhs == 0) {
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing modulo", .{ lhs, rhs });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.ModuloByZero, ErrorSeverity.Fatal, message);
+                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                }
+
+                stack.stack[registers.dst].int = @mod(lhs, rhs);
+            },
+            .IntRemainder => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                const lhs = stack.stack[registers.src1].int;
+                const rhs = stack.stack[registers.src2].int;
+                if (rhs == 0) {
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing remainder", .{ lhs, rhs });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.RemainderByZero, ErrorSeverity.Fatal, message);
+                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                }
+
+                stack.stack[registers.dst].int = @rem(lhs, rhs);
+            },
             else => {
                 @panic("not implemented");
             },
@@ -760,6 +792,106 @@ test "int division floor" {
             Bytecode.encodeImmediateLower(Int, 0),
             Bytecode.encodeImmediateUpper(Int, 0),
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+    }
+}
+
+test "int modulo" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = -5;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 2),
+            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 1);
+    }
+    { // divide by zero
+        var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = -5;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 0),
+            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+    }
+}
+
+test "int remainder" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = -5;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 2),
+            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == -1);
+    }
+    { // divide by zero
+        var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = -5;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 0),
+            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
         try state.run(stack, &instructions);
