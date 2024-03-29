@@ -347,6 +347,24 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 stack.stack[registers.dst].int = ~stack.stack[registers.src].int;
             },
+            .BitwiseAnd => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].int = stack.stack[registers.src1].int & stack.stack[registers.src2].int;
+            },
+            .BitwiseOr => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].int = stack.stack[registers.src1].int | stack.stack[registers.src2].int;
+            },
+            .BitwiseXor => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].int = stack.stack[registers.src1].int ^ stack.stack[registers.src2].int;
+            },
             else => {
                 @panic("not implemented");
             },
@@ -1066,5 +1084,74 @@ test "bitwise complement" {
 
         try state.run(stack, &instructions);
         try expect(stack.stack[1].int == -2); // ~1
+    }
+}
+
+test "bitwise and" {
+    {
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 0b011),
+            Bytecode.encodeImmediateUpper(Int, 0b011),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 0b110),
+            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encode(OpCode.BitwiseAnd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 0b010);
+    }
+}
+
+test "bitwise or" {
+    {
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 0b011),
+            Bytecode.encodeImmediateUpper(Int, 0b011),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 0b110),
+            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encode(OpCode.BitwiseOr, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 0b111);
+    }
+}
+
+test "bitwise xor" {
+    {
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 0b011),
+            Bytecode.encodeImmediateUpper(Int, 0b011),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 0b110),
+            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encode(OpCode.BitwiseXor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 0b101);
     }
 }
