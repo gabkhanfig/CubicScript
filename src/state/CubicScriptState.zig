@@ -385,7 +385,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 stack.stack[registers.dst].int = stack.stack[registers.src1].int << @intCast(stack.stack[registers.src2].int & MASK);
             },
-            .BitShiftRight => {
+            .BitArithmeticShiftRight => {
                 const MASK = 0b111111;
 
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -402,6 +402,24 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 }
 
                 stack.stack[registers.dst].int = stack.stack[registers.src1].int >> @intCast(stack.stack[registers.src2].int & MASK);
+            },
+            .BitLogicalShiftRight => {
+                const MASK = 0b111111;
+
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                if (stack.stack[registers.src2].int > 63 or stack.stack[registers.src2].int < 0) {
+                    const message = try allocPrintZ(self.allocator, "Cannot bitwise right shift by [{}] bits. Instead right shifting using 6 least significant bits: [{}]", .{
+                        stack.stack[registers.src2].int,
+                        stack.stack[registers.src2].int & MASK,
+                    });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.InvalidBitShiftAmount, ErrorSeverity.Warning, message);
+                }
+
+                stack.stack[registers.dst].actualValue = stack.stack[registers.src1].actualValue >> @intCast(stack.stack[registers.src2].actualValue & MASK);
             },
             .IntToBool => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
@@ -1259,7 +1277,7 @@ test "bitshift left" {
     }
 }
 
-test "bitshift right" {
+test "bitshift arithmetic right" {
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
 
@@ -1276,11 +1294,33 @@ test "bitshift right" {
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
             Bytecode.encodeImmediateLower(Int, 1),
             Bytecode.encodeImmediateUpper(Int, 1),
-            Bytecode.encode(OpCode.BitShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+            Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
         try state.run(stack, &instructions);
         try expect(stack.stack[2].int == 0b011);
+    }
+    { // retain sign bit
+        var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, -1),
+            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 1),
+            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == -1);
     }
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
@@ -1298,7 +1338,76 @@ test "bitshift right" {
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
             Bytecode.encodeImmediateLower(Int, 65), // when masked by 0b111111, the resulting value is just 1
             Bytecode.encodeImmediateUpper(Int, 65),
-            Bytecode.encode(OpCode.BitShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+            Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 0b011);
+    }
+}
+
+test "bitshift logical right" {
+    {
+        var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 0b110),
+            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 1),
+            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 0b011);
+    }
+    { // dont retain sign bit
+        var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, -1),
+            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 1),
+            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == math.MAX_INT);
+    }
+    {
+        var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 0b110),
+            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 65), // when masked by 0b111111, the resulting value is just 1
+            Bytecode.encodeImmediateUpper(Int, 65),
+            Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
         try state.run(stack, &instructions);
