@@ -316,6 +316,31 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 stack.stack[registers.dst].int = @rem(lhs, rhs);
             },
+            .IntPower => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                const base = stack.stack[registers.src1].int;
+                const exp = stack.stack[registers.src2].int;
+
+                const result = math.powOverflow(base, exp);
+                if (result) |numAndOverflow| {
+                    stack.stack[registers.dst].int = numAndOverflow[0];
+
+                    if (numAndOverflow[1]) {
+                        const message = try allocPrintZ(self.allocator, "Numbers base[{}] to the power of exp[{}]. Using wrap around result of [{}]", .{ base, exp, numAndOverflow[0] });
+                        defer self.allocator.free(message);
+
+                        self.runtimeError(RuntimeError.PowerIntegerOverflow, ErrorSeverity.Warning, message);
+                    }
+                } else |_| {
+                    const message = try allocPrintZ(self.allocator, "Numbers base[{}] to the power of exp[{}]", .{ base, exp });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Fatal, message);
+                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                }
+            },
             else => {
                 @panic("not implemented");
             },
@@ -892,6 +917,99 @@ test "int remainder" {
             Bytecode.encodeImmediateLower(Int, 0),
             Bytecode.encodeImmediateUpper(Int, 0),
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+    }
+}
+
+test "int power" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = -5;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 2),
+            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 25);
+    }
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = false };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const src1: Int = -5;
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, src1),
+            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, -2),
+            Bytecode.encodeImmediateUpper(Int, -2),
+            Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[2].int == 0);
+    }
+    { // overflow
+        var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, math.MAX_INT),
+            Bytecode.encodeImmediateUpper(Int, math.MAX_INT),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, 2),
+            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
+        };
+
+        try state.run(stack, &instructions);
+    }
+    { // 0 to the power of negative error
+        var contextObject = ScriptTestingContextError(RuntimeError.ZeroToPowerOfNegative){ .shouldExpectError = true };
+
+        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(Int, 0),
+            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
+            Bytecode.encodeImmediateLower(Int, -2),
+            Bytecode.encodeImmediateUpper(Int, -2),
+            Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
         try state.run(stack, &instructions);
