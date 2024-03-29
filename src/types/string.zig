@@ -4,7 +4,7 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const AtomicRefCount = @import("atomic_ref_count.zig").AtomicRefCount;
 const root = @import("../root.zig");
-const Int = root.Int;
+const Int = i64;
 const ValueTag = root.ValueTag;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
 

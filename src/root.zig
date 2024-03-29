@@ -11,16 +11,6 @@ pub const CubicScriptState = @import("state/CubicScriptState.zig");
 pub const Stack = @import("state/Stack.zig");
 pub const Bytecode = @import("state/Bytecode.zig");
 
-pub const FALSE: Bool = 0;
-pub const TRUE: Bool = 1;
-
-/// true = 1, false = 0. Corresponds with `CubsBool` in `cubic_script.h`.
-pub const Bool = usize;
-/// Signed 64 bit integer. Corresponds with `CubsInt` in `cubic_script.h`.
-pub const Int = i64;
-/// 64 bit float. Corresponds with `CubsFloat` in `cubic_script.h`.
-pub const Float = f64;
-
 pub const String = @import("types/string.zig").String;
 
 pub const Array = @import("types/array.zig").Array;
@@ -71,9 +61,9 @@ pub const ValueTag = enum(c_uint) { // Reasonable default enum size for C
 /// Untagged union representing all primitive value types and classes.
 pub const RawValue = extern union {
     actualValue: usize,
-    boolean: Bool,
-    int: Int,
-    float: Float,
+    boolean: bool,
+    int: i64,
+    float: f64,
     string: String,
     array: Array,
     map: Map,
@@ -133,16 +123,16 @@ pub const TaggedValue = extern struct {
     tag: ValueTag,
 
     /// For zig/c compatibility
-    pub fn initBool(inBool: Bool) TaggedValue {
+    pub fn initBool(inBool: bool) TaggedValue {
         return TaggedValue{ .tag = ValueTag.Bool, .value = .{ .boolean = inBool } };
     }
     /// For zig/c compatibility
-    pub fn initInt(inInt: Int) TaggedValue {
+    pub fn initInt(inInt: i64) TaggedValue {
         return TaggedValue{ .tag = ValueTag.Int, .value = .{ .int = inInt } };
     }
 
     /// For zig/c compatibility
-    pub fn initFloat(inFloat: Float) TaggedValue {
+    pub fn initFloat(inFloat: f64) TaggedValue {
         return TaggedValue{ .tag = ValueTag.Float, .value = .{ .float = inFloat } };
     }
 

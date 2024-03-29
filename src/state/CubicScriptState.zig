@@ -7,9 +7,6 @@ const RawValue = root.RawValue;
 const Stack = @import("Stack.zig");
 const Bytecode = @import("Bytecode.zig");
 const OpCode = Bytecode.OpCode;
-const Bool = root.Bool;
-const Int = root.Int;
-const Float = root.Float;
 const String = root.String;
 const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
@@ -134,7 +131,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 assert(registers.dst != registers.src2);
                 assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int == stack.stack[registers.src2].int);
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int == stack.stack[registers.src2].int;
             },
             .IntIsNotEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -144,7 +141,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 assert(registers.dst != registers.src2);
                 assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int != stack.stack[registers.src2].int);
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int != stack.stack[registers.src2].int;
             },
             .IntIsLessThan => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -154,7 +151,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 assert(registers.dst != registers.src2);
                 assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int < stack.stack[registers.src2].int);
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int < stack.stack[registers.src2].int;
             },
             .IntIsGreaterThan => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -164,7 +161,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 assert(registers.dst != registers.src2);
                 assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int > stack.stack[registers.src2].int);
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int > stack.stack[registers.src2].int;
             },
             .IntIsLessOrEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -174,7 +171,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 assert(registers.dst != registers.src2);
                 assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int <= stack.stack[registers.src2].int);
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int <= stack.stack[registers.src2].int;
             },
             .IntIsGreaterOrEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -184,7 +181,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 assert(registers.dst != registers.src2);
                 assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = @intFromBool(stack.stack[registers.src1].int >= stack.stack[registers.src2].int);
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int >= stack.stack[registers.src2].int;
             },
             .IntAdd => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -425,7 +422,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
                 const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                stack.stack[registers.dst].boolean = if (stack.stack[registers.src].int != 0) root.TRUE else root.FALSE;
+                stack.stack[registers.dst].boolean = stack.stack[registers.src].int != 0;
             },
             .IntToFloat => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
@@ -534,7 +531,7 @@ test "nop" {
 
 test "int comparisons" {
     const IntComparisonTester = struct {
-        fn intCompare(state: *const Self, stack: *Stack, opcode: OpCode, src1Value: root.Int, src2Value: root.Int, shouldBeTrue: bool) !void {
+        fn intCompare(state: *const Self, stack: *Stack, opcode: OpCode, src1Value: i64, src2Value: i64, shouldBeTrue: bool) !void {
             const LOW_MASK = 0xFFFFFFFF;
             const HIGH_MASK: usize = @shlExact(0xFFFFFFFF, 32);
             const src1: usize = @bitCast(src1Value);
@@ -553,9 +550,9 @@ test "int comparisons" {
             try state.run(stack, &instructions);
 
             if (shouldBeTrue) {
-                try expect(stack.stack[2].boolean == root.TRUE);
+                try expect(stack.stack[2].boolean == true);
             } else {
-                try expect(stack.stack[2].boolean == root.FALSE);
+                try expect(stack.stack[2].boolean == false);
             }
         }
     };
@@ -567,27 +564,27 @@ test "int comparisons" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsEqual, std.math.maxInt(root.Int), std.math.maxInt(root.Int), true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsEqual, std.math.maxInt(root.Int), 123456789, false);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsEqual, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsEqual, math.MAX_INT, 123456789, false);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsNotEqual, std.math.maxInt(root.Int), std.math.maxInt(root.Int), false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsNotEqual, std.math.maxInt(root.Int), 123456789, true);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsNotEqual, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsNotEqual, math.MAX_INT, 123456789, true);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, std.math.maxInt(root.Int), std.math.maxInt(root.Int), false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, std.math.maxInt(root.Int), 123456789, false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, -1, std.math.maxInt(root.Int), true);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, math.MAX_INT, 123456789, false);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, -1, math.MAX_INT, true);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, std.math.maxInt(root.Int), std.math.maxInt(root.Int), false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, std.math.maxInt(root.Int), 123456789, true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, -1, std.math.maxInt(root.Int), false);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, math.MAX_INT, 123456789, true);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, -1, math.MAX_INT, false);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, std.math.maxInt(root.Int), std.math.maxInt(root.Int), true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, std.math.maxInt(root.Int), 123456789, false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, -1, std.math.maxInt(root.Int), true);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, math.MAX_INT, 123456789, false);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, -1, math.MAX_INT, true);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, std.math.maxInt(root.Int), std.math.maxInt(root.Int), true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, std.math.maxInt(root.Int), 123456789, true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, -1, std.math.maxInt(root.Int), false);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, math.MAX_INT, 123456789, true);
+        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, -1, math.MAX_INT, false);
     }
 }
 
@@ -633,9 +630,9 @@ test "int addition" {
         defer stack.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
-        const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
 
-        const src1: Int = 10;
+        const src1: i64 = 10;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -660,9 +657,9 @@ test "int addition" {
         defer stack.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
-        const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
 
-        const src1: Int = math.MAX_INT;
+        const src1: i64 = math.MAX_INT;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -689,12 +686,12 @@ test "int subtraction" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = 10;
+        const src1: i64 = 10;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
             Bytecode{ .value = 1 }, // store decimal 1
             Bytecode{ .value = 0 },
@@ -716,7 +713,7 @@ test "int subtraction" {
         const LOW_MASK = 0xFFFFFFFF;
         const HIGH_MASK: usize = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
 
-        const src1: Int = math.MIN_INT;
+        const src1: i64 = math.MIN_INT;
         const srcAsUsize: usize = @bitCast(src1);
 
         const instructions = [_]Bytecode{
@@ -745,9 +742,9 @@ test "int multiplication" {
         defer stack.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
-        const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
 
-        const src1: Int = math.MAX_INT;
+        const src1: i64 = math.MAX_INT;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -772,9 +769,9 @@ test "int multiplication" {
         defer stack.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
-        const HIGH_MASK: Int = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
 
-        const src1: Int = math.MAX_INT;
+        const src1: i64 = math.MAX_INT;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -801,15 +798,15 @@ test "int division truncation" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = -5;
+        const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 2),
-            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encodeImmediateLower(i64, 2),
+            Bytecode.encodeImmediateUpper(i64, 2),
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -827,11 +824,11 @@ test "int division truncation" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, math.MIN_INT),
-            Bytecode.encodeImmediateUpper(Int, math.MIN_INT),
+            Bytecode.encodeImmediateLower(i64, math.MIN_INT),
+            Bytecode.encodeImmediateUpper(i64, math.MIN_INT),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, -1),
-            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encodeImmediateLower(i64, -1),
+            Bytecode.encodeImmediateUpper(i64, -1),
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -849,11 +846,11 @@ test "int division truncation" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 0),
-            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encodeImmediateLower(i64, 0),
+            Bytecode.encodeImmediateUpper(i64, 0),
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -871,15 +868,15 @@ test "int division floor" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = -5;
+        const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 2),
-            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encodeImmediateLower(i64, 2),
+            Bytecode.encodeImmediateUpper(i64, 2),
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -897,11 +894,11 @@ test "int division floor" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, math.MIN_INT),
-            Bytecode.encodeImmediateUpper(Int, math.MIN_INT),
+            Bytecode.encodeImmediateLower(i64, math.MIN_INT),
+            Bytecode.encodeImmediateUpper(i64, math.MIN_INT),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, -1),
-            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encodeImmediateLower(i64, -1),
+            Bytecode.encodeImmediateUpper(i64, -1),
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -919,11 +916,11 @@ test "int division floor" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 0),
-            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encodeImmediateLower(i64, 0),
+            Bytecode.encodeImmediateUpper(i64, 0),
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -941,15 +938,15 @@ test "int modulo" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = -5;
+        const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 2),
-            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encodeImmediateLower(i64, 2),
+            Bytecode.encodeImmediateUpper(i64, 2),
             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -965,15 +962,15 @@ test "int modulo" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = -5;
+        const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 0),
-            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encodeImmediateLower(i64, 0),
+            Bytecode.encodeImmediateUpper(i64, 0),
             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -991,15 +988,15 @@ test "int remainder" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = -5;
+        const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 2),
-            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encodeImmediateLower(i64, 2),
+            Bytecode.encodeImmediateUpper(i64, 2),
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1015,15 +1012,15 @@ test "int remainder" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = -5;
+        const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 0),
-            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encodeImmediateLower(i64, 0),
+            Bytecode.encodeImmediateUpper(i64, 0),
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1041,15 +1038,15 @@ test "int power" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = -5;
+        const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 2),
-            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encodeImmediateLower(i64, 2),
+            Bytecode.encodeImmediateUpper(i64, 2),
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1065,15 +1062,15 @@ test "int power" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = -5;
+        const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, -2),
-            Bytecode.encodeImmediateUpper(Int, -2),
+            Bytecode.encodeImmediateLower(i64, -2),
+            Bytecode.encodeImmediateUpper(i64, -2),
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1091,11 +1088,11 @@ test "int power" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, math.MAX_INT),
-            Bytecode.encodeImmediateUpper(Int, math.MAX_INT),
+            Bytecode.encodeImmediateLower(i64, math.MAX_INT),
+            Bytecode.encodeImmediateUpper(i64, math.MAX_INT),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 2),
-            Bytecode.encodeImmediateUpper(Int, 2),
+            Bytecode.encodeImmediateLower(i64, 2),
+            Bytecode.encodeImmediateUpper(i64, 2),
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1112,11 +1109,11 @@ test "int power" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 0),
-            Bytecode.encodeImmediateUpper(Int, 0),
+            Bytecode.encodeImmediateLower(i64, 0),
+            Bytecode.encodeImmediateUpper(i64, 0),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, -2),
-            Bytecode.encodeImmediateUpper(Int, -2),
+            Bytecode.encodeImmediateLower(i64, -2),
+            Bytecode.encodeImmediateUpper(i64, -2),
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1147,12 +1144,12 @@ test "bitwise complement" {
         const stack = try Stack.init(state);
         defer stack.deinit();
 
-        const src1: Int = 1;
+        const src1: i64 = 1;
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, src1),
-            Bytecode.encodeImmediateUpper(Int, src1),
+            Bytecode.encodeImmediateLower(i64, src1),
+            Bytecode.encodeImmediateUpper(i64, src1),
             Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
@@ -1171,11 +1168,11 @@ test "bitwise and" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 0b011),
-            Bytecode.encodeImmediateUpper(Int, 0b011),
+            Bytecode.encodeImmediateLower(i64, 0b011),
+            Bytecode.encodeImmediateUpper(i64, 0b011),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 0b110),
-            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encodeImmediateLower(i64, 0b110),
+            Bytecode.encodeImmediateUpper(i64, 0b110),
             Bytecode.encode(OpCode.BitwiseAnd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1194,11 +1191,11 @@ test "bitwise or" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 0b011),
-            Bytecode.encodeImmediateUpper(Int, 0b011),
+            Bytecode.encodeImmediateLower(i64, 0b011),
+            Bytecode.encodeImmediateUpper(i64, 0b011),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 0b110),
-            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encodeImmediateLower(i64, 0b110),
+            Bytecode.encodeImmediateUpper(i64, 0b110),
             Bytecode.encode(OpCode.BitwiseOr, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1217,11 +1214,11 @@ test "bitwise xor" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 0b011),
-            Bytecode.encodeImmediateUpper(Int, 0b011),
+            Bytecode.encodeImmediateLower(i64, 0b011),
+            Bytecode.encodeImmediateUpper(i64, 0b011),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 0b110),
-            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encodeImmediateLower(i64, 0b110),
+            Bytecode.encodeImmediateUpper(i64, 0b110),
             Bytecode.encode(OpCode.BitwiseXor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1242,11 +1239,11 @@ test "bitshift left" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, -1),
-            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encodeImmediateLower(i64, -1),
+            Bytecode.encodeImmediateUpper(i64, -1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.BitShiftLeft, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1264,11 +1261,11 @@ test "bitshift left" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, -1),
-            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encodeImmediateLower(i64, -1),
+            Bytecode.encodeImmediateUpper(i64, -1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 65), // when masked by 0b111111, the resulting value is just 1
-            Bytecode.encodeImmediateUpper(Int, 65),
+            Bytecode.encodeImmediateLower(i64, 65), // when masked by 0b111111, the resulting value is just 1
+            Bytecode.encodeImmediateUpper(i64, 65),
             Bytecode.encode(OpCode.BitShiftLeft, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1289,11 +1286,11 @@ test "bitshift arithmetic right" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 0b110),
-            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encodeImmediateLower(i64, 0b110),
+            Bytecode.encodeImmediateUpper(i64, 0b110),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1311,11 +1308,11 @@ test "bitshift arithmetic right" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, -1),
-            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encodeImmediateLower(i64, -1),
+            Bytecode.encodeImmediateUpper(i64, -1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1333,11 +1330,11 @@ test "bitshift arithmetic right" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 0b110),
-            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encodeImmediateLower(i64, 0b110),
+            Bytecode.encodeImmediateUpper(i64, 0b110),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 65), // when masked by 0b111111, the resulting value is just 1
-            Bytecode.encodeImmediateUpper(Int, 65),
+            Bytecode.encodeImmediateLower(i64, 65), // when masked by 0b111111, the resulting value is just 1
+            Bytecode.encodeImmediateUpper(i64, 65),
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1358,11 +1355,11 @@ test "bitshift logical right" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 0b110),
-            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encodeImmediateLower(i64, 0b110),
+            Bytecode.encodeImmediateUpper(i64, 0b110),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1380,11 +1377,11 @@ test "bitshift logical right" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, -1),
-            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encodeImmediateLower(i64, -1),
+            Bytecode.encodeImmediateUpper(i64, -1),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1402,11 +1399,11 @@ test "bitshift logical right" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 0b110),
-            Bytecode.encodeImmediateUpper(Int, 0b110),
+            Bytecode.encodeImmediateLower(i64, 0b110),
+            Bytecode.encodeImmediateUpper(i64, 0b110),
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-            Bytecode.encodeImmediateLower(Int, 65), // when masked by 0b111111, the resulting value is just 1
-            Bytecode.encodeImmediateUpper(Int, 65),
+            Bytecode.encodeImmediateLower(i64, 65), // when masked by 0b111111, the resulting value is just 1
+            Bytecode.encodeImmediateUpper(i64, 65),
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
@@ -1429,7 +1426,7 @@ test "int to bool" {
         };
 
         try state.run(stack, &instructions);
-        try expect(stack.stack[1].boolean == root.FALSE);
+        try expect(stack.stack[1].boolean == false);
     }
     { // 1 -> true
         const state = try Self.init(std.testing.allocator, null);
@@ -1440,13 +1437,13 @@ test "int to bool" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
         try state.run(stack, &instructions);
-        try expect(stack.stack[1].boolean == root.TRUE);
+        try expect(stack.stack[1].boolean == true);
     }
     { // non-zero -> true
         const state = try Self.init(std.testing.allocator, null);
@@ -1457,13 +1454,13 @@ test "int to bool" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 33),
-            Bytecode.encodeImmediateUpper(Int, 33),
+            Bytecode.encodeImmediateLower(i64, 33),
+            Bytecode.encodeImmediateUpper(i64, 33),
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
         try state.run(stack, &instructions);
-        try expect(stack.stack[1].boolean == root.TRUE);
+        try expect(stack.stack[1].boolean == true);
     }
 }
 
@@ -1492,8 +1489,8 @@ test "int to float" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
@@ -1509,8 +1506,8 @@ test "int to float" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, -1),
-            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encodeImmediateLower(i64, -1),
+            Bytecode.encodeImmediateUpper(i64, -1),
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
@@ -1526,8 +1523,8 @@ test "int to float" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, -2398712938),
-            Bytecode.encodeImmediateUpper(Int, -2398712938),
+            Bytecode.encodeImmediateLower(i64, -2398712938),
+            Bytecode.encodeImmediateUpper(i64, -2398712938),
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
@@ -1562,8 +1559,8 @@ test "int to string" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, 1),
-            Bytecode.encodeImmediateUpper(Int, 1),
+            Bytecode.encodeImmediateLower(i64, 1),
+            Bytecode.encodeImmediateUpper(i64, 1),
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
@@ -1580,8 +1577,8 @@ test "int to string" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, -1),
-            Bytecode.encodeImmediateUpper(Int, -1),
+            Bytecode.encodeImmediateLower(i64, -1),
+            Bytecode.encodeImmediateUpper(i64, -1),
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
@@ -1598,8 +1595,8 @@ test "int to string" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encodeImmediateLower(Int, -2398712938),
-            Bytecode.encodeImmediateUpper(Int, -2398712938),
+            Bytecode.encodeImmediateLower(i64, -2398712938),
+            Bytecode.encodeImmediateUpper(i64, -2398712938),
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 

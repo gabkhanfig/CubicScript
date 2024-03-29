@@ -1,7 +1,7 @@
 const std = @import("std");
 const expect = std.testing.expect;
 const root = @import("../root.zig");
-const Int = root.Int;
+const Int = i64;
 
 pub const MAX_INT = std.math.maxInt(Int);
 pub const MIN_INT = std.math.minInt(Int);

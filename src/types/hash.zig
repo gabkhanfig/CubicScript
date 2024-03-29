@@ -65,8 +65,8 @@ pub const HashPairBitmask = struct {
 
 test "hash bool" {
     {
-        const value1 = RawValue{ .boolean = root.TRUE };
-        const value2 = RawValue{ .boolean = root.TRUE };
+        const value1 = RawValue{ .boolean = true };
+        const value2 = RawValue{ .boolean = true };
 
         const h1 = computeHash(&value1, ValueTag.Bool, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Bool, TEST_SEED_VALUE);
@@ -74,8 +74,8 @@ test "hash bool" {
         try expect(h1 == h2);
     }
     {
-        const value1 = RawValue{ .boolean = root.FALSE };
-        const value2 = RawValue{ .boolean = root.FALSE };
+        const value1 = RawValue{ .boolean = false };
+        const value2 = RawValue{ .boolean = false };
 
         const h1 = computeHash(&value1, ValueTag.Bool, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Bool, TEST_SEED_VALUE);
@@ -83,8 +83,8 @@ test "hash bool" {
         try expect(h1 == h2);
     }
     {
-        const value1 = RawValue{ .boolean = root.FALSE };
-        const value2 = RawValue{ .boolean = root.TRUE };
+        const value1 = RawValue{ .boolean = false };
+        const value2 = RawValue{ .boolean = true };
 
         const h1 = computeHash(&value1, ValueTag.Bool, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.Bool, TEST_SEED_VALUE);

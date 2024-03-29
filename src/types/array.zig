@@ -5,7 +5,7 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
-const Int = root.Int;
+const Int = i64;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
 
 /// This is the Array implementation for scripts.
@@ -416,11 +416,11 @@ test "Array bool sanity" {
         try expect(false);
     } else |_| {}
 
-    var pushValue = RawValue{ .boolean = root.TRUE };
+    var pushValue = RawValue{ .boolean = true };
     try arr.add(&pushValue, ValueTag.Bool, state);
 
     if (arr.at(0)) |value| {
-        try expect(value.boolean == root.TRUE);
+        try expect(value.boolean == true);
     } else |_| {
         try expect(false);
     }
@@ -496,7 +496,7 @@ test "Array nested array sanity" {
         var nestedArr = Array.init(ValueTag.Bool);
         defer arr.deinit(state);
 
-        var nestedValue = RawValue{ .boolean = root.TRUE };
+        var nestedValue = RawValue{ .boolean = true };
         try nestedArr.add(&nestedValue, ValueTag.Bool, state);
 
         pushValue = RawValue{ .array = nestedArr };
@@ -506,7 +506,7 @@ test "Array nested array sanity" {
     if (arr.at(0)) |value| {
         try expect(value.array.len() == 1);
         if (value.array.at(0)) |nestedValue| {
-            try expect(nestedValue.boolean == root.TRUE);
+            try expect(nestedValue.boolean == true);
         } else |_| {
             try expect(false);
         }
@@ -526,7 +526,7 @@ const TestCreateArray = struct {
             .Bool => {
                 for (0..n) |i| {
                     var pushValue = RawValue{
-                        .boolean = if (@mod(i, 2) == 0) root.TRUE else root.FALSE,
+                        .boolean = if (@mod(i, 2) == 0) true else false,
                     };
                     arr.add(&pushValue, tag, state) catch unreachable;
                 }
