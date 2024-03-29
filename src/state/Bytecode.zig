@@ -149,7 +149,7 @@ pub const OpCode = enum(u8) {
     /// Remainder operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
     /// This is equivalent to `src1 % src2` in C, C++, and Rust.
     IntRemainder,
-    /// Exponent. Raises `src1` to the power of `src2`, storing the result in `dst`.
+    /// Exponent. Raises `src1` to the power of `src2`, storing the result in `dst`. If `src1 == 0` and `src2 < 0`, a fatal error occurs.
     IntPower,
     /// Inverts the bits of integer `src`, storing the result in `dst`.
     IntNot,

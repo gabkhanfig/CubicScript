@@ -7,6 +7,7 @@ pub const RuntimeError = enum(c_int) {
     DivideByZero,
     ModuloByZero,
     RemainderByZero,
+    ZeroToPowerOfNegative,
 };
 
 pub const Severity = enum(c_int) {
