@@ -341,7 +341,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
             },
-            .IntBitwiseComplement => {
+            .BitwiseComplement => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
                 const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
@@ -1032,7 +1032,7 @@ test "int power" {
     }
 }
 
-test "int bitwise complement" {
+test "bitwise complement" {
     {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
@@ -1042,7 +1042,7 @@ test "int bitwise complement" {
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-            Bytecode.encode(OpCode.IntBitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+            Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
         try state.run(stack, &instructions);
@@ -1061,7 +1061,7 @@ test "int bitwise complement" {
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encodeImmediateLower(Int, src1),
             Bytecode.encodeImmediateUpper(Int, src1),
-            Bytecode.encode(OpCode.IntBitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+            Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
         try state.run(stack, &instructions);
