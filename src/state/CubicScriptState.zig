@@ -436,6 +436,18 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 stack.stack[registers.dst].string = try String.fromInt(stack.stack[registers.src].int, self);
             },
+            .BoolNot => {
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].boolean = !stack.stack[registers.src].boolean;
+            },
+            .BoolToString => {
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].string = try String.fromBool(stack.stack[registers.src].boolean, self);
+            },
             else => {
                 @panic("not implemented");
             },
@@ -1602,6 +1614,80 @@ test "int to string" {
 
         try state.run(stack, &instructions);
         try expect(stack.stack[1].string.eqlSlice("-2398712938"));
+        stack.stack[1].string.deinit(state);
+    }
+}
+
+test "bool not" {
+    {
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encode(OpCode.BoolNot, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].boolean == true);
+    }
+    {
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(bool, true),
+            Bytecode.encodeImmediateUpper(bool, true),
+            Bytecode.encode(OpCode.BoolNot, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].boolean == false);
+    }
+}
+
+test "bool to string" {
+    { // true
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(bool, true),
+            Bytecode.encodeImmediateUpper(bool, true),
+            Bytecode.encode(OpCode.BoolToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].string.eqlSlice("true"));
+        stack.stack[1].string.deinit(state);
+    }
+    { // false
+        const state = try Self.init(std.testing.allocator, null);
+        defer state.deinit();
+
+        const stack = try Stack.init(state);
+        defer stack.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(bool, false),
+            Bytecode.encodeImmediateUpper(bool, false),
+            Bytecode.encode(OpCode.BoolToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
+        };
+
+        try state.run(stack, &instructions);
+        try expect(stack.stack[1].string.eqlSlice("false"));
         stack.stack[1].string.deinit(state);
     }
 }

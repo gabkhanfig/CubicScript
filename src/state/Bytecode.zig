@@ -24,8 +24,11 @@ const LOW_MASK = 0xFFFFFFFF;
 const HIGH_MASK = @shlExact(0xFFFFFFFF, 32);
 
 pub fn encodeImmediateLower(comptime T: type, immediate: T) Self {
-    if (@sizeOf(T) != 8) {
-        @compileError("Invalid immediate type. Must be 8 bytes in size");
+    if (T == bool) {
+        const immediateBits: usize = @intFromBool(immediate);
+        return Self{ .value = @intCast(immediateBits & LOW_MASK) };
+    } else if (@sizeOf(T) != 8) {
+        @compileError("Invalid immediate type. Must be 8 bytes in size or boolean");
     }
 
     const immediateBits: usize = @bitCast(immediate);
@@ -33,8 +36,11 @@ pub fn encodeImmediateLower(comptime T: type, immediate: T) Self {
 }
 
 pub fn encodeImmediateUpper(comptime T: type, immediate: T) Self {
-    if (@sizeOf(T) != 8) {
-        @compileError("Invalid immediate type. Must be 8 bytes in size");
+    if (T == bool) {
+        const immediateBits: usize = @intFromBool(immediate);
+        return Self{ .value = @intCast(@shrExact(immediateBits & HIGH_MASK, 32)) };
+    } else if (@sizeOf(T) != 8) {
+        @compileError("Invalid immediate type. Must be 8 bytes in size or boolean");
     }
 
     const immediateBits: usize = @bitCast(immediate);

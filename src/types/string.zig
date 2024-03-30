@@ -160,14 +160,10 @@ pub const String = extern struct {
     pub fn fromScriptValue(value: root.TaggedValueConstRef, state: *const CubicScriptState) Allocator.Error!Self {
         switch (value.tag) {
             .Bool => {
-                if (value.value.boolean == root.TRUE) {
-                    return try Self.initSlice("true", state.allocator);
-                } else {
-                    return try Self.initSlice("false", state.allocator);
-                }
+                return Self.fromBool(value.value.boolean, state);
             },
             .Int => {
-                return Self.fromInt(value.value.*, state.allocator);
+                return Self.fromInt(value.value.int, state);
             },
             .Float => {},
             else => {
@@ -185,6 +181,14 @@ pub const String = extern struct {
     // toFloat
     // fromInt
     // fromFloat
+
+    pub fn fromBool(boolean: bool, state: *const CubicScriptState) Allocator.Error!Self {
+        if (boolean) {
+            return try Self.initSlice("true", state);
+        } else {
+            return try Self.initSlice("false", state);
+        }
+    }
 
     pub fn fromInt(num: Int, state: *const CubicScriptState) Allocator.Error!Self {
         if (num == 0) {
