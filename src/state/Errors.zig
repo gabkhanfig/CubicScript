@@ -10,6 +10,7 @@ pub const RuntimeError = enum(c_int) {
     PowerIntegerOverflow,
     ZeroToPowerOfNegative,
     InvalidBitShiftAmount,
+    FloatToIntOverflow,
 };
 
 pub const Severity = enum(c_int) {

@@ -238,7 +238,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 const lhs = stack.stack[registers.src1].int;
                 const rhs = stack.stack[registers.src2].int;
                 if (rhs == 0) {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing truncation division", .{ lhs, rhs });
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer truncation division", .{ lhs, rhs });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
@@ -248,7 +248,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 if (lhs == math.MIN_INT and rhs == -1) {
                     // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
                     // interestingly the wrap around result would just be MIN_INT.
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing truncation division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT });
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer truncation division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
@@ -264,7 +264,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 const lhs = stack.stack[registers.src1].int;
                 const rhs = stack.stack[registers.src2].int;
                 if (rhs == 0) {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing floor division", .{ lhs, rhs });
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer floor division", .{ lhs, rhs });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
@@ -274,7 +274,7 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
                 if (lhs == math.MIN_INT and rhs == -1) {
                     // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
                     // interestingly the wrap around result would just be MIN_INT.
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing floor division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT });
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer floor division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
@@ -448,6 +448,126 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
 
                 stack.stack[registers.dst].string = try String.fromBool(stack.stack[registers.src].boolean, self);
             },
+            .FloatIsEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
+
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float == stack.stack[registers.src2].float;
+            },
+            .FloatIsNotEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
+
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float != stack.stack[registers.src2].float;
+            },
+            .FloatIsLessThan => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
+
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float < stack.stack[registers.src2].float;
+            },
+            .FloatIsGreaterThan => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
+
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float > stack.stack[registers.src2].float;
+            },
+            .FloatIsLessOrEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
+
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float <= stack.stack[registers.src2].float;
+            },
+            .FloatIsGreaterOrEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                assert(registers.dst != registers.src1);
+                assert(registers.dst != registers.src2);
+                assert(registers.src1 != registers.src2);
+
+                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float >= stack.stack[registers.src2].float;
+            },
+            .FloatAdd => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].float = stack.stack[registers.src1].float + stack.stack[registers.src2].float;
+            },
+            .FloatSubtract => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].float = stack.stack[registers.src1].float - stack.stack[registers.src2].float;
+            },
+            .FloatMultiply => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                stack.stack[registers.dst].float = stack.stack[registers.src1].float * stack.stack[registers.src2].float;
+            },
+            .FloatDivide => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                if (stack.stack[registers.src2].float == 0) {
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing float division", .{
+                        stack.stack[registers.src1].float,
+                        stack.stack[registers.src2].float,
+                    });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
+                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                }
+
+                stack.stack[registers.dst].float = stack.stack[registers.src1].float * stack.stack[registers.src2].float;
+            },
+            .FloatToInt => {
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+
+                const MAX_INT_AS_FLOAT: f64 = @floatFromInt(math.MAX_INT);
+                const MIN_INT_AS_FLOAT: f64 = @floatFromInt(math.MIN_INT);
+                const src = stack.stack[registers.src].float;
+
+                if (src > MAX_INT_AS_FLOAT) {
+                    const message = try allocPrintZ(self.allocator, "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
+                    stack.stack[registers.dst].int = math.MAX_INT;
+                } else if (src < MIN_INT_AS_FLOAT) {
+                    const message = try allocPrintZ(self.allocator, "Float number [{}] is less than than the min int value of [{}]. Clamping to max int", .{ src, math.MIN_INT });
+                    defer self.allocator.free(message);
+
+                    self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
+                    stack.stack[registers.dst].int = math.MIN_INT;
+                } else {
+                    stack.stack[registers.dst].int = @intFromFloat(src);
+                }
+            },
+
             else => {
                 @panic("not implemented");
             },

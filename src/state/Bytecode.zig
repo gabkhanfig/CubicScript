@@ -193,6 +193,55 @@ pub const OpCode = enum(u8) {
     BoolNot,
     /// Convert bool `src` into a new string, storing the result in `dst`.
     BoolToString,
+
+    // ! == FLOAT INSTRUCTIONS ==
+
+    /// Float equality comparison between `src1` and `src2`. Stores the result in `dst`.
+    /// # Asserts
+    /// Registers may not overlap
+    FloatIsEqual,
+    /// Float inequality comparison between `src1` and `src2`. Stores the result in `dst`.
+    /// # Asserts
+    /// Registers may not overlap
+    FloatIsNotEqual,
+    /// Float less than comparison. Stores a bool result in `dst` register being the condition `src1` is less than `src2`.
+    /// # Asserts
+    /// Registers may not overlap
+    FloatIsLessThan,
+    /// Float greater than comparison. Stores a bool result in `dst` register being the condition `src1` is greater than `src2`.
+    /// # Asserts
+    /// Registers may not overlap
+    FloatIsGreaterThan,
+    /// Float less than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is less than or equal to `src2`.
+    /// # Asserts
+    /// Registers may not overlap
+    FloatIsLessOrEqual,
+    /// Float greater than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is greater than or equal to `src2`.
+    /// # Asserts
+    /// Registers may not overlap
+    FloatIsGreaterOrEqual,
+    /// Add `src1` with `src2` storing the result in `dst`.
+    FloatAdd,
+    /// Subtract `src1` by `src2` storing the result in `dst`.
+    FloatSubtract,
+    /// Multiply `src1` with `src2` storing the result in `dst`.
+    FloatMultiply,
+    /// Divide `src1` by `src2` storing the result in `dst`. If `src2 == 0`, this is considered a fatal error.
+    FloatDivide,
+    /// Convert `src` float to an int, storing it in `dst`.
+    /// If `src` is out of the range of an integer, the value will be clamped to the max/min int values.
+    FloatToInt,
+    /// Convert `src` float to a new string, storing it in `dst`.
+    FloatToString,
+
+    // NOTE should these math functions be part of a math library?
+    FloatPower,
+    FloatSquareRoot,
+    FloatSin,
+    FloatCos,
+    FloatTan,
+    // NOTE are arc and hyberbolic trig functions necessary?
+    FloatLog,
 };
 
 /// `dst` is a u9 because it allows moving values to registers within the
