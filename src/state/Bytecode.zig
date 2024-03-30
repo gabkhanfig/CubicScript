@@ -104,9 +104,13 @@ pub const OpCode = enum(u8) {
     /// Call a function at `src`, moving the stack pointer, and setting the return address.
     Call,
     /// Call a function from the host process at `src`, moving the stack pointer and setting the return address.
+    /// Maybe all extern functions take a reference to a slice of the available stack frame arguments.
+    /// For C, this would be a pointer to the beginning of the available stack frame for arg1, and a length of the length of the slice for arg2.
+    /// The `extern` function would then return a `TaggedValue`, in which `void` uses the `None` tag.
+    /// The runtime could assert that the correct type is returned.
     CallExtern,
 
-    // == Int Instructions (Some Bool compatible) ==
+    // ! == Int Instructions (Some Bool compatible) ==
 
     /// WORKS WITH BOOLS. Int/Bool equality comparison between `src1` and `src2`. Stores the result in `dst`.
     /// # Asserts
@@ -156,6 +160,7 @@ pub const OpCode = enum(u8) {
     /// This is equivalent to `src1 % src2` in C, C++, and Rust.
     IntRemainder,
     /// Exponent. Raises `src1` to the power of `src2`, storing the result in `dst`. If `src1 == 0` and `src2 < 0`, a fatal error occurs.
+    /// NOTE should this be part of a math library?
     IntPower,
     /// Inverts the bits of integer `src`, storing the result in `dst`.
     BitwiseComplement,
@@ -181,7 +186,7 @@ pub const OpCode = enum(u8) {
     /// Convert an integer `src` to a new string, storing the result in `dst`.
     IntToString,
 
-    // == Bool Instructions ==
+    // ! == Bool Instructions ==
     // NOTE converting a bool to int can just use the same register.
 
     /// If `src == true`, stores `false` in `dst`. If `src == false`, stores `true` in `dst`.
