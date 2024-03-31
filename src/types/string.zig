@@ -80,7 +80,26 @@ pub const String = extern struct {
                 return false;
             }
 
-            return string_simd.cubs_string_compare_equal_strings_simd_heap_rep(
+            const Optimal = struct {
+                var func: *const fn (selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) callconv(.C) bool = undefined;
+                var once = std.once(@This().assignFunc);
+
+                fn assignFunc() void {
+                    func = blk: {
+                        if (string_simd_x86.is_avx512f_supported()) {
+                            break :blk string_simd_x86.avx512CompareEqualStringAndString;
+                        } else if (string_simd_x86.is_avx2_supported()) {
+                            break :blk string_simd_x86.avx2CompareEqualStringAndString;
+                        } else {
+                            @panic("Required AVX-512 or AVX-2");
+                        }
+                    };
+                }
+            };
+
+            Optimal.once.call();
+
+            return Optimal.func(
                 @ptrCast(self.asInner().rep.heap.data),
                 @ptrCast(other.asInner().rep.heap.data),
                 @intCast(selfLength),
@@ -99,7 +118,26 @@ pub const String = extern struct {
                 return false;
             }
 
-            return string_simd.cubs_string_compare_equal_string_and_slice_simd_heap_rep(
+            const Optimal = struct {
+                var func: *const fn (selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) callconv(.C) bool = undefined;
+                var once = std.once(@This().assignFunc);
+
+                fn assignFunc() void {
+                    func = blk: {
+                        if (string_simd_x86.is_avx512f_supported()) {
+                            break :blk string_simd_x86.avx512CompareEqualStringAndSlice;
+                        } else if (string_simd_x86.is_avx2_supported()) {
+                            break :blk string_simd_x86.avx2CompareEqualStringAndSlice;
+                        } else {
+                            @panic("Required AVX-512 or AVX-2");
+                        }
+                    };
+                }
+            };
+
+            Optimal.once.call();
+
+            return Optimal.func(
                 @ptrCast(self.asInner().rep.heap.data),
                 @ptrCast(other.ptr),
                 @intCast(other.len),
@@ -109,9 +147,62 @@ pub const String = extern struct {
         return std.mem.eql(u8, self.toSlice(), other);
     }
 
+    pub fn cmp(self: *const Self, other: Self) root.Ordering {
+        if (self.inner == other.inner) {
+            return .Equal;
+        }
+
+        if (self.inner == null and other.len() == 0) { // other must not be null.
+            return .Equal;
+        }
+
+        // Now both are non-null
+        // TODO simd
+        const selfSlice = self.toSlice();
+        const otherSlice = other.toSlice();
+        if (selfSlice.len == otherSlice.len) {
+            for (selfSlice, otherSlice) |selfChar, otherChar| {
+                if (selfChar == otherChar) {
+                    continue;
+                } else if (selfChar < otherChar) {
+                    return .Less;
+                } else {
+                    return .Greater;
+                }
+            }
+            return .Equal;
+        } else {
+            const lengthToCheck = @max(selfSlice.len, otherSlice.len);
+            for (0..lengthToCheck) |i| {
+                const selfChar: u8 = blk: {
+                    if (selfSlice.len >= i) {
+                        break :blk 0;
+                    } else {
+                        break :blk selfSlice[i];
+                    }
+                };
+                const otherChar: u8 = blk: {
+                    if (otherSlice.len >= i) {
+                        break :blk 0;
+                    } else {
+                        break :blk otherSlice[i];
+                    }
+                };
+                if (selfChar == otherChar) {
+                    continue;
+                } else if (selfChar < otherChar) {
+                    return .Less;
+                } else {
+                    return .Greater;
+                }
+            }
+            return .Equal;
+        }
+    }
+
     pub fn hash(self: *const Self) usize {
         const slice = self.toSlice();
-        return string_simd.cubs_string_compute_hash_simd(@ptrCast(slice.ptr), @intCast(slice.len));
+        return string_simd_x86.cubs_string_compute_hash_simd(@ptrCast(slice.ptr), @intCast(slice.len));
     }
 
     pub fn find(self: *const Self, literal: [:0]const u8) ?Int {
@@ -127,7 +218,11 @@ pub const String = extern struct {
                     return null;
                 }
             } else {
-                const result = string_simd.cubs_string_find_str_slice(
+                const Optimal = struct {
+                    var func: *const fn (selfBuffer: [*c]const u8, selfLength: c_ulonglong, sliceBuffer: [*c]const u8, sliceLength: c_ulonglong) callconv(.C) c_ulonglong = string_simd_x86.avx512FindStrSliceInString;
+                };
+
+                const result = Optimal.func(
                     @ptrCast(selfBuffer.ptr),
                     @intCast(selfBuffer.len),
                     @ptrCast(literal.ptr),
@@ -324,12 +419,19 @@ pub const String = extern struct {
         };
     };
 
-    /// See string_simd.cpp
-    const string_simd = struct {
-        extern fn cubs_string_compare_equal_strings_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
-        extern fn cubs_string_compare_equal_string_and_slice_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
-        extern fn cubs_string_compute_hash_simd(selfBuffer: [*c]const u8, len: c_ulonglong) c_ulonglong;
-        extern fn cubs_string_find_str_slice(selfBuffer: [*c]const u8, selfLength: c_ulonglong, sliceBuffer: [*c]const u8, sliceLength: c_ulonglong) c_ulonglong;
+    // /// See string_simd.cpp
+    const string_simd_x86 = struct {
+        extern fn is_avx512f_supported() callconv(.C) bool;
+        extern fn is_avx2_supported() callconv(.C) bool;
+        extern fn avx512CompareEqualStringAndString(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) callconv(.C) bool;
+        extern fn avx2CompareEqualStringAndString(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) callconv(.C) bool;
+        extern fn avx512CompareEqualStringAndSlice(selfBuffer: [*c]const u8, sliceBuffer: [*c]const u8, sliceLength: c_ulonglong) callconv(.C) bool;
+        extern fn avx2CompareEqualStringAndSlice(selfBuffer: [*c]const u8, sliceBuffer: [*c]const u8, sliceLength: c_ulonglong) callconv(.C) bool;
+        // extern fn cubs_string_compare_equal_strings_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
+        // extern fn cubs_string_compare_equal_string_and_slice_simd_heap_rep(selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) bool;
+        extern fn cubs_string_compute_hash_simd(selfBuffer: [*c]const u8, len: c_ulonglong) callconv(.C) c_ulonglong;
+        extern fn avx512FindStrSliceInString(selfBuffer: [*c]const u8, selfLength: c_ulonglong, sliceBuffer: [*c]const u8, sliceLength: c_ulonglong) callconv(.C) c_ulonglong;
+        //extern fn cubs_string_find_str_slice(selfBuffer: [*c]const u8, selfLength: c_ulonglong, sliceBuffer: [*c]const u8, sliceLength: c_ulonglong) c_ulonglong;
     };
 };
 
@@ -880,4 +982,62 @@ test "String from int" {
         defer s.deinit(state);
         try expect(s.eqlSlice("-9223372036854775808"));
     }
+}
+
+test "String compare" {
+    const state = try CubicScriptState.init(std.testing.allocator, null);
+    defer state.deinit();
+
+    var empty1 = String{};
+    defer empty1.deinit(state);
+    var empty2 = String{};
+    defer empty2.deinit(state);
+    var emptyClone = empty1.clone();
+    defer emptyClone.deinit(state);
+
+    var helloWorld1 = try String.initSlice("hello world!", state);
+    defer helloWorld1.deinit(state);
+    var helloWorld2 = try String.initSlice("hello world!", state);
+    defer helloWorld2.deinit(state);
+    var helloWorldClone = helloWorld1.clone();
+    defer helloWorldClone.deinit(state);
+
+    var helloWorldAlt1 = try String.initSlice("hallo world!", state);
+    defer helloWorldAlt1.deinit(state);
+    var helloWorldAlt2 = try String.initSlice("hallo world!", state);
+    defer helloWorldAlt2.deinit(state);
+    var helloWorldAltClone = helloWorldAlt1.clone();
+    defer helloWorldAltClone.deinit(state);
+
+    var helloWorldSpace1 = try String.initSlice("hello world! ", state);
+    defer helloWorldSpace1.deinit(state);
+    var helloWorldSpace2 = try String.initSlice("hello world! ", state);
+    defer helloWorldSpace2.deinit(state);
+    var helloWorldSpaceClone = helloWorldSpace1.clone();
+    defer helloWorldSpaceClone.deinit(state);
+
+    var helloWorldLong1 = try String.initSlice("hello to this glorious world!", state);
+    defer helloWorldLong1.deinit(state);
+    var helloWorldLong2 = try String.initSlice("hello to this glorious world!", state);
+    defer helloWorldLong2.deinit(state);
+    var helloWorldLongClone = helloWorld1.clone();
+    defer helloWorldLongClone.deinit(state);
+
+    var helloWorldLongAlt1 = try String.initSlice("hallo to this glorious world!", state);
+    defer helloWorldLongAlt1.deinit(state);
+    var helloWorldLongAlt2 = try String.initSlice("hallo to this glorious world!", state);
+    defer helloWorldLongAlt2.deinit(state);
+    var helloWorldLongAltClone = helloWorldLongAlt1.clone();
+    defer helloWorldLongAltClone.deinit(state);
+
+    var helloWorldLongSpace1 = try String.initSlice("hello to this glorious world! ", state);
+    defer helloWorldLongSpace1.deinit(state);
+    var helloWorldLongSpace2 = try String.initSlice("hello to this glorious world! ", state);
+    defer helloWorldLongSpace2.deinit(state);
+    var helloWorldLongSpaceClone = helloWorldLongSpace1.clone();
+    defer helloWorldLongSpaceClone.deinit(state);
+
+    try expect(empty1.cmp(empty2) == .Equal);
+    try expect(empty1.cmp(emptyClone) == .Equal);
+    try expect(empty2.cmp(emptyClone) == .Equal);
 }

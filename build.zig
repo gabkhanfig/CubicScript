@@ -18,16 +18,17 @@ pub fn build(b: *std.Build) void {
     const cubic_script = b.addModule("cubic_script", .{ .root_source_file = .{ .path = "src/root.zig" } });
 
     if (target.result.cpu.arch.isX86()) {
-        cubic_script.addCMacro("X86_64", "1");
+        cubic_script.addCMacro("CUBS_X86_64", "1");
     }
     const c_flags = [_][]const u8{};
     for (cubic_script_c_sources) |c_file| {
         cubic_script.addCSourceFile(.{ .file = std.Build.LazyPath.relative(c_file), .flags = &c_flags });
     }
     cubic_script.link_libc = true;
-    cubic_script.link_libcpp = true;
+    // Doesn't work for MSVC
+    //cubic_script.link_libcpp = true;
 
-    const lib = b.addStaticLibrary(.{
+    const lib = b.addSharedLibrary(.{
         .name = "CubicScript",
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
@@ -105,7 +106,7 @@ pub fn linkCubicScriptLocal(cubic_script: *std.Build.Module, c: *std.Build.Step.
     c.root_module.addImport("cubic_script", cubic_script);
 
     if (c.rootModuleTarget().cpu.arch.isX86()) {
-        c.defineCMacro("X86_64", "1");
+        c.defineCMacro("CUBS_X86_64", "1");
     }
 
     c.addCSourceFiles(.{
@@ -114,10 +115,11 @@ pub fn linkCubicScriptLocal(cubic_script: *std.Build.Module, c: *std.Build.Step.
     });
 
     c.linkLibC();
-    c.linkLibCpp();
+    // Doesn't work for MSVC currently
+    //c.linkLibCpp();
 }
 
 pub const cubic_script_c_sources = [_][]const u8{
     "src/runtime/cpu_features.c",
-    "src/types/string_simd.cpp",
+    "src/types/string_simd.c",
 };

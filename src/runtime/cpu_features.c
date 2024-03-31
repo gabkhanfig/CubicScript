@@ -8,7 +8,7 @@
 
 #endif // WIN32 def
 
-#ifdef X86_64
+#ifdef CUBS_X86_64
 
 bool is_avx512f_supported() {
 #if defined(_WIN32) || defined(WIN32)
@@ -22,4 +22,4 @@ bool is_avx2_supported() {
 #endif
 }
 
-#endif // X86
+#endif // CUBS_X86_64

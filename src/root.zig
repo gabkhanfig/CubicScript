@@ -35,7 +35,7 @@ pub const Option = @import("types/option.zig").Option;
 
 pub const vector_types = @import("types/vector.zig");
 
-pub const ValueTag = enum(c_int) { // Reasonable default enum size for C
+pub const ValueTag = enum(c_uint) { // Reasonable default enum size for C
     None = 0,
     Bool = 1,
     Int = 2,
@@ -203,4 +203,10 @@ pub const TaggedValueMutRef = extern struct {
 pub const TaggedValueConstRef = extern struct {
     value: *const RawValue,
     tag: ValueTag,
+};
+
+pub const Ordering = enum(i64) {
+    Less = -1,
+    Equal = 0,
+    Greater = 1,
 };

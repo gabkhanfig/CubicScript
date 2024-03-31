@@ -1,7 +1,35 @@
 {
     "files.associations": {
         "windows.h": "c",
-        "limits": "cpp",
-        "bit": "cpp"
+        "cstdint": "cpp",
+        "type_traits": "c",
+        "stdint.h": "c",
+        "stddef.h": "c",
+        "stdio.h": "c",
+        "atomic": "c",
+        "concepts": "c",
+        "cstddef": "c",
+        "cstdio": "c",
+        "cstdlib": "c",
+        "cstring": "c",
+        "ctime": "c",
+        "cwchar": "c",
+        "initializer_list": "c",
+        "istream": "c",
+        "iterator": "c",
+        "memory": "c",
+        "new": "c",
+        "streambuf": "c",
+        "system_error": "c",
+        "tuple": "c",
+        "utility": "c",
+        "xiosbase": "c",
+        "xlocale": "c",
+        "xlocinfo": "c",
+        "xlocnum": "c",
+        "xmemory": "c",
+        "xstring": "c",
+        "xutility": "c",
+        "stdlib.h": "c"
     }
 }
