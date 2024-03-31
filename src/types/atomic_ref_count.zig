@@ -9,13 +9,13 @@ pub const AtomicRefCount = extern struct {
     count: std.atomic.Value(usize) = std.atomic.Value(usize).init(0),
 
     pub fn addRef(self: *Self) void {
-        const old = self.count.fetchAdd(1, AtomicOrder.Release);
+        const old = self.count.fetchAdd(1, AtomicOrder.release);
         assert(old != std.math.maxInt(usize));
     }
 
     /// Returns true if the ref count is 0, and there are no more references.
     pub fn removeRef(self: *Self) bool {
-        const old = self.count.fetchSub(1, AtomicOrder.Release);
+        const old = self.count.fetchSub(1, AtomicOrder.release);
         assert(old != 0);
         return old == 1;
     }
@@ -62,7 +62,7 @@ test "atomic ref count" {
             t4.join();
         }
 
-        try expect(c.count.load(AtomicOrder.Acquire) == 40000);
+        try expect(c.count.load(AtomicOrder.acquire) == 40000);
 
         {
             const t1 = try std.Thread.spawn(.{}, TestThreadHandler.incrementRefCountNTimes, .{ &c, 10000 });
@@ -76,7 +76,7 @@ test "atomic ref count" {
             t4.join();
         }
 
-        try expect(c.count.load(AtomicOrder.Acquire) == 40000);
+        try expect(c.count.load(AtomicOrder.acquire) == 40000);
 
         {
             const t1 = try std.Thread.spawn(.{}, TestThreadHandler.decrementRefCountNTimes, .{ &c, 10000 });
@@ -90,6 +90,6 @@ test "atomic ref count" {
             t4.join();
         }
 
-        try expect(c.count.load(AtomicOrder.Acquire) == 0);
+        try expect(c.count.load(AtomicOrder.acquire) == 0);
     }
 }
