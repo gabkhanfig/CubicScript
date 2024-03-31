@@ -1,5 +1,7 @@
 const std = @import("std");
 
+// NOTE for msvc, run `zig build -Dtarget=native-windows-msvc`
+
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
