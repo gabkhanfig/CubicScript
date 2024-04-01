@@ -175,14 +175,14 @@ pub const String = extern struct {
             const lengthToCheck = @max(selfSlice.len, otherSlice.len);
             for (0..lengthToCheck) |i| {
                 const selfChar: u8 = blk: {
-                    if (selfSlice.len >= i) {
+                    if (i >= selfSlice.len) {
                         break :blk 0;
                     } else {
                         break :blk selfSlice[i];
                     }
                 };
                 const otherChar: u8 = blk: {
-                    if (otherSlice.len >= i) {
+                    if (i >= otherSlice.len) {
                         break :blk 0;
                     } else {
                         break :blk otherSlice[i];
@@ -1020,7 +1020,7 @@ test "String compare" {
     defer helloWorldLong1.deinit(state);
     var helloWorldLong2 = try String.initSlice("hello to this glorious world!", state);
     defer helloWorldLong2.deinit(state);
-    var helloWorldLongClone = helloWorld1.clone();
+    var helloWorldLongClone = helloWorldLong1.clone();
     defer helloWorldLongClone.deinit(state);
 
     var helloWorldLongAlt1 = try String.initSlice("hallo to this glorious world!", state);
@@ -1040,4 +1040,28 @@ test "String compare" {
     try expect(empty1.cmp(empty2) == .Equal);
     try expect(empty1.cmp(emptyClone) == .Equal);
     try expect(empty2.cmp(emptyClone) == .Equal);
+
+    try expect(helloWorld1.cmp(helloWorld2) == .Equal);
+    try expect(helloWorld1.cmp(helloWorldClone) == .Equal);
+    try expect(helloWorld2.cmp(helloWorldClone) == .Equal);
+
+    try expect(helloWorldAlt1.cmp(helloWorldAlt2) == .Equal);
+    try expect(helloWorldAlt1.cmp(helloWorldAltClone) == .Equal);
+    try expect(helloWorldAlt2.cmp(helloWorldAltClone) == .Equal);
+
+    try expect(helloWorldSpace1.cmp(helloWorldSpace2) == .Equal);
+    try expect(helloWorldSpace1.cmp(helloWorldSpaceClone) == .Equal);
+    try expect(helloWorldSpace2.cmp(helloWorldSpaceClone) == .Equal);
+
+    try expect(helloWorldLong1.cmp(helloWorldLong2) == .Equal);
+    try expect(helloWorldLong1.cmp(helloWorldLongClone) == .Equal);
+    try expect(helloWorldLong2.cmp(helloWorldLongClone) == .Equal);
+
+    try expect(helloWorldLongAlt1.cmp(helloWorldLongAlt2) == .Equal);
+    try expect(helloWorldLongAlt1.cmp(helloWorldLongAltClone) == .Equal);
+    try expect(helloWorldLongAlt2.cmp(helloWorldLongAltClone) == .Equal);
+
+    try expect(helloWorldLongSpace1.cmp(helloWorldLongSpace2) == .Equal);
+    try expect(helloWorldLongSpace1.cmp(helloWorldLongSpaceClone) == .Equal);
+    try expect(helloWorldLongSpace2.cmp(helloWorldLongSpaceClone) == .Equal);
 }
