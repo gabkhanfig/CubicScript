@@ -1064,4 +1064,19 @@ test "String compare" {
     try expect(helloWorldLongSpace1.cmp(helloWorldLongSpace2) == .Equal);
     try expect(helloWorldLongSpace1.cmp(helloWorldLongSpaceClone) == .Equal);
     try expect(helloWorldLongSpace2.cmp(helloWorldLongSpaceClone) == .Equal);
+
+    try expect(helloWorld1.cmp(helloWorldAlt1) == .Greater);
+    try expect(helloWorldAlt1.cmp(helloWorld1) == .Less);
+
+    try expect(helloWorld1.cmp(helloWorldSpace1) == .Less);
+    try expect(helloWorldSpace1.cmp(helloWorld1) == .Greater);
+
+    try expect(helloWorldLong1.cmp(helloWorldLongAlt1) == .Greater);
+    try expect(helloWorldLongAlt1.cmp(helloWorldLong1) == .Less);
+
+    try expect(helloWorldLong1.cmp(helloWorldLongSpace1) == .Less);
+    try expect(helloWorldLongSpace1.cmp(helloWorldLong1) == .Greater);
+
+    try expect(helloWorld1.cmp(helloWorldLong1) == .Greater);
+    try expect(helloWorldLong1.cmp(helloWorld1) == .Less);
 }
