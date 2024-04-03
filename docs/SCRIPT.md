@@ -44,15 +44,75 @@ null
 type
 requires
 extern
+sync
 
 ## Multithreading
 
-Sync primitives, async, and threads are not provided by default, but the underlying virutal machine is thread safe (the scripts themselves may or may not be). The program that the scripts are embedded in will handle concurrency. Having a concurrency model, however, is still important for a modern programming language, running on modern highly threaded hardware. As such, there exists a way to force readonly access at the compiler level in certain contexts. These are the following.
+Thread safety is a priority for CubicScript. Async and threads are not provided by default, but the scripts themselves are thread safe where appropriate.
 
-- Const
-- Mutable
+### Sync Blocks
 
-In a const context, which is defined by the top level function being `const fn`, any class that implements the `Const` interface may not be mutated through the call stack. More info about this can be found down below. For example, in a game engine, this allows having a `tick()` and `mutableTick()` implementations. `tick()` can have a message collector, which will collect any future operations that need to happen, while `mutableTick()` can immediately modify data, having the concurrency properly handled by the owning program. The values referenced by references, even mutable references, may not be mutated in a const context.
+Any class that implements the `ThreadSync` interface will be forced to execute it's logic in `sync` blocks. The compiler will validate the callstack for what classes require syncing.
+
+```text
+class Example {
+    someValue: Int,
+}
+
+impl ThreadSync for Person {}
+
+fn doSomeLogic(obj Example) {
+    obj.someValue = 1; // Compiler won't allow this because Example implements ThreadSync, UNLESS this function is ONLY called in a sync block in another function
+
+    sync {
+        obj.someValue = 1; // This is ok.
+    }
+}
+```
+
+From a technical standpoint, sync blocks and structure that implement `ThreadSync` use RWLocks, and the compiler determines if a read or write lock should be acquired for the given class instance. Objects may not be acquired during a sync block due to the potential for deadlocks. A sync block must be escaped in order for new objects to be sync'd. Since since blocks are just expression blocks, values can be "returned" from them.
+
+```text
+
+fn getAnotherObj() Example {
+    ...
+}
+
+fn doLogicOnAnotherObject(obj Example) {
+    mut otherObj = sync {
+        obj.someValue = 1;
+        getAnotherObj()
+    }
+
+    sync {
+        otherObj.someValue = 1;
+    }
+}
+```
+
+Sync blocks are **not** reentrant, and compilation will fail if it's done.
+
+```text
+fn doubleSync() {
+    sync {
+        sync { // compilation error here
+            ...
+        }
+    }
+}
+
+fn doubleSyncThroughFunctionCallA() {
+    sync {
+        doubleSyncThroughFunctionCallB(); // compilation error here due to a sync block further in the call stack
+    }
+}
+
+fn doubleSyncThroughFunctionCallB() {
+    sync {
+        ...
+    }
+}
+```
 
 ## Classes
 
@@ -81,29 +141,10 @@ pub class Person { ... };
 
 impl Person {
     // Use pub specifier to allow this function to be called by other files.
-    pub fn changeName(self: *mut Self, newName: String) {
+    pub fn changeName(self: &mut Self, newName: String) {
         self.name = newName;
     }
 };
-```
-
-### const fn
-
-Const functions are a contract ensuring read-only access to classes that implement the `Const` interface. The entire callstack beginning at a `const fn` is validated to not mutate any classes that implement `Const`, as well as no mutable references to it's members. This ensures that full multithreading can be used.
-
-Example: (using Person class from above):
-
-```text
-pub class Person { ... };
-
-impl Const for Person;
-
-fn getSomePerson() *mut Person { ... }
-
-pub const fn calculateSomeStuff() {
-    const person = getSomePerson(); // Example of a function that returns a mutable reference
-    person.height = 15.0; // Fails to compile here, even if a valid mutable reference was returned.
-}
 ```
 
 ## Interfaces
@@ -120,11 +161,11 @@ pub class Person { ... };
 // Use pub specifier to allow this interface to be used by other files.
 pub interface Aging {
     // Use pub specifier to allow this interface function to be called by non-implementing classes/functions.
-    pub const fn getAge(self: *Self) Int;
+    pub fn getAge(self: *Self) Int;
 };
 
 impl Aging for Example {
-    pub const fn getAge(self: *Self) Int {
+    pub fn getAge(self: *Self) Int {
         return self.age;
     }
 };
@@ -144,44 +185,41 @@ A type or class is considered trivially copyable if it is a trivially clonable p
 
 For non-trivially copyable types, they must implement the `Copy` interface, (this is done by default for trivially copyable types). This is done to make copies explicit to the programmer in situations where they can have meaningful performance implications.
 
-class members will **never** be moved, only copied.
+Class members will **never** be moved, only copied.
 
 ## References
 
-Reference (pointers) are always either immutable `*` or mutable `*mut`, but in a const context, will be forced to be immutable for classes that implement the `Const` interface, even if a mutable reference is alive. Unlike rust, there are no restrictions to how many references can be alive. This is done for the sake of ease of use. Since there are no concerns with data races due to `const fn`, this is reasonable.
+Reference (pointers) are always either immutable `&` or mutable `&mut`. Unlike rust, there are no restrictions to how many references can be alive. This is done for the sake of ease of use. Since classes cannot store references (excluding shared references), and lifetimes are validated in a callstack, there are no concerns with the references exceeding their lifetime.
 
-References have their held data be assigned, or have the actual pointer address be assigned. To assign the actual held value, the point must be dereferenced using the `variable.* =` syntax.
+References may not have the address they point to be reassigned ever. This is to simplify the logic for lifetime validation. References are syntactically treated as the underying object, and are thus implicitly dereferenced where appropriate.
 
 ```text
 mut value = 1; // Int
 mut otherValue = 2;
     
 const ptr1 = &value; // Since `value` is mut, getting a reference to it gets a mutable reference `*mut Int`
-assert(ptr1 == 1); // equality will dereference the pointer
+assert(ptr1 == 1);
 
-ptr1.* = otherValue; // This is ok, because it's dereferencing the pointer and modifying the held value
+ptr1 = otherValue; // This is ok, because it's dereferencing the pointer and modifying the held value
 assert(value == otherValue);
 
-ptr1 = &otherValue; // FAILS TO COMPILE. ptr1 is qualified as const, and thus the pointer cannot be changed.
+ptr1 = &otherValue; // FAILS TO COMPILE. Cannot modify the address of a pointer
 
-mut ptr2 = &value;
+mut ptr2 = &value; // Compiler warning. Reference should be marked const.
 assert(ptr2 == 2);
 
-ptr2.* = 3; // This is ok, because it's dereferencing the pointer and modifying the held value
+ptr2 = 3; // This is ok, because it's dereferencing the pointer and modifying the held value
 assert(value == 3);
 assert(ptr2 == 3);
 
-ptr2 = &otherValue; // This is ok, because ptr2 is qualified as mutable, and thus the variable can point somewhere else.
-assert(ptr2 == 2);
+ptr2 = &otherValue; // FAILS TO COMPILE despite ptr2 being a mutable variable. Cannot modify the address of a pointer.
 ```
-
-Pointer arithmetic is not allowed.
 
 References, or primitive types (Array, Map, Set) containing references, may **never** be stored in classes, with the one exception being shared references.
 
 ### Shared References
 
-There are situations where references need to be stored, but the lifetimes of them cannot be reasonably validated on their own, especially given frame boundaries. As such, the compromise is using shared, atomic reference counted objects. Creating a new one is as simple as `Shared.new(...)`, passing in ownership (move or copy) of some value. The type of the value may not be a reference (`*` or `*mut`) type.
+There are situations where references need to be stored, but the lifetimes of them cannot be reasonably validated on their own, especially given frame boundaries. As such, the compromise is using shared, atomic reference counted objects. Creating a new one is as simple as `Shared.new(...)`, passing in ownership (move or copy) of some value. The type of the value may not be a reference (`&` or `&mut`) type.
 
 Shared references are trivially copyable.
 
