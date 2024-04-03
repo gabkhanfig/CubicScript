@@ -107,7 +107,8 @@ pub const OpCode = enum(u8) {
     /// Maybe all extern functions take a reference to a slice of the available stack frame arguments.
     /// For C, this would be a pointer to the beginning of the available stack frame for arg1, and a length of the length of the slice for arg2.
     /// The `extern` function would then return a `TaggedValue`, in which `void` uses the `None` tag.
-    /// The runtime could assert that the correct type is returned.
+    /// The runtime could assert that the correct type is returned. NOTE maybe should return only a raw value, and when "linking"
+    /// the function, the return tag can be specified?
     CallExtern,
 
     // ! == Int Instructions (Some Bool compatible) ==
@@ -194,7 +195,7 @@ pub const OpCode = enum(u8) {
     /// Convert bool `src` into a new string, storing the result in `dst`.
     BoolToString,
 
-    // ! == FLOAT INSTRUCTIONS ==
+    // ! == Float Instructions ==
 
     /// Float equality comparison between `src1` and `src2`. Stores the result in `dst`.
     /// # Asserts
@@ -234,14 +235,42 @@ pub const OpCode = enum(u8) {
     /// Convert `src` float to a new string, storing it in `dst`.
     FloatToString,
 
+    // 48 instructions SO FAR up to this point
+
+    // ! == String Instructions ==
+    // NOTE LoadZero can make a default, empty string
+
+    /// Deinitialize the string at `src`.
+    StringDeinit,
+    /// Make a clone of the string at `src`, storing it in `dst`.
+    StringClone,
+    /// Store the length in bytes of the string at `src`, storing the value in `dst`.
+    StringLen,
+    /// Variable length instruction.
+    StringFormat,
+    /// Check if strings `src1` and `src2` are equal, storing the boolean result in `dst`.
+    StringIsEqual,
+    /// Compare strings at `src1` and `src2`, storing the ordering as an integer at `dst`.
+    /// The integer can be cast to the enum `root.Ordering` to determine comparison result.
+    StringCompare,
+    StringFind,
+    StringReverseFind,
+    StringAppend,
+    StringSubstring,
+    StringSplit,
+    StringRemove,
+    StringToInt,
+    StringToFloat,
+    StringToBool,
+
     // NOTE should these math functions be part of a math library?
-    FloatPower,
-    FloatSquareRoot,
-    FloatSin,
-    FloatCos,
-    FloatTan,
-    // NOTE are arc and hyberbolic trig functions necessary?
-    FloatLog,
+    // FloatPower,
+    // FloatSquareRoot,
+    // FloatSin,
+    // FloatCos,
+    // FloatTan,
+    // // NOTE are arc and hyberbolic trig functions necessary?
+    // FloatLog,
 };
 
 /// `dst` is a u9 because it allows moving values to registers within the
