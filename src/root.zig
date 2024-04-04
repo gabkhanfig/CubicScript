@@ -205,6 +205,16 @@ pub const TaggedValueConstRef = extern struct {
     tag: ValueTag,
 };
 
+pub const OptionalTaggedValueMutRef = extern struct {
+    value: ?*RawValue,
+    tag: ValueTag,
+};
+
+pub const OptionalTaggedValueConstRef = extern struct {
+    value: ?*const RawValue,
+    tag: ValueTag,
+};
+
 pub const Ordering = enum(i64) {
     Less = -1,
     Equal = 0,
