@@ -13,7 +13,13 @@ All primitives are 8 bytes in size, and are 0 initialized by default.
 - Array (Unique pointer to data)
 - Map (Unique pointer to data)
 - Set (Unique pointer to data)
-- Vector (3 floats, Trivially copyable)
+- Vec2i (Unique pointer to 2 ints {x, y})
+- Vec3i (Unique pointer to 3 ints {x, y, z})
+- Vec4i (Unique pointer to 4 ints {x, y, z, w})
+- Vec2i (Unique pointer to 2 floats {x, y})
+- Vec3i (Unique pointer to 3 floats {x, y, z})
+- Vec4i (Unique pointer to 4 floats {x, y, z, w})
+- Mat4f (Unique pointer to 4x4 matrix of floats)
 
 Use rust style ownership and borrowing. If a reference exists, the value cannot be dropped.
 
