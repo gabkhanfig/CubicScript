@@ -52,38 +52,38 @@ pub fn unlockWrite(self: *Self) void {
 
 /// Function naming is the same as zig RwLock to make it simple.
 const Win32SRWLOCK = struct {
-    lock: std.os.windows.SRWLOCK = std.os.windows.SRWLOCK_INIT,
+    srwlock: std.os.windows.SRWLOCK = std.os.windows.SRWLOCK_INIT,
 
     /// Blocks until shared lock ownership is acquired.
     pub fn lockShared(rwl: *@This()) void {
-        Win32Extern.AcquireSRWLockShared(&rwl.lock);
+        Win32Extern.AcquireSRWLockShared(&rwl.srwlock);
     }
 
     /// Attempts to obtain shared lock ownership.
     /// Returns `true` if the lock is obtained, `false` otherwise.
     pub fn tryLockShared(rwl: *@This()) bool {
-        return Win32Extern.TryAcquireSRWLockShared(&rwl.lock);
+        return Win32Extern.TryAcquireSRWLockShared(&rwl.srwlock);
     }
 
     /// Blocks until exclusive lock ownership is acquired.
     pub fn lock(rwl: *@This()) void {
-        Win32Extern.AcquireSRWLockExclusive(&rwl.lock);
+        Win32Extern.AcquireSRWLockExclusive(&rwl.srwlock);
     }
 
     /// Attempts to obtain exclusive lock ownership.
     /// Returns `true` if the lock is obtained, `false` otherwise.
     pub fn tryLock(rwl: *@This()) bool {
-        return Win32Extern.TryAcquireSRWLockExclusive(&rwl.lock);
+        return Win32Extern.TryAcquireSRWLockExclusive(&rwl.srwlock);
     }
 
     /// Releases a held shared lock.
     pub fn unlockShared(rwl: *@This()) void {
-        Win32Extern.ReleaseSRWLockShared(&rwl.lock);
+        Win32Extern.ReleaseSRWLockShared(&rwl.srwlock);
     }
 
     /// Releases a held exclusive lock.
     pub fn unlock(rwl: *@This()) void {
-        Win32Extern.ReleaseSRWLockExclusive(&rwl.lock);
+        Win32Extern.ReleaseSRWLockExclusive(&rwl.srwlock);
     }
 
     const Win32Extern = struct {
