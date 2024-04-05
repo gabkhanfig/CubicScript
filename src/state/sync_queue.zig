@@ -22,7 +22,7 @@
 //! // Thread 1
 //! sync_queue.queueScriptRwLockExclusive(&lock1);
 //! sync_queue.queueScriptRwLockExclusive(&lock2);
-//! acquire();
+//! acquire(); // the locks will be acquired in the same order as in Thread 2 no matter which was queued first.
 //! defer release();
 //!
 //! // Thread 2
