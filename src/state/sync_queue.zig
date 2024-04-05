@@ -316,4 +316,29 @@ test "acquire two script rwlock exclusive" {
         acquire();
         defer release();
     }
+    {
+        var lock1: RwLock = .{};
+        var lock2: RwLock = .{};
+        queueScriptRwLockExclusive(&lock2);
+        queueScriptRwLockExclusive(&lock1);
+        acquire();
+        defer release();
+    }
+}
+
+test "nested acquire" {
+    var lock1: RwLock = .{};
+    var lock2: RwLock = .{};
+    queueScriptRwLockExclusive(&lock1);
+    queueScriptRwLockExclusive(&lock2);
+    acquire();
+    defer release();
+    {
+        var lock3: RwLock = .{};
+        var lock4: RwLock = .{};
+        queueScriptRwLockExclusive(&lock4);
+        queueScriptRwLockExclusive(&lock3);
+        acquire();
+        defer release();
+    }
 }
