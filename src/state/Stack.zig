@@ -2,9 +2,6 @@
 //! The `Stack` uses about 16MB of memory per instance.
 
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const assert = std.debug.assert;
-const expect = std.testing.expect;
 const root = @import("../root.zig");
 const CubicScriptState = @import("CubicScriptState.zig");
 const RawValue = root.RawValue;
@@ -21,25 +18,5 @@ pub const STACK_SIZE: comptime_int = @sizeOf(RawValue) * STACK_SPACES;
 
 const Self = @This();
 
-state: *const CubicScriptState,
-stack: [STACK_SPACES]RawValue align(64),
-
-pub fn init(state: *const CubicScriptState) Allocator.Error!*Self {
-    const self = try state.allocator.create(Self);
-    // Cannot do inner.* = Inner{...} because of stack overflow. This is the next best option
-    self.state = state;
-    @memset(&self.stack, std.mem.zeroes(RawValue));
-    return self;
-}
-
-pub fn deinit(self: *Self) void {
-    self.state.allocator.destroy(self);
-}
-
-test "init deinit" {
-    const state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
-
-    const stack = try Self.init(state);
-    defer stack.deinit();
-}
+state: *const CubicScriptState = undefined,
+stack: [STACK_SPACES]RawValue align(64) = std.mem.zeroes([STACK_SPACES]RawValue),

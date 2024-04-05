@@ -20,6 +20,8 @@ pub const ErrorSeverity = Error.Severity;
 pub const RuntimeErrorCallback = *const fn (err: RuntimeError, severity: ErrorSeverity, message: []const u8) void;
 pub const CRuntimeErrorCallback = *const fn (err: c_int, severity: c_int, message: ?[*c]const u8, messageLength: usize) void;
 
+threadlocal var threadLocalStack: Stack = .{};
+
 const Self = @This();
 
 allocator: Allocator,
@@ -63,17 +65,13 @@ pub fn deinit(self: *Self) void {
     return;
 }
 
-fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
-    // Only the mutex and the data it owns are modified here, so removing the const is fine.
-    const contextMutex: *Mutex = @constCast(&self._contextMutex);
-    contextMutex.lock();
-    defer contextMutex.unlock();
+pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!void {
+    const previousState = threadLocalStack.state;
+    defer threadLocalStack.state = previousState; // Allows nesting script run calls with different state instances
+    // NOTE should also do errdefer for if allocation fails anywhere.
+    threadLocalStack.state = self;
 
-    const context: *ScriptContext = @constCast(&self._context);
-    context.runtimeError(self, err, severity, message);
-}
-
-pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) Allocator.Error!void {
+    const stack = &threadLocalStack;
     var instructionPointer: usize = 0;
     // The stack pointer points to the beginning of the stack frame.
     // This is done to use positive offsets to avoid any obscure exploits or issues from using
@@ -576,6 +574,16 @@ pub fn run(self: *const Self, stack: *Stack, instructions: []const Bytecode) All
     }
 }
 
+fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
+    // Only the mutex and the data it owns are modified here, so removing the const is fine.
+    const contextMutex: *Mutex = @constCast(&self._contextMutex);
+    contextMutex.lock();
+    defer contextMutex.unlock();
+
+    const context: *ScriptContext = @constCast(&self._context);
+    context.runtimeError(self, err, severity, message);
+}
+
 fn getAndValidateDstTwoSrcRegisterPos(stackPointer: usize, currentStackFrameSize: usize, operands: Bytecode.OperandsDstTwoSrc) struct { dst: usize, src1: usize, src2: usize } {
     assert(@as(usize, operands.dst) < currentStackFrameSize);
     assert(@as(usize, operands.src1) < currentStackFrameSize);
@@ -651,19 +659,16 @@ test "nop" {
     const state = try Self.init(std.testing.allocator, null);
     defer state.deinit();
 
-    const stack = try Stack.init(state);
-    defer stack.deinit();
-
     const instructions = [_]Bytecode{
         Bytecode.encode(OpCode.Nop, void, {}),
     };
 
-    try state.run(stack, &instructions);
+    try state.run(&instructions);
 }
 
 test "int comparisons" {
     const IntComparisonTester = struct {
-        fn intCompare(state: *const Self, stack: *Stack, opcode: OpCode, src1Value: i64, src2Value: i64, shouldBeTrue: bool) !void {
+        fn intCompare(state: *const Self, opcode: OpCode, src1Value: i64, src2Value: i64, shouldBeTrue: bool) !void {
             const LOW_MASK = 0xFFFFFFFF;
             const HIGH_MASK: usize = @shlExact(0xFFFFFFFF, 32);
             const src1: usize = @bitCast(src1Value);
@@ -679,12 +684,12 @@ test "int comparisons" {
                 Bytecode.encode(opcode, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
             };
 
-            try state.run(stack, &instructions);
+            try state.run(&instructions);
 
             if (shouldBeTrue) {
-                try expect(stack.stack[2].boolean == true);
+                try expect(threadLocalStack.stack[2].boolean == true);
             } else {
-                try expect(stack.stack[2].boolean == false);
+                try expect(threadLocalStack.stack[2].boolean == false);
             }
         }
     };
@@ -693,30 +698,27 @@ test "int comparisons" {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
+        try IntComparisonTester.intCompare(state, OpCode.IntIsEqual, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsEqual, math.MAX_INT, 123456789, false);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsEqual, math.MAX_INT, math.MAX_INT, true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsEqual, math.MAX_INT, 123456789, false);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsNotEqual, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsNotEqual, math.MAX_INT, 123456789, true);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsNotEqual, math.MAX_INT, math.MAX_INT, false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsNotEqual, math.MAX_INT, 123456789, true);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsLessThan, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsLessThan, math.MAX_INT, 123456789, false);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsLessThan, -1, math.MAX_INT, true);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, math.MAX_INT, math.MAX_INT, false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, math.MAX_INT, 123456789, false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessThan, -1, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterThan, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterThan, math.MAX_INT, 123456789, true);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterThan, -1, math.MAX_INT, false);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, math.MAX_INT, math.MAX_INT, false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, math.MAX_INT, 123456789, true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterThan, -1, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsLessOrEqual, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsLessOrEqual, math.MAX_INT, 123456789, false);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsLessOrEqual, -1, math.MAX_INT, true);
 
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, math.MAX_INT, math.MAX_INT, true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, math.MAX_INT, 123456789, false);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsLessOrEqual, -1, math.MAX_INT, true);
-
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, math.MAX_INT, math.MAX_INT, true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, math.MAX_INT, 123456789, true);
-        try IntComparisonTester.intCompare(state, stack, OpCode.IntIsGreaterOrEqual, -1, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterOrEqual, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterOrEqual, math.MAX_INT, 123456789, true);
+        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterOrEqual, -1, math.MAX_INT, false);
     }
 }
 
@@ -758,9 +760,6 @@ test "int addition" {
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const LOW_MASK = 0xFFFFFFFF;
         const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
 
@@ -776,17 +775,14 @@ test "int addition" {
             Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 11);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 11);
     }
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
         const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
@@ -803,8 +799,8 @@ test "int addition" {
             Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == math.MIN_INT);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == math.MIN_INT);
     }
 }
 
@@ -814,9 +810,6 @@ test "int subtraction" {
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const src1: i64 = 10;
 
@@ -830,17 +823,14 @@ test "int subtraction" {
             Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 9);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 9);
     }
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.SubtractionIntegerOverflow){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
         const HIGH_MASK: usize = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
@@ -858,8 +848,8 @@ test "int subtraction" {
             Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == math.MAX_INT);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == math.MAX_INT);
     }
 }
 
@@ -869,9 +859,6 @@ test "int multiplication" {
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
         const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
@@ -888,17 +875,14 @@ test "int multiplication" {
             Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == math.MAX_INT);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == math.MAX_INT);
     }
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.MultiplicationIntegerOverflow){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
         const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
@@ -915,8 +899,8 @@ test "int multiplication" {
             Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == -2); // this ends up being the wrap around. same as unsigned bitshift left by 1 then bitcasted to signed
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == -2); // this ends up being the wrap around. same as unsigned bitshift left by 1 then bitcasted to signed
     }
 }
 
@@ -927,9 +911,6 @@ test "int division truncation" {
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
@@ -942,17 +923,14 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == -2);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == -2);
     }
     { // validate integer overflow
         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -964,17 +942,14 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == math.MIN_INT);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == math.MIN_INT);
     }
     { // validate divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -986,7 +961,7 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
+        try state.run(&instructions);
     }
 }
 
@@ -997,9 +972,6 @@ test "int division floor" {
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
@@ -1012,17 +984,14 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == -3);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == -3);
     }
     { // validate integer overflow
         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1034,17 +1003,14 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == math.MIN_INT);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == math.MIN_INT);
     }
     { // validate divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1056,7 +1022,7 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
+        try state.run(&instructions);
     }
 }
 
@@ -1067,9 +1033,6 @@ test "int modulo" {
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
@@ -1082,17 +1045,14 @@ test "int modulo" {
             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 1);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 1);
     }
     { // divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const src1: i64 = -5;
 
@@ -1106,7 +1066,7 @@ test "int modulo" {
             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
+        try state.run(&instructions);
     }
 }
 
@@ -1117,9 +1077,6 @@ test "int remainder" {
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const src1: i64 = -5;
 
         const instructions = [_]Bytecode{
@@ -1132,17 +1089,14 @@ test "int remainder" {
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == -1);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == -1);
     }
     { // divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const src1: i64 = -5;
 
@@ -1156,7 +1110,7 @@ test "int remainder" {
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
+        try state.run(&instructions);
     }
 }
 
@@ -1166,9 +1120,6 @@ test "int power" {
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const src1: i64 = -5;
 
@@ -1182,17 +1133,14 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 25);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 25);
     }
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = false };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const src1: i64 = -5;
 
@@ -1206,17 +1154,14 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 0);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 0);
     }
     { // overflow
         var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1228,16 +1173,13 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
+        try state.run(&instructions);
     }
     { // 0 to the power of negative error
         var contextObject = ScriptTestingContextError(RuntimeError.ZeroToPowerOfNegative){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1249,7 +1191,7 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
+        try state.run(&instructions);
     }
 }
 
@@ -1258,23 +1200,17 @@ test "bitwise complement" {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].int == -1); // ~0
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].int == -1); // ~0
     }
     {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const src1: i64 = 1;
 
@@ -1285,8 +1221,8 @@ test "bitwise complement" {
             Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].int == -2); // ~1
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].int == -2); // ~1
     }
 }
 
@@ -1294,9 +1230,6 @@ test "bitwise and" {
     {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1308,8 +1241,8 @@ test "bitwise and" {
             Bytecode.encode(OpCode.BitwiseAnd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 0b010);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 0b010);
     }
 }
 
@@ -1317,9 +1250,6 @@ test "bitwise or" {
     {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1331,8 +1261,8 @@ test "bitwise or" {
             Bytecode.encode(OpCode.BitwiseOr, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 0b111);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 0b111);
     }
 }
 
@@ -1340,9 +1270,6 @@ test "bitwise xor" {
     {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1354,8 +1281,8 @@ test "bitwise xor" {
             Bytecode.encode(OpCode.BitwiseXor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 0b101);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 0b101);
     }
 }
 
@@ -1366,9 +1293,6 @@ test "bitshift left" {
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encodeImmediateLower(i64, -1),
@@ -1379,17 +1303,14 @@ test "bitshift left" {
             Bytecode.encode(OpCode.BitShiftLeft, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == -2);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == -2);
     }
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1401,8 +1322,8 @@ test "bitshift left" {
             Bytecode.encode(OpCode.BitShiftLeft, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == -2);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == -2);
     }
 }
 
@@ -1413,9 +1334,6 @@ test "bitshift arithmetic right" {
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encodeImmediateLower(i64, 0b110),
@@ -1426,17 +1344,14 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 0b011);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 0b011);
     }
     { // retain sign bit
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1448,17 +1363,14 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == -1);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == -1);
     }
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1470,8 +1382,8 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 0b011);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 0b011);
     }
 }
 
@@ -1482,9 +1394,6 @@ test "bitshift logical right" {
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encodeImmediateLower(i64, 0b110),
@@ -1495,17 +1404,14 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 0b011);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 0b011);
     }
     { // dont retain sign bit
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1517,17 +1423,14 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == math.MAX_INT);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == math.MAX_INT);
     }
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
 
         const state = try Self.init(std.testing.allocator, contextObject.asContext());
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1539,8 +1442,8 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[2].int == 0b011);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[2].int == 0b011);
     }
 }
 
@@ -1549,23 +1452,17 @@ test "int to bool" {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].boolean == false);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].boolean == false);
     }
     { // 1 -> true
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1574,15 +1471,12 @@ test "int to bool" {
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].boolean == true);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].boolean == true);
     }
     { // non-zero -> true
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1591,8 +1485,8 @@ test "int to bool" {
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].boolean == true);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].boolean == true);
     }
 }
 
@@ -1601,23 +1495,17 @@ test "int to float" {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].float == 0.0);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].float == 0.0);
     }
     { // 1
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1626,15 +1514,12 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].float == 1.0);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].float == 1.0);
     }
     { // -1
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1643,15 +1528,12 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].float == -1.0);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].float == -1.0);
     }
     { // arbitrary value
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1660,8 +1542,8 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].float == -2398712938.0);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].float == -2398712938.0);
     }
 }
 
@@ -1670,24 +1552,18 @@ test "int to string" {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].string.eqlSlice("0"));
-        stack.stack[1].string.deinit(state);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].string.eqlSlice("0"));
+        threadLocalStack.stack[1].string.deinit(state);
     }
     { // 1
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1696,16 +1572,13 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].string.eqlSlice("1"));
-        stack.stack[1].string.deinit(state);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].string.eqlSlice("1"));
+        threadLocalStack.stack[1].string.deinit(state);
     }
     { // -1
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1714,16 +1587,13 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].string.eqlSlice("-1"));
-        stack.stack[1].string.deinit(state);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].string.eqlSlice("-1"));
+        threadLocalStack.stack[1].string.deinit(state);
     }
     { // arbitrary value
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1732,9 +1602,9 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].string.eqlSlice("-2398712938"));
-        stack.stack[1].string.deinit(state);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].string.eqlSlice("-2398712938"));
+        threadLocalStack.stack[1].string.deinit(state);
     }
 }
 
@@ -1743,23 +1613,17 @@ test "bool not" {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encode(OpCode.BoolNot, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].boolean == true);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].boolean == true);
     }
     {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1768,8 +1632,8 @@ test "bool not" {
             Bytecode.encode(OpCode.BoolNot, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].boolean == false);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].boolean == false);
     }
 }
 
@@ -1778,9 +1642,6 @@ test "bool to string" {
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
 
-        const stack = try Stack.init(state);
-        defer stack.deinit();
-
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
             Bytecode.encodeImmediateLower(bool, true),
@@ -1788,16 +1649,13 @@ test "bool to string" {
             Bytecode.encode(OpCode.BoolToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].string.eqlSlice("true"));
-        stack.stack[1].string.deinit(state);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].string.eqlSlice("true"));
+        threadLocalStack.stack[1].string.deinit(state);
     }
     { // false
         const state = try Self.init(std.testing.allocator, null);
         defer state.deinit();
-
-        const stack = try Stack.init(state);
-        defer stack.deinit();
 
         const instructions = [_]Bytecode{
             Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
@@ -1806,8 +1664,8 @@ test "bool to string" {
             Bytecode.encode(OpCode.BoolToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(stack, &instructions);
-        try expect(stack.stack[1].string.eqlSlice("false"));
-        stack.stack[1].string.deinit(state);
+        try state.run(&instructions);
+        try expect(threadLocalStack.stack[1].string.eqlSlice("false"));
+        threadLocalStack.stack[1].string.deinit(state);
     }
 }
