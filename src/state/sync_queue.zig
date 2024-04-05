@@ -193,7 +193,7 @@ const SyncQueue = struct {
         }
 
         // TODO binary search. iterate for now.
-        for (0..(oldLength - 1)) |i| {
+        for (0..oldLength) |i| {
             const iterObject = buffer[i];
             if (@intFromPtr(iterObject.object) == @intFromPtr(syncObject.object)) { // dont sync duplicates
                 //std.debug.print("found duplicate sync object at address {x}\n", .{@intFromPtr(syncObject.object)});
@@ -202,12 +202,12 @@ const SyncQueue = struct {
             } else if (@intFromPtr(iterObject.object) < @intFromPtr(syncObject.object)) {
                 continue;
             } else {
-                var moveIter: usize = newLength;
+                var moveIter: usize = oldLength;
                 while (moveIter > i) {
                     buffer[moveIter] = buffer[moveIter - 1]; // shuffle over elements
                     moveIter -= 1;
                 }
-                std.debug.print("putting sync object at index {}\n", .{i});
+                //std.debug.print("putting sync object at index {}\n", .{i});
                 buffer[i] = syncObject;
                 return;
             }
@@ -326,7 +326,7 @@ test "acquire two script rwlock exclusive" {
     }
 }
 
-test "nested acquire" {
+test "nested acquire exclusive" {
     var lock1: RwLock = .{};
     var lock2: RwLock = .{};
     queueScriptRwLockExclusive(&lock1);
