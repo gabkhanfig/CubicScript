@@ -22,14 +22,14 @@
 //! // Thread 1
 //! sync_queue.queueScriptRwLockExclusive(&lock1);
 //! sync_queue.queueScriptRwLockExclusive(&lock2);
-//! acquire(); // the locks will be acquired in the same order as in Thread 2 no matter which was queued first.
-//! defer release();
+//! sync_queue.acquire(); // the locks will be acquired in the same order as in Thread 2 no matter which was queued first.
+//! defer sync_queue.release();
 //!
 //! // Thread 2
 //! sync_queue.queueScriptRwLockExclusive(&lock2);
 //! sync_queue.queueScriptRwLockExclusive(&lock1);
-//! acquire(); // the locks will be acquired in the same order as in Thread 1 no matter which was queued first.
-//! defer release();
+//! sync_queue.acquire(); // the locks will be acquired in the same order as in Thread 1 no matter which was queued first.
+//! defer sync_queue.release();
 //! ```
 
 const std = @import("std");
