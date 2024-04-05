@@ -51,7 +51,7 @@ pub fn acquire() void {
     threadLocalSyncQueue.current = threadLocalSyncQueue.current.? + 1;
 }
 
-/// Acquires the currently queued sync objects.
+/// Tries to acquire the currently queued sync objects, returning true on success, false otherwise.
 /// Any queue operations before `release()` is called will be queued on a deeper nested
 /// queue. Failing to call `release()` is undefined behaviour.
 pub fn tryAcquire() bool {
