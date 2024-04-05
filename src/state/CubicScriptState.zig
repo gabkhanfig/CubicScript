@@ -13,6 +13,7 @@ const Error = @import("Errors.zig");
 const allocPrintZ = std.fmt.allocPrintZ;
 const runtime_safety: bool = std.debug.runtime_safety;
 const Mutex = std.Thread.Mutex;
+const ScriptExternAllocator = @import("../c_export.zig").ScriptExternAllocator;
 
 pub const RuntimeError = Error.RuntimeError;
 pub const ErrorSeverity = Error.Severity;
@@ -25,6 +26,9 @@ threadlocal var threadLocalStack: Stack = .{};
 const Self = @This();
 
 allocator: Allocator,
+_isUsingExternAllocator: bool = false,
+/// Only gets used directly on deinit.
+_externAllocator: ScriptExternAllocator = undefined,
 _context: ScriptContext,
 _contextMutex: Mutex = .{},
 
@@ -36,32 +40,49 @@ pub fn init(allocator: Allocator, context: ?ScriptContext) Allocator.Error!*Self
     const self = try allocator.create(Self);
     self.* = Self{
         .allocator = allocator,
-        ._context = if (context) |ctx| ctx else default_context,
+        ._context = if (context) |ctx| ctx else ScriptContext.default_context,
     };
     return self;
 }
 
-// /// With runtime safety on, will catch double frees.
-// /// When off, just uses the C allocator.
-// /// Returns null if allocation failed.
-// pub fn initExternC(context: ?ScriptContext) ?*Self {
-//     const allocator = blk: {
-//         if (std.debug.runtime_safety) {
-//             var gpa = std.heap.GeneralPurposeAllocator(.{});
-//             break :blk gpa.allocator();
-//         } else {
-//             break :blk std.heap.c_allocator;
-//         }
-//     };
-
-//     const self = Self.init(allocator, context) catch return null;
-//     return self;
-// }
+/// With runtime safety on, will catch double frees.
+/// When off, just uses the C allocator.
+/// Returns null if allocation failed.
+pub fn initWithExternAllocator(externAllocator: ScriptExternAllocator, context: ?ScriptContext) Allocator.Error!*Self {
+    const allocSelf = externAllocator.externVTable.alloc(externAllocator.externAllocatorPtr, @sizeOf(Self), @alignOf(Self));
+    if (allocSelf == null) {
+        return Allocator.Error.OutOfMemory;
+    }
+    const self: *Self = @ptrCast(@alignCast(allocSelf));
+    self.* = Self{
+        .allocator = .{
+            .ptr = @ptrCast(&self._externAllocator),
+            .vtable = &.{
+                .alloc = ScriptExternAllocator.externAlloc,
+                .resize = ScriptExternAllocator.externResize,
+                .free = ScriptExternAllocator.externFree,
+            },
+        },
+        ._isUsingExternAllocator = true,
+        ._externAllocator = externAllocator,
+        ._context = if (context) |ctx| ctx else ScriptContext.default_context,
+    };
+    return self;
+}
 
 pub fn deinit(self: *Self) void {
     self._context.deinit();
+    if (self._isUsingExternAllocator) {
+        // move the allocator to here, and then free all memory of self
+        var externAllocator = self._externAllocator;
+        var allocator = self.allocator;
+        allocator.ptr = @ptrCast(&externAllocator);
 
-    self.allocator.destroy(self);
+        allocator.destroy(self);
+    } else {
+        self.allocator.destroy(self);
+    }
+
     return;
 }
 
@@ -616,6 +637,14 @@ fn getAndValidateDstSrcRegisterPos(stackPointer: usize, currentStackFrameSize: u
 /// Handles reporting errors, and other user specific data.
 /// In `CubicScriptState.zig`, an example of implementing this can be found with `ScriptTestingContextError`.
 pub const ScriptContext = extern struct {
+    pub const default_context = ScriptContext{
+        .ptr = undefined,
+        .vtable = &.{
+            .errorCallback = defaultContextErrorCallback,
+            .deinit = defaultContextDeinit,
+        },
+    };
+
     ptr: *anyopaque,
     vtable: *const VTable,
 
@@ -640,14 +669,6 @@ pub const ScriptContext = extern struct {
     pub fn deinit(self: *ScriptContext) void {
         self.vtable.deinit(self.ptr);
     }
-};
-
-const default_context = ScriptContext{
-    .ptr = undefined,
-    .vtable = &.{
-        .errorCallback = defaultContextErrorCallback,
-        .deinit = defaultContextDeinit,
-    },
 };
 
 fn defaultContextErrorCallback(_: *anyopaque, _: *const Self, err: RuntimeError, severity: ErrorSeverity, message: [*c]const u8, messageLength: usize) callconv(.C) void {
