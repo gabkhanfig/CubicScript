@@ -565,7 +565,14 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                     stack.stack[registers.dst].int = @intFromFloat(src);
                 }
             },
+            .StringDeinit => {
+                const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
+                const dstRegisterPos = stackPointer + @as(usize, operand.dst);
 
+                assert(@as(usize, operand.dst) < currentStackFrameSize);
+
+                threadLocalStack.stack[dstRegisterPos].string.deinit(self);
+            },
             else => {
                 @panic("not implemented");
             },
