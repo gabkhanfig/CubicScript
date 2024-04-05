@@ -15,38 +15,38 @@ else
     std.Thread.RwLock;
 
 /// Blocks until shared lock ownership is acquired.
-pub fn read(self: *const Self) void {
+pub fn read(self: *const Self) callconv(.C) void {
     const mutSelf: *Self = @constCast(self);
     mutSelf.impl.lockShared();
 }
 
 /// Attempts to obtain shared lock ownership.
 /// Returns `true` if the lock is obtained, `false` otherwise.
-pub fn tryRead(self: *const Self) bool {
+pub fn tryRead(self: *const Self) callconv(.C) bool {
     const mutSelf: *Self = @constCast(self);
     return mutSelf.impl.tryLockShared();
 }
 
 /// Releases a held shared lock.
-pub fn unlockRead(self: *const Self) void {
+pub fn unlockRead(self: *const Self) callconv(.C) void {
     const mutSelf: *Self = @constCast(self);
     mutSelf.impl.unlockShared();
 }
 
 /// Blocks until shared lock ownership is acquired.
-pub fn write(self: *Self) void {
+pub fn write(self: *Self) callconv(.C) void {
     self.impl.lock();
 }
 
 /// Attempts to obtain exclusive lock ownership.
 /// Returns `true` if the lock is obtained, `false` otherwise.
-pub fn tryWrite(self: *Self) void {
+pub fn tryWrite(self: *Self) callconv(.C) bool {
     return self.impl.tryLock();
 }
 
 /// Releases a held exclusive lock.
 /// Asserts the lock is held exclusively.
-pub fn unlockWrite(self: *Self) void {
+pub fn unlockWrite(self: *Self) callconv(.C) void {
     self.impl.unlock();
 }
 
