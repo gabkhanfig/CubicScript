@@ -10,4 +10,5 @@ comptime {
     _ = @import("state/CubicScriptState.zig");
     _ = @import("state/Stack.zig");
     _ = @import("state/Bytecode.zig");
+    _ = @import("state/sync_queue.zig");
 }
