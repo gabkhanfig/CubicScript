@@ -10,6 +10,10 @@
 //! queue, and decrementing to the previous queue. If multiple queues have been acquired,
 //! release goes in reverse order. It can be thought of a stack of queues.
 //!
+//! It's possible that queueing locks, acquiring them, and then proceeding to queue and acquire more locks BEFORE
+//! releasing the prior ones could lead to a deadlock, so as long as the programmer can ensure that no locks may overlap,
+//! then there will be no issues.
+//!
 //! # Example:
 //! ```
 //! var lock1 = RwLock{};
