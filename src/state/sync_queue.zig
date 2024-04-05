@@ -342,3 +342,69 @@ test "nested acquire exclusive" {
         defer release();
     }
 }
+
+test "acquire on multiple threads" {
+    const TestThread = struct {
+        fn spawn(n: usize, num: *usize, lock1: *RwLock, lock2: *RwLock, lock3: *RwLock, lock4: *RwLock) std.Thread {
+            return std.Thread.spawn(.{}, acquireLocksNTimes, .{ n, num, lock1, lock2, lock3, lock4 }) catch unreachable;
+        }
+
+        fn acquireLocksNTimes(n: usize, num: *usize, lock1: *RwLock, lock2: *RwLock, lock3: *RwLock, lock4: *RwLock) void {
+            for (0..n) |_| {
+                queueScriptRwLockExclusive(lock1);
+                queueScriptRwLockExclusive(lock2);
+                queueScriptRwLockExclusive(lock3);
+                queueScriptRwLockExclusive(lock4);
+                acquire();
+                defer release();
+                num.* = num.* + 1;
+            }
+        }
+    };
+    { // consistent order
+        var lock1: RwLock = .{};
+        var lock2: RwLock = .{};
+        var lock3: RwLock = .{};
+        var lock4: RwLock = .{};
+        var num: usize = 0;
+
+        {
+            const t1 = TestThread.spawn(100000, &num, &lock1, &lock2, &lock3, &lock4);
+            defer t1.join();
+
+            const t2 = TestThread.spawn(100000, &num, &lock1, &lock2, &lock3, &lock4);
+            defer t2.join();
+
+            const t3 = TestThread.spawn(100000, &num, &lock1, &lock2, &lock3, &lock4);
+            defer t3.join();
+
+            const t4 = TestThread.spawn(100000, &num, &lock1, &lock2, &lock3, &lock4);
+            defer t4.join();
+        }
+
+        try expect(num == 400000);
+    }
+    { // random order
+        var lock1: RwLock = .{};
+        var lock2: RwLock = .{};
+        var lock3: RwLock = .{};
+        var lock4: RwLock = .{};
+        var num: usize = 0;
+
+        {
+            const t1 = TestThread.spawn(100000, &num, &lock1, &lock2, &lock3, &lock4);
+            defer t1.join();
+
+            const t2 = TestThread.spawn(100000, &num, &lock2, &lock3, &lock4, &lock1);
+            defer t2.join();
+
+            const t3 = TestThread.spawn(100000, &num, &lock3, &lock4, &lock1, &lock2);
+            defer t3.join();
+
+            const t4 = TestThread.spawn(100000, &num, &lock4, &lock1, &lock2, &lock3);
+            defer t4.join();
+        }
+
+        try expect(num == 400000);
+    }
+}
