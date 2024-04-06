@@ -119,12 +119,26 @@ const SyncQueue = struct {
 
     fn acquire(self: *Self) void {
         for (self.objects.items) |object| {
+            if (std.debug.runtime_safety) {
+                if (object.vtable.isMarkLocked) |isMarkLocked| {
+                    if (isMarkLocked(object.object)) {
+                        @panic("Cannot re-enter lock!");
+                    }
+                }
+            }
+
             switch (object.lockType) {
                 .Exclusive => {
                     object.vtable.lockExclusive(object.object);
+                    if (object.vtable.markLocked) |markLocked| {
+                        markLocked(object.object);
+                    }
                 },
                 .Shared => {
                     object.vtable.lockShared.?(object.object);
+                    if (object.vtable.markLocked) |markLocked| {
+                        markLocked(object.object);
+                    }
                 },
             }
         }
@@ -139,12 +153,20 @@ const SyncQueue = struct {
                     if (!object.vtable.tryLockExclusive(object.object)) {
                         didAcquireAll = false;
                         break;
+                    } else {
+                        if (object.vtable.markLocked) |markLocked| {
+                            markLocked(object.object);
+                        }
                     }
                 },
                 .Shared => {
                     if (!object.vtable.tryLockShared.?(object.object)) {
                         didAcquireAll = false;
                         break;
+                    } else {
+                        if (object.vtable.markLocked) |markLocked| {
+                            markLocked(object.object);
+                        }
                     }
                 },
             }
@@ -160,9 +182,15 @@ const SyncQueue = struct {
                 switch (object.lockType) {
                     .Exclusive => {
                         object.vtable.unlockExclusive(object.object);
+                        if (object.vtable.markUnlocked) |markUnlocked| {
+                            markUnlocked(object.object);
+                        }
                     },
                     .Shared => {
                         object.vtable.unlockShared.?(object.object);
+                        if (object.vtable.markUnlocked) |markUnlocked| {
+                            markUnlocked(object.object);
+                        }
                     },
                 }
             }
@@ -240,6 +268,7 @@ pub const VTable = extern struct {
     unlockShared: ?*const fn (*anyopaque) callconv(.C) void = null,
     isMarkLocked: ?*const fn (*const anyopaque) callconv(.C) bool = null,
     markLocked: ?*const fn (*anyopaque) callconv(.C) void = null,
+    markUnlocked: ?*const fn (*anyopaque) callconv(.C) void = null,
 };
 
 const SCRIPT_RWLOCK_VTABLE: *const VTable = &.{
