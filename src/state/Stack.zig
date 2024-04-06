@@ -62,7 +62,7 @@ pub const StackFrame = struct {
     }
 
     /// Gets the old stack frame, or null if there was no previous.
-    pub fn popFrame(self: *StackFrame, stack: *Stack) ?struct { instructionPointer: usize, frame: StackFrame } {
+    pub fn popFrame(self: *StackFrame, stack: *Stack) ?struct { prevInstructionPointer: usize, frame: StackFrame } {
         assert(stack.currentBasePointer != 0); // Means that there is no stack to pop.
 
         const offset: usize = stack.currentFrameLength + FIELD_COUNT;
@@ -73,7 +73,7 @@ pub const StackFrame = struct {
 
         self.basePointer = undefined;
         return .{
-            .instructionPointer = oldIP,
+            .prevInstructionPointer = oldIP,
             .frame = .{ .basePointer = oldBasePointer },
         };
     }
