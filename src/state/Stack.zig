@@ -34,6 +34,7 @@ pub const StackFrame = struct {
     const FIELD_COUNT: usize = 3;
 
     basePointer: [*]RawValue,
+    frameLength: usize,
 
     /// `frameLength` does not include the reserved registers for stack frames.
     /// Works with recursive stack frames.
@@ -58,6 +59,7 @@ pub const StackFrame = struct {
 
         return .{
             .basePointer = newBasePointer,
+            .frameLength = frameLength,
         };
     }
 
@@ -74,12 +76,18 @@ pub const StackFrame = struct {
         self.basePointer = undefined;
         return .{
             .prevInstructionPointer = oldIP,
-            .frame = .{ .basePointer = oldBasePointer },
+            .frame = .{
+                .basePointer = oldBasePointer,
+                .frameLength = stack.currentFrameLength,
+            },
         };
     }
 
+    /// Basically array indexing, but cannot access the previous stack frame's instruction pointer,
+    /// nor previous stack frame's frame length.
     pub fn register(self: *StackFrame, registerIndex: usize) *RawValue {
-        return self.basePointer[FIELD_COUNT + registerIndex];
+        assert(registerIndex < self.frameLength);
+        return &self.basePointer[FIELD_COUNT + registerIndex];
     }
 
     fn oldInstructionPointer(self: *const StackFrame) usize {
@@ -121,4 +129,35 @@ test "push/pop two stack frames" {
 
     try expect(stack.currentBasePointer == frame1BasePointer);
     try expect(stack.currentFrameLength == frame1FrameLength);
+}
+
+test "stack frame access register" {
+    const stack = try std.testing.allocator.create(Stack);
+    defer std.testing.allocator.destroy(stack);
+    stack.* = .{};
+
+    var frame = try StackFrame.pushFrame(stack, 1, 0);
+    defer _ = frame.popFrame(stack);
+
+    frame.register(0).int = -1;
+    try expect(frame.register(0).int == -1);
+}
+
+test "stack frame nested retain register" {
+    const stack = try std.testing.allocator.create(Stack);
+    defer std.testing.allocator.destroy(stack);
+    stack.* = .{};
+
+    var frame1 = try StackFrame.pushFrame(stack, 1, 0);
+    defer _ = frame1.popFrame(stack);
+
+    frame1.register(0).int = 20;
+    try expect(frame1.register(0).int == 20);
+
+    {
+        var frame2 = try StackFrame.pushFrame(stack, 2, 0);
+        defer _ = frame2.popFrame(stack);
+    }
+
+    try expect(frame1.register(0).int == 20);
 }
