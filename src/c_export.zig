@@ -110,7 +110,7 @@ pub const ScriptExternAllocator = struct {
 
     const ExternVTable = extern struct {
         alloc: *const fn (ctx: *anyopaque, len: usize, ptrAlign: u8) callconv(.C) ?*anyopaque,
-        resize: *const fn (ctx: *anyopaque, bufPtr: *anyopaque, bufLen: usize, bufAlign: u8, newLen: usize) callconv(.C) bool,
+        resize: *const fn (ctx: *anyopaque, bufPtr: *anyopaque, bufLen: usize, newLen: usize) callconv(.C) bool,
         free: *const fn (ctx: *anyopaque, bufPtr: ?*anyopaque, bufLen: usize, bufAlign: u8) callconv(.C) void,
         deinit: ?*const fn (ctx: *anyopaque) callconv(.C) void,
     };
@@ -129,12 +129,12 @@ pub const ScriptExternAllocator = struct {
 
     pub fn externResize(ctx: *anyopaque, buf: []u8, bufAlign: u8, newLen: usize, retAddr: usize) bool {
         _ = retAddr;
+        _ = bufAlign;
         const self: *Self = @ptrCast(@alignCast(ctx));
         return self.externVTable.resize(
             self.externAllocatorPtr,
             buf.ptr,
             buf.len,
-            bufAlign,
             newLen,
         );
     }
