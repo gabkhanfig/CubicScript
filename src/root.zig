@@ -8,7 +8,7 @@ comptime {
 }
 
 pub const CubicScriptState = @import("state/CubicScriptState.zig");
-pub const Stack = @import("state/Stack.zig");
+
 pub const Bytecode = @import("state/Bytecode.zig");
 
 pub const String = @import("types/string.zig").String;
