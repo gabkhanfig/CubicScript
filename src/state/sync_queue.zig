@@ -45,20 +45,16 @@ threadlocal var threadLocalSyncQueue: SyncQueues = .{};
 /// Any queue operations before `release()` is called will be queued on a deeper nested
 /// queue. Failing to call `release()` is undefined behaviour.
 pub fn acquire() void {
-    assert(threadLocalSyncQueue.current != null);
-
-    threadLocalSyncQueue.queues[threadLocalSyncQueue.current.?].acquire();
-    threadLocalSyncQueue.current = threadLocalSyncQueue.current.? + 1;
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].acquire();
+    threadLocalSyncQueue.current += 1;
 }
 
 /// Tries to acquire the currently queued sync objects, returning true on success, false otherwise.
 /// Any queue operations before `release()` is called will be queued on a deeper nested
 /// queue. Failing to call `release()` is undefined behaviour.
 pub fn tryAcquire() bool {
-    assert(threadLocalSyncQueue.current != null);
-
-    if (threadLocalSyncQueue.queues[threadLocalSyncQueue.current.?].tryAcquire()) {
-        threadLocalSyncQueue.current = threadLocalSyncQueue.current.? + 1;
+    if (threadLocalSyncQueue.queues[threadLocalSyncQueue.current].tryAcquire()) {
+        threadLocalSyncQueue.current += 1;
         return true;
     } else {
         return false;
@@ -67,23 +63,16 @@ pub fn tryAcquire() bool {
 
 /// Releases the acquired sync objects on the current queue.
 pub fn release() void {
-    assert(threadLocalSyncQueue.current != null);
-
-    const releaseIndex = threadLocalSyncQueue.current.? - 1;
+    const releaseIndex = threadLocalSyncQueue.current - 1;
     threadLocalSyncQueue.queues[releaseIndex].release();
     threadLocalSyncQueue.current = releaseIndex;
 }
 
 pub fn queueScriptRwLockExclusive(lock: *RwLock) void {
-    if (threadLocalSyncQueue.current) |current| {
-        ensureTotalCapacityThreadLocal(current + 1);
-    } else {
-        ensureTotalCapacityThreadLocal(1);
-        threadLocalSyncQueue.current = 0;
-    }
+    ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
 
     const object = SyncObject{ .object = @ptrCast(lock), .vtable = SCRIPT_RWLOCK_VTABLE, .lockType = .Exclusive };
-    threadLocalSyncQueue.queues[threadLocalSyncQueue.current.?].addSyncObject(
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
         threadLocalSyncQueue.allocator,
         object,
     ) catch unreachable;
@@ -108,7 +97,7 @@ const SyncQueues = struct {
     allocator: Allocator = std.heap.c_allocator,
     /// Points to the current queue to push SyncObjects to.
     /// On release, `current - 1` is the queue index to use.
-    current: ?usize = null,
+    current: usize = 0,
 };
 
 const SyncQueue = struct {
