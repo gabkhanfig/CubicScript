@@ -148,6 +148,13 @@ const SyncQueue = struct {
         var i: usize = 0; // Counts the amount of locks acquired.
         var didAcquireAll: bool = true;
         for (self.objects.items) |object| {
+            if (std.debug.runtime_safety) {
+                if (object.vtable.isMarkLocked) |isMarkLocked| {
+                    if (isMarkLocked(object.object)) {
+                        @panic("Cannot re-enter lock!");
+                    }
+                }
+            }
             switch (object.lockType) {
                 .Exclusive => {
                     if (!object.vtable.tryLockExclusive(object.object)) {
