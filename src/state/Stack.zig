@@ -23,7 +23,7 @@ const Stack = @This();
 state: *const CubicScriptState = undefined,
 stack: [STACK_SPACES]RawValue align(64) = std.mem.zeroes([STACK_SPACES]RawValue),
 /// Only used to handle recursive stack frames.
-currentBasePointer: usize = 0,
+nextBasePointer: usize = 0,
 /// If `currentBasePointer` is not zero, this can be used as a negative
 /// offset to fetch the previous stack frame data, and restore it.
 currentFrameLength: usize = 0,
@@ -41,20 +41,18 @@ pub const StackFrame = struct {
     pub fn pushFrame(stack: *Stack, frameLength: usize, currentInstructionPointer: usize) error{StackOverflow}!StackFrame {
         assert(frameLength != 0);
 
-        const newBasePointer: [*]RawValue = @ptrCast(&stack.stack[stack.currentBasePointer]);
-        if (stack.currentBasePointer == 0) { // is at the beginning of the stack, no recursiveness
+        const newBasePointer: [*]RawValue = @ptrCast(&stack.stack[stack.nextBasePointer]);
+        if (stack.nextBasePointer == 0) { // is at the beginning of the stack, no recursiveness
             newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = 0;
             newBasePointer[OLD_FRAME_LENGTH].actualValue = 0;
         } else {
             if ((stack.currentFrameLength + FIELD_COUNT) >= STACK_SPACES) {
                 return error.StackOverflow;
             }
-            //const difference: usize = stack.currentBasePointer - (stack.currentFrameLength + FIELD_COUNT);
-            //const oldBasePointer: [*]RawValue = @ptrFromInt(stack.currentBasePointer - difference);
             newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = currentInstructionPointer;
             newBasePointer[OLD_FRAME_LENGTH].actualValue = stack.currentFrameLength;
         }
-        stack.currentBasePointer += frameLength + FIELD_COUNT;
+        stack.nextBasePointer += frameLength + FIELD_COUNT;
         stack.currentFrameLength = frameLength;
 
         return .{
@@ -64,12 +62,12 @@ pub const StackFrame = struct {
     }
 
     /// Gets the old stack frame, or null if there was no previous.
-    pub fn popFrame(self: *StackFrame, stack: *Stack) ?struct { prevInstructionPointer: usize, frame: StackFrame } {
-        assert(stack.currentBasePointer != 0); // Means that there is no stack to pop.
+    pub fn popFrame(self: *StackFrame, stack: *Stack) struct { prevInstructionPointer: usize, frame: StackFrame } {
+        assert(stack.nextBasePointer != 0); // Means that there is no stack to pop.
 
         const offset: usize = stack.currentFrameLength + FIELD_COUNT;
-        stack.currentBasePointer -= offset;
-        const oldBasePointer: [*]RawValue = @ptrFromInt(@intFromPtr(self.basePointer) - (stack.currentBasePointer * 8));
+        stack.nextBasePointer -= offset;
+        const oldBasePointer: [*]RawValue = @ptrFromInt(@intFromPtr(self.basePointer) - (stack.nextBasePointer * 8));
         stack.currentFrameLength = self.oldFrameLength();
         const oldIP = self.oldInstructionPointer();
 
@@ -116,18 +114,18 @@ test "push/pop two stack frames" {
     var frame1 = try StackFrame.pushFrame(stack, 1, 0);
     defer _ = frame1.popFrame(stack);
 
-    const frame1BasePointer = stack.currentBasePointer;
+    const frame1BasePointer = stack.nextBasePointer;
     const frame1FrameLength = stack.currentFrameLength;
 
     {
         var frame2 = try StackFrame.pushFrame(stack, 2, 0);
         defer _ = frame2.popFrame(stack);
 
-        try expect(stack.currentBasePointer != frame1BasePointer);
+        try expect(stack.nextBasePointer != frame1BasePointer);
         try expect(stack.currentFrameLength != frame1FrameLength);
     }
 
-    try expect(stack.currentBasePointer == frame1BasePointer);
+    try expect(stack.nextBasePointer == frame1BasePointer);
     try expect(stack.currentFrameLength == frame1FrameLength);
 }
 
