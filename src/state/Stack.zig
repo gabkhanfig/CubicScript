@@ -31,7 +31,7 @@ currentFrameLength: usize = 0,
 pub const StackFrame = struct {
     const OLD_INSTRUCTION_POINTER = 0;
     const OLD_FRAME_LENGTH = 1;
-    const FIELD_COUNT: usize = 3;
+    const FIELD_COUNT: usize = @typeInfo(StackFrame).Struct.fields.len;
 
     basePointer: [*]RawValue,
     frameLength: usize,
