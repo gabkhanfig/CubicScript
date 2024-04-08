@@ -27,6 +27,7 @@ nextBasePointer: usize = 0,
 /// If `currentBasePointer` is not zero, this can be used as a negative
 /// offset to fetch the previous stack frame data, and restore it.
 currentFrameLength: usize = 0,
+instructionPointer: usize = 0,
 
 pub const StackFrame = struct {
     const OLD_INSTRUCTION_POINTER = 0;
@@ -38,7 +39,7 @@ pub const StackFrame = struct {
 
     /// `frameLength` does not include the reserved registers for stack frames.
     /// Works with recursive stack frames.
-    pub fn pushFrame(stack: *Stack, frameLength: usize, currentInstructionPointer: usize) error{StackOverflow}!StackFrame {
+    pub fn pushFrame(stack: *Stack, frameLength: usize, newInstructionPointer: usize) error{StackOverflow}!StackFrame {
         assert(frameLength != 0);
 
         const newBasePointer: [*]RawValue = @ptrCast(&stack.stack[stack.nextBasePointer]);
@@ -49,11 +50,12 @@ pub const StackFrame = struct {
             if ((stack.currentFrameLength + FIELD_COUNT) >= STACK_SPACES) {
                 return error.StackOverflow;
             }
-            newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = currentInstructionPointer;
+            newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = stack.instructionPointer;
             newBasePointer[OLD_FRAME_LENGTH].actualValue = stack.currentFrameLength;
         }
         stack.nextBasePointer += frameLength + FIELD_COUNT;
         stack.currentFrameLength = frameLength;
+        stack.instructionPointer = newInstructionPointer;
 
         return .{
             .basePointer = newBasePointer,
@@ -62,7 +64,7 @@ pub const StackFrame = struct {
     }
 
     /// Gets the old stack frame, or null if there was no previous.
-    pub fn popFrame(self: *StackFrame, stack: *Stack) struct { prevInstructionPointer: usize, frame: StackFrame } {
+    pub fn popFrame(self: *StackFrame, stack: *Stack) StackFrame {
         assert(stack.nextBasePointer != 0); // Means that there is no stack to pop.
 
         const offset: usize = stack.currentFrameLength + FIELD_COUNT;
@@ -70,14 +72,13 @@ pub const StackFrame = struct {
         const oldBasePointer: [*]RawValue = @ptrFromInt(@intFromPtr(self.basePointer) - (stack.nextBasePointer * 8));
         stack.currentFrameLength = self.oldFrameLength();
         const oldIP = self.oldInstructionPointer();
+        stack.instructionPointer = oldIP;
 
         self.basePointer = undefined;
+        self.frameLength = undefined;
         return .{
-            .prevInstructionPointer = oldIP,
-            .frame = .{
-                .basePointer = oldBasePointer,
-                .frameLength = stack.currentFrameLength,
-            },
+            .basePointer = oldBasePointer,
+            .frameLength = stack.currentFrameLength,
         };
     }
 
