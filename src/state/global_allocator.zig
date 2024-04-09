@@ -20,6 +20,8 @@ var globalAllocator: Allocator = blk: {
             break :blk std.heap.c_allocator;
     }
 };
+/// Allows using this global variable as an address for a zig allocator.
+pub var externAllocator: ScriptExternAllocator = undefined;
 
 /// Allows changing the allocator used by CubicScript at runtime.
 ///

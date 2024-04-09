@@ -6,6 +6,7 @@ const CubicScriptState = root.CubicScriptState;
 const String = root.String;
 const Allocator = std.mem.Allocator;
 const ScriptContext = CubicScriptState.ScriptContext;
+const global_allocator = @import("state/global_allocator.zig");
 
 export fn cubs_state_init(
     contextPtr: ?*anyopaque,
@@ -23,6 +24,31 @@ export fn cubs_state_init(
         assert(contextVTable != null);
     }
     return CubicScriptState.init(context);
+}
+
+export fn cubs_state_deinit(state: ?*CubicScriptState) callconv(.C) void {
+    if (state) |s| {
+        s.deinit();
+    }
+}
+
+export fn cubs_set_allocator(allocatorPtr: ?*anyopaque, allocatorVTable: ?*const global_allocator.ScriptExternAllocator.ExternVTable) callconv(.C) void {
+    if (allocatorPtr == null) {
+        std.debug.print("[cubs_set_global_allocator]: Expected non-null allocatorPtr");
+        return;
+    }
+    if (allocatorVTable == null) {
+        std.debug.print("[cubs_set_global_allocator]: Expected non-null allocatorVTable");
+        return;
+    }
+
+    global_allocator.externAllocator = .{ .externAllocatorPtr = allocatorPtr.?, .externVTable = allocatorVTable.? };
+    global_allocator.setAllocator(Allocator{ .ptr = @ptrCast(&global_allocator.externAllocator), .vtable = &.{
+        .alloc = &global_allocator.ScriptExternAllocator.externAlloc,
+        .resize = &global_allocator.ScriptExternAllocator.externResize,
+        .free = &global_allocator.ScriptExternAllocator.externFree,
+    } });
+    //global_allocator.setAllocator(Allocator{ .ptr = allocatorPtr.?, .vtable = allocatorVTable.? });
 }
 
 export fn cubs_string_init_slice(buffer: [*c]const u8, length: usize) callconv(.C) String {
@@ -71,55 +97,5 @@ const ScriptGeneralPurposeAllocator = struct {
         };
         gpa.* = .{};
         allocator = gpa.allocator();
-    }
-};
-
-pub const ScriptExternAllocator = struct {
-    const Self = @This();
-
-    externAllocatorPtr: *anyopaque,
-    externVTable: *const ExternVTable,
-
-    const ExternVTable = extern struct {
-        alloc: *const fn (ctx: *anyopaque, len: usize, ptrAlign: u8) callconv(.C) ?*anyopaque,
-        resize: *const fn (ctx: *anyopaque, bufPtr: *anyopaque, bufLen: usize, newLen: usize) callconv(.C) bool,
-        free: *const fn (ctx: *anyopaque, bufPtr: ?*anyopaque, bufLen: usize, bufAlign: u8) callconv(.C) void,
-        deinit: ?*const fn (ctx: *anyopaque) callconv(.C) void,
-    };
-
-    pub fn externAlloc(ctx: *anyopaque, len: usize, ptrAlign: u8, retAddr: usize) ?[*]u8 {
-        _ = retAddr;
-        assert(len > 0);
-        const self: *Self = @ptrCast(@alignCast(ctx));
-        const ptr = self.externVTable.alloc(self.externAllocatorPtr, len, ptrAlign);
-        if (ptr) |allocation| {
-            return @ptrCast(allocation);
-        } else {
-            return null;
-        }
-    }
-
-    pub fn externResize(ctx: *anyopaque, buf: []u8, bufAlign: u8, newLen: usize, retAddr: usize) bool {
-        _ = retAddr;
-        _ = bufAlign;
-        const self: *Self = @ptrCast(@alignCast(ctx));
-        return self.externVTable.resize(
-            self.externAllocatorPtr,
-            buf.ptr,
-            buf.len,
-            newLen,
-        );
-    }
-
-    pub fn externFree(ctx: *anyopaque, buf: []u8, bufAlign: u8, retAddr: usize) void {
-        _ = retAddr;
-        const self: *Self = @ptrCast(@alignCast(ctx));
-        self.externVTable.free(self.externAllocatorPtr, buf.ptr, buf.len, bufAlign);
-    }
-
-    pub fn deinit(self: *Self) void {
-        if (self.externVTable.deinit) |deinitFunc| {
-            deinitFunc(self.externAllocatorPtr);
-        }
     }
 };
