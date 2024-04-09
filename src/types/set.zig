@@ -453,7 +453,7 @@ test "set contains empty" {
     var set = Set.init(ValueTag.String);
     defer set.deinit(state);
 
-    var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+    var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
     defer findValue.deinit(state);
 
     try expect(set.size() == 0);
@@ -467,10 +467,10 @@ test "set insert one element" {
     var set = Set.init(ValueTag.String);
     defer set.deinit(state);
 
-    var addKey = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+    var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
     try set.insert(&addKey, state);
 
-    var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+    var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
     defer findValue.deinit(state);
 
     try expect(set.size() == 1);
@@ -484,15 +484,15 @@ test "set erase one element" {
     var set = Set.init(ValueTag.String);
     defer set.deinit(state);
 
-    var addKey = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+    var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
     try set.insert(&addKey, state);
 
-    var eraseValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+    var eraseValue = TaggedValue.initString(root.String.initSlice("hello world!"));
     defer eraseValue.deinit(state);
 
     try expect(set.erase(eraseValue, state));
 
-    var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+    var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
     defer findValue.deinit(state);
 
     try expect(set.size() == 0);
@@ -507,7 +507,7 @@ test "set add more than 32 elements" {
         defer set.deinit(state);
 
         for (0..36) |i| {
-            var addKey = TaggedValue.initString(try root.String.fromInt(@as(Int, @intCast(i)), state));
+            var addKey = TaggedValue.initString(root.String.fromInt(@as(Int, @intCast(i))));
             try set.insert(&addKey, state);
         }
     }

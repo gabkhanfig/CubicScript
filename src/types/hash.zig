@@ -166,10 +166,10 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = try root.String.initSlice("hello world!", state) };
-        defer value1.string.deinit(state);
-        var value2 = RawValue{ .string = try root.String.initSlice("hello world!", state) };
-        defer value2.string.deinit(state);
+        var value1 = RawValue{ .string = root.String.initSlice("hello world!") };
+        defer value1.string.deinit();
+        var value2 = RawValue{ .string = root.String.initSlice("hello world!") };
+        defer value2.string.deinit();
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.String, TEST_SEED_VALUE);
@@ -177,10 +177,10 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", state) };
-        defer value1.string.deinit(state);
-        var value2 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", state) };
-        defer value2.string.deinit(state);
+        var value1 = RawValue{ .string = root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!") };
+        defer value1.string.deinit();
+        var value2 = RawValue{ .string = root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!") };
+        defer value2.string.deinit();
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.String, TEST_SEED_VALUE);
@@ -188,10 +188,10 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly !", state) };
-        defer value1.string.deinit(state);
-        var value2 = RawValue{ .string = try root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!", state) };
-        defer value2.string.deinit(state);
+        var value1 = RawValue{ .string = root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly !") };
+        defer value1.string.deinit();
+        var value2 = RawValue{ .string = root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!") };
+        defer value2.string.deinit();
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
         const h2 = computeHash(&value2, ValueTag.String, TEST_SEED_VALUE);

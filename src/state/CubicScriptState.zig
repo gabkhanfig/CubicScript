@@ -386,7 +386,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
             },
             .IntToString => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                frame.register(operands.dst).string = try String.fromInt(frame.register(operands.src).int, self);
+                frame.register(operands.dst).string = String.fromInt(frame.register(operands.src).int);
             },
             .BoolNot => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
@@ -394,7 +394,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
             },
             .BoolToString => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                frame.register(operands.dst).string = try String.fromBool(frame.register(operands.src).boolean, self);
+                frame.register(operands.dst).string = String.fromBool(frame.register(operands.src).boolean);
             },
             .FloatIsEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -503,7 +503,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
             },
             .StringDeinit => {
                 const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
-                frame.register(operand.dst).string.deinit(self);
+                frame.register(operand.dst).string.deinit();
             },
             else => {
                 @panic("not implemented");
@@ -1584,7 +1584,7 @@ test "int to string" {
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("0"));
-        frame.register(1).string.deinit(state);
+        frame.register(1).string.deinit();
     }
     { // 1
         const state = try Self.init(std.testing.allocator, null);
@@ -1602,7 +1602,7 @@ test "int to string" {
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("1"));
-        frame.register(1).string.deinit(state);
+        frame.register(1).string.deinit();
     }
     { // -1
         const state = try Self.init(std.testing.allocator, null);
@@ -1620,7 +1620,7 @@ test "int to string" {
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("-1"));
-        frame.register(1).string.deinit(state);
+        frame.register(1).string.deinit();
     }
     { // arbitrary value
         const state = try Self.init(std.testing.allocator, null);
@@ -1638,7 +1638,7 @@ test "int to string" {
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("-2398712938"));
-        frame.register(1).string.deinit(state);
+        frame.register(1).string.deinit();
     }
 }
 
@@ -1694,7 +1694,7 @@ test "bool to string" {
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("true"));
-        frame.register(1).string.deinit(state);
+        frame.register(1).string.deinit();
     }
     { // false
         const state = try Self.init(std.testing.allocator, null);
@@ -1712,6 +1712,6 @@ test "bool to string" {
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("false"));
-        frame.register(1).string.deinit(state);
+        frame.register(1).string.deinit();
     }
 }

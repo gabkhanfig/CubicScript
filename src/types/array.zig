@@ -83,7 +83,7 @@ pub const Array = extern struct {
             .String => {
                 const strings = self.asSliceMut();
                 for (0..strings.len) |i| { // use indexing to get the mutable reference
-                    strings[i].string.deinit(state);
+                    strings[i].string.deinit();
                 }
             },
             .Array => {
@@ -466,7 +466,7 @@ test "Array string sanity" {
         try expect(false);
     } else |_| {}
 
-    var pushValue = RawValue{ .string = try root.String.initSlice("hello world!", state) };
+    var pushValue = RawValue{ .string = root.String.initSlice("hello world!") };
     try arr.add(&pushValue, ValueTag.String, state);
 
     if (arr.at(0)) |value| {
@@ -548,7 +548,7 @@ const TestCreateArray = struct {
                     const slice = std.fmt.allocPrint(state.allocator, "{}", .{i}) catch unreachable;
                     defer state.allocator.free(slice);
                     var pushValue = RawValue{
-                        .string = root.String.initSlice(slice, state) catch unreachable,
+                        .string = root.String.initSlice(slice),
                     };
                     arr.add(&pushValue, tag, state) catch unreachable;
                 }

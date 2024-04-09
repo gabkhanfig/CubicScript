@@ -517,7 +517,7 @@ test "map find empty" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit(state);
 
-        var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+        var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
         defer findValue.deinit(state);
 
         try expect(map.size() == 0);
@@ -532,11 +532,11 @@ test "map insert one element" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit(state);
 
-        var addKey = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+        var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
         var addValue = TaggedValue.initInt(1);
         try map.insert(&addKey, &addValue, state);
 
-        var findValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+        var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
         defer findValue.deinit(state);
 
         try expect(map.size() == 1);
@@ -560,11 +560,11 @@ test "map erase one element" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit(state);
 
-        var addKey = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+        var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
         var addValue = TaggedValue.initInt(1);
         try map.insert(&addKey, &addValue, state);
 
-        var eraseValue = TaggedValue.initString(try root.String.initSlice("hello world!", state));
+        var eraseValue = TaggedValue.initString(root.String.initSlice("hello world!"));
         defer eraseValue.deinit(state);
 
         try expect(map.erase(eraseValue, state));
@@ -584,7 +584,7 @@ test "Map add more than 32 elements" {
         defer map.deinit(state);
 
         for (0..36) |i| {
-            var addKey = TaggedValue.initString(try root.String.fromInt(@as(Int, @intCast(i)), state));
+            var addKey = TaggedValue.initString(root.String.fromInt(@as(Int, @intCast(i))));
             var addValue = TaggedValue.initInt(@as(Int, @intCast(i)));
 
             try map.insert(&addKey, &addValue, state);

@@ -85,7 +85,7 @@ pub const RawValue = extern union {
         switch (tag) {
             .Bool, .Int, .Float => {},
             .String => {
-                self.string.deinit(state);
+                self.string.deinit();
             },
             .Array => {
                 self.array.deinit(state);

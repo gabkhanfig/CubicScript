@@ -10,23 +10,6 @@ const Bytecode = cubic_script.Bytecode;
 const OpCode = Bytecode.OpCode;
 
 pub fn main() !void {
-    const state = try CubicScriptState.init(std.heap.c_allocator, null);
-    const stack = try Stack.init(state);
-
-    const instructions = [_]Bytecode{
-        Bytecode.encode(OpCode.Nop, void, {}),
-        Bytecode.encode(OpCode.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-        Bytecode{ .value = 0xFFFFFFFF },
-        Bytecode{ .value = 0xFFFFFFFF },
-    };
-
-    try state.run(stack, &instructions);
-
-    std.debug.print("{}\n", .{stack.stack[0].actualValue});
-
-    try state.run(stack, &.{
-        Bytecode.encode(OpCode.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-    });
-
-    std.debug.print("{}\n", .{stack.stack[0].actualValue});
+    const mem = cubic_script.allocator().alloc(u8, 2) catch unreachable;
+    std.debug.print("{}\n", .{mem[0]});
 }

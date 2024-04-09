@@ -63,7 +63,7 @@ test "not null" {
     var state = try CubicScriptState.init(std.testing.allocator, null);
     defer state.deinit();
 
-    var opt = try Option.init(TaggedValue.initString(try root.String.initSlice("aa", state)), state);
+    var opt = try Option.init(TaggedValue.initString(root.String.initSlice("aa")), state);
     defer opt.deinit(state);
 
     try expect(opt.value != null);
@@ -72,7 +72,7 @@ test "not null" {
         try expect(string.tag == root.ValueTag.String);
         try expect(string.value.string.eqlSlice("aa"));
         var s = string;
-        s.value.string.deinit(state);
+        s.value.string.deinit();
     } else |_| {
         try expect(false);
     }

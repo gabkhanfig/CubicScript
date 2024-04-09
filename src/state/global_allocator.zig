@@ -82,5 +82,5 @@ pub const ScriptExternAllocator = struct {
 };
 
 test "test actually uses testing allocator" {
-    try std.testing.expect(allocator.ptr == std.testing.allocator.ptr);
+    try std.testing.expect(allocator().ptr == std.testing.allocator.ptr);
 }
