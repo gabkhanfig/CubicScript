@@ -16,6 +16,9 @@ const runtime_safety: bool = std.debug.runtime_safety;
 const Mutex = std.Thread.Mutex;
 const ScriptExternAllocator = @import("../c_export.zig").ScriptExternAllocator;
 
+// TODO scripts using different allocators can risk passing around memory to different states.
+// Therefore, all states should use the same global allocator. Perhaps there can be a function to change the allocator.
+
 pub const RuntimeError = Error.RuntimeError;
 pub const ErrorSeverity = Error.Severity;
 // https://github.com/ziglang/zig/issues/16419
@@ -393,133 +396,115 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
                 frame.register(operands.dst).string = try String.fromBool(frame.register(operands.src).boolean, self);
             },
-            // .FloatIsEqual => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            .FloatIsEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            //     assert(registers.dst != registers.src1);
-            //     assert(registers.dst != registers.src2);
-            //     assert(registers.src1 != registers.src2);
+                assert(operands.dst != operands.src1);
+                assert(operands.dst != operands.src2);
+                assert(operands.src1 != operands.src2);
 
-            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float == stack.stack[registers.src2].float;
-            // },
-            // .FloatIsNotEqual => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                frame.register(operands.dst).boolean = frame.register(operands.src1).float == frame.register(operands.src2).float;
+            },
+            .FloatIsNotEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            //     assert(registers.dst != registers.src1);
-            //     assert(registers.dst != registers.src2);
-            //     assert(registers.src1 != registers.src2);
+                assert(operands.dst != operands.src1);
+                assert(operands.dst != operands.src2);
+                assert(operands.src1 != operands.src2);
 
-            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float != stack.stack[registers.src2].float;
-            // },
-            // .FloatIsLessThan => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                frame.register(operands.dst).boolean = frame.register(operands.src1).float != frame.register(operands.src2).float;
+            },
+            .FloatIsLessThan => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            //     assert(registers.dst != registers.src1);
-            //     assert(registers.dst != registers.src2);
-            //     assert(registers.src1 != registers.src2);
+                assert(operands.dst != operands.src1);
+                assert(operands.dst != operands.src2);
+                assert(operands.src1 != operands.src2);
 
-            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float < stack.stack[registers.src2].float;
-            // },
-            // .FloatIsGreaterThan => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                frame.register(operands.dst).boolean = frame.register(operands.src1).float < frame.register(operands.src2).float;
+            },
+            .FloatIsGreaterThan => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            //     assert(registers.dst != registers.src1);
-            //     assert(registers.dst != registers.src2);
-            //     assert(registers.src1 != registers.src2);
+                assert(operands.dst != operands.src1);
+                assert(operands.dst != operands.src2);
+                assert(operands.src1 != operands.src2);
 
-            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float > stack.stack[registers.src2].float;
-            // },
-            // .FloatIsLessOrEqual => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                frame.register(operands.dst).boolean = frame.register(operands.src1).float > frame.register(operands.src2).float;
+            },
+            .FloatIsLessOrEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            //     assert(registers.dst != registers.src1);
-            //     assert(registers.dst != registers.src2);
-            //     assert(registers.src1 != registers.src2);
+                assert(operands.dst != operands.src1);
+                assert(operands.dst != operands.src2);
+                assert(operands.src1 != operands.src2);
 
-            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float <= stack.stack[registers.src2].float;
-            // },
-            // .FloatIsGreaterOrEqual => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                frame.register(operands.dst).boolean = frame.register(operands.src1).float <= frame.register(operands.src2).float;
+            },
+            .FloatIsGreaterOrEqual => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            //     assert(registers.dst != registers.src1);
-            //     assert(registers.dst != registers.src2);
-            //     assert(registers.src1 != registers.src2);
+                assert(operands.dst != operands.src1);
+                assert(operands.dst != operands.src2);
+                assert(operands.src1 != operands.src2);
 
-            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float >= stack.stack[registers.src2].float;
-            // },
-            // .FloatAdd => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                frame.register(operands.dst).boolean = frame.register(operands.src1).float >= frame.register(operands.src2).float;
+            },
+            .FloatAdd => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                frame.register(operands.dst).float = frame.register(operands.src1).float + frame.register(operands.src2).float;
+            },
+            .FloatSubtract => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                frame.register(operands.dst).float = frame.register(operands.src1).float - frame.register(operands.src2).float;
+            },
+            .FloatMultiply => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+                frame.register(operands.dst).float = frame.register(operands.src1).float * frame.register(operands.src2).float;
+            },
+            .FloatDivide => {
+                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            //     stack.stack[registers.dst].float = stack.stack[registers.src1].float + stack.stack[registers.src2].float;
-            // },
-            // .FloatSubtract => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                if (frame.register(operands.src2).float == 0) {
+                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing float division", .{
+                        frame.register(operands.src1).float,
+                        frame.register(operands.src2).float,
+                    });
+                    defer self.allocator.free(message);
 
-            //     stack.stack[registers.dst].float = stack.stack[registers.src1].float - stack.stack[registers.src2].float;
-            // },
-            // .FloatMultiply => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
+                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                }
 
-            //     stack.stack[registers.dst].float = stack.stack[registers.src1].float * stack.stack[registers.src2].float;
-            // },
-            // .FloatDivide => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
+            },
+            .FloatToInt => {
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
 
-            //     if (stack.stack[registers.src2].float == 0) {
-            //         const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing float division", .{
-            //             stack.stack[registers.src1].float,
-            //             stack.stack[registers.src2].float,
-            //         });
-            //         defer self.allocator.free(message);
+                const MAX_INT_AS_FLOAT: f64 = @floatFromInt(math.MAX_INT);
+                const MIN_INT_AS_FLOAT: f64 = @floatFromInt(math.MIN_INT);
+                const src = frame.register(operands.src).float;
 
-            //         self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
-            //         return; // TODO figure out how to free all the memory and resources allocated in the callstack
-            //     }
+                if (src > MAX_INT_AS_FLOAT) {
+                    const message = try allocPrintZ(self.allocator, "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT });
+                    defer self.allocator.free(message);
 
-            //     stack.stack[registers.dst].float = stack.stack[registers.src1].float * stack.stack[registers.src2].float;
-            // },
-            // .FloatToInt => {
-            //     const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-            //     const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+                    self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
+                    frame.register(operands.dst).int = math.MAX_INT;
+                } else if (src < MIN_INT_AS_FLOAT) {
+                    const message = try allocPrintZ(self.allocator, "Float number [{}] is less than than the min int value of [{}]. Clamping to max int", .{ src, math.MIN_INT });
+                    defer self.allocator.free(message);
 
-            //     const MAX_INT_AS_FLOAT: f64 = @floatFromInt(math.MAX_INT);
-            //     const MIN_INT_AS_FLOAT: f64 = @floatFromInt(math.MIN_INT);
-            //     const src = stack.stack[registers.src].float;
-
-            //     if (src > MAX_INT_AS_FLOAT) {
-            //         const message = try allocPrintZ(self.allocator, "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT });
-            //         defer self.allocator.free(message);
-
-            //         self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
-            //         stack.stack[registers.dst].int = math.MAX_INT;
-            //     } else if (src < MIN_INT_AS_FLOAT) {
-            //         const message = try allocPrintZ(self.allocator, "Float number [{}] is less than than the min int value of [{}]. Clamping to max int", .{ src, math.MIN_INT });
-            //         defer self.allocator.free(message);
-
-            //         self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
-            //         stack.stack[registers.dst].int = math.MIN_INT;
-            //     } else {
-            //         stack.stack[registers.dst].int = @intFromFloat(src);
-            //     }
-            // },
-            // .StringDeinit => {
-            //     const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
-            //     const dstRegisterPos = stackPointer + @as(usize, operand.dst);
-
-            //     assert(@as(usize, operand.dst) < currentStackFrameSize);
-
-            //     threadLocalStack.stack[dstRegisterPos].string.deinit(self);
-            // },
+                    self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
+                    frame.register(operands.dst).int = math.MIN_INT;
+                } else {
+                    frame.register(operands.dst).int = @intFromFloat(src);
+                }
+            },
+            .StringDeinit => {
+                const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
+                frame.register(operand.dst).string.deinit(self);
+            },
             else => {
                 @panic("not implemented");
             },
