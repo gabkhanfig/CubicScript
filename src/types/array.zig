@@ -7,6 +7,7 @@ const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
 const Int = i64;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
+const allocator = @import("../state/global_allocator.zig").allocator;
 
 /// This is the Array implementation for scripts.
 /// Corresponds with the struct `CubsArray` in `cubic_script.h`.

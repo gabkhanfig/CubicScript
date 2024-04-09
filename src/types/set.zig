@@ -12,6 +12,7 @@ const HashPairBitmask = hash.HashPairBitmask;
 const computeHash = hash.computeHash;
 const TaggedValue = root.TaggedValue;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
+const allocator = @import("../state/global_allocator.zig").allocator;
 
 /// This is the hashset implementation for scripts.
 /// Corresponds with the struct `CubsSet` in `cubic_script.h`.

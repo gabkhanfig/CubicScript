@@ -5,6 +5,7 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const TaggedValue = root.TaggedValue;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
+const allocator = @import("../state/global_allocator.zig").allocator;
 
 pub const Option = extern struct {
     const Self = @This();

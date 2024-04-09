@@ -8,6 +8,7 @@ const Float = f64;
 const math = @import("math.zig");
 //const ValueTag = root.ValueTag;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
+const allocator = @import("../state/global_allocator.zig").allocator;
 const MAX_INT = math.MAX_INT;
 const MIN_INT = math.MIN_INT;
 

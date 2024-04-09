@@ -4,6 +4,7 @@ const root = @import("../root.zig");
 const ValueTag = root.ValueTag;
 const RawValue = root.RawValue;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
+const allocator = @import("../state/global_allocator.zig").allocator;
 
 pub const TEST_SEED_VALUE = 0x4857372859619FA;
 
