@@ -2,6 +2,10 @@ const std = @import("std");
 const assert = std.debug.assert;
 const expect = std.testing.expect;
 const Allocator = std.mem.Allocator;
+const global_allocator = @import("state/global_allocator.zig");
+
+pub const allocator = global_allocator.allocator;
+pub const setAllocator = global_allocator.setAllocator;
 
 comptime {
     _ = @import("c_export.zig");
