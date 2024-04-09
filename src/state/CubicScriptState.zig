@@ -5,6 +5,7 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
 const Stack = @import("Stack.zig");
+const StackFrame = Stack.StackFrame;
 const Bytecode = @import("Bytecode.zig");
 const OpCode = Bytecode.OpCode;
 const String = root.String;
@@ -92,122 +93,71 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
     // NOTE should also do errdefer for if allocation fails anywhere.
     threadLocalStack.state = self;
 
-    const stack = &threadLocalStack;
-    var instructionPointer: usize = 0;
+    //threadLocalStack.instructionPointer = 0; pushing a new frame sets the instructions pointer
+    var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch {
+        @panic("Script stack overflow");
+    };
+    defer _ = frame.popFrame(&threadLocalStack);
+
+    const instructionPointer: *usize = &threadLocalStack.instructionPointer;
     // The stack pointer points to the beginning of the stack frame.
     // This is done to use positive offsets to avoid any obscure exploits or issues from using
     // negative offsets and inadverently mutating the stack frame of the calling script function.
-    const stackPointer: usize = 0; // NOTE will be var instead of const when functions come into play
-    const currentStackFrameSize: usize = 256;
 
-    while (instructionPointer < instructions.len) {
-        const bytecode = instructions[instructionPointer];
+    while (instructionPointer.* < instructions.len) {
+        const bytecode = instructions[instructionPointer.*];
         switch (bytecode.getOpCode()) {
             .Nop => {
                 //std.debug.print("no operation\n", .{});
             },
             .Move => {
                 const operands = bytecode.decode(Bytecode.OperandsMove);
-                const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-                const srcRegisterPos = stackPointer + @as(usize, operands.src);
-
-                assert(@as(usize, operands.src) < currentStackFrameSize); // Dont bother checking the dst, because that can extend past the stack frame.
-                assert(dstRegisterPos != srcRegisterPos); // Cannot be the same location
-
-                //std.debug.print("Move: copying value at src[{}] to dst[{}]\n", .{ operands.src, operands.dst });
-                stack.stack[dstRegisterPos] = stack.stack[srcRegisterPos];
+                frame.register(operands.dst).* = frame.register(operands.src).*;
             },
             .LoadZero => {
                 const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
-                const dstRegisterPos = stackPointer + @as(usize, operand.dst);
-
-                // Dont bother checking the dst, because that can extend past the stack frame.
-                assert(@as(usize, operand.dst) < currentStackFrameSize);
-
-                //std.debug.print("LoadZero: setting dst[{}] to 0\n", .{operand.dst});
-                stack.stack[dstRegisterPos] = std.mem.zeroes(RawValue);
+                frame.register(operand.dst).* = std.mem.zeroes(RawValue);
             },
             .LoadImmediate => {
                 // NOTE the two bytecodes after `LoadImmediate` are the 64 bit immediate values, thus the instruction
                 // pointer will need to be further incremented.
                 const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
-
-                assert(@as(usize, operand.dst) < currentStackFrameSize); // Dont bother checking the dst, because that can extend past the stack frame.
-
-                const dstRegisterPos = stackPointer + @as(usize, @intCast(operand.dst));
                 const immediate: usize =
-                    @as(usize, @intCast(instructions[instructionPointer + 1].value)) |
-                    @shlExact(@as(usize, @intCast(instructions[instructionPointer + 2].value)), 32);
-                //std.debug.print("LoadImmediate: copying immediate value [decimal: {}, hex: 0x{x}] to dst[{}]\n", .{ immediate, immediate, operand.dst });
-                stack.stack[dstRegisterPos].actualValue = immediate;
-                instructionPointer += 2;
+                    @as(usize, @intCast(instructions[instructionPointer.* + 1].value)) |
+                    @shlExact(@as(usize, @intCast(instructions[instructionPointer.* + 2].value)), 32);
+
+                frame.register(operand.dst).actualValue = immediate;
+                instructionPointer.* += 2;
             },
             .IntIsEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
-
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int == stack.stack[registers.src2].int;
+                frame.register(operands.dst).boolean = frame.register(operands.src1).int == frame.register(operands.src2).int;
             },
             .IntIsNotEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
-
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int != stack.stack[registers.src2].int;
+                frame.register(operands.dst).boolean = frame.register(operands.src1).int != frame.register(operands.src2).int;
             },
             .IntIsLessThan => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
-
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int < stack.stack[registers.src2].int;
+                frame.register(operands.dst).boolean = frame.register(operands.src1).int < frame.register(operands.src2).int;
             },
             .IntIsGreaterThan => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
-
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int > stack.stack[registers.src2].int;
+                frame.register(operands.dst).boolean = frame.register(operands.src1).int > frame.register(operands.src2).int;
             },
             .IntIsLessOrEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
-
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int <= stack.stack[registers.src2].int;
+                frame.register(operands.dst).boolean = frame.register(operands.src1).int <= frame.register(operands.src2).int;
             },
             .IntIsGreaterOrEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
-
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].int >= stack.stack[registers.src2].int;
+                frame.register(operands.dst).boolean = frame.register(operands.src1).int >= frame.register(operands.src2).int;
             },
             .IntAdd => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const lhs = stack.stack[registers.src1].int;
-                const rhs = stack.stack[registers.src2].int;
+                const lhs = frame.register(operands.src1).int;
+                const rhs = frame.register(operands.src2).int;
 
                 const temp = math.addOverflow(lhs, rhs);
                 if (temp.@"1") {
@@ -216,14 +166,13 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
 
                     self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
                 }
-                stack.stack[registers.dst].int = temp.@"0";
+                frame.register(operands.dst).int = temp.@"0";
             },
             .IntSubtract => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const lhs = stack.stack[registers.src1].int;
-                const rhs = stack.stack[registers.src2].int;
+                const lhs = frame.register(operands.src1).int;
+                const rhs = frame.register(operands.src2).int;
 
                 const temp = math.subOverflow(lhs, rhs);
                 if (temp.@"1") {
@@ -232,14 +181,13 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
 
                     self.runtimeError(RuntimeError.SubtractionIntegerOverflow, ErrorSeverity.Warning, message);
                 }
-                stack.stack[registers.dst].int = temp.@"0";
+                frame.register(operands.dst).int = temp.@"0";
             },
             .IntMultiply => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const lhs = stack.stack[registers.src1].int;
-                const rhs = stack.stack[registers.src2].int;
+                const lhs = frame.register(operands.src1).int;
+                const rhs = frame.register(operands.src2).int;
 
                 const temp = math.mulOverflow(lhs, rhs);
                 if (temp.@"1") {
@@ -248,14 +196,14 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
 
                     self.runtimeError(RuntimeError.MultiplicationIntegerOverflow, ErrorSeverity.Warning, message);
                 }
-                stack.stack[registers.dst].int = temp.@"0";
+                frame.register(operands.dst).int = temp.@"0";
             },
             .IntDivideTrunc => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const lhs = stack.stack[registers.src1].int;
-                const rhs = stack.stack[registers.src2].int;
+                const lhs = frame.register(operands.src1).int;
+                const rhs = frame.register(operands.src2).int;
+
                 if (rhs == 0) {
                     const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer truncation division", .{ lhs, rhs });
                     defer self.allocator.free(message);
@@ -271,17 +219,17 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
-                    stack.stack[registers.dst].int = math.MIN_INT; // zig doesnt have divison overflow operator
+                    frame.register(operands.dst).int = math.MIN_INT; // zig doesnt have divison overflow operator
                 } else {
-                    stack.stack[registers.dst].int = @divTrunc(lhs, rhs);
+                    frame.register(operands.dst).int = @divTrunc(lhs, rhs);
                 }
             },
             .IntDivideFloor => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const lhs = stack.stack[registers.src1].int;
-                const rhs = stack.stack[registers.src2].int;
+                const lhs = frame.register(operands.src1).int;
+                const rhs = frame.register(operands.src2).int;
+
                 if (rhs == 0) {
                     const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer floor division", .{ lhs, rhs });
                     defer self.allocator.free(message);
@@ -297,17 +245,17 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
-                    stack.stack[registers.dst].int = math.MIN_INT; // zig doesnt have divison overflow operator
+                    frame.register(operands.dst).int = math.MIN_INT; // zig doesnt have divison overflow operator
                 } else {
-                    stack.stack[registers.dst].int = @divFloor(lhs, rhs);
+                    frame.register(operands.dst).int = @divFloor(lhs, rhs);
                 }
             },
             .IntModulo => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const lhs = stack.stack[registers.src1].int;
-                const rhs = stack.stack[registers.src2].int;
+                const lhs = frame.register(operands.src1).int;
+                const rhs = frame.register(operands.src2).int;
+
                 if (rhs == 0) {
                     const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing modulo", .{ lhs, rhs });
                     defer self.allocator.free(message);
@@ -316,14 +264,14 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
-                stack.stack[registers.dst].int = @mod(lhs, rhs);
+                frame.register(operands.dst).int = @mod(lhs, rhs);
             },
             .IntRemainder => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const lhs = stack.stack[registers.src1].int;
-                const rhs = stack.stack[registers.src2].int;
+                const lhs = frame.register(operands.src1).int;
+                const rhs = frame.register(operands.src2).int;
+
                 if (rhs == 0) {
                     const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing remainder", .{ lhs, rhs });
                     defer self.allocator.free(message);
@@ -332,18 +280,17 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
-                stack.stack[registers.dst].int = @rem(lhs, rhs);
+                frame.register(operands.dst).int = @rem(lhs, rhs);
             },
             .IntPower => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const base = stack.stack[registers.src1].int;
-                const exp = stack.stack[registers.src2].int;
+                const base = frame.register(operands.src1).int;
+                const exp = frame.register(operands.src2).int;
 
                 const result = math.powOverflow(base, exp);
                 if (result) |numAndOverflow| {
-                    stack.stack[registers.dst].int = numAndOverflow[0];
+                    frame.register(operands.dst).int = numAndOverflow[0];
 
                     if (numAndOverflow[1]) {
                         const message = try allocPrintZ(self.allocator, "Numbers base[{}] to the power of exp[{}]. Using wrap around result of [{}]", .{ base, exp, numAndOverflow[0] });
@@ -361,244 +308,223 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
             },
             .BitwiseComplement => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].int = ~stack.stack[registers.src].int;
+                frame.register(operands.dst).int = ~frame.register(operands.src).int;
             },
             .BitwiseAnd => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].int = stack.stack[registers.src1].int & stack.stack[registers.src2].int;
+                frame.register(operands.dst).int = frame.register(operands.src1).int & frame.register(operands.src2).int;
             },
             .BitwiseOr => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].int = stack.stack[registers.src1].int | stack.stack[registers.src2].int;
+                frame.register(operands.dst).int = frame.register(operands.src1).int | frame.register(operands.src2).int;
             },
             .BitwiseXor => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].int = stack.stack[registers.src1].int ^ stack.stack[registers.src2].int;
+                frame.register(operands.dst).int = frame.register(operands.src1).int ^ frame.register(operands.src2).int;
             },
             .BitShiftLeft => {
                 const MASK = 0b111111;
 
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                if (stack.stack[registers.src2].int > 63 or stack.stack[registers.src2].int < 0) {
+                if (frame.register(operands.src2).int > 63 or frame.register(operands.src2).int < 0) {
                     const message = try allocPrintZ(self.allocator, "Cannot bitwise left shift by [{}] bits. Instead left shifting using 6 least significant bits: [{}]", .{
-                        stack.stack[registers.src2].int,
-                        stack.stack[registers.src2].int & MASK,
+                        frame.register(operands.src2).int,
+                        frame.register(operands.src2).int & MASK,
                     });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.InvalidBitShiftAmount, ErrorSeverity.Warning, message);
                 }
 
-                stack.stack[registers.dst].int = stack.stack[registers.src1].int << @intCast(stack.stack[registers.src2].int & MASK);
+                frame.register(operands.dst).int = frame.register(operands.src1).int << @intCast(frame.register(operands.src2).int & MASK);
             },
             .BitArithmeticShiftRight => {
                 const MASK = 0b111111;
 
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                if (stack.stack[registers.src2].int > 63 or stack.stack[registers.src2].int < 0) {
+                if (frame.register(operands.src2).int > 63 or frame.register(operands.src2).int < 0) {
                     const message = try allocPrintZ(self.allocator, "Cannot bitwise right shift by [{}] bits. Instead right shifting using 6 least significant bits: [{}]", .{
-                        stack.stack[registers.src2].int,
-                        stack.stack[registers.src2].int & MASK,
+                        frame.register(operands.src2).int,
+                        frame.register(operands.src2).int & MASK,
                     });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.InvalidBitShiftAmount, ErrorSeverity.Warning, message);
                 }
 
-                stack.stack[registers.dst].int = stack.stack[registers.src1].int >> @intCast(stack.stack[registers.src2].int & MASK);
+                frame.register(operands.dst).int = frame.register(operands.src1).int >> @intCast(frame.register(operands.src2).int & MASK);
             },
             .BitLogicalShiftRight => {
                 const MASK = 0b111111;
 
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                if (stack.stack[registers.src2].int > 63 or stack.stack[registers.src2].int < 0) {
+                if (frame.register(operands.src2).int > 63 or frame.register(operands.src2).int < 0) {
                     const message = try allocPrintZ(self.allocator, "Cannot bitwise right shift by [{}] bits. Instead right shifting using 6 least significant bits: [{}]", .{
-                        stack.stack[registers.src2].int,
-                        stack.stack[registers.src2].int & MASK,
+                        frame.register(operands.src2).int,
+                        frame.register(operands.src2).int & MASK,
                     });
                     defer self.allocator.free(message);
 
                     self.runtimeError(RuntimeError.InvalidBitShiftAmount, ErrorSeverity.Warning, message);
                 }
 
-                stack.stack[registers.dst].actualValue = stack.stack[registers.src1].actualValue >> @intCast(stack.stack[registers.src2].actualValue & MASK);
+                frame.register(operands.dst).actualValue = frame.register(operands.src1).actualValue >> @intCast(frame.register(operands.src2).actualValue & MASK);
             },
             .IntToBool => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].boolean = stack.stack[registers.src].int != 0;
+                frame.register(operands.dst).boolean = frame.register(operands.src).int != 0;
             },
             .IntToFloat => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].float = @floatFromInt(stack.stack[registers.src].int);
+                frame.register(operands.dst).float = @floatFromInt(frame.register(operands.src).int);
             },
             .IntToString => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].string = try String.fromInt(stack.stack[registers.src].int, self);
+                frame.register(operands.dst).string = try String.fromInt(frame.register(operands.src).int, self);
             },
             .BoolNot => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].boolean = !stack.stack[registers.src].boolean;
+                frame.register(operands.dst).boolean = !frame.register(operands.src).boolean;
             },
             .BoolToString => {
                 const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
-
-                stack.stack[registers.dst].string = try String.fromBool(stack.stack[registers.src].boolean, self);
+                frame.register(operands.dst).string = try String.fromBool(frame.register(operands.src).boolean, self);
             },
-            .FloatIsEqual => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            // .FloatIsEqual => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
+            //     assert(registers.dst != registers.src1);
+            //     assert(registers.dst != registers.src2);
+            //     assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float == stack.stack[registers.src2].float;
-            },
-            .FloatIsNotEqual => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float == stack.stack[registers.src2].float;
+            // },
+            // .FloatIsNotEqual => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
+            //     assert(registers.dst != registers.src1);
+            //     assert(registers.dst != registers.src2);
+            //     assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float != stack.stack[registers.src2].float;
-            },
-            .FloatIsLessThan => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float != stack.stack[registers.src2].float;
+            // },
+            // .FloatIsLessThan => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
+            //     assert(registers.dst != registers.src1);
+            //     assert(registers.dst != registers.src2);
+            //     assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float < stack.stack[registers.src2].float;
-            },
-            .FloatIsGreaterThan => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float < stack.stack[registers.src2].float;
+            // },
+            // .FloatIsGreaterThan => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
+            //     assert(registers.dst != registers.src1);
+            //     assert(registers.dst != registers.src2);
+            //     assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float > stack.stack[registers.src2].float;
-            },
-            .FloatIsLessOrEqual => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float > stack.stack[registers.src2].float;
+            // },
+            // .FloatIsLessOrEqual => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
+            //     assert(registers.dst != registers.src1);
+            //     assert(registers.dst != registers.src2);
+            //     assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float <= stack.stack[registers.src2].float;
-            },
-            .FloatIsGreaterOrEqual => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float <= stack.stack[registers.src2].float;
+            // },
+            // .FloatIsGreaterOrEqual => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                assert(registers.dst != registers.src1);
-                assert(registers.dst != registers.src2);
-                assert(registers.src1 != registers.src2);
+            //     assert(registers.dst != registers.src1);
+            //     assert(registers.dst != registers.src2);
+            //     assert(registers.src1 != registers.src2);
 
-                stack.stack[registers.dst].boolean = stack.stack[registers.src1].float >= stack.stack[registers.src2].float;
-            },
-            .FloatAdd => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].boolean = stack.stack[registers.src1].float >= stack.stack[registers.src2].float;
+            // },
+            // .FloatAdd => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                stack.stack[registers.dst].float = stack.stack[registers.src1].float + stack.stack[registers.src2].float;
-            },
-            .FloatSubtract => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].float = stack.stack[registers.src1].float + stack.stack[registers.src2].float;
+            // },
+            // .FloatSubtract => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                stack.stack[registers.dst].float = stack.stack[registers.src1].float - stack.stack[registers.src2].float;
-            },
-            .FloatMultiply => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].float = stack.stack[registers.src1].float - stack.stack[registers.src2].float;
+            // },
+            // .FloatMultiply => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                stack.stack[registers.dst].float = stack.stack[registers.src1].float * stack.stack[registers.src2].float;
-            },
-            .FloatDivide => {
-                const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-                const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].float = stack.stack[registers.src1].float * stack.stack[registers.src2].float;
+            // },
+            // .FloatDivide => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            //     const registers = getAndValidateDstTwoSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                if (stack.stack[registers.src2].float == 0) {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing float division", .{
-                        stack.stack[registers.src1].float,
-                        stack.stack[registers.src2].float,
-                    });
-                    defer self.allocator.free(message);
+            //     if (stack.stack[registers.src2].float == 0) {
+            //         const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing float division", .{
+            //             stack.stack[registers.src1].float,
+            //             stack.stack[registers.src2].float,
+            //         });
+            //         defer self.allocator.free(message);
 
-                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
-                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
-                }
+            //         self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
+            //         return; // TODO figure out how to free all the memory and resources allocated in the callstack
+            //     }
 
-                stack.stack[registers.dst].float = stack.stack[registers.src1].float * stack.stack[registers.src2].float;
-            },
-            .FloatToInt => {
-                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-                const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
+            //     stack.stack[registers.dst].float = stack.stack[registers.src1].float * stack.stack[registers.src2].float;
+            // },
+            // .FloatToInt => {
+            //     const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+            //     const registers = getAndValidateDstSrcRegisterPos(stackPointer, currentStackFrameSize, operands);
 
-                const MAX_INT_AS_FLOAT: f64 = @floatFromInt(math.MAX_INT);
-                const MIN_INT_AS_FLOAT: f64 = @floatFromInt(math.MIN_INT);
-                const src = stack.stack[registers.src].float;
+            //     const MAX_INT_AS_FLOAT: f64 = @floatFromInt(math.MAX_INT);
+            //     const MIN_INT_AS_FLOAT: f64 = @floatFromInt(math.MIN_INT);
+            //     const src = stack.stack[registers.src].float;
 
-                if (src > MAX_INT_AS_FLOAT) {
-                    const message = try allocPrintZ(self.allocator, "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT });
-                    defer self.allocator.free(message);
+            //     if (src > MAX_INT_AS_FLOAT) {
+            //         const message = try allocPrintZ(self.allocator, "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT });
+            //         defer self.allocator.free(message);
 
-                    self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
-                    stack.stack[registers.dst].int = math.MAX_INT;
-                } else if (src < MIN_INT_AS_FLOAT) {
-                    const message = try allocPrintZ(self.allocator, "Float number [{}] is less than than the min int value of [{}]. Clamping to max int", .{ src, math.MIN_INT });
-                    defer self.allocator.free(message);
+            //         self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
+            //         stack.stack[registers.dst].int = math.MAX_INT;
+            //     } else if (src < MIN_INT_AS_FLOAT) {
+            //         const message = try allocPrintZ(self.allocator, "Float number [{}] is less than than the min int value of [{}]. Clamping to max int", .{ src, math.MIN_INT });
+            //         defer self.allocator.free(message);
 
-                    self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
-                    stack.stack[registers.dst].int = math.MIN_INT;
-                } else {
-                    stack.stack[registers.dst].int = @intFromFloat(src);
-                }
-            },
-            .StringDeinit => {
-                const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
-                const dstRegisterPos = stackPointer + @as(usize, operand.dst);
+            //         self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
+            //         stack.stack[registers.dst].int = math.MIN_INT;
+            //     } else {
+            //         stack.stack[registers.dst].int = @intFromFloat(src);
+            //     }
+            // },
+            // .StringDeinit => {
+            //     const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
+            //     const dstRegisterPos = stackPointer + @as(usize, operand.dst);
 
-                assert(@as(usize, operand.dst) < currentStackFrameSize);
+            //     assert(@as(usize, operand.dst) < currentStackFrameSize);
 
-                threadLocalStack.stack[dstRegisterPos].string.deinit(self);
-            },
+            //     threadLocalStack.stack[dstRegisterPos].string.deinit(self);
+            // },
             else => {
                 @panic("not implemented");
             },
         }
-        instructionPointer += 1;
+        instructionPointer.* += 1;
     }
 }
 
@@ -610,28 +536,6 @@ fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, m
 
     const context: *ScriptContext = @constCast(&self._context);
     context.runtimeError(self, err, severity, message);
-}
-
-fn getAndValidateDstTwoSrcRegisterPos(stackPointer: usize, currentStackFrameSize: usize, operands: Bytecode.OperandsDstTwoSrc) struct { dst: usize, src1: usize, src2: usize } {
-    assert(@as(usize, operands.dst) < currentStackFrameSize);
-    assert(@as(usize, operands.src1) < currentStackFrameSize);
-    assert(@as(usize, operands.src2) < currentStackFrameSize);
-
-    const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-    const src1RegisterPos = stackPointer + @as(usize, operands.src1);
-    const src2RegisterPos = stackPointer + @as(usize, operands.src2);
-
-    return .{ .dst = dstRegisterPos, .src1 = src1RegisterPos, .src2 = src2RegisterPos };
-}
-
-fn getAndValidateDstSrcRegisterPos(stackPointer: usize, currentStackFrameSize: usize, operands: Bytecode.OperandsDstSrc) struct { dst: usize, src: usize } {
-    assert(@as(usize, operands.dst) < currentStackFrameSize);
-    assert(@as(usize, operands.src) < currentStackFrameSize);
-
-    const dstRegisterPos = stackPointer + @as(usize, operands.dst);
-    const srcRegisterPos = stackPointer + @as(usize, operands.src);
-
-    return .{ .dst = dstRegisterPos, .src = srcRegisterPos };
 }
 
 /// Handles reporting errors, and other user specific data.
@@ -714,10 +618,13 @@ test "int comparisons" {
 
             try state.run(&instructions);
 
+            var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+            defer _ = frame.popFrame(&threadLocalStack);
+
             if (shouldBeTrue) {
-                try expect(threadLocalStack.stack[2].boolean == true);
+                try expect(frame.register(2).boolean == true);
             } else {
-                try expect(threadLocalStack.stack[2].boolean == false);
+                try expect(frame.register(2).boolean == false);
             }
         }
     };
@@ -804,7 +711,10 @@ test "int addition" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 11);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 11);
     }
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = true };
@@ -828,7 +738,10 @@ test "int addition" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == math.MIN_INT);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == math.MIN_INT);
     }
 }
 
@@ -852,7 +765,10 @@ test "int subtraction" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 9);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 9);
     }
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.SubtractionIntegerOverflow){ .shouldExpectError = true };
@@ -877,7 +793,10 @@ test "int subtraction" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == math.MAX_INT);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == math.MAX_INT);
     }
 }
 
@@ -904,7 +823,10 @@ test "int multiplication" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == math.MAX_INT);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == math.MAX_INT);
     }
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.MultiplicationIntegerOverflow){ .shouldExpectError = true };
@@ -928,7 +850,10 @@ test "int multiplication" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == -2); // this ends up being the wrap around. same as unsigned bitshift left by 1 then bitcasted to signed
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == -2); // this ends up being the wrap around. same as unsigned bitshift left by 1 then bitcasted to signed
     }
 }
 
@@ -952,7 +877,10 @@ test "int division truncation" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == -2);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == -2);
     }
     { // validate integer overflow
         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
@@ -971,7 +899,10 @@ test "int division truncation" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == math.MIN_INT);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == math.MIN_INT);
     }
     { // validate divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
@@ -1013,7 +944,10 @@ test "int division floor" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == -3);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == -3);
     }
     { // validate integer overflow
         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
@@ -1032,7 +966,10 @@ test "int division floor" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == math.MIN_INT);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == math.MIN_INT);
     }
     { // validate divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
@@ -1074,7 +1011,10 @@ test "int modulo" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 1);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 1);
     }
     { // divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = true };
@@ -1118,7 +1058,10 @@ test "int remainder" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == -1);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == -1);
     }
     { // divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = true };
@@ -1162,7 +1105,10 @@ test "int power" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 25);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 25);
     }
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = false };
@@ -1183,7 +1129,10 @@ test "int power" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 0);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 0);
     }
     { // overflow
         var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = true };
@@ -1234,7 +1183,10 @@ test "bitwise complement" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].int == -1); // ~0
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).int == -1);
     }
     {
         const state = try Self.init(std.testing.allocator, null);
@@ -1250,7 +1202,10 @@ test "bitwise complement" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].int == -2); // ~1
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).int == -2);
     }
 }
 
@@ -1270,7 +1225,10 @@ test "bitwise and" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 0b010);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 0b010);
     }
 }
 
@@ -1290,7 +1248,10 @@ test "bitwise or" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 0b111);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 0b111);
     }
 }
 
@@ -1310,7 +1271,10 @@ test "bitwise xor" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 0b101);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 0b101);
     }
 }
 
@@ -1332,7 +1296,10 @@ test "bitshift left" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == -2);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == -2);
     }
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
@@ -1351,7 +1318,10 @@ test "bitshift left" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == -2);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == -2);
     }
 }
 
@@ -1373,7 +1343,10 @@ test "bitshift arithmetic right" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 0b011);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 0b011);
     }
     { // retain sign bit
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
@@ -1392,7 +1365,10 @@ test "bitshift arithmetic right" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == -1);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == -1);
     }
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
@@ -1411,7 +1387,10 @@ test "bitshift arithmetic right" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 0b011);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 0b011);
     }
 }
 
@@ -1433,7 +1412,10 @@ test "bitshift logical right" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 0b011);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 0b011);
     }
     { // dont retain sign bit
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
@@ -1452,7 +1434,10 @@ test "bitshift logical right" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == math.MAX_INT);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == math.MAX_INT);
     }
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
@@ -1471,7 +1456,10 @@ test "bitshift logical right" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[2].int == 0b011);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(2).int == 0b011);
     }
 }
 
@@ -1486,7 +1474,10 @@ test "int to bool" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].boolean == false);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).boolean == false);
     }
     { // 1 -> true
         const state = try Self.init(std.testing.allocator, null);
@@ -1500,7 +1491,10 @@ test "int to bool" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].boolean == true);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).boolean == true);
     }
     { // non-zero -> true
         const state = try Self.init(std.testing.allocator, null);
@@ -1514,7 +1508,10 @@ test "int to bool" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].boolean == true);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).boolean == true);
     }
 }
 
@@ -1529,7 +1526,10 @@ test "int to float" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].float == 0.0);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).float == 0.0);
     }
     { // 1
         const state = try Self.init(std.testing.allocator, null);
@@ -1543,7 +1543,10 @@ test "int to float" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].float == 1.0);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).float == 1.0);
     }
     { // -1
         const state = try Self.init(std.testing.allocator, null);
@@ -1557,7 +1560,10 @@ test "int to float" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].float == -1.0);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).float == -1.0);
     }
     { // arbitrary value
         const state = try Self.init(std.testing.allocator, null);
@@ -1571,7 +1577,10 @@ test "int to float" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].float == -2398712938.0);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).float == -2398712938.0);
     }
 }
 
@@ -1586,8 +1595,11 @@ test "int to string" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].string.eqlSlice("0"));
-        threadLocalStack.stack[1].string.deinit(state);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).string.eqlSlice("0"));
+        frame.register(1).string.deinit(state);
     }
     { // 1
         const state = try Self.init(std.testing.allocator, null);
@@ -1601,8 +1613,11 @@ test "int to string" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].string.eqlSlice("1"));
-        threadLocalStack.stack[1].string.deinit(state);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).string.eqlSlice("1"));
+        frame.register(1).string.deinit(state);
     }
     { // -1
         const state = try Self.init(std.testing.allocator, null);
@@ -1616,8 +1631,11 @@ test "int to string" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].string.eqlSlice("-1"));
-        threadLocalStack.stack[1].string.deinit(state);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).string.eqlSlice("-1"));
+        frame.register(1).string.deinit(state);
     }
     { // arbitrary value
         const state = try Self.init(std.testing.allocator, null);
@@ -1631,8 +1649,11 @@ test "int to string" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].string.eqlSlice("-2398712938"));
-        threadLocalStack.stack[1].string.deinit(state);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).string.eqlSlice("-2398712938"));
+        frame.register(1).string.deinit(state);
     }
 }
 
@@ -1647,7 +1668,10 @@ test "bool not" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].boolean == true);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).boolean == true);
     }
     {
         const state = try Self.init(std.testing.allocator, null);
@@ -1661,7 +1685,10 @@ test "bool not" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].boolean == false);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).boolean == false);
     }
 }
 
@@ -1678,8 +1705,11 @@ test "bool to string" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].string.eqlSlice("true"));
-        threadLocalStack.stack[1].string.deinit(state);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).string.eqlSlice("true"));
+        frame.register(1).string.deinit(state);
     }
     { // false
         const state = try Self.init(std.testing.allocator, null);
@@ -1693,7 +1723,10 @@ test "bool to string" {
         };
 
         try state.run(&instructions);
-        try expect(threadLocalStack.stack[1].string.eqlSlice("false"));
-        threadLocalStack.stack[1].string.deinit(state);
+
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        defer _ = frame.popFrame(&threadLocalStack);
+        try expect(frame.register(1).string.eqlSlice("false"));
+        frame.register(1).string.deinit(state);
     }
 }
