@@ -39,7 +39,7 @@ pub const ScriptExternAllocator = struct {
     externAllocatorPtr: *anyopaque,
     externVTable: *const ExternVTable,
 
-    const ExternVTable = extern struct {
+    pub const ExternVTable = extern struct {
         alloc: *const fn (ctx: *anyopaque, len: usize, ptrAlign: u8) callconv(.C) ?*anyopaque,
         resize: *const fn (ctx: *anyopaque, bufPtr: *anyopaque, bufLen: usize, newLen: usize) callconv(.C) bool,
         free: *const fn (ctx: *anyopaque, bufPtr: ?*anyopaque, bufLen: usize, bufAlign: u8) callconv(.C) void,

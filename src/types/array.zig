@@ -20,7 +20,7 @@ pub const Array = extern struct {
     inner: usize,
 
     pub fn init(inTag: ValueTag) Self {
-        return Self{ .inner = @shlExact(@as(usize, @intFromEnum(inTag)), 48) };
+        return Self{ .inner = @shlExact(@as(usize, @intCast(@intFromEnum(inTag))), 48) };
     }
 
     /// Clones the array, along with making clones of it's elements. Any elements that require an allocator to clone

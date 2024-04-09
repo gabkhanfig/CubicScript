@@ -34,11 +34,11 @@ export fn cubs_state_deinit(state: ?*CubicScriptState) callconv(.C) void {
 
 export fn cubs_set_allocator(allocatorPtr: ?*anyopaque, allocatorVTable: ?*const global_allocator.ScriptExternAllocator.ExternVTable) callconv(.C) void {
     if (allocatorPtr == null) {
-        std.debug.print("[cubs_set_global_allocator]: Expected non-null allocatorPtr");
+        std.debug.print("[cubs_set_global_allocator]: Expected non-null allocatorPtr", .{});
         return;
     }
     if (allocatorVTable == null) {
-        std.debug.print("[cubs_set_global_allocator]: Expected non-null allocatorVTable");
+        std.debug.print("[cubs_set_global_allocator]: Expected non-null allocatorVTable", .{});
         return;
     }
 

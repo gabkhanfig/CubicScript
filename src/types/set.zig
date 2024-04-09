@@ -25,7 +25,7 @@ pub const Set = extern struct {
 
     /// Initialize a new Map instance.
     pub fn init(inKeyTag: ValueTag) Self {
-        const keyTagInt: usize = @intFromEnum(inKeyTag);
+        const keyTagInt: usize = @intCast(@intFromEnum(inKeyTag));
         return Self{ .inner = @ptrFromInt(@shlExact(keyTagInt, 48)) };
     }
 
