@@ -206,41 +206,41 @@ test "hash array" {
     defer state.deinit();
 
     const makeArraysForTest = struct {
-        fn makeArray1(s: *const CubicScriptState) RawValue {
+        fn makeArray1() RawValue {
             var array = root.Array.init(ValueTag.Float);
             var pushValue1 = root.RawValue{ .float = -1.0 };
             var pushValue2 = root.RawValue{ .float = 1005.6 };
 
-            array.add(&pushValue1, ValueTag.Float, s) catch unreachable;
-            array.add(&pushValue2, ValueTag.Float, s) catch unreachable;
+            array.add(&pushValue1, ValueTag.Float);
+            array.add(&pushValue2, ValueTag.Float);
             return RawValue{ .array = array };
         }
 
-        fn makeArray2(s: *const CubicScriptState) RawValue {
+        fn makeArray2() RawValue {
             var array = root.Array.init(ValueTag.Float);
             var pushValue1 = root.RawValue{ .float = -1.0 };
             var pushValue2 = root.RawValue{ .float = 1005.6 };
             var pushValue3 = root.RawValue{ .float = 0 };
 
-            array.add(&pushValue1, ValueTag.Float, s) catch unreachable;
-            array.add(&pushValue2, ValueTag.Float, s) catch unreachable;
-            array.add(&pushValue3, ValueTag.Float, s) catch unreachable;
+            array.add(&pushValue1, ValueTag.Float);
+            array.add(&pushValue2, ValueTag.Float);
+            array.add(&pushValue3, ValueTag.Float);
             return RawValue{ .array = array };
         }
     };
 
     var arrEmpty1 = RawValue{ .array = root.Array.init(ValueTag.Float) };
-    defer arrEmpty1.array.deinit(state);
+    defer arrEmpty1.array.deinit();
     var arrEmpty2 = RawValue{ .array = root.Array.init(ValueTag.Float) };
-    defer arrEmpty1.array.deinit(state);
-    var arrContains1 = makeArraysForTest.makeArray1(state);
-    defer arrContains1.array.deinit(state);
-    var arrContains2 = makeArraysForTest.makeArray1(state);
-    defer arrContains2.array.deinit(state);
-    var arrContains3 = makeArraysForTest.makeArray2(state);
-    defer arrContains3.array.deinit(state);
-    var arrContains4 = makeArraysForTest.makeArray2(state);
-    defer arrContains4.array.deinit(state);
+    defer arrEmpty1.array.deinit();
+    var arrContains1 = makeArraysForTest.makeArray1();
+    defer arrContains1.array.deinit();
+    var arrContains2 = makeArraysForTest.makeArray1();
+    defer arrContains2.array.deinit();
+    var arrContains3 = makeArraysForTest.makeArray2();
+    defer arrContains3.array.deinit();
+    var arrContains4 = makeArraysForTest.makeArray2();
+    defer arrContains4.array.deinit();
 
     {
         const h1 = computeHash(&arrEmpty1, ValueTag.Array, TEST_SEED_VALUE);

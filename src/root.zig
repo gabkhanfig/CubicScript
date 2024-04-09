@@ -88,7 +88,7 @@ pub const RawValue = extern union {
                 self.string.deinit();
             },
             .Array => {
-                self.array.deinit(state);
+                self.array.deinit();
             },
             .Map => {
                 self.map.deinit(state);
