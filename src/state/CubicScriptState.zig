@@ -14,7 +14,7 @@ const Error = @import("Errors.zig");
 const allocPrintZ = std.fmt.allocPrintZ;
 const runtime_safety: bool = std.debug.runtime_safety;
 const Mutex = std.Thread.Mutex;
-const ScriptExternAllocator = @import("../c_export.zig").ScriptExternAllocator;
+const allocator = @import("global_allocator.zig").allocator;
 
 // TODO scripts using different allocators can risk passing around memory to different states.
 // Therefore, all states should use the same global allocator. Perhaps there can be a function to change the allocator.
@@ -29,10 +29,6 @@ threadlocal var threadLocalStack: Stack = .{};
 
 const Self = @This();
 
-allocator: Allocator,
-_isUsingExternAllocator: bool = false,
-/// Only gets used directly on deinit.
-_externAllocator: ScriptExternAllocator = undefined,
 _context: ScriptContext,
 _contextMutex: Mutex = .{},
 
@@ -40,35 +36,11 @@ _contextMutex: Mutex = .{},
 /// If a `null` error callback is provided, the default one will be used, which
 /// with `std.debug.runtime_safety`, will log all messages. Without runtime safety,
 /// no messages will be logged.
-pub fn init(allocator: Allocator, context: ?ScriptContext) Allocator.Error!*Self {
-    const self = try allocator.create(Self);
-    self.* = Self{
-        .allocator = allocator,
-        ._context = if (context) |ctx| ctx else ScriptContext.default_context,
+pub fn init(context: ?ScriptContext) *Self {
+    const self = allocator().create(Self) catch {
+        @panic("Script out of memory");
     };
-    return self;
-}
-
-/// With runtime safety on, will catch double frees.
-/// When off, just uses the C allocator.
-/// Returns null if allocation failed.
-pub fn initWithExternAllocator(externAllocator: ScriptExternAllocator, context: ?ScriptContext) Allocator.Error!*Self {
-    const allocSelf = externAllocator.externVTable.alloc(externAllocator.externAllocatorPtr, @sizeOf(Self), @alignOf(Self));
-    if (allocSelf == null) {
-        return Allocator.Error.OutOfMemory;
-    }
-    const self: *Self = @ptrCast(@alignCast(allocSelf));
     self.* = Self{
-        .allocator = .{
-            .ptr = @ptrCast(&self._externAllocator),
-            .vtable = &.{
-                .alloc = ScriptExternAllocator.externAlloc,
-                .resize = ScriptExternAllocator.externResize,
-                .free = ScriptExternAllocator.externFree,
-            },
-        },
-        ._isUsingExternAllocator = true,
-        ._externAllocator = externAllocator,
         ._context = if (context) |ctx| ctx else ScriptContext.default_context,
     };
     return self;
@@ -76,21 +48,10 @@ pub fn initWithExternAllocator(externAllocator: ScriptExternAllocator, context: 
 
 pub fn deinit(self: *Self) void {
     self._context.deinit();
-    if (self._isUsingExternAllocator) {
-        // move the allocator to here, and then free all memory of self
-        var externAllocator = self._externAllocator;
-        var allocator = self.allocator;
-        allocator.ptr = @ptrCast(&externAllocator);
-
-        allocator.destroy(self);
-    } else {
-        self.allocator.destroy(self);
-    }
-
-    return;
+    allocator().destroy(self);
 }
 
-pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!void {
+pub fn run(self: *const Self, instructions: []const Bytecode) void {
     const previousState = threadLocalStack.state;
     defer threadLocalStack.state = previousState; // Allows nesting script run calls with different state instances
     // NOTE should also do errdefer for if allocation fails anywhere.
@@ -164,8 +125,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
 
                 const temp = math.addOverflow(lhs, rhs);
                 if (temp.@"1") {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] + rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] + rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
                 }
@@ -179,8 +142,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
 
                 const temp = math.subOverflow(lhs, rhs);
                 if (temp.@"1") {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] - rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] - rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.SubtractionIntegerOverflow, ErrorSeverity.Warning, message);
                 }
@@ -194,8 +159,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
 
                 const temp = math.mulOverflow(lhs, rhs);
                 if (temp.@"1") {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] * rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] * rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.MultiplicationIntegerOverflow, ErrorSeverity.Warning, message);
                 }
@@ -208,8 +175,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const rhs = frame.register(operands.src2).int;
 
                 if (rhs == 0) {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer truncation division", .{ lhs, rhs });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer truncation division", .{ lhs, rhs }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
@@ -218,8 +187,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 if (lhs == math.MIN_INT and rhs == -1) {
                     // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
                     // interestingly the wrap around result would just be MIN_INT.
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer truncation division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer truncation division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
                     frame.register(operands.dst).int = math.MIN_INT; // zig doesnt have divison overflow operator
@@ -234,8 +205,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const rhs = frame.register(operands.src2).int;
 
                 if (rhs == 0) {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer floor division", .{ lhs, rhs });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer floor division", .{ lhs, rhs }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
@@ -244,8 +217,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 if (lhs == math.MIN_INT and rhs == -1) {
                     // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
                     // interestingly the wrap around result would just be MIN_INT.
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing integer floor division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer floor division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
                     frame.register(operands.dst).int = math.MIN_INT; // zig doesnt have divison overflow operator
@@ -260,8 +235,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const rhs = frame.register(operands.src2).int;
 
                 if (rhs == 0) {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing modulo", .{ lhs, rhs });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing modulo", .{ lhs, rhs }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.ModuloByZero, ErrorSeverity.Fatal, message);
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
@@ -276,8 +253,10 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const rhs = frame.register(operands.src2).int;
 
                 if (rhs == 0) {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing remainder", .{ lhs, rhs });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing remainder", .{ lhs, rhs }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.RemainderByZero, ErrorSeverity.Fatal, message);
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
@@ -296,14 +275,18 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                     frame.register(operands.dst).int = numAndOverflow[0];
 
                     if (numAndOverflow[1]) {
-                        const message = try allocPrintZ(self.allocator, "Numbers base[{}] to the power of exp[{}]. Using wrap around result of [{}]", .{ base, exp, numAndOverflow[0] });
-                        defer self.allocator.free(message);
+                        const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]. Using wrap around result of [{}]", .{ base, exp, numAndOverflow[0] }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
 
                         self.runtimeError(RuntimeError.PowerIntegerOverflow, ErrorSeverity.Warning, message);
                     }
                 } else |_| {
-                    const message = try allocPrintZ(self.allocator, "Numbers base[{}] to the power of exp[{}]", .{ base, exp });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]", .{ base, exp }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Fatal, message);
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
@@ -331,11 +314,13 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
                 if (frame.register(operands.src2).int > 63 or frame.register(operands.src2).int < 0) {
-                    const message = try allocPrintZ(self.allocator, "Cannot bitwise left shift by [{}] bits. Instead left shifting using 6 least significant bits: [{}]", .{
+                    const message = allocPrintZ(allocator(), "Cannot bitwise left shift by [{}] bits. Instead left shifting using 6 least significant bits: [{}]", .{
                         frame.register(operands.src2).int,
                         frame.register(operands.src2).int & MASK,
-                    });
-                    defer self.allocator.free(message);
+                    }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.InvalidBitShiftAmount, ErrorSeverity.Warning, message);
                 }
@@ -348,11 +333,13 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
                 if (frame.register(operands.src2).int > 63 or frame.register(operands.src2).int < 0) {
-                    const message = try allocPrintZ(self.allocator, "Cannot bitwise right shift by [{}] bits. Instead right shifting using 6 least significant bits: [{}]", .{
+                    const message = allocPrintZ(allocator(), "Cannot bitwise right shift by [{}] bits. Instead right shifting using 6 least significant bits: [{}]", .{
                         frame.register(operands.src2).int,
                         frame.register(operands.src2).int & MASK,
-                    });
-                    defer self.allocator.free(message);
+                    }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.InvalidBitShiftAmount, ErrorSeverity.Warning, message);
                 }
@@ -365,11 +352,13 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
                 if (frame.register(operands.src2).int > 63 or frame.register(operands.src2).int < 0) {
-                    const message = try allocPrintZ(self.allocator, "Cannot bitwise right shift by [{}] bits. Instead right shifting using 6 least significant bits: [{}]", .{
+                    const message = allocPrintZ(allocator(), "Cannot bitwise right shift by [{}] bits. Instead right shifting using 6 least significant bits: [{}]", .{
                         frame.register(operands.src2).int,
                         frame.register(operands.src2).int & MASK,
-                    });
-                    defer self.allocator.free(message);
+                    }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.InvalidBitShiftAmount, ErrorSeverity.Warning, message);
                 }
@@ -466,11 +455,13 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
                 if (frame.register(operands.src2).float == 0) {
-                    const message = try allocPrintZ(self.allocator, "Numbers lhs[{}] / rhs[{}] doing float division", .{
+                    const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing float division", .{
                         frame.register(operands.src1).float,
                         frame.register(operands.src2).float,
-                    });
-                    defer self.allocator.free(message);
+                    }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
                     return; // TODO figure out how to free all the memory and resources allocated in the callstack
@@ -486,14 +477,18 @@ pub fn run(self: *const Self, instructions: []const Bytecode) Allocator.Error!vo
                 const src = frame.register(operands.src).float;
 
                 if (src > MAX_INT_AS_FLOAT) {
-                    const message = try allocPrintZ(self.allocator, "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
                     frame.register(operands.dst).int = math.MAX_INT;
                 } else if (src < MIN_INT_AS_FLOAT) {
-                    const message = try allocPrintZ(self.allocator, "Float number [{}] is less than than the min int value of [{}]. Clamping to max int", .{ src, math.MIN_INT });
-                    defer self.allocator.free(message);
+                    const message = allocPrintZ(allocator(), "Float number [{}] is less than than the min int value of [{}]. Clamping to max int", .{ src, math.MIN_INT }) catch {
+                        @panic("Script out of memory");
+                    };
+                    defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
                     frame.register(operands.dst).int = math.MIN_INT;
@@ -573,14 +568,14 @@ fn defaultContextErrorCallback(_: *anyopaque, _: *const Self, err: RuntimeError,
 fn defaultContextDeinit(_: *anyopaque) callconv(.C) void {}
 
 test "nop" {
-    const state = try Self.init(std.testing.allocator, null);
+    const state = Self.init(null);
     defer state.deinit();
 
     const instructions = [_]Bytecode{
         Bytecode.encode(OpCode.Nop, void, {}),
     };
 
-    try state.run(&instructions);
+    state.run(&instructions);
 }
 
 test "int comparisons" {
@@ -601,7 +596,7 @@ test "int comparisons" {
                 Bytecode.encode(opcode, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
             };
 
-            try state.run(&instructions);
+            state.run(&instructions);
 
             var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
             defer _ = frame.popFrame(&threadLocalStack);
@@ -615,7 +610,7 @@ test "int comparisons" {
     };
 
     {
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         try IntComparisonTester.intCompare(state, OpCode.IntIsEqual, math.MAX_INT, math.MAX_INT, true);
@@ -677,7 +672,7 @@ test "int addition" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
@@ -695,7 +690,7 @@ test "int addition" {
             Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -704,7 +699,7 @@ test "int addition" {
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
@@ -722,7 +717,7 @@ test "int addition" {
             Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -734,7 +729,7 @@ test "int subtraction" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = 10;
@@ -749,7 +744,7 @@ test "int subtraction" {
             Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -758,7 +753,7 @@ test "int subtraction" {
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.SubtractionIntegerOverflow){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
@@ -777,7 +772,7 @@ test "int subtraction" {
             Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -789,7 +784,7 @@ test "int multiplication" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.MultiplicationIntegerOverflow){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
@@ -807,7 +802,7 @@ test "int multiplication" {
             Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -816,7 +811,7 @@ test "int multiplication" {
     { // validate integer overflow is reported
         var contextObject = ScriptTestingContextError(RuntimeError.MultiplicationIntegerOverflow){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const LOW_MASK = 0xFFFFFFFF;
@@ -834,7 +829,7 @@ test "int multiplication" {
             Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -846,7 +841,7 @@ test "int division truncation" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = -5;
@@ -861,7 +856,7 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -870,7 +865,7 @@ test "int division truncation" {
     { // validate integer overflow
         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -883,7 +878,7 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -892,7 +887,7 @@ test "int division truncation" {
     { // validate divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -905,7 +900,7 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
     }
 }
 
@@ -913,7 +908,7 @@ test "int division floor" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = -5;
@@ -928,7 +923,7 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -937,7 +932,7 @@ test "int division floor" {
     { // validate integer overflow
         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -950,7 +945,7 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -959,7 +954,7 @@ test "int division floor" {
     { // validate divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -972,7 +967,7 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
     }
 }
 
@@ -980,7 +975,7 @@ test "int modulo" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = -5;
@@ -995,7 +990,7 @@ test "int modulo" {
             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1004,7 +999,7 @@ test "int modulo" {
     { // divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = -5;
@@ -1019,7 +1014,7 @@ test "int modulo" {
             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
     }
 }
 
@@ -1027,7 +1022,7 @@ test "int remainder" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = -5;
@@ -1042,7 +1037,7 @@ test "int remainder" {
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1051,7 +1046,7 @@ test "int remainder" {
     { // divide by zero
         var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = -5;
@@ -1066,7 +1061,7 @@ test "int remainder" {
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
     }
 }
 
@@ -1074,7 +1069,7 @@ test "int power" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = -5;
@@ -1089,7 +1084,7 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1098,7 +1093,7 @@ test "int power" {
     { // normal
         var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const src1: i64 = -5;
@@ -1113,7 +1108,7 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1122,7 +1117,7 @@ test "int power" {
     { // overflow
         var contextObject = ScriptTestingContextError(RuntimeError.PowerIntegerOverflow){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1135,12 +1130,12 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
     }
     { // 0 to the power of negative error
         var contextObject = ScriptTestingContextError(RuntimeError.ZeroToPowerOfNegative){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1153,13 +1148,13 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
     }
 }
 
 test "bitwise complement" {
     {
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1167,14 +1162,14 @@ test "bitwise complement" {
             Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).int == -1);
     }
     {
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const src1: i64 = 1;
@@ -1186,7 +1181,7 @@ test "bitwise complement" {
             Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1196,7 +1191,7 @@ test "bitwise complement" {
 
 test "bitwise and" {
     {
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1209,7 +1204,7 @@ test "bitwise and" {
             Bytecode.encode(OpCode.BitwiseAnd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1219,7 +1214,7 @@ test "bitwise and" {
 
 test "bitwise or" {
     {
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1232,7 +1227,7 @@ test "bitwise or" {
             Bytecode.encode(OpCode.BitwiseOr, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1242,7 +1237,7 @@ test "bitwise or" {
 
 test "bitwise xor" {
     {
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1255,7 +1250,7 @@ test "bitwise xor" {
             Bytecode.encode(OpCode.BitwiseXor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1267,7 +1262,7 @@ test "bitshift left" {
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1280,7 +1275,7 @@ test "bitshift left" {
             Bytecode.encode(OpCode.BitShiftLeft, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1289,7 +1284,7 @@ test "bitshift left" {
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1302,7 +1297,7 @@ test "bitshift left" {
             Bytecode.encode(OpCode.BitShiftLeft, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1314,7 +1309,7 @@ test "bitshift arithmetic right" {
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1327,7 +1322,7 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1336,7 +1331,7 @@ test "bitshift arithmetic right" {
     { // retain sign bit
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1349,7 +1344,7 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1358,7 +1353,7 @@ test "bitshift arithmetic right" {
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1371,7 +1366,7 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1383,7 +1378,7 @@ test "bitshift logical right" {
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1396,7 +1391,7 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1405,7 +1400,7 @@ test "bitshift logical right" {
     { // dont retain sign bit
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = false };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1418,7 +1413,7 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1427,7 +1422,7 @@ test "bitshift logical right" {
     {
         var contextObject = ScriptTestingContextError(RuntimeError.InvalidBitShiftAmount){ .shouldExpectError = true };
 
-        const state = try Self.init(std.testing.allocator, contextObject.asContext());
+        const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1440,7 +1435,7 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1450,7 +1445,7 @@ test "bitshift logical right" {
 
 test "int to bool" {
     { // 0 -> false
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1458,14 +1453,14 @@ test "int to bool" {
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).boolean == false);
     }
     { // 1 -> true
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1475,14 +1470,14 @@ test "int to bool" {
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).boolean == true);
     }
     { // non-zero -> true
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1492,7 +1487,7 @@ test "int to bool" {
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1502,7 +1497,7 @@ test "int to bool" {
 
 test "int to float" {
     { // 0
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1510,14 +1505,14 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).float == 0.0);
     }
     { // 1
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1527,14 +1522,14 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).float == 1.0);
     }
     { // -1
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1544,14 +1539,14 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).float == -1.0);
     }
     { // arbitrary value
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1561,7 +1556,7 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1571,7 +1566,7 @@ test "int to float" {
 
 test "int to string" {
     { // 0
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1579,7 +1574,7 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1587,7 +1582,7 @@ test "int to string" {
         frame.register(1).string.deinit();
     }
     { // 1
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1597,7 +1592,7 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1605,7 +1600,7 @@ test "int to string" {
         frame.register(1).string.deinit();
     }
     { // -1
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1615,7 +1610,7 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1623,7 +1618,7 @@ test "int to string" {
         frame.register(1).string.deinit();
     }
     { // arbitrary value
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1633,7 +1628,7 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1644,7 +1639,7 @@ test "int to string" {
 
 test "bool not" {
     {
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1652,14 +1647,14 @@ test "bool not" {
             Bytecode.encode(OpCode.BoolNot, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).boolean == true);
     }
     {
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1669,7 +1664,7 @@ test "bool not" {
             Bytecode.encode(OpCode.BoolNot, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1679,7 +1674,7 @@ test "bool not" {
 
 test "bool to string" {
     { // true
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1689,7 +1684,7 @@ test "bool to string" {
             Bytecode.encode(OpCode.BoolToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1697,7 +1692,7 @@ test "bool to string" {
         frame.register(1).string.deinit();
     }
     { // false
-        const state = try Self.init(std.testing.allocator, null);
+        const state = Self.init(null);
         defer state.deinit();
 
         const instructions = [_]Bytecode{
@@ -1707,7 +1702,7 @@ test "bool to string" {
             Bytecode.encode(OpCode.BoolToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        try state.run(&instructions);
+        state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);

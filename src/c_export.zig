@@ -10,8 +10,6 @@ const ScriptContext = CubicScriptState.ScriptContext;
 export fn cubs_state_init(
     contextPtr: ?*anyopaque,
     contextVTable: ?*const ScriptContext.VTable,
-    allocatorPtr: ?*anyopaque,
-    allocatorVTable: ?*const ScriptExternAllocator.ExternVTable,
 ) callconv(.C) ?*CubicScriptState {
     const context = blk: {
         if (contextPtr) |validContext| {
@@ -24,29 +22,7 @@ export fn cubs_state_init(
     if (contextPtr != null) {
         assert(contextVTable != null);
     }
-
-    const maybeState = stateBlk: {
-        if (allocatorPtr) |validExternAllocator| {
-            assert(allocatorVTable != null);
-            const externAllocator = ScriptExternAllocator{ .externAllocatorPtr = validExternAllocator, .externVTable = allocatorVTable.? };
-            break :stateBlk CubicScriptState.initWithExternAllocator(externAllocator, context);
-        } else {
-            const allocator = allocBlk: {
-                if (runtime_safety) {
-                    ScriptGeneralPurposeAllocator.assignFunc();
-                    break :allocBlk ScriptGeneralPurposeAllocator.allocator;
-                } else {
-                    break :allocBlk std.heap.c_allocator;
-                }
-            };
-            break :stateBlk CubicScriptState.init(allocator, context);
-        }
-    };
-    if (maybeState) |state| {
-        return state;
-    } else |_| {
-        return null;
-    }
+    return CubicScriptState.init(context);
 }
 
 export fn cubs_string_init_slice(buffer: [*c]const u8, length: usize) callconv(.C) String {
@@ -56,9 +32,7 @@ export fn cubs_string_init_slice(buffer: [*c]const u8, length: usize) callconv(.
     if (runtime_safety) { // evalutated at compile time
         for (0..length) |i| {
             if (buffer[i] == 0) {
-                const message = std.fmt.allocPrint(std.heap.c_allocator, "String slice null terminator found before length of {}\n", .{length}) catch {
-                    @panic("Failed to allocate memory in extern C");
-                };
+                const message = std.fmt.allocPrint(std.heap.c_allocator, "String slice null terminator found before length of {}\n", .{length}) catch unreachable;
                 std.debug.print("String slice null terminator found before length of {}\n", .{length});
                 @panic(message);
             }

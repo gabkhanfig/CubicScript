@@ -447,8 +447,6 @@ test "String default init" {
 }
 
 test "String from slice" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var s = String.initSlice("hello world!");
         defer s.deinit();
@@ -466,8 +464,6 @@ test "String from slice" {
 }
 
 test "String clone" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var s1 = String.initSlice("hello world!");
         defer s1.deinit();
@@ -493,9 +489,6 @@ test "String clone" {
 }
 
 test "String clone thread safety" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
-
     const TestThreadHandler = struct {
         fn makeClonesNTimes(ref: *String, n: usize) void {
             for (0..n) |_| {

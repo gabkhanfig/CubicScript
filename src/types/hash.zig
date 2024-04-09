@@ -155,8 +155,6 @@ test "hash float" {
 }
 
 test "hash string" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         const value1 = RawValue{ .string = root.String{} };
         const value2 = RawValue{ .string = root.String{} };
@@ -202,9 +200,6 @@ test "hash string" {
 }
 
 test "hash array" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
-
     const makeArraysForTest = struct {
         fn makeArray1() RawValue {
             var array = root.Array.init(ValueTag.Float);
