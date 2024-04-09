@@ -58,7 +58,7 @@ pub const ValueTag = enum(c_uint) { // Reasonable default enum size for C
     ConstRef = 15,
     MutRef = 16,
     Option = 17,
-    Error = 18,
+    Result = 18,
     Class = 19,
 };
 

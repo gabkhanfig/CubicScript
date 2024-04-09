@@ -30,6 +30,7 @@
         "xmemory": "c",
         "xstring": "c",
         "xutility": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "vcruntime.h": "c"
     }
 }

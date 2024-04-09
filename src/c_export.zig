@@ -48,7 +48,6 @@ export fn cubs_set_allocator(allocatorPtr: ?*anyopaque, allocatorVTable: ?*const
         .resize = &global_allocator.ScriptExternAllocator.externResize,
         .free = &global_allocator.ScriptExternAllocator.externFree,
     } });
-    //global_allocator.setAllocator(Allocator{ .ptr = allocatorPtr.?, .vtable = allocatorVTable.? });
 }
 
 export fn cubs_string_init_slice(buffer: [*c]const u8, length: usize) callconv(.C) String {
