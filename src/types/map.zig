@@ -33,13 +33,13 @@ pub const Map = extern struct {
     }
 
     /// Free the memory allocated for this map, as well as deinit'ing the values it owns.
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.asInnerMut()) |inner| {
             for (inner.groups) |*group| {
-                group.deinit(state, self.keyTag(), self.valueTag());
+                group.deinit(self.keyTag(), self.valueTag());
             }
-            state.allocator.free(inner.groups);
-            state.allocator.destroy(inner);
+            allocator().free(inner.groups);
+            allocator().destroy(inner);
             self.inner = null;
         }
     }
@@ -106,19 +106,19 @@ pub const Map = extern struct {
     /// If the entry already exists, will replace the existing held value with `value`.
     /// Takes ownership of `key` and `value`, setting the original references to 0.
     /// Expects that `allocator` was also used for `key` and `value`.
-    pub fn insert(self: *Self, key: *TaggedValue, value: *TaggedValue, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn insert(self: *Self, key: *TaggedValue, value: *TaggedValue) void {
         assert(key.tag == self.keyTag());
         assert(value.tag == self.valueTag());
 
         const elemSize = self.size();
-        try self.ensureTotalCapacity(@as(usize, @intCast(elemSize)) + 1, state);
+        self.ensureTotalCapacity(@as(usize, @intCast(elemSize)) + 1);
 
         if (self.asInnerMut()) |inner| {
             const hashCode = computeHash(&key.value, key.tag, hash.TEST_SEED_VALUE);
             const groupBitmask = HashGroupBitmask.init(hashCode);
             const groupIndex = @mod(groupBitmask.value, inner.groups.len);
 
-            try inner.groups[groupIndex].insert(key, value, hashCode, state);
+            inner.groups[groupIndex].insert(key, value, hashCode);
             inner.count += 1;
         } else {
             unreachable;
@@ -127,7 +127,7 @@ pub const Map = extern struct {
 
     /// Returns true if the entry `key` exists, and thus was successfully deleted and cleaned up,
     /// and returns false if the entry doesn't exist.
-    pub fn erase(self: *Self, key: TaggedValue, state: *const CubicScriptState) bool {
+    pub fn erase(self: *Self, key: TaggedValue) bool {
         assert(key.tag == self.keyTag());
 
         const elemSize = self.size();
@@ -142,7 +142,7 @@ pub const Map = extern struct {
 
             inner.count -= 1;
 
-            return inner.groups[groupIndex].erase(key.value, key.tag, self.valueTag(), hashCode, state);
+            return inner.groups[groupIndex].erase(key.value, key.tag, self.valueTag(), hashCode);
         } else {
             unreachable;
         }
@@ -156,7 +156,7 @@ pub const Map = extern struct {
         return @ptrFromInt(@intFromPtr(self.inner) & @as(usize, PTR_BITMASK));
     }
 
-    fn ensureTotalCapacity(self: *Self, minCapacity: usize, state: *const CubicScriptState) Allocator.Error!void {
+    fn ensureTotalCapacity(self: *Self, minCapacity: usize) void {
         if (!self.shouldReallocate(minCapacity)) {
             return;
         }
@@ -168,9 +168,11 @@ pub const Map = extern struct {
             }
         }
 
-        const newGroups = try state.allocator.alloc(Group, newGroupCount);
+        const newGroups = allocator().alloc(Group, newGroupCount) catch {
+            @panic("Script out of memory");
+        };
         for (0..newGroups.len) |i| {
-            newGroups[i] = try Group.init(state);
+            newGroups[i] = Group.init();
         }
 
         if (self.asInnerMut()) |inner| {
@@ -188,7 +190,7 @@ pub const Map = extern struct {
 
                     const newGroup = &newGroups[groupIndex];
 
-                    try newGroup.ensureTotalCapacity(newGroup.pairCount + 1, state);
+                    newGroup.ensureTotalCapacity(newGroup.pairCount + 1);
 
                     const newHashMasksAsBytePtr: [*]u8 = @ptrCast(newGroup.hashMasks);
 
@@ -199,16 +201,18 @@ pub const Map = extern struct {
                 }
 
                 const oldGroupAllocation = oldGroup.getFullAllocation();
-                state.allocator.free(oldGroupAllocation);
+                allocator().free(oldGroupAllocation);
             }
 
             if (inner.groups.len > 0) {
-                state.allocator.free(inner.groups);
+                allocator().free(inner.groups);
             }
 
             inner.groups = newGroups;
         } else {
-            const newInner = try state.allocator.create(Inner);
+            const newInner = allocator().create(Inner) catch {
+                @panic("Script out of memory");
+            };
             newInner.groups = newGroups;
             newInner.count = 0;
 
@@ -252,8 +256,10 @@ const Group = struct {
     pairCount: usize = 0,
     capacity: usize = GROUP_ALLOC_SIZE,
 
-    fn init(state: *const CubicScriptState) Allocator.Error!Self {
-        const memory = try state.allocator.alignedAlloc(u8, ALIGNMENT, INITIAL_ALLOCATION_SIZE);
+    fn init() Self {
+        const memory = allocator().alignedAlloc(u8, ALIGNMENT, INITIAL_ALLOCATION_SIZE) catch {
+            @panic("Script out of memory");
+        };
         @memset(memory, 0);
 
         const hashMasks: [*]@Vector(32, u8) = @ptrCast(@alignCast(memory.ptr));
@@ -265,7 +271,7 @@ const Group = struct {
         };
     }
 
-    fn deinit(self: *Self, state: *const CubicScriptState, keyTag: ValueTag, valueTag: ValueTag) void {
+    fn deinit(self: *Self, keyTag: ValueTag, valueTag: ValueTag) void {
         var i: usize = 0;
         if (self.pairCount > 0) {
             for (self.hashMasksSlice()) |mask| {
@@ -274,14 +280,14 @@ const Group = struct {
                     continue;
                 }
 
-                self.pairs[i].key.deinit(keyTag, state);
-                self.pairs[i].value.deinit(valueTag, state);
-                state.allocator.destroy(self.pairs[i]);
+                self.pairs[i].key.deinit(keyTag);
+                self.pairs[i].value.deinit(valueTag);
+                allocator().destroy(self.pairs[i]);
                 i += 1;
             }
         }
 
-        state.allocator.free(self.getFullAllocation());
+        allocator().free(self.getFullAllocation());
         // Ensure that any use after free will be caught.
         self.hashMasks = undefined;
         self.pairs = undefined;
@@ -343,19 +349,19 @@ const Group = struct {
     /// If the entry already exists, will replace the existing held value with `value`.
     /// Takes ownership of `key` and `value`, setting the original references to 0.
     /// Expects that `allocator` was also used for `key` and `value`.
-    fn insert(self: *Group, key: *TaggedValue, value: *TaggedValue, hashCode: usize, state: *const CubicScriptState) Allocator.Error!void {
+    fn insert(self: *Group, key: *TaggedValue, value: *TaggedValue, hashCode: usize) void {
         const existingIndex = self.find(key.value, key.tag, hashCode);
         const alreadyExists = existingIndex != null;
         if (alreadyExists) {
-            self.pairs[existingIndex.?].value.deinit(value.tag, state);
+            self.pairs[existingIndex.?].value.deinit(value.tag);
             self.pairs[existingIndex.?].value = value.value;
 
-            key.deinit(state); // don't need duplicate.
+            key.deinit(); // don't need duplicate.
             value.value.int = 0; // force existing reference to 0 / null, taking ownership
             return;
         }
 
-        try self.ensureTotalCapacity(self.pairCount + 1, state);
+        self.ensureTotalCapacity(self.pairCount + 1);
 
         // SIMD find first 0
 
@@ -373,7 +379,9 @@ const Group = struct {
                 maskIter += 1;
                 continue;
             } else {
-                const newPair = try state.allocator.create(Pair);
+                const newPair = allocator().create(Pair) catch {
+                    @panic("Script out of memory");
+                };
                 newPair.key = key.value;
                 newPair.value = value.value;
                 newPair.hash = hashCode;
@@ -393,7 +401,7 @@ const Group = struct {
     }
 
     /// Returns false if the entry doesn't exist, and true if the entry does exist and was successfully erased.
-    fn erase(self: *Group, key: RawValue, keyTag: ValueTag, valueTag: ValueTag, hashCode: usize, state: *const CubicScriptState) bool {
+    fn erase(self: *Group, key: RawValue, keyTag: ValueTag, valueTag: ValueTag, hashCode: usize) bool {
         const found = self.find(key, keyTag, hashCode);
 
         if (found == null) {
@@ -402,15 +410,15 @@ const Group = struct {
 
         const selfHashMasksAsBytePtr: [*]u8 = @ptrCast(self.hashMasks);
         selfHashMasksAsBytePtr[found.?] = 0;
-        self.pairs[found.?].key.deinit(keyTag, state);
-        self.pairs[found.?].value.deinit(valueTag, state);
-        state.allocator.destroy(self.pairs[found.?]);
+        self.pairs[found.?].key.deinit(keyTag);
+        self.pairs[found.?].value.deinit(valueTag);
+        allocator().destroy(self.pairs[found.?]);
         self.pairCount -= 1;
 
         return true;
     }
 
-    fn ensureTotalCapacity(self: *Self, minCapacity: usize, state: *const CubicScriptState) Allocator.Error!void {
+    fn ensureTotalCapacity(self: *Self, minCapacity: usize) void {
         if (minCapacity <= self.capacity) {
             return;
         }
@@ -421,7 +429,9 @@ const Group = struct {
             mallocCapacity += (32 - rem);
         }
         const allocSize = calculateChunksHashGroupAllocationSize(mallocCapacity);
-        const memory = try state.allocator.alignedAlloc(u8, ALIGNMENT, allocSize);
+        const memory = allocator().alignedAlloc(u8, ALIGNMENT, allocSize) catch {
+            @panic("Script out of memory");
+        };
         @memset(memory, 0);
 
         const hashMasks: [*]@Vector(32, u8) = @ptrCast(@alignCast(memory.ptr));
@@ -443,7 +453,7 @@ const Group = struct {
 
         {
             const oldSlice = self.getFullAllocation();
-            state.allocator.free(oldSlice);
+            allocator().free(oldSlice);
         }
 
         self.hashMasks = hashMasks;
@@ -479,47 +489,43 @@ const Pair = struct {
 // Tests
 
 test "map init" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var map = Map.init(ValueTag.Bool, ValueTag.Bool);
-        defer map.deinit(state);
+        defer map.deinit();
     }
     {
         var map = Map.init(ValueTag.Int, ValueTag.Bool);
-        defer map.deinit(state);
+        defer map.deinit();
     }
     {
         var map = Map.init(ValueTag.Bool, ValueTag.Int);
-        defer map.deinit(state);
+        defer map.deinit();
     }
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);
-        defer map.deinit(state);
+        defer map.deinit();
     }
     {
         var map = Map.init(ValueTag.Int, ValueTag.String);
-        defer map.deinit(state);
+        defer map.deinit();
     }
     {
         var map = Map.init(ValueTag.String, ValueTag.Array);
-        defer map.deinit(state);
+        defer map.deinit();
     }
     {
         var map = Map.init(ValueTag.Map, ValueTag.Int);
-        defer map.deinit(state);
+        defer map.deinit();
     }
 }
 
 test "map find empty" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);
-        defer map.deinit(state);
+        defer map.deinit();
 
         var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
-        defer findValue.deinit(state);
+        defer findValue.deinit();
 
         try expect(map.size() == 0);
         try expect(map.find(findValue) == null);
@@ -527,18 +533,16 @@ test "map find empty" {
 }
 
 test "map insert one element" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);
-        defer map.deinit(state);
+        defer map.deinit();
 
         var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
         var addValue = TaggedValue.initInt(1);
-        try map.insert(&addKey, &addValue, state);
+        map.insert(&addKey, &addValue);
 
         var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
-        defer findValue.deinit(state);
+        defer findValue.deinit();
 
         try expect(map.size() == 1);
         try expect(map.find(findValue) != null);
@@ -555,51 +559,47 @@ test "map insert one element" {
 }
 
 test "map erase one element" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);
-        defer map.deinit(state);
+        defer map.deinit();
 
         var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
         var addValue = TaggedValue.initInt(1);
-        try map.insert(&addKey, &addValue, state);
+        map.insert(&addKey, &addValue);
 
         var eraseValue = TaggedValue.initString(root.String.initSlice("hello world!"));
-        defer eraseValue.deinit(state);
+        defer eraseValue.deinit();
 
-        try expect(map.erase(eraseValue, state));
+        try expect(map.erase(eraseValue));
 
         var findValue = TaggedValue.initString(eraseValue.value.string.clone());
-        defer findValue.deinit(state);
+        defer findValue.deinit();
 
         try expect(map.find(findValue) == null);
     }
 }
 
 test "Map add more than 32 elements" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var map = Map.init(ValueTag.String, ValueTag.Int);
-        defer map.deinit(state);
+        defer map.deinit();
 
         for (0..36) |i| {
             var addKey = TaggedValue.initString(root.String.fromInt(@as(Int, @intCast(i))));
             var addValue = TaggedValue.initInt(@as(Int, @intCast(i)));
 
-            try map.insert(&addKey, &addValue, state);
+            map.insert(&addKey, &addValue);
         }
     }
     {
         var map = Map.init(ValueTag.Int, ValueTag.Float);
-        defer map.deinit(state);
+        defer map.deinit();
 
         for (0..36) |i| {
             var addKey = TaggedValue.initInt(@as(Int, @intCast(i)));
             var addValue = TaggedValue.initFloat(@floatFromInt(i));
 
-            try map.insert(&addKey, &addValue, state);
+            map.insert(&addKey, &addValue);
         }
     }
 }

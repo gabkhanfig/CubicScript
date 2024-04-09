@@ -30,13 +30,13 @@ pub const Set = extern struct {
     }
 
     /// Free the memory allocated for this map, as well as deinit'ing the values it owns.
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.asInnerMut()) |inner| {
             for (inner.groups) |*group| {
-                group.deinit(state, self.keyTag());
+                group.deinit(self.keyTag());
             }
-            state.allocator.free(inner.groups);
-            state.allocator.destroy(inner);
+            allocator().free(inner.groups);
+            allocator().destroy(inner);
             self.inner = null;
         }
     }
@@ -77,18 +77,18 @@ pub const Set = extern struct {
 
     /// If the entry already exists, will deinit `key`.
     /// Takes ownership of `key`, setting the original references to 0.
-    pub fn insert(self: *Self, key: *TaggedValue, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn insert(self: *Self, key: *TaggedValue) void {
         assert(key.tag == self.keyTag());
 
         const elemSize = self.size();
-        try self.ensureTotalCapacity(@as(usize, @intCast(elemSize)) + 1, state);
+        self.ensureTotalCapacity(@as(usize, @intCast(elemSize)) + 1);
 
         if (self.asInnerMut()) |inner| {
             const hashCode = computeHash(&key.value, key.tag, hash.TEST_SEED_VALUE);
             const groupBitmask = HashGroupBitmask.init(hashCode);
             const groupIndex = @mod(groupBitmask.value, inner.groups.len);
 
-            try inner.groups[groupIndex].insert(key, hashCode, state);
+            inner.groups[groupIndex].insert(key, hashCode);
             inner.count += 1;
         } else {
             unreachable;
@@ -97,7 +97,7 @@ pub const Set = extern struct {
 
     /// Returns true if the entry `key` exists, and thus was successfully deleted and cleaned up,
     /// and returns false if the entry doesn't exist.
-    pub fn erase(self: *Self, key: TaggedValue, state: *const CubicScriptState) bool {
+    pub fn erase(self: *Self, key: TaggedValue) bool {
         assert(key.tag == self.keyTag());
 
         const elemSize = self.size();
@@ -112,7 +112,7 @@ pub const Set = extern struct {
 
             inner.count -= 1;
 
-            return inner.groups[groupIndex].erase(key.value, key.tag, hashCode, state);
+            return inner.groups[groupIndex].erase(key.value, key.tag, hashCode);
         } else {
             unreachable;
         }
@@ -126,7 +126,7 @@ pub const Set = extern struct {
         return @ptrFromInt(@intFromPtr(self.inner) & @as(usize, PTR_BITMASK));
     }
 
-    fn ensureTotalCapacity(self: *Self, minCapacity: usize, state: *const CubicScriptState) Allocator.Error!void {
+    fn ensureTotalCapacity(self: *Self, minCapacity: usize) void {
         if (!self.shouldReallocate(minCapacity)) {
             return;
         }
@@ -138,9 +138,11 @@ pub const Set = extern struct {
             }
         }
 
-        const newGroups = try state.allocator.alloc(Group, newGroupCount);
+        const newGroups = allocator().alloc(Group, newGroupCount) catch {
+            @panic("Script out of memory");
+        };
         for (0..newGroups.len) |i| {
-            newGroups[i] = try Group.init(state);
+            newGroups[i] = Group.init();
         }
 
         if (self.asInnerMut()) |inner| {
@@ -158,7 +160,7 @@ pub const Set = extern struct {
 
                     const newGroup = &newGroups[groupIndex];
 
-                    try newGroup.ensureTotalCapacity(newGroup.count + 1, state);
+                    newGroup.ensureTotalCapacity(newGroup.count + 1);
 
                     const newHashMasksAsBytePtr: [*]u8 = @ptrCast(newGroup.hashMasks);
 
@@ -169,16 +171,18 @@ pub const Set = extern struct {
                 }
 
                 const oldGroupAllocation = oldGroup.getFullAllocation();
-                state.allocator.free(oldGroupAllocation);
+                allocator().free(oldGroupAllocation);
             }
 
             if (inner.groups.len > 0) {
-                state.allocator.free(inner.groups);
+                allocator().free(inner.groups);
             }
 
             inner.groups = newGroups;
         } else {
-            const newInner = try state.allocator.create(Inner);
+            const newInner = allocator().create(Inner) catch {
+                @panic("Script out of memory");
+            };
             newInner.groups = newGroups;
             newInner.count = 0;
 
@@ -222,8 +226,10 @@ const Group = struct {
     count: usize = 0,
     capacity: usize = GROUP_ALLOC_SIZE,
 
-    fn init(state: *const CubicScriptState) Allocator.Error!Self {
-        const memory = try state.allocator.alignedAlloc(u8, ALIGNMENT, INITIAL_ALLOCATION_SIZE);
+    fn init() Self {
+        const memory = allocator().alignedAlloc(u8, ALIGNMENT, INITIAL_ALLOCATION_SIZE) catch {
+            @panic("Script out of memory");
+        };
         @memset(memory, 0);
 
         const hashMasks: [*]@Vector(32, u8) = @ptrCast(@alignCast(memory.ptr));
@@ -235,7 +241,7 @@ const Group = struct {
         };
     }
 
-    fn deinit(self: *Self, state: *const CubicScriptState, keyTag: ValueTag) void {
+    fn deinit(self: *Self, keyTag: ValueTag) void {
         var i: usize = 0;
         if (self.count > 0) {
             for (self.hashMasksSlice()) |mask| {
@@ -244,12 +250,12 @@ const Group = struct {
                     continue;
                 }
 
-                self.keys[i].key.deinit(keyTag, state);
-                state.allocator.destroy(self.keys[i]);
+                self.keys[i].key.deinit(keyTag);
+                allocator().destroy(self.keys[i]);
                 i += 1;
             }
         }
-        state.allocator.free(self.getFullAllocation());
+        allocator().free(self.getFullAllocation());
         // Ensure that any use after free will be caught.
         self.hashMasks = undefined;
         self.keys = undefined;
@@ -311,15 +317,15 @@ const Group = struct {
     /// If the entry already exists, will replace the existing held value with `value`.
     /// Takes ownership of `key` and `value`, setting the original references to 0.
     /// Expects that `allocator` was also used for `key` and `value`.
-    fn insert(self: *Group, key: *TaggedValue, hashCode: usize, state: *const CubicScriptState) Allocator.Error!void {
+    fn insert(self: *Group, key: *TaggedValue, hashCode: usize) void {
         const existingIndex = self.find(key.value, key.tag, hashCode);
         const alreadyExists = existingIndex != null;
         if (alreadyExists) {
-            key.deinit(state); // don't need duplicate.
+            key.deinit(); // don't need duplicate.
             return;
         }
 
-        try self.ensureTotalCapacity(self.count + 1, state);
+        self.ensureTotalCapacity(self.count + 1);
 
         // SIMD find first 0
 
@@ -337,7 +343,9 @@ const Group = struct {
                 maskIter += 1;
                 continue;
             } else {
-                const newKeyEntry = try state.allocator.create(KeyAndHash);
+                const newKeyEntry = allocator().create(KeyAndHash) catch {
+                    @panic("Script out of memory");
+                };
                 newKeyEntry.key = key.value;
                 newKeyEntry.hash = hashCode;
 
@@ -355,7 +363,7 @@ const Group = struct {
     }
 
     /// Returns false if the entry doesn't exist, and true if the entry does exist and was successfully erased.
-    fn erase(self: *Group, key: RawValue, keyTag: ValueTag, hashCode: usize, state: *const CubicScriptState) bool {
+    fn erase(self: *Group, key: RawValue, keyTag: ValueTag, hashCode: usize) bool {
         const found = self.find(key, keyTag, hashCode);
 
         if (found == null) {
@@ -364,14 +372,14 @@ const Group = struct {
 
         const selfHashMasksAsBytePtr: [*]u8 = @ptrCast(self.hashMasks);
         selfHashMasksAsBytePtr[found.?] = 0;
-        self.keys[found.?].key.deinit(keyTag, state);
-        state.allocator.destroy(self.keys[found.?]);
+        self.keys[found.?].key.deinit(keyTag);
+        allocator().destroy(self.keys[found.?]);
         self.count -= 1;
 
         return true;
     }
 
-    fn ensureTotalCapacity(self: *Self, minCapacity: usize, state: *const CubicScriptState) Allocator.Error!void {
+    fn ensureTotalCapacity(self: *Self, minCapacity: usize) void {
         if (minCapacity <= self.capacity) {
             return;
         }
@@ -382,7 +390,9 @@ const Group = struct {
             mallocCapacity += (32 - rem);
         }
         const allocSize = calculateHashGroupAllocationSize(mallocCapacity);
-        const memory = try state.allocator.alignedAlloc(u8, ALIGNMENT, allocSize);
+        const memory = allocator().alignedAlloc(u8, ALIGNMENT, allocSize) catch {
+            @panic("Script out of memory");
+        };
         @memset(memory, 0);
 
         const hashMasks: [*]@Vector(32, u8) = @ptrCast(@alignCast(memory.ptr));
@@ -404,7 +414,7 @@ const Group = struct {
 
         {
             const oldSlice = self.getFullAllocation();
-            state.allocator.free(oldSlice);
+            allocator().free(oldSlice);
         }
 
         self.hashMasks = hashMasks;
@@ -439,86 +449,73 @@ const KeyAndHash = struct {
 // Tests
 
 test "set init" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     inline for (@typeInfo(ValueTag).Enum.fields) |f| {
         var set = Set.init(@enumFromInt(f.value));
-        defer set.deinit(state);
+        defer set.deinit();
     }
 }
 
 test "set contains empty" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
-
     var set = Set.init(ValueTag.String);
-    defer set.deinit(state);
+    defer set.deinit();
 
     var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
-    defer findValue.deinit(state);
+    defer findValue.deinit();
 
     try expect(set.size() == 0);
     try expect(set.contains(findValue) == false);
 }
 
 test "set insert one element" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
-
     var set = Set.init(ValueTag.String);
-    defer set.deinit(state);
+    defer set.deinit();
 
     var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
-    try set.insert(&addKey, state);
+    set.insert(&addKey);
 
     var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
-    defer findValue.deinit(state);
+    defer findValue.deinit();
 
     try expect(set.size() == 1);
     try expect(set.contains(findValue));
 }
 
 test "set erase one element" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
-
     var set = Set.init(ValueTag.String);
-    defer set.deinit(state);
+    defer set.deinit();
 
     var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
-    try set.insert(&addKey, state);
+    set.insert(&addKey);
 
     var eraseValue = TaggedValue.initString(root.String.initSlice("hello world!"));
-    defer eraseValue.deinit(state);
+    defer eraseValue.deinit();
 
-    try expect(set.erase(eraseValue, state));
+    try expect(set.erase(eraseValue));
 
     var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
-    defer findValue.deinit(state);
+    defer findValue.deinit();
 
     try expect(set.size() == 0);
     try expect(set.contains(findValue) == false);
 }
 
 test "set add more than 32 elements" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var set = Set.init(ValueTag.String);
-        defer set.deinit(state);
+        defer set.deinit();
 
         for (0..36) |i| {
             var addKey = TaggedValue.initString(root.String.fromInt(@as(Int, @intCast(i))));
-            try set.insert(&addKey, state);
+            set.insert(&addKey);
         }
     }
     {
         var set = Set.init(ValueTag.Int);
-        defer set.deinit(state);
+        defer set.deinit();
 
         for (0..36) |i| {
             var addKey = TaggedValue.initInt(@as(Int, @intCast(i)));
-            try set.insert(&addKey, state);
+            set.insert(&addKey);
         }
     }
 }

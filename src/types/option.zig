@@ -13,29 +13,31 @@ pub const Option = extern struct {
     /// Has ownership of the tagged value, allocated somewhere.
     value: ?*TaggedValue,
 
-    pub fn init(inValue: ?TaggedValue, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn init(inValue: ?TaggedValue) Self {
         if (inValue == null) {
             return Self{ .value = null };
         }
-        const value = try state.allocator.create(TaggedValue);
+        const value = allocator().create(TaggedValue) catch {
+            @panic("Script out of memory");
+        };
         value.* = inValue.?;
         return Self{ .value = value };
     }
 
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.value == null) {
             return;
         }
 
-        self.value.?.deinit(state);
-        state.allocator.destroy(self.value.?);
+        self.value.?.deinit();
+        allocator().destroy(self.value.?);
         self.value = null;
     }
 
-    pub fn take(self: *Self, state: *const CubicScriptState) Error!TaggedValue {
+    pub fn take(self: *Self) Error!TaggedValue {
         if (self.value) |value| {
             const temp = value.*; // take ownership
-            state.allocator.destroy(value);
+            allocator().destroy(value);
             self.value = null;
             return temp;
         } else {
@@ -49,27 +51,21 @@ pub const Option = extern struct {
 };
 
 test "null" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
-
     var opt = Option{ .value = null };
-    defer opt.deinit(state);
+    defer opt.deinit();
 
-    if (opt.take(state)) |_| {
+    if (opt.take()) |_| {
         try expect(false);
     } else |_| {}
 }
 
 test "not null" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
-
-    var opt = try Option.init(TaggedValue.initString(root.String.initSlice("aa")), state);
-    defer opt.deinit(state);
+    var opt = Option.init(TaggedValue.initString(root.String.initSlice("aa")));
+    defer opt.deinit();
 
     try expect(opt.value != null);
 
-    if (opt.take(state)) |string| {
+    if (opt.take()) |string| {
         try expect(string.tag == root.ValueTag.String);
         try expect(string.value.string.eqlSlice("aa"));
         var s = string;

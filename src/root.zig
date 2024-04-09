@@ -81,7 +81,7 @@ pub const RawValue = extern union {
     // TODO other primitive types
 
     /// In some cases, it's more convenient to just deinit here.
-    pub fn deinit(self: *RawValue, tag: ValueTag, state: *const CubicScriptState) void {
+    pub fn deinit(self: *RawValue, tag: ValueTag) void {
         switch (tag) {
             .Bool, .Int, .Float => {},
             .String => {
@@ -91,28 +91,28 @@ pub const RawValue = extern union {
                 self.array.deinit();
             },
             .Map => {
-                self.map.deinit(state);
+                self.map.deinit();
             },
             .Set => {
-                self.set.deinit(state);
+                self.set.deinit();
             },
             .Vec2i => {
-                self.vec2i.deinit(state);
+                self.vec2i.deinit();
             },
             .Vec3i => {
-                self.vec3i.deinit(state);
+                self.vec3i.deinit();
             },
             .Vec4i => {
-                self.vec4i.deinit(state);
+                self.vec4i.deinit();
             },
             .Vec2f => {
-                self.vec2f.deinit(state);
+                self.vec2f.deinit();
             },
             .Vec3f => {
-                self.vec3f.deinit(state);
+                self.vec3f.deinit();
             },
             .Vec4f => {
-                self.vec4f.deinit(state);
+                self.vec4f.deinit();
             },
             else => {
                 @panic("Unsupported");
@@ -194,8 +194,8 @@ pub const TaggedValue = extern struct {
         return TaggedValue{ .tag = ValueTag.Vec4f, .value = .{ .vec4f = inVec } };
     }
 
-    pub fn deinit(self: *TaggedValue, state: *const CubicScriptState) void {
-        self.value.deinit(self.tag, state);
+    pub fn deinit(self: *TaggedValue) void {
+        self.value.deinit(self.tag);
     }
 };
 

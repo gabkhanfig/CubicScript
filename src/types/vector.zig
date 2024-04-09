@@ -21,26 +21,28 @@ pub const Vec2i = extern struct {
 
     inner: ?*anyopaque = null,
 
-    pub fn init(inX: Int, inY: Int, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn init(inX: Int, inY: Int) Self {
         if (inX == 0 and inY == 0) {
             return Self{};
         }
 
-        const impl = try state.allocator.create(Vector2IntImpl());
+        const impl = allocator().create(Vector2IntImpl()) catch {
+            @panic("Script out of memory");
+        };
         impl.* = Vector2IntImpl(){ .x = inX, .y = inY };
         return Self{ .inner = @ptrCast(impl) };
     }
 
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.asImplMut()) |impl| {
-            state.allocator.destroy(impl);
+            allocator().destroy(impl);
             self.inner = null;
         }
     }
 
-    pub fn clone(self: *const Self, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn clone(self: *const Self) Self {
         if (self.asImpl()) |impl| {
-            return impl.toVec2i(state);
+            return impl.toVec2i();
         } else {
             return Self{};
         }
@@ -62,21 +64,25 @@ pub const Vec2i = extern struct {
         }
     }
 
-    pub fn setX(self: *Self, inX: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setX(self: *Self, inX: Int) void {
         if (self.asImplMut()) |impl| {
             impl.x = inX;
         } else {
-            const impl = try state.allocator.create(Vector2IntImpl());
+            const impl = allocator().create(Vector2IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector2IntImpl(){ .x = inX, .y = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setY(self: *Self, inY: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setY(self: *Self, inY: Int) void {
         if (self.asImplMut()) |impl| {
             impl.y = inY;
         } else {
-            const impl = try state.allocator.create(Vector2IntImpl());
+            const impl = allocator().create(Vector2IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector2IntImpl(){ .x = 0, .y = inY };
             self.inner = @ptrCast(impl);
         }
@@ -136,26 +142,28 @@ pub const Vec3i = extern struct {
 
     inner: ?*anyopaque = null,
 
-    pub fn init(inX: Int, inY: Int, inZ: Int, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn init(inX: Int, inY: Int, inZ: Int) Self {
         if (inX == 0 and inY == 0 and inZ == 0) {
             return Self{};
         }
 
-        const impl = try state.allocator.create(Vector3IntImpl());
+        const impl = allocator().create(Vector3IntImpl()) catch {
+            @panic("Script out of memory");
+        };
         impl.* = Vector3IntImpl(){ .x = inX, .y = inY, .z = inZ };
         return Self{ .inner = @ptrCast(impl) };
     }
 
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.asImplMut()) |impl| {
-            state.allocator.destroy(impl);
+            allocator().destroy(impl);
             self.inner = null;
         }
     }
 
-    pub fn clone(self: *const Self, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn clone(self: *const Self) Self {
         if (self.asImpl()) |impl| {
-            return impl.toVec2i(state);
+            return impl.toVec3i();
         } else {
             return Self{};
         }
@@ -185,31 +193,37 @@ pub const Vec3i = extern struct {
         }
     }
 
-    pub fn setX(self: *Self, inX: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setX(self: *Self, inX: Int) void {
         if (self.asImplMut()) |impl| {
             impl.x = inX;
         } else {
-            const impl = try state.allocator.create(Vector3IntImpl());
+            const impl = allocator().create(Vector3IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector2IntImpl(){ .x = inX, .y = 0, .z = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setY(self: *Self, inY: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setY(self: *Self, inY: Int) void {
         if (self.asImplMut()) |impl| {
             impl.y = inY;
         } else {
-            const impl = try state.allocator.create(Vector3IntImpl());
+            const impl = allocator().create(Vector3IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector3IntImpl(){ .x = 0, .y = inY, .z = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setZ(self: *Self, inZ: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setZ(self: *Self, inZ: Int) void {
         if (self.asImplMut()) |impl| {
             impl.z = inZ;
         } else {
-            const impl = try state.allocator.create(Vector3IntImpl());
+            const impl = allocator().create(Vector3IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector3IntImpl(){ .x = 0, .y = 0, .z = inZ };
             self.inner = @ptrCast(impl);
         }
@@ -269,26 +283,26 @@ pub const Vec4i = extern struct {
 
     inner: ?*anyopaque = null,
 
-    pub fn init(inX: Int, inY: Int, inZ: Int, inW: Int, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn init(inX: Int, inY: Int, inZ: Int, inW: Int) Self {
         if (inX == 0 and inY == 0 and inZ == 0 and inW == 0) {
             return Self{};
         }
 
-        const impl = try state.allocator.create(Vector4IntImpl());
+        const impl = allocator().create(Vector4IntImpl());
         impl.* = Vector4IntImpl(){ .x = inX, .y = inY, .z = inZ, .w = inW };
         return Self{ .inner = @ptrCast(impl) };
     }
 
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.asImplMut()) |impl| {
-            state.allocator.destroy(impl);
+            allocator().destroy(impl);
             self.inner = null;
         }
     }
 
-    pub fn clone(self: *const Self, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn clone(self: *const Self) Self {
         if (self.asImpl()) |impl| {
-            return impl.toVec2i(state);
+            return impl.toVec4i();
         } else {
             return Self{};
         }
@@ -326,41 +340,49 @@ pub const Vec4i = extern struct {
         }
     }
 
-    pub fn setX(self: *Self, inX: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setX(self: *Self, inX: Int) void {
         if (self.asImplMut()) |impl| {
             impl.x = inX;
         } else {
-            const impl = try state.allocator.create(Vector4IntImpl());
+            const impl = allocator().create(Vector4IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector2IntImpl(){ .x = inX, .y = 0, .z = 0, .w = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setY(self: *Self, inY: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setY(self: *Self, inY: Int) void {
         if (self.asImplMut()) |impl| {
             impl.y = inY;
         } else {
-            const impl = try state.allocator.create(Vector4IntImpl());
+            const impl = allocator().create(Vector4IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector4IntImpl(){ .x = 0, .y = inY, .z = 0, .w = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setZ(self: *Self, inZ: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setZ(self: *Self, inZ: Int) void {
         if (self.asImplMut()) |impl| {
             impl.z = inZ;
         } else {
-            const impl = try state.allocator.create(Vector4IntImpl());
+            const impl = allocator().create(Vector4IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector4IntImpl(){ .x = 0, .y = 0, .z = inZ, .w = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setW(self: *Self, inW: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setW(self: *Self, inW: Int) void {
         if (self.asImplMut()) |impl| {
             impl.w = inW;
         } else {
-            const impl = try state.allocator.create(Vector4IntImpl());
+            const impl = allocator().create(Vector4IntImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector4IntImpl(){ .x = 0, .y = 0, .z = 0, .w = inW };
             self.inner = @ptrCast(impl);
         }
@@ -420,26 +442,26 @@ pub const Vec2f = extern struct {
 
     inner: ?*anyopaque = null,
 
-    pub fn init(inX: Float, inY: Float, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn init(inX: Float, inY: Float) Self {
         if (inX == 0 and inY == 0) {
             return Self{};
         }
 
-        const impl = try state.allocator.create(Vector2FloatImpl());
+        const impl = allocator().create(Vector2FloatImpl());
         impl.* = Vector2FloatImpl(){ .x = inX, .y = inY };
         return Self{ .inner = @ptrCast(impl) };
     }
 
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.asImplMut()) |impl| {
-            state.allocator.destroy(impl);
+            allocator().destroy(impl);
             self.inner = null;
         }
     }
 
-    pub fn clone(self: *const Self, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn clone(self: *const Self) Self {
         if (self.asImpl()) |impl| {
-            return impl.toVec2f(state);
+            return impl.toVec2f();
         } else {
             return Self{};
         }
@@ -461,21 +483,25 @@ pub const Vec2f = extern struct {
         }
     }
 
-    pub fn setX(self: *Self, inX: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setX(self: *Self, inX: Int) void {
         if (self.asImplMut()) |impl| {
             impl.x = inX;
         } else {
-            const impl = try state.allocator.create(Vector2FloatImpl());
+            const impl = allocator().create(Vector2FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector2FloatImpl(){ .x = inX, .y = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setY(self: *Self, inY: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setY(self: *Self, inY: Int) void {
         if (self.asImplMut()) |impl| {
             impl.y = inY;
         } else {
-            const impl = try state.allocator.create(Vector2FloatImpl());
+            const impl = allocator().create(Vector2FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector2FloatImpl(){ .x = 0, .y = inY };
             self.inner = @ptrCast(impl);
         }
@@ -535,32 +561,34 @@ pub const Vec3f = extern struct {
 
     inner: ?*anyopaque = null,
 
-    pub fn init(inX: Float, inY: Float, inZ: Float, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn init(inX: Float, inY: Float, inZ: Float) Self {
         if (inX == 0.0 and inY == 0.0 and inZ == 0.0) {
             return Self{};
         }
 
-        const impl = try state.allocator.create(Vector3FloatImpl());
+        const impl = allocator().create(Vector3FloatImpl()) catch {
+            @panic("Script out of memory");
+        };
         impl.* = Vector3FloatImpl(){ .x = inX, .y = inY, .z = inZ };
         return Self{ .inner = @ptrCast(impl) };
     }
 
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.asImplMut()) |impl| {
-            state.allocator.destroy(impl);
+            allocator().destroy(impl);
             self.inner = null;
         }
     }
 
-    pub fn clone(self: *const Self, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn clone(self: *const Self) Self {
         if (self.asImpl()) |impl| {
-            return impl.toVec3f(state);
+            return impl.toVec3f();
         } else {
             return Self{};
         }
     }
 
-    pub fn x(self: *const Self) Int {
+    pub fn x(self: *const Self) Float {
         if (self.asImpl()) |impl| {
             return impl.x;
         } else {
@@ -568,7 +596,7 @@ pub const Vec3f = extern struct {
         }
     }
 
-    pub fn y(self: *const Self) Int {
+    pub fn y(self: *const Self) Float {
         if (self.asImpl()) |impl| {
             return impl.y;
         } else {
@@ -576,7 +604,7 @@ pub const Vec3f = extern struct {
         }
     }
 
-    pub fn z(self: *const Self) Int {
+    pub fn z(self: *const Self) Float {
         if (self.asImpl()) |impl| {
             return impl.z;
         } else {
@@ -584,31 +612,37 @@ pub const Vec3f = extern struct {
         }
     }
 
-    pub fn setX(self: *Self, inX: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setX(self: *Self, inX: Float) void {
         if (self.asImplMut()) |impl| {
             impl.x = inX;
         } else {
-            const impl = try state.allocator.create(Vector3FloatImpl());
+            const impl = allocator().create(Vector3FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector2FloatImpl(){ .x = inX, .y = 0, .z = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setY(self: *Self, inY: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setY(self: *Self, inY: Int) void {
         if (self.asImplMut()) |impl| {
             impl.y = inY;
         } else {
-            const impl = try state.allocator.create(Vector3FloatImpl());
+            const impl = allocator().create(Vector3FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector3FloatImpl(){ .x = 0, .y = inY, .z = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setZ(self: *Self, inZ: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setZ(self: *Self, inZ: Int) void {
         if (self.asImplMut()) |impl| {
             impl.z = inZ;
         } else {
-            const impl = try state.allocator.create(Vector3FloatImpl());
+            const impl = allocator().create(Vector3FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector3FloatImpl(){ .x = 0, .y = 0, .z = inZ };
             self.inner = @ptrCast(impl);
         }
@@ -672,26 +706,26 @@ pub const Vec4f = extern struct {
 
     inner: ?*anyopaque = null,
 
-    pub fn init(inX: Float, inY: Float, inZ: Float, inW: Float, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn init(inX: Float, inY: Float, inZ: Float, inW: Float) Self {
         if (inX == 0.0 and inY == 0.0 and inZ == 0.0 and inW == 0.0) {
             return Self{};
         }
 
-        const impl = try state.allocator.create(Vector4FloatImpl());
+        const impl = allocator().create(Vector4FloatImpl());
         impl.* = Vector4FloatImpl(){ .x = inX, .y = inY, .z = inZ, .w = inW };
         return Self{ .inner = @ptrCast(impl) };
     }
 
-    pub fn deinit(self: *Self, state: *const CubicScriptState) void {
+    pub fn deinit(self: *Self) void {
         if (self.asImplMut()) |impl| {
-            state.allocator.destroy(impl);
+            allocator().destroy(impl);
             self.inner = null;
         }
     }
 
-    pub fn clone(self: *const Self, state: *const CubicScriptState) Allocator.Error!Self {
+    pub fn clone(self: *const Self) Self {
         if (self.asImpl()) |impl| {
-            return impl.toVec4f(state);
+            return impl.toVec4f();
         } else {
             return Self{};
         }
@@ -729,41 +763,49 @@ pub const Vec4f = extern struct {
         }
     }
 
-    pub fn setX(self: *Self, inX: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setX(self: *Self, inX: Int) void {
         if (self.asImplMut()) |impl| {
             impl.x = inX;
         } else {
-            const impl = try state.allocator.create(Vector4FloatImpl());
+            const impl = allocator().create(Vector4FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector4FloatImpl(){ .x = inX, .y = 0, .z = 0, .w = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setY(self: *Self, inY: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setY(self: *Self, inY: Int) void {
         if (self.asImplMut()) |impl| {
             impl.y = inY;
         } else {
-            const impl = try state.allocator.create(Vector4FloatImpl());
+            const impl = allocator().create(Vector4FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector4FloatImpl(){ .x = 0, .y = inY, .z = 0, .w = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setZ(self: *Self, inZ: Int, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setZ(self: *Self, inZ: Int) void {
         if (self.asImplMut()) |impl| {
             impl.z = inZ;
         } else {
-            const impl = try state.allocator.create(Vector4FloatImpl());
+            const impl = allocator().create(Vector4FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector4FloatImpl(){ .x = 0, .y = 0, .z = inZ, .w = 0 };
             self.inner = @ptrCast(impl);
         }
     }
 
-    pub fn setW(self: *Self, inW: Float, state: *const CubicScriptState) Allocator.Error!void {
+    pub fn setW(self: *Self, inW: Float) void {
         if (self.asImplMut()) |impl| {
             impl.w = inW;
         } else {
-            const impl = try state.allocator.create(Vector4FloatImpl());
+            const impl = allocator().create(Vector4FloatImpl()) catch {
+                @panic("Script out of memory");
+            };
             impl.* = Vector4FloatImpl(){ .x = 0, .y = 0, .z = 0, .w = inW };
             self.inner = @ptrCast(impl);
         }
@@ -1018,8 +1060,8 @@ pub fn Vector2IntImpl() type {
         y: Int,
 
         pub usingnamespace GenericVectorInt(@This());
-        pub fn toVec2i(self: @This(), state: *const CubicScriptState) Allocator.Error!Vec2i {
-            return Vec2i.init(self.x, self.y, state);
+        pub fn toVec2i(self: @This()) Vec2i {
+            return Vec2i.init(self.x, self.y);
         }
     };
 }
@@ -1031,8 +1073,8 @@ pub fn Vector3IntImpl() type {
         z: Int,
 
         pub usingnamespace GenericVectorInt(@This());
-        pub fn toVec3i(self: @This(), state: *const CubicScriptState) Allocator.Error!Vec3i {
-            return Vec3i.init(self.x, self.y, self.z, state);
+        pub fn toVec3i(self: @This()) Vec3i {
+            return Vec3i.init(self.x, self.y, self.z);
         }
     };
 }
@@ -1045,8 +1087,8 @@ pub fn Vector4IntImpl() type {
         w: Int,
 
         pub usingnamespace GenericVectorInt(@This());
-        pub fn toVec4i(self: @This(), state: *const CubicScriptState) Allocator.Error!Vec4i {
-            return Vec4i.init(self.x, self.y, self.z, self.w, state);
+        pub fn toVec4i(self: @This()) Vec4i {
+            return Vec4i.init(self.x, self.y, self.z, self.w);
         }
     };
 }
@@ -1057,8 +1099,8 @@ pub fn Vector2FloatImpl() type {
         y: Float,
 
         pub usingnamespace GenericVectorFloat(@This());
-        pub fn toVec2f(self: @This(), state: *const CubicScriptState) Allocator.Error!Vec2i {
-            return Vec2f.init(self.x, self.y, state);
+        pub fn toVec2f(self: @This()) Vec2i {
+            return Vec2f.init(self.x, self.y);
         }
     };
 }
@@ -1070,8 +1112,8 @@ pub fn Vector3FloatImpl() type {
         z: Float,
 
         pub usingnamespace GenericVectorFloat(@This());
-        pub fn toVec3f(self: @This(), state: *const CubicScriptState) Allocator.Error!Vec3i {
-            return Vec3f.init(self.x, self.y, self.z, state);
+        pub fn toVec3f(self: @This()) Vec3i {
+            return Vec3f.init(self.x, self.y, self.z);
         }
     };
 }
@@ -1084,18 +1126,16 @@ pub fn Vector4FloatImpl() type {
         w: Float,
 
         pub usingnamespace GenericVectorFloat(@This());
-        pub fn toVec4f(self: @This(), state: *const CubicScriptState) Allocator.Error!Vec4i {
-            return Vec4f.init(self.x, self.y, self.z, self.w, state);
+        pub fn toVec4f(self: @This()) Vec4i {
+            return Vec4f.init(self.x, self.y, self.z, self.w);
         }
     };
 }
 
 test "Vec2i" {
-    var state = try CubicScriptState.init(std.testing.allocator, null);
-    defer state.deinit();
     {
         var v = Vec2i{};
-        defer v.deinit(state);
+        defer v.deinit();
 
         try expect(v.x() == 0);
         try expect(v.y() == 0);
@@ -1105,15 +1145,15 @@ test "Vec2i" {
         try expect(result.@"0".y == 0);
         try expect(result.@"1" == false);
 
-        var vClone = try v.clone(state);
-        defer vClone.deinit(state);
+        var vClone = v.clone();
+        defer vClone.deinit();
 
         try expect(vClone.x() == 0);
         try expect(vClone.y() == 0);
     }
     {
-        var v = try Vec2i.init(1, 1, state);
-        defer v.deinit(state);
+        var v = Vec2i.init(1, 1);
+        defer v.deinit();
 
         try expect(v.x() == 1);
         try expect(v.y() == 1);
@@ -1123,15 +1163,15 @@ test "Vec2i" {
         try expect(result.@"0".y == 2);
         try expect(result.@"1" == false);
 
-        var vClone = try v.clone(state);
-        defer vClone.deinit(state);
+        var vClone = v.clone();
+        defer vClone.deinit();
 
         try expect(vClone.x() == 1);
         try expect(vClone.y() == 1);
     }
     {
-        var v = try Vec2i.init(MAX_INT, MIN_INT, state);
-        defer v.deinit(state);
+        var v = Vec2i.init(MAX_INT, MIN_INT);
+        defer v.deinit();
 
         try expect(v.x() == MAX_INT);
         try expect(v.y() == MIN_INT);
@@ -1141,15 +1181,15 @@ test "Vec2i" {
         try expect(result.@"0".y == MIN_INT + 1);
         try expect(result.@"1" == true);
 
-        var vClone = try v.clone(state);
-        defer vClone.deinit(state);
+        var vClone = v.clone();
+        defer vClone.deinit();
 
         try expect(vClone.x() == MAX_INT);
         try expect(vClone.y() == MIN_INT);
     }
     {
-        var v = try Vec2i.init(MAX_INT, MIN_INT, state);
-        defer v.deinit(state);
+        var v = Vec2i.init(MAX_INT, MIN_INT);
+        defer v.deinit();
 
         try expect(v.x() == MAX_INT);
         try expect(v.y() == MIN_INT);
