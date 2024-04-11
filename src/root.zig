@@ -39,7 +39,7 @@ pub const Option = @import("types/option.zig").Option;
 
 pub const vector_types = @import("types/vector.zig");
 
-pub const ValueTag = enum(c_int) { // Reasonable default enum size for C
+pub const ValueTag = enum(c_int) {
     None = 0,
     Bool = 1,
     Int = 2,
@@ -61,6 +61,10 @@ pub const ValueTag = enum(c_int) { // Reasonable default enum size for C
     Option = 18,
     Result = 19,
     Class = 20,
+
+    pub fn asUsize(self: @This()) usize {
+        return @intCast(@intFromEnum(self));
+    }
 };
 
 /// Untagged union representing all primitive value types and classes.
