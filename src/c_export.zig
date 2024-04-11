@@ -8,10 +8,7 @@ const Allocator = std.mem.Allocator;
 const ScriptContext = CubicScriptState.ScriptContext;
 const global_allocator = @import("state/global_allocator.zig");
 
-export fn cubs_state_init(
-    contextPtr: ?*anyopaque,
-    contextVTable: ?*const ScriptContext.VTable,
-) callconv(.C) ?*CubicScriptState {
+export fn cubs_state_init(contextPtr: ?*anyopaque, contextVTable: ?*const ScriptContext.VTable) callconv(.C) ?*CubicScriptState {
     const context = blk: {
         if (contextPtr) |validContext| {
             assert(contextVTable != null);
@@ -83,18 +80,3 @@ export fn cubs_string_c_str(inString: *const String) callconv(.C) [*c]const u8 {
 }
 
 // Utility stuff
-
-const ScriptGeneralPurposeAllocator = struct {
-    var allocator: Allocator = undefined;
-    var once = std.once(@This().assignFunc);
-
-    fn assignFunc() void {
-        // Lives for the entire duration of the program, but is only created once.
-        // Cannot just make the GPA on the stack, as that would be invalid memory.
-        var gpa = std.heap.c_allocator.create(std.heap.GeneralPurposeAllocator(.{})) catch {
-            @panic("Failed to create script general purpose allocator instance");
-        };
-        gpa.* = .{};
-        allocator = gpa.allocator();
-    }
-};
