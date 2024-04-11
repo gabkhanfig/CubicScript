@@ -1,10 +1,8 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 const expect = std.testing.expect;
 const AtomicRefCount = @import("atomic_ref_count.zig").AtomicRefCount;
 const root = @import("../root.zig");
-const Int = i64;
 const ValueTag = root.ValueTag;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
 const allocator = @import("../state/global_allocator.zig").allocator;
@@ -309,7 +307,7 @@ pub const String = extern struct {
         }
     }
 
-    pub fn fromInt(num: Int) Self {
+    pub fn fromInt(num: i64) Self {
         if (num == 0) {
             return Self.initSlice("0"); // TODO can the 0 string become a global?
         }
@@ -1026,7 +1024,7 @@ test "String from int" {
         try expect(s.eqlSlice("500"));
     }
     {
-        var s = String.fromInt(std.math.maxInt(Int));
+        var s = String.fromInt(std.math.maxInt(i64));
         defer s.deinit();
         try expect(s.eqlSlice("9223372036854775807"));
     }
@@ -1051,7 +1049,7 @@ test "String from int" {
         try expect(s.eqlSlice("-500"));
     }
     {
-        var s = String.fromInt(std.math.minInt(Int));
+        var s = String.fromInt(std.math.minInt(i64));
         defer s.deinit();
         try expect(s.eqlSlice("-9223372036854775808"));
     }
