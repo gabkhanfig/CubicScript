@@ -71,7 +71,7 @@ export fn cubs_string_deinit(inString: *String) callconv(.C) void {
     inString.deinit();
 }
 
-export fn cubs_string_len(inString: *const String) callconv(.C) i64 {
+export fn cubs_string_len(inString: *const String) callconv(.C) usize {
     return inString.len();
 }
 

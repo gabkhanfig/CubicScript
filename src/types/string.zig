@@ -19,7 +19,9 @@ pub const String = extern struct {
     inner: ?*anyopaque = null,
 
     pub fn initSlice(slice: []const u8) Self {
-        assert(slice.len != 0);
+        if (slice.len == 0) {
+            return .{};
+        }
 
         const inner = Inner.initSlice(slice);
         return Self{ .inner = @ptrCast(inner) };
@@ -43,11 +45,11 @@ pub const String = extern struct {
         }
     }
 
-    pub fn len(self: *const Self) Int {
+    pub fn len(self: *const Self) usize {
         if (self.inner == null) {
             return 0;
         } else {
-            return @intCast(self.asInner().lenAndFlag & ~Inner.FLAG_BIT);
+            return self.asInner().lenAndFlag & ~Inner.FLAG_BIT;
         }
     }
 
@@ -206,7 +208,7 @@ pub const String = extern struct {
         return string_simd_x86.cubs_string_compute_hash_simd(@ptrCast(slice.ptr), @intCast(slice.len));
     }
 
-    pub fn find(self: *const Self, literal: [:0]const u8) ?Int {
+    pub fn find(self: *const Self, literal: []const u8) ?usize {
         if (self.inner == null or literal.len == 0) {
             return null;
         } else {
@@ -214,7 +216,7 @@ pub const String = extern struct {
             if (self.asInner().isSso()) {
                 const index = std.mem.indexOf(u8, selfBuffer, literal);
                 if (index) |i| {
-                    return @intCast(i);
+                    return i;
                 } else {
                     return null;
                 }
@@ -239,7 +241,7 @@ pub const String = extern struct {
         }
     }
 
-    pub fn rfind(self: *const Self, literal: [:0]const u8) ?usize {
+    pub fn rfind(self: *const Self, literal: []const u8) ?usize {
         if (self.inner == null or literal.len == 0) {
             return null;
         } else {
@@ -268,14 +270,35 @@ pub const String = extern struct {
         }
     }
 
-    // append
+    pub fn append(self: *Self, literal: []const u8) void {
+        if (self.inner == null) {
+            self.* = String.initSlice(literal);
+            return;
+        }
+
+        self.makeSelfUniqueReference();
+        const inner = self.asInnerMut();
+        inner.growCapacity(literal.len);
+        const bufCopyStart: [*]u8 = blk: {
+            if (inner.isSso()) {
+                break :blk @ptrCast(&inner.rep.sso.chars[self.len()]);
+            } else {
+                break :blk @ptrCast(&inner.rep.heap.data[self.len()]);
+            }
+        };
+        for (0..literal.len) |i| {
+            bufCopyStart[i] = literal[i];
+        }
+        inner.setLen(inner.len() + literal.len);
+        assert(bufCopyStart[literal.len] == 0); // ensure null terminator
+    }
+
     // substr
     // split
     // insert
     // remove
     // toInt
     // toFloat
-    // fromInt
     // fromFloat
 
     pub fn fromBool(boolean: bool) Self {
@@ -328,12 +351,30 @@ pub const String = extern struct {
         return @ptrCast(@alignCast(self.inner));
     }
 
+    fn makeSelfUniqueReference(self: *Self) void {
+        if (self.inner == null) {
+            return;
+        }
+
+        const oldInner = self.asInnerMut();
+        self.* = String.initSlice(self.toSlice());
+        oldInner.decrementRefCount();
+    }
+
     const Inner = extern struct {
         const FLAG_BIT: usize = @shlExact(1, 63);
 
         refCount: AtomicRefCount = AtomicRefCount{},
         lenAndFlag: usize,
         rep: StringRep = undefined,
+
+        fn len(self: Inner) usize {
+            return self.lenAndFlag & ~FLAG_BIT;
+        }
+
+        fn setLen(self: *Inner, newLen: usize) void {
+            self.lenAndFlag = newLen | (self.lenAndFlag & Inner.FLAG_BIT);
+        }
 
         fn incrementRefCount(self: *Inner) void {
             self.refCount.addRef();
@@ -363,7 +404,7 @@ pub const String = extern struct {
 
             self.* = Inner{ .lenAndFlag = slice.len };
             self.refCount.addRef();
-            self.ensureTotalCapacity(slice.len + 1);
+            self.ensureTotalCapacity(slice.len + 1); // Will set the heap flag if necessary
 
             if (self.isSso()) {
                 for (0..slice.len) |i| {
@@ -401,6 +442,50 @@ pub const String = extern struct {
             self.rep.heap.allocationSize = mallocCapacity;
             self.lenAndFlag |= FLAG_BIT;
             assert(!self.isSso());
+        }
+
+        /// Increases the capacity of the string, accounting for the null terminator.
+        fn growCapacity(self: *Inner, increaseBy: usize) void {
+            assert(self.refCount.count.load(std.builtin.AtomicOrder.acquire) == 1); // MUST be a ref count of 1.
+            if (self.isSso()) {
+                if ((self.lenAndFlag + increaseBy) <= SsoRep.MAX_LEN) {
+                    return;
+                }
+
+                var mallocCapacity = self.lenAndFlag + increaseBy + 1; // null terminator
+                const remainder = @mod(mallocCapacity, 64);
+                if (remainder != 0) {
+                    mallocCapacity = mallocCapacity + (64 - remainder);
+                }
+                const newSlice: []align(64) u8 = allocator().alignedAlloc(u8, 64, mallocCapacity) catch {
+                    @panic("Script out of memory");
+                };
+                @memset(newSlice, 0);
+                @memcpy(@as([*]u8, @ptrCast(&newSlice.ptr[0])), self.rep.sso.chars[0..self.lenAndFlag]);
+                self.rep.heap.data = @ptrCast(newSlice.ptr);
+                self.rep.heap.allocationSize = mallocCapacity;
+                self.lenAndFlag |= Inner.FLAG_BIT;
+            } else {
+                if ((self.len() + increaseBy + 1) <= self.rep.heap.allocationSize) {
+                    return;
+                }
+
+                var mallocCapacity = self.len() + increaseBy + 1; // null terminator
+                const remainder = @mod(mallocCapacity, 64);
+                if (remainder != 0) {
+                    mallocCapacity = mallocCapacity + (64 - remainder);
+                }
+                const newSlice: []align(64) u8 = allocator().alignedAlloc(u8, 64, mallocCapacity) catch {
+                    @panic("Script out of memory");
+                };
+                @memset(newSlice, 0);
+                @memcpy(@as([*]u8, @ptrCast(&newSlice.ptr[0])), self.rep.heap.data[0..self.len()]);
+
+                allocator().free(self.rep.heap.data[0..self.rep.heap.allocationSize]);
+
+                self.rep.heap.data = @ptrCast(newSlice.ptr);
+                self.rep.heap.allocationSize = mallocCapacity;
+            }
         }
 
         const StringRep = extern union {
@@ -1064,4 +1149,53 @@ test "String compare" {
 
     try expect(helloWorld1.cmp(helloWorldLong1) == .Greater);
     try expect(helloWorldLong1.cmp(helloWorld1) == .Less);
+}
+
+test "String append" {
+    { // Empty string append sso
+        var s = String{};
+        defer s.deinit();
+
+        s.append("hello world!");
+        try expect(s.len() == 12);
+        try expect(s.eqlSlice("hello world!"));
+    }
+    { // Empty string append heap
+        var s = String{};
+        defer s.deinit();
+
+        s.append("hello to this glorious world!");
+        try expect(s.len() == 29);
+        try expect(s.eqlSlice("hello to this glorious world!"));
+    }
+    { // String with data append sso
+        var s = String.initSlice("erm");
+        defer s.deinit();
+
+        s.append(" tuna...");
+        try expect(s.len() == 11);
+        try expect(s.eqlSlice("erm tuna..."));
+    }
+    { // String that is sso append to heap
+        var s = String.initSlice("erm");
+        defer s.deinit();
+        s.append(" what da tuna good sir...");
+        try expect(s.len() == 28);
+        try expect(s.eqlSlice("erm what da tuna good sir..."));
+    }
+    { // String that is heap append heap
+        var s = String.initSlice("hello? is anyone there??");
+        defer s.deinit();
+
+        s.append("nuh uh!");
+        try expect(s.len() == 31);
+        try expect(s.eqlSlice("hello? is anyone there??nuh uh!"));
+    }
+    { // heap extra grow
+        var s = String.initSlice("hello? is anyone there??");
+        defer s.deinit();
+        s.append(" NO! I will never ever ever ever ever ever ever ever ever be here... I am a mysterious... slanger... aaaaaaaaaaa");
+        try expect(s.len() == 136);
+        try expect(s.eqlSlice("hello? is anyone there?? NO! I will never ever ever ever ever ever ever ever ever be here... I am a mysterious... slanger... aaaaaaaaaaa"));
+    }
 }
