@@ -37,6 +37,8 @@ pub const Vec4f = vector_types.Vec4f;
 
 pub const Option = @import("types/option.zig").Option;
 
+pub const Result = @import("types/result.zig").Result;
+
 pub const vector_types = @import("types/vector.zig");
 
 pub const ValueTag = enum(c_int) {

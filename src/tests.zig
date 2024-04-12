@@ -12,4 +12,5 @@ comptime {
     _ = @import("state/Bytecode.zig");
     _ = @import("state/sync_queue.zig");
     _ = @import("state/global_allocator.zig");
+    _ = @import("types/result.zig");
 }
