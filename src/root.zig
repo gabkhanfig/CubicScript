@@ -41,7 +41,7 @@ pub const Result = @import("types/result.zig").Result;
 
 pub const vector_types = @import("types/vector.zig");
 
-pub const ValueTag = enum(c_int) {
+pub const ValueTag = enum(u8) {
     None = 0,
     Bool = 1,
     Int = 2,
@@ -50,22 +50,23 @@ pub const ValueTag = enum(c_int) {
     Array = 5,
     Map = 6,
     Set = 7,
-    Vec2i = 8,
-    Vec3i = 9,
-    Vec4i = 10,
-    Vec2f = 11,
-    Vec3f = 12,
-    Vec4f = 13,
-    Mat4f = 14,
-    ConstRef = 15,
-    MutRef = 16,
-    Shared = 17,
-    Option = 18,
-    Result = 19,
-    Class = 20,
+    Option,
+    Result,
+    Class,
+    ConstRef,
+    MutRef,
+    Shared,
+    Vec2i,
+    Vec3i,
+    Vec4i,
+    Vec2f,
+    Vec3f,
+    Vec4f,
+    Mat4f,
+    // TODO function pointer
 
     pub fn asUsize(self: @This()) usize {
-        return @intCast(@intFromEnum(self));
+        return @intFromEnum(self);
     }
 };
 
@@ -79,6 +80,8 @@ pub const RawValue = extern union {
     array: Array,
     map: Map,
     set: Set,
+    option: Option,
+    result: Result,
     vec2i: Vec2i,
     vec3i: Vec3i,
     vec4i: Vec4i,
@@ -102,6 +105,12 @@ pub const RawValue = extern union {
             },
             .Set => {
                 self.set.deinit();
+            },
+            .Option => {
+                self.option.deinit();
+            },
+            .Result => {
+                self.result.deinit();
             },
             .Vec2i => {
                 self.vec2i.deinit();
