@@ -128,6 +128,25 @@ pub const RawValue = extern union {
             },
         }
     }
+
+    /// Makes a unique clone of the self raw value, and the tag.
+    /// Performs the necessary allocations for whatever the type is.
+    pub fn clone(self: *const RawValue, tag: ValueTag) RawValue {
+        switch (tag) {
+            .Bool, .Int, .Float => {
+                return self.*;
+            },
+            .String => {
+                return RawValue{ .string = self.string.clone() };
+            },
+            .Array => {
+                return RawValue{ .array = self.array.clone() };
+            },
+            else => {
+                @panic("Unsupported");
+            },
+        }
+    }
 };
 
 /// Compatible with C

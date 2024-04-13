@@ -34,40 +34,11 @@ pub const Array = extern struct {
 
         copy.ensureTotalCapacity(@intCast(slice.len));
 
-        switch (self.tag()) {
-            .Bool => {
-                for (slice) |value| {
-                    var pushValue = RawValue{ .boolean = value.boolean };
-                    copy.add(&pushValue, ValueTag.Bool);
-                }
-            },
-            .Int => {
-                for (slice) |value| {
-                    var pushValue = RawValue{ .int = value.int };
-                    copy.add(&pushValue, ValueTag.Int);
-                }
-            },
-            .Float => {
-                for (slice) |value| {
-                    var pushValue = RawValue{ .float = value.float };
-                    copy.add(&pushValue, ValueTag.Float);
-                }
-            },
-            .String => {
-                for (slice) |value| {
-                    var pushValue = RawValue{ .string = value.string.clone() };
-                    copy.add(&pushValue, ValueTag.String);
-                }
-            },
-            .Array => {
-                for (slice) |value| {
-                    var pushValue = RawValue{ .array = value.array.clone() };
-                    copy.add(&pushValue, ValueTag.Array);
-                }
-            },
-            else => {
-                @panic("Unsupported");
-            },
+        const rawValues = self.asSlice();
+        const valueTag = self.tag();
+        for (rawValues) |rawValue| {
+            var pushValue = rawValue.clone(valueTag);
+            copy.add(&pushValue, valueTag);
         }
 
         return copy;
@@ -78,24 +49,10 @@ pub const Array = extern struct {
             return;
         }
         // Here, there are actually values.
-
-        switch (self.tag()) {
-            .Bool, .Int, .Float => {},
-            .String => {
-                const strings = self.asSliceMut();
-                for (0..strings.len) |i| { // use indexing to get the mutable reference
-                    strings[i].string.deinit();
-                }
-            },
-            .Array => {
-                const arrays = self.asSliceMut();
-                for (0..arrays.len) |i| { // use indexing to get the mutable reference
-                    arrays[i].array.deinit();
-                }
-            },
-            else => {
-                @panic("Unsupported");
-            },
+        const rawValues = self.asSliceMut();
+        const valueTag = self.tag();
+        for (rawValues) |*rawValue| {
+            rawValue.deinit(valueTag);
         }
         const allocation = self.getFullAllocation();
         allocator().free(allocation);
