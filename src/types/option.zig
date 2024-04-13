@@ -78,7 +78,7 @@ test "null" {
 }
 
 test "not null" {
-    var opt = Option.init(TaggedValue.initString(root.String.initSlice("aa")));
+    var opt = Option.init(TaggedValue.initString(root.String.initSliceUnchecked("aa")));
     defer opt.deinit();
 
     try expect(opt.isNone() == false);
@@ -86,7 +86,7 @@ test "not null" {
 }
 
 test "take" {
-    var opt = Option.init(TaggedValue.initString(root.String.initSlice("aa")));
+    var opt = Option.init(TaggedValue.initString(root.String.initSliceUnchecked("aa")));
     defer opt.deinit();
 
     var take = opt.take();

@@ -524,7 +524,7 @@ test "map find empty" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit();
 
-        var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
+        var findValue = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
         defer findValue.deinit();
 
         try expect(map.size() == 0);
@@ -537,11 +537,11 @@ test "map insert one element" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit();
 
-        var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
+        var addKey = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
         var addValue = TaggedValue.initInt(1);
         map.insert(&addKey, &addValue);
 
-        var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
+        var findValue = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
         defer findValue.deinit();
 
         try expect(map.size() == 1);
@@ -564,11 +564,11 @@ test "map erase one element" {
         var map = Map.init(ValueTag.String, ValueTag.Int);
         defer map.deinit();
 
-        var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
+        var addKey = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
         var addValue = TaggedValue.initInt(1);
         map.insert(&addKey, &addValue);
 
-        var eraseValue = TaggedValue.initString(root.String.initSlice("hello world!"));
+        var eraseValue = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
         defer eraseValue.deinit();
 
         try expect(map.erase(eraseValue));

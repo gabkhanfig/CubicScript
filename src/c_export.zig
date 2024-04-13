@@ -47,9 +47,10 @@ export fn cubs_set_allocator(allocatorPtr: ?*anyopaque, allocatorVTable: ?*const
     } });
 }
 
-export fn cubs_string_init_slice(buffer: [*c]const u8, length: usize) callconv(.C) String {
+export fn cubs_string_init_slice(outString: *String, buffer: [*c]const u8, length: usize) bool {
     if (buffer == null) {
-        return String{};
+        outString.* = String{};
+        return true;
     }
     if (runtime_safety) { // evalutated at compile time
         for (0..length) |i| {
@@ -60,7 +61,19 @@ export fn cubs_string_init_slice(buffer: [*c]const u8, length: usize) callconv(.
             }
         }
     }
-    return String.initSlice(buffer[0..length]);
+    if (String.initSlice(buffer[0..length])) |string| {
+        outString.* = string;
+        return true;
+    } else |_| {
+        return false;
+    }
+}
+
+export fn cubs_string_init_slice_unchecked(buffer: [*c]const u8, length: usize) callconv(.C) String {
+    if (buffer == null) {
+        return String{};
+    }
+    return String.initSliceUnchecked(buffer[0..length]);
 }
 
 export fn cubs_string_clone(inString: *const String) callconv(.C) String {

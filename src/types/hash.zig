@@ -165,9 +165,9 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = root.String.initSlice("hello world!") };
+        var value1 = RawValue{ .string = root.String.initSliceUnchecked("hello world!") };
         defer value1.string.deinit();
-        var value2 = RawValue{ .string = root.String.initSlice("hello world!") };
+        var value2 = RawValue{ .string = root.String.initSliceUnchecked("hello world!") };
         defer value2.string.deinit();
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
@@ -176,9 +176,9 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!") };
+        var value1 = RawValue{ .string = root.String.initSliceUnchecked("hello to this truly wonderful and amazing world holy moly canoly!") };
         defer value1.string.deinit();
-        var value2 = RawValue{ .string = root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!") };
+        var value2 = RawValue{ .string = root.String.initSliceUnchecked("hello to this truly wonderful and amazing world holy moly canoly!") };
         defer value2.string.deinit();
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);
@@ -187,9 +187,9 @@ test "hash string" {
         try expect(h1 == h2);
     }
     {
-        var value1 = RawValue{ .string = root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly !") };
+        var value1 = RawValue{ .string = root.String.initSliceUnchecked("hello to this truly wonderful and amazing world holy moly canoly !") };
         defer value1.string.deinit();
-        var value2 = RawValue{ .string = root.String.initSlice("hello to this truly wonderful and amazing world holy moly canoly!") };
+        var value2 = RawValue{ .string = root.String.initSliceUnchecked("hello to this truly wonderful and amazing world holy moly canoly!") };
         defer value2.string.deinit();
 
         const h1 = computeHash(&value1, ValueTag.String, TEST_SEED_VALUE);

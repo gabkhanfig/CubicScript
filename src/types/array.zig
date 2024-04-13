@@ -411,7 +411,7 @@ test "Array string sanity" {
         try expect(false);
     } else |_| {}
 
-    var pushValue = RawValue{ .string = root.String.initSlice("hello world!") };
+    var pushValue = RawValue{ .string = root.String.initSliceUnchecked("hello world!") };
     arr.add(&pushValue, ValueTag.String);
 
     if (arr.at(0)) |value| {
@@ -490,7 +490,7 @@ const TestCreateArray = struct {
                     const slice = std.fmt.allocPrint(std.testing.allocator, "{}", .{i}) catch unreachable;
                     defer std.testing.allocator.free(slice);
                     var pushValue = RawValue{
-                        .string = root.String.initSlice(slice),
+                        .string = root.String.initSliceUnchecked(slice),
                     };
                     arr.add(&pushValue, tag);
                 }

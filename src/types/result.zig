@@ -149,21 +149,21 @@ test "Result ok int" {
 
 test "Result ok string" {
     { // destroy with deinit
-        var result = Result.initOk(TaggedValue.initString(root.String.initSlice("hello")));
+        var result = Result.initOk(TaggedValue.initString(root.String.initSliceUnchecked("hello")));
         defer result.deinit();
 
         try expect(result.isOk());
         try expect(result.tag() == .String);
 
         try expect(result.getOk().string.eqlSlice("hello"));
-        result.getOkMut().string.append(" world!");
+        result.getOkMut().string.appendUnchecked(" world!");
         try expect(result.getOk().string.eqlSlice("hello world!"));
     }
     { // take
-        var result = Result.initOk(TaggedValue.initString(root.String.initSlice("hello")));
+        var result = Result.initOk(TaggedValue.initString(root.String.initSliceUnchecked("hello")));
         defer result.deinit();
 
-        result.getOkMut().string.append(" world!");
+        result.getOkMut().string.appendUnchecked(" world!");
 
         var take = result.takeOk();
         defer take.deinit();
@@ -172,9 +172,9 @@ test "Result ok string" {
         try expect(take.value.string.eqlSlice("hello world!"));
     }
     { // take without calling deinit (safe)
-        var result = Result.initOk(TaggedValue.initString(root.String.initSlice("hello")));
+        var result = Result.initOk(TaggedValue.initString(root.String.initSliceUnchecked("hello")));
 
-        result.getOkMut().string.append(" world!");
+        result.getOkMut().string.appendUnchecked(" world!");
 
         var take = result.takeOk();
         defer take.deinit();
@@ -223,21 +223,21 @@ test "Result err int" {
 
 test "Result err string" {
     { // destroy with deinit
-        var result = Result.initErr(TaggedValue.initString(root.String.initSlice("hello")));
+        var result = Result.initErr(TaggedValue.initString(root.String.initSliceUnchecked("hello")));
         defer result.deinit();
 
         try expect(result.isErr());
         try expect(result.tag() == .String);
 
         try expect(result.getErr().string.eqlSlice("hello"));
-        result.getErrMut().string.append(" world!");
+        result.getErrMut().string.appendUnchecked(" world!");
         try expect(result.getErr().string.eqlSlice("hello world!"));
     }
     { // take
-        var result = Result.initErr(TaggedValue.initString(root.String.initSlice("hello")));
+        var result = Result.initErr(TaggedValue.initString(root.String.initSliceUnchecked("hello")));
         defer result.deinit();
 
-        result.getErrMut().string.append(" world!");
+        result.getErrMut().string.appendUnchecked(" world!");
 
         var take = result.takeErr();
         defer take.deinit();
@@ -246,9 +246,9 @@ test "Result err string" {
         try expect(take.value.string.eqlSlice("hello world!"));
     }
     { // take without calling deinit (safe)
-        var result = Result.initErr(TaggedValue.initString(root.String.initSlice("hello")));
+        var result = Result.initErr(TaggedValue.initString(root.String.initSliceUnchecked("hello")));
 
-        result.getErrMut().string.append(" world!");
+        result.getErrMut().string.appendUnchecked(" world!");
 
         var take = result.takeErr();
         defer take.deinit();

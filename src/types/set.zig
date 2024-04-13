@@ -459,7 +459,7 @@ test "set contains empty" {
     var set = Set.init(ValueTag.String);
     defer set.deinit();
 
-    var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
+    var findValue = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
     defer findValue.deinit();
 
     try expect(set.size() == 0);
@@ -470,10 +470,10 @@ test "set insert one element" {
     var set = Set.init(ValueTag.String);
     defer set.deinit();
 
-    var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
+    var addKey = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
     set.insert(&addKey);
 
-    var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
+    var findValue = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
     defer findValue.deinit();
 
     try expect(set.size() == 1);
@@ -484,15 +484,15 @@ test "set erase one element" {
     var set = Set.init(ValueTag.String);
     defer set.deinit();
 
-    var addKey = TaggedValue.initString(root.String.initSlice("hello world!"));
+    var addKey = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
     set.insert(&addKey);
 
-    var eraseValue = TaggedValue.initString(root.String.initSlice("hello world!"));
+    var eraseValue = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
     defer eraseValue.deinit();
 
     try expect(set.erase(eraseValue));
 
-    var findValue = TaggedValue.initString(root.String.initSlice("hello world!"));
+    var findValue = TaggedValue.initString(root.String.initSliceUnchecked("hello world!"));
     defer findValue.deinit();
 
     try expect(set.size() == 0);

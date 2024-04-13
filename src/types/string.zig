@@ -16,12 +16,23 @@ pub const String = extern struct {
     /// TODO does this need to be atomic? It's possible one thread reads while another deinits on the same String reference (not inner reference)?
     inner: ?*anyopaque = null,
 
-    pub fn initSlice(slice: []const u8) Self {
+    /// Will validate that `slice` is utf8, and that no null terminator is found before the end of the slice.
+    pub fn initSlice(slice: []const u8) error{InvalidUtf8}!Self {
         if (slice.len == 0) {
             return .{};
         }
 
-        const inner = Inner.initSlice(slice);
+        const inner = try Inner.initSlice(slice);
+        return Self{ .inner = @ptrCast(inner) };
+    }
+
+    /// Performs no validation on `slice`, meaning it could be invalid utf8 or have an early null terminator.
+    pub fn initSliceUnchecked(slice: []const u8) Self {
+        if (slice.len == 0) {
+            return .{};
+        }
+
+        const inner = Inner.initSlice(slice) catch unreachable;
         return Self{ .inner = @ptrCast(inner) };
     }
 
@@ -268,9 +279,16 @@ pub const String = extern struct {
         }
     }
 
-    pub fn append(self: *Self, literal: []const u8) void {
+    pub fn append(self: *Self, literal: []const u8) error{InvalidUtf8}!void {
+        if (!isValidUtf8(literal)) {
+            return error.InvalidUtf8;
+        }
+        self.appendUnchecked(literal);
+    }
+
+    pub fn appendUnchecked(self: *Self, literal: []const u8) void {
         if (self.inner == null) {
-            self.* = String.initSlice(literal);
+            self.* = String.initSliceUnchecked(literal);
             return;
         }
 
@@ -301,15 +319,15 @@ pub const String = extern struct {
 
     pub fn fromBool(boolean: bool) Self {
         if (boolean) {
-            return Self.initSlice("true");
+            return Self.initSliceUnchecked("true");
         } else {
-            return Self.initSlice("false");
+            return Self.initSliceUnchecked("false");
         }
     }
 
     pub fn fromInt(num: i64) Self {
         if (num == 0) {
-            return Self.initSlice("0"); // TODO can the 0 string become a global?
+            return Self.initSliceUnchecked("0"); // TODO can the 0 string become a global?
         }
 
         var numLocal = num;
@@ -338,7 +356,7 @@ pub const String = extern struct {
         }
 
         const length: usize = maxChars - tempAt;
-        return Self.initSlice(tempNums[tempAt..][0..length]);
+        return Self.initSliceUnchecked(tempNums[tempAt..][0..length]);
     }
 
     fn asInner(self: Self) *const Inner {
@@ -355,7 +373,7 @@ pub const String = extern struct {
         }
 
         const oldInner = self.asInnerMut();
-        self.* = String.initSlice(self.toSlice());
+        self.* = String.initSliceUnchecked(self.toSlice());
         oldInner.decrementRefCount();
     }
 
@@ -395,7 +413,14 @@ pub const String = extern struct {
             return self.lenAndFlag & FLAG_BIT == 0;
         }
 
-        fn initSlice(slice: []const u8) *Inner {
+        fn initSlice(slice: []const u8) error{InvalidUtf8}!*Inner {
+            if (!isValidUtf8(slice)) {
+                return error.InvalidUtf8;
+            }
+            return Inner.initSliceUnchecked(slice);
+        }
+
+        fn initSliceUnchecked(slice: []const u8) *Inner {
             const self = allocator().create(Inner) catch {
                 @panic("Script out of memory");
             };
@@ -523,6 +548,56 @@ pub const String = extern struct {
     };
 };
 
+// can this be SIMD?
+pub fn isValidUtf8(slice: []const u8) bool {
+    const asciiZeroBit: u8 = 0b10000000;
+    const trailingBytesBitmask: u8 = 0b11000000;
+    const trailingBytesCodePoint: u8 = 0b10000000;
+    const twoByteCodePoint: u8 = 0b11000000;
+    const twoByteBitmask: u8 = 0b11100000;
+    const threeByteCodePoint: u8 = 0b11100000;
+    const threeByteBitmask: u8 = 0b11110000;
+    const fourByteCodePoint: u8 = 0b11110000;
+    const fourByteBitmask: u8 = 0b11111000;
+
+    var i: usize = 0;
+    while (i < slice.len) {
+        const c = slice[i];
+        if (c == 0) {
+            return false;
+        } else if (c & asciiZeroBit == 0) {
+            i += 1;
+        } else if (c & twoByteBitmask == twoByteCodePoint) {
+            if (slice[i + 1] & trailingBytesBitmask != trailingBytesCodePoint) {
+                return false;
+            }
+            i += 2;
+        } else if (c & threeByteBitmask == threeByteCodePoint) {
+            if (slice[i + 1] & trailingBytesBitmask != trailingBytesCodePoint) {
+                return false;
+            }
+            if (slice[i + 2] & trailingBytesBitmask != trailingBytesCodePoint) {
+                return false;
+            }
+            i += 3;
+        } else if (c & fourByteBitmask == fourByteCodePoint) {
+            if (slice[i + 1] & trailingBytesBitmask != trailingBytesCodePoint) {
+                return false;
+            }
+            if (slice[i + 2] & trailingBytesBitmask != trailingBytesCodePoint) {
+                return false;
+            }
+            if (slice[i + 3] & trailingBytesBitmask != trailingBytesCodePoint) {
+                return false;
+            }
+            i += 4;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
 test "String default init" {
     const s = String{};
     try expect(s.len() == 0);
@@ -531,14 +606,14 @@ test "String default init" {
 
 test "String from slice" {
     {
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.len() == 12);
         try expect(std.mem.eql(u8, s.toSlice(), "hello world!"));
     }
     {
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.len() == 29);
@@ -548,7 +623,7 @@ test "String from slice" {
 
 test "String clone" {
     {
-        var s1 = String.initSlice("hello world!");
+        var s1 = String.initSliceUnchecked("hello world!");
         defer s1.deinit();
 
         var s2 = s1.clone();
@@ -559,7 +634,7 @@ test "String clone" {
         try expect(std.mem.eql(u8, s2.toSlice(), "hello world!"));
     }
     {
-        var s1 = String.initSlice("hello to this glorious world!");
+        var s1 = String.initSliceUnchecked("hello to this glorious world!");
         defer s1.deinit();
 
         var s2 = s1.clone();
@@ -588,7 +663,7 @@ test "String clone thread safety" {
     };
 
     {
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         const t1 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000 });
@@ -602,7 +677,7 @@ test "String clone thread safety" {
         t4.join();
     }
     {
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         const t1 = try std.Thread.spawn(.{}, TestThreadHandler.makeClonesNTimes, .{ &s, 10000 });
@@ -627,7 +702,7 @@ test "String equal" {
         try expect(s1.eql(s2));
     }
     { // shared reference sso
-        var s1 = String.initSlice("hello world!");
+        var s1 = String.initSliceUnchecked("hello world!");
         defer s1.deinit();
 
         var s2 = s1.clone();
@@ -636,16 +711,16 @@ test "String equal" {
         try expect(s1.eql(s2));
     }
     { // different reference sso
-        var s1 = String.initSlice("hello world!");
+        var s1 = String.initSliceUnchecked("hello world!");
         defer s1.deinit();
 
-        var s2 = String.initSlice("hello world!");
+        var s2 = String.initSliceUnchecked("hello world!");
         defer s2.deinit();
 
         try expect(s1.eql(s2));
     }
     { // shared reference heap
-        var s1 = String.initSlice("hello to this glorious world!");
+        var s1 = String.initSliceUnchecked("hello to this glorious world!");
         defer s1.deinit();
 
         var s2 = s1.clone();
@@ -654,16 +729,16 @@ test "String equal" {
         try expect(s1.eql(s2));
     }
     { // different reference heap
-        var s1 = String.initSlice("hello to this glorious world!");
+        var s1 = String.initSliceUnchecked("hello to this glorious world!");
         defer s1.deinit();
 
-        var s2 = String.initSlice("hello to this glorious world!");
+        var s2 = String.initSliceUnchecked("hello to this glorious world!");
         defer s2.deinit();
 
         try expect(s1.eql(s2));
     }
     { // not equal one null
-        var s1 = String.initSlice("hello world!");
+        var s1 = String.initSliceUnchecked("hello world!");
         defer s1.deinit();
 
         var s2 = String{};
@@ -675,52 +750,52 @@ test "String equal" {
         var s1 = String{};
         defer s1.deinit();
 
-        var s2 = String.initSlice("hello world!");
+        var s2 = String.initSliceUnchecked("hello world!");
         defer s2.deinit();
 
         try expect(!s1.eql(s2));
     }
     { // not equal both sso
-        var s1 = String.initSlice("hello world!");
+        var s1 = String.initSliceUnchecked("hello world!");
         defer s1.deinit();
 
-        var s2 = String.initSlice("hello warld!");
+        var s2 = String.initSliceUnchecked("hello warld!");
         defer s2.deinit();
 
         try expect(!s1.eql(s2));
     }
     { // not equal both sso sanity
-        var s1 = String.initSlice("hello world!");
+        var s1 = String.initSliceUnchecked("hello world!");
         defer s1.deinit();
 
-        var s2 = String.initSlice("hello world! ");
+        var s2 = String.initSliceUnchecked("hello world! ");
         defer s2.deinit();
 
         try expect(!s1.eql(s2));
     }
     { // not equal both heap
-        var s1 = String.initSlice("hello to this glorious world!");
+        var s1 = String.initSliceUnchecked("hello to this glorious world!");
         defer s1.deinit();
 
-        var s2 = String.initSlice("hello to this glarious world!");
+        var s2 = String.initSliceUnchecked("hello to this glarious world!");
         defer s2.deinit();
 
         try expect(!s1.eql(s2));
     }
     { // not equal both heap sanity
-        var s1 = String.initSlice("hello to this glorious world!");
+        var s1 = String.initSliceUnchecked("hello to this glorious world!");
         defer s1.deinit();
 
-        var s2 = String.initSlice("hello to this glorious world! ");
+        var s2 = String.initSliceUnchecked("hello to this glorious world! ");
         defer s2.deinit();
 
         try expect(!s1.eql(s2));
     }
     { // not equal mix
-        var s1 = String.initSlice("hello world!");
+        var s1 = String.initSliceUnchecked("hello world!");
         defer s1.deinit();
 
-        var s2 = String.initSlice("hello to this glorious world! ");
+        var s2 = String.initSliceUnchecked("hello to this glorious world! ");
         defer s2.deinit();
 
         try expect(!s1.eql(s2));
@@ -735,13 +810,13 @@ test "String equal slice" {
         try expect(s.eqlSlice(""));
     }
     { // sso
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.eqlSlice("hello world!"));
     }
     { // heap
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.eqlSlice("hello to this glorious world!"));
@@ -759,28 +834,28 @@ test "String equal slice" {
         try expect(!s.eqlSlice("!"));
     }
     { // not equal sso
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(!s.eqlSlice("hello warld!"));
     }
     { // not equal sso sanity
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(!s.eqlSlice("hello world! "));
     }
     { // not equal heap
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
-        var s2 = String.initSlice("hello to this glarious world!");
+        var s2 = String.initSliceUnchecked("hello to this glarious world!");
         defer s2.deinit();
 
         try expect(!s.eqlSlice("hello to this glarious world!"));
     }
     { // not equal heap sanity
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(!s.eqlSlice("hello to this glorious world! "));
@@ -795,97 +870,97 @@ test "String find" {
         try expect(s.find("") == null);
     }
     { // sso valid, cant find empty
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.find("") == null);
     }
     { // heap valid, cant find empty
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.find("") == null);
     }
     { // sso valid, find at beginning 1 character
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.find("h") == 0);
     }
     { // heap valid, find at beginning 1 character
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.find("h") == 0);
     }
     { // sso valid, find in middle 1 character
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.find("o") == 4);
     }
     { // heap valid, find in middle 1 character
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.find("o") == 4);
     }
     { // sso valid, find at end 1 character
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.find("!") == 11);
     }
     { // heap valid, find at end 1 character
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.find("!") == 28);
     }
     { // sso valid, find at beginning multiple characters
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.find("hel") == 0);
     }
     { // heap valid, find at beginning multiple characters
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.find("hel") == 0);
     }
     { // sso valid, find in middle multiple characters
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.find("o wo") == 4);
     }
     { // heap valid, find in middle multiple characters
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.find("o to") == 4);
     }
     { // sso valid, find at end multiple characters
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.find("ld!") == 9);
     }
     { // heap valid, find at end multiple characters
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.find("ld!") == 26);
     }
     { // sso, find longer null
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.find("hello world! ") == null);
     }
     { // heap, find longer null
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.find("hello to this glorious world! ") == null);
@@ -900,97 +975,97 @@ test "String reverse find" {
         try expect(s.rfind("") == null);
     }
     { // sso valid, cant find empty
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.rfind("") == null);
     }
     { // heap valid, cant find empty
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.rfind("") == null);
     }
     { // sso valid, find at beginning 1 character
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.rfind("h") == 0);
     }
     { // heap valid, find at beginning 1 character
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.rfind("h") == 10);
     }
     { // sso valid, find in middle 1 character
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.rfind("o") == 7);
     }
     { // heap valid, find in middle 1 character
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.rfind("o") == 24);
     }
     { // sso valid, find at end 1 character
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.rfind("!") == 11);
     }
     { // heap valid, find at end 1 character
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.rfind("!") == 28);
     }
     { // sso valid, find at beginning multiple characters
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.rfind("hel") == 0);
     }
     { // heap valid, find at beginning multiple characters
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.rfind("hel") == 0);
     }
     { // sso valid, find in middle multiple characters
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.rfind("o wo") == 4);
     }
     { // heap valid, find in middle multiple characters
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.rfind("o to") == 4);
     }
     { // sso valid, find at end multiple characters
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.rfind("ld!") == 9);
     }
     { // heap valid, find at end multiple characters
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.rfind("ld!") == 26);
     }
     { // sso, find longer null
-        var s = String.initSlice("hello world!");
+        var s = String.initSliceUnchecked("hello world!");
         defer s.deinit();
 
         try expect(s.rfind("hello world! ") == null);
     }
     { // heap, find longer null
-        var s = String.initSlice("hello to this glorious world!");
+        var s = String.initSliceUnchecked("hello to this glorious world!");
         defer s.deinit();
 
         try expect(s.rfind("hello to this glorious world! ") == null);
@@ -1063,44 +1138,44 @@ test "String compare" {
     var emptyClone = empty1.clone();
     defer emptyClone.deinit();
 
-    var helloWorld1 = String.initSlice("hello world!");
+    var helloWorld1 = String.initSliceUnchecked("hello world!");
     defer helloWorld1.deinit();
-    var helloWorld2 = String.initSlice("hello world!");
+    var helloWorld2 = String.initSliceUnchecked("hello world!");
     defer helloWorld2.deinit();
     var helloWorldClone = helloWorld1.clone();
     defer helloWorldClone.deinit();
 
-    var helloWorldAlt1 = String.initSlice("hallo world!");
+    var helloWorldAlt1 = String.initSliceUnchecked("hallo world!");
     defer helloWorldAlt1.deinit();
-    var helloWorldAlt2 = String.initSlice("hallo world!");
+    var helloWorldAlt2 = String.initSliceUnchecked("hallo world!");
     defer helloWorldAlt2.deinit();
     var helloWorldAltClone = helloWorldAlt1.clone();
     defer helloWorldAltClone.deinit();
 
-    var helloWorldSpace1 = String.initSlice("hello world! ");
+    var helloWorldSpace1 = String.initSliceUnchecked("hello world! ");
     defer helloWorldSpace1.deinit();
-    var helloWorldSpace2 = String.initSlice("hello world! ");
+    var helloWorldSpace2 = String.initSliceUnchecked("hello world! ");
     defer helloWorldSpace2.deinit();
     var helloWorldSpaceClone = helloWorldSpace1.clone();
     defer helloWorldSpaceClone.deinit();
 
-    var helloWorldLong1 = String.initSlice("hello to this glorious world!");
+    var helloWorldLong1 = String.initSliceUnchecked("hello to this glorious world!");
     defer helloWorldLong1.deinit();
-    var helloWorldLong2 = String.initSlice("hello to this glorious world!");
+    var helloWorldLong2 = String.initSliceUnchecked("hello to this glorious world!");
     defer helloWorldLong2.deinit();
     var helloWorldLongClone = helloWorldLong1.clone();
     defer helloWorldLongClone.deinit();
 
-    var helloWorldLongAlt1 = String.initSlice("hallo to this glorious world!");
+    var helloWorldLongAlt1 = String.initSliceUnchecked("hallo to this glorious world!");
     defer helloWorldLongAlt1.deinit();
-    var helloWorldLongAlt2 = String.initSlice("hallo to this glorious world!");
+    var helloWorldLongAlt2 = String.initSliceUnchecked("hallo to this glorious world!");
     defer helloWorldLongAlt2.deinit();
     var helloWorldLongAltClone = helloWorldLongAlt1.clone();
     defer helloWorldLongAltClone.deinit();
 
-    var helloWorldLongSpace1 = String.initSlice("hello to this glorious world! ");
+    var helloWorldLongSpace1 = String.initSliceUnchecked("hello to this glorious world! ");
     defer helloWorldLongSpace1.deinit();
-    var helloWorldLongSpace2 = String.initSlice("hello to this glorious world! ");
+    var helloWorldLongSpace2 = String.initSliceUnchecked("hello to this glorious world! ");
     defer helloWorldLongSpace2.deinit();
     var helloWorldLongSpaceClone = helloWorldLongSpace1.clone();
     defer helloWorldLongSpaceClone.deinit();
@@ -1154,7 +1229,7 @@ test "String append" {
         var s = String{};
         defer s.deinit();
 
-        s.append("hello world!");
+        s.appendUnchecked("hello world!");
         try expect(s.len() == 12);
         try expect(s.eqlSlice("hello world!"));
     }
@@ -1162,37 +1237,37 @@ test "String append" {
         var s = String{};
         defer s.deinit();
 
-        s.append("hello to this glorious world!");
+        s.appendUnchecked("hello to this glorious world!");
         try expect(s.len() == 29);
         try expect(s.eqlSlice("hello to this glorious world!"));
     }
     { // String with data append sso
-        var s = String.initSlice("erm");
+        var s = String.initSliceUnchecked("erm");
         defer s.deinit();
 
-        s.append(" tuna...");
+        s.appendUnchecked(" tuna...");
         try expect(s.len() == 11);
         try expect(s.eqlSlice("erm tuna..."));
     }
     { // String that is sso append to heap
-        var s = String.initSlice("erm");
+        var s = String.initSliceUnchecked("erm");
         defer s.deinit();
-        s.append(" what da tuna good sir...");
+        s.appendUnchecked(" what da tuna good sir...");
         try expect(s.len() == 28);
         try expect(s.eqlSlice("erm what da tuna good sir..."));
     }
     { // String that is heap append heap
-        var s = String.initSlice("hello? is anyone there??");
+        var s = String.initSliceUnchecked("hello? is anyone there??");
         defer s.deinit();
 
-        s.append("nuh uh!");
+        s.appendUnchecked("nuh uh!");
         try expect(s.len() == 31);
         try expect(s.eqlSlice("hello? is anyone there??nuh uh!"));
     }
     { // heap extra grow
-        var s = String.initSlice("hello? is anyone there??");
+        var s = String.initSliceUnchecked("hello? is anyone there??");
         defer s.deinit();
-        s.append(" NO! I will never ever ever ever ever ever ever ever ever be here... I am a mysterious... slanger... aaaaaaaaaaa");
+        s.appendUnchecked(" NO! I will never ever ever ever ever ever ever ever ever be here... I am a mysterious... slanger... aaaaaaaaaaa");
         try expect(s.len() == 136);
         try expect(s.eqlSlice("hello? is anyone there?? NO! I will never ever ever ever ever ever ever ever ever be here... I am a mysterious... slanger... aaaaaaaaaaa"));
     }

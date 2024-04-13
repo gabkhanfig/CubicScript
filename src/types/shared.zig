@@ -107,7 +107,7 @@ test "shared init deinit" {
 }
 
 test "shared free memory on deinit" {
-    var shared = Shared.init(TaggedValue.initString(root.String.initSlice("erm...")));
+    var shared = Shared.init(TaggedValue.initString(root.String.initSliceUnchecked("erm...")));
     defer shared.deinit();
 }
 
