@@ -251,7 +251,7 @@ pub const OpCode = enum(u8) {
     /// Check if strings `src1` and `src2` are equal, storing the boolean result in `dst`.
     StringIsEqual,
     /// Compare strings at `src1` and `src2`, storing the ordering as an integer at `dst`.
-    /// The integer can be cast to the enum `root.Ordering` to determine comparison result.
+    /// The integer can be cast to the enum `Ordering` to determine comparison result.
     StringCompare,
     StringFind,
     StringReverseFind,
