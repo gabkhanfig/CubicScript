@@ -38,6 +38,7 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 const RwLock = @import("../types/RwLock.zig");
+const Shared = @import("../types/shared.zig").Shared;
 
 threadlocal var threadLocalSyncQueue: SyncQueues = .{};
 
@@ -78,6 +79,36 @@ pub fn queueScriptRwLockExclusive(lock: *RwLock) void {
     ) catch unreachable;
 }
 
+pub fn queueScriptRwLockShared(lock: *const RwLock) void {
+    ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
+
+    const object = SyncObject{ .object = @ptrCast(@constCast(lock)), .vtable = SCRIPT_RWLOCK_VTABLE, .lockType = .Shared };
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
+        threadLocalSyncQueue.allocator,
+        object,
+    ) catch unreachable;
+}
+
+pub fn queueScriptSharedRefExclusive(sharedRef: *Shared) void {
+    ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
+
+    const object = SyncObject{ .object = @ptrCast(sharedRef), .vtable = SHARED_REF_VTABLE, .lockType = .Exclusive };
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
+        threadLocalSyncQueue.allocator,
+        object,
+    ) catch unreachable;
+}
+
+pub fn queueScriptSharedRefShared(sharedRef: *const Shared) void {
+    ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
+
+    const object = SyncObject{ .object = @ptrCast(@constCast(sharedRef)), .vtable = SHARED_REF_VTABLE, .lockType = .Exclusive };
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
+        threadLocalSyncQueue.allocator,
+        object,
+    ) catch unreachable;
+}
+
 fn ensureTotalCapacityThreadLocal(minCapacity: usize) void {
     if (minCapacity >= threadLocalSyncQueue.queues.len) {
         const newQueues = threadLocalSyncQueue.allocator.alloc(SyncQueue, minCapacity) catch unreachable;
@@ -108,26 +139,12 @@ const SyncQueue = struct {
 
     fn acquire(self: *Self) void {
         for (self.objects.items) |object| {
-            if (std.debug.runtime_safety) {
-                if (object.vtable.isMarkLocked) |isMarkLocked| {
-                    if (isMarkLocked(object.object)) {
-                        @panic("Cannot re-enter lock!");
-                    }
-                }
-            }
-
             switch (object.lockType) {
                 .Exclusive => {
                     object.vtable.lockExclusive(object.object);
-                    if (object.vtable.markLocked) |markLocked| {
-                        markLocked(object.object);
-                    }
                 },
                 .Shared => {
                     object.vtable.lockShared.?(object.object);
-                    if (object.vtable.markLocked) |markLocked| {
-                        markLocked(object.object);
-                    }
                 },
             }
         }
@@ -137,32 +154,17 @@ const SyncQueue = struct {
         var i: usize = 0; // Counts the amount of locks acquired.
         var didAcquireAll: bool = true;
         for (self.objects.items) |object| {
-            if (std.debug.runtime_safety) {
-                if (object.vtable.isMarkLocked) |isMarkLocked| {
-                    if (isMarkLocked(object.object)) {
-                        @panic("Cannot re-enter lock!");
-                    }
-                }
-            }
             switch (object.lockType) {
                 .Exclusive => {
                     if (!object.vtable.tryLockExclusive(object.object)) {
                         didAcquireAll = false;
                         break;
-                    } else {
-                        if (object.vtable.markLocked) |markLocked| {
-                            markLocked(object.object);
-                        }
                     }
                 },
                 .Shared => {
                     if (!object.vtable.tryLockShared.?(object.object)) {
                         didAcquireAll = false;
                         break;
-                    } else {
-                        if (object.vtable.markLocked) |markLocked| {
-                            markLocked(object.object);
-                        }
                     }
                 },
             }
@@ -178,15 +180,9 @@ const SyncQueue = struct {
                 switch (object.lockType) {
                     .Exclusive => {
                         object.vtable.unlockExclusive(object.object);
-                        if (object.vtable.markUnlocked) |markUnlocked| {
-                            markUnlocked(object.object);
-                        }
                     },
                     .Shared => {
                         object.vtable.unlockShared.?(object.object);
-                        if (object.vtable.markUnlocked) |markUnlocked| {
-                            markUnlocked(object.object);
-                        }
                     },
                 }
             }
@@ -262,9 +258,9 @@ pub const VTable = extern struct {
     lockShared: ?*const fn (*anyopaque) callconv(.C) void = null,
     tryLockShared: ?*const fn (*anyopaque) callconv(.C) bool = null,
     unlockShared: ?*const fn (*anyopaque) callconv(.C) void = null,
-    isMarkLocked: ?*const fn (*const anyopaque) callconv(.C) bool = null,
-    markLocked: ?*const fn (*anyopaque) callconv(.C) void = null,
-    markUnlocked: ?*const fn (*anyopaque) callconv(.C) void = null,
+    // isMarkLocked: ?*const fn (*const anyopaque) callconv(.C) bool = null,
+    // markLocked: ?*const fn (*anyopaque) callconv(.C) void = null,
+    // markUnlocked: ?*const fn (*anyopaque) callconv(.C) void = null,
 };
 
 const SCRIPT_RWLOCK_VTABLE: *const VTable = &.{
@@ -274,6 +270,15 @@ const SCRIPT_RWLOCK_VTABLE: *const VTable = &.{
     .lockShared = @ptrCast(&RwLock.read),
     .tryLockShared = @ptrCast(&RwLock.tryRead),
     .unlockShared = @ptrCast(&RwLock.unlockRead),
+};
+
+const SHARED_REF_VTABLE: *const VTable = &.{
+    .lockExclusive = @ptrCast(&Shared.write),
+    .tryLockExclusive = @ptrCast(&Shared.tryWrite),
+    .unlockExclusive = @ptrCast(&Shared.unlockWrite),
+    .lockShared = @ptrCast(&Shared.read),
+    .tryLockShared = @ptrCast(&Shared.tryRead),
+    .unlockShared = @ptrCast(&Shared.unlockRead),
 };
 
 const std_locking_functions = struct {

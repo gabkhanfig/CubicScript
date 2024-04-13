@@ -4,42 +4,31 @@ const expect = std.testing.expect;
 const Allocator = std.mem.Allocator;
 const global_allocator = @import("state/global_allocator.zig");
 
-pub const allocator = global_allocator.allocator;
-pub const setAllocator = global_allocator.setAllocator;
-
 comptime {
     _ = @import("c_export.zig");
 }
 
 pub const CubicScriptState = @import("state/CubicScriptState.zig");
-
-pub const Bytecode = @import("state/Bytecode.zig");
-
+pub const allocator = global_allocator.allocator;
+pub const setAllocator = global_allocator.setAllocator;
+pub const sync_queue = @import("state/sync_queue.zig");
 pub const String = @import("types/string.zig").String;
-
 pub const Array = @import("types/array.zig").Array;
-
 pub const Map = @import("types/map.zig").Map;
-
 pub const Set = @import("types/set.zig").Set;
-
+pub const Option = @import("types/option.zig").Option;
+pub const Result = @import("types/result.zig").Result;
+pub const Shared = @import("types/shared.zig").Shared;
 pub const Vec2i = vector_types.Vec2i;
-
 pub const Vec3i = vector_types.Vec3i;
-
 pub const Vec4i = vector_types.Vec4i;
-
 pub const Vec2f = vector_types.Vec2f;
-
 pub const Vec3f = vector_types.Vec3f;
-
 pub const Vec4f = vector_types.Vec4f;
 
-pub const Option = @import("types/option.zig").Option;
+const vector_types = @import("types/vector.zig");
 
-pub const Result = @import("types/result.zig").Result;
-
-pub const vector_types = @import("types/vector.zig");
+pub const Bytecode = @import("state/Bytecode.zig");
 
 pub const ValueTag = enum(u8) {
     None = 0,
@@ -50,12 +39,12 @@ pub const ValueTag = enum(u8) {
     Array = 5,
     Map = 6,
     Set = 7,
-    Option,
-    Result,
-    Class,
+    Option = 8,
+    Result = 9,
+    Class = 10,
+    Shared = 11,
     ConstRef,
     MutRef,
-    Shared,
     Vec2i,
     Vec3i,
     Vec4i,
@@ -82,6 +71,7 @@ pub const RawValue = extern union {
     set: Set,
     option: Option,
     result: Result,
+    shared: Shared,
     vec2i: Vec2i,
     vec3i: Vec3i,
     vec4i: Vec4i,
@@ -111,6 +101,9 @@ pub const RawValue = extern union {
             },
             .Result => {
                 self.result.deinit();
+            },
+            .Shared => {
+                self.shared.deinit();
             },
             .Vec2i => {
                 self.vec2i.deinit();
