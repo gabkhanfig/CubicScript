@@ -58,7 +58,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
     threadLocalStack.state = self;
 
     //threadLocalStack.instructionPointer = 0; pushing a new frame sets the instructions pointer
-    var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch {
+    var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch {
         @panic("Script stack overflow");
     };
     defer _ = frame.popFrame(&threadLocalStack);
@@ -92,6 +92,18 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
 
                 frame.register(operand.dst).actualValue = immediate;
                 instructionPointer.* += 2;
+            },
+            .Return => {
+                const operands = bytecode.decode(Bytecode.OperandsOptionalReturn);
+                if (operands.hasValue) {
+                    frame.setReturnValue(operands.src);
+                }
+                if (frame.popFrame(&threadLocalStack)) |previousFrame| {
+                    frame = previousFrame;
+                } else {
+                    //std.debug.print("end of script execution\n", .{});
+                    return;
+                }
             },
             .IntIsEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -578,6 +590,22 @@ test "nop" {
     state.run(&instructions);
 }
 
+test "return" {
+    { // dont return value
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(i64, -30),
+            Bytecode.encodeImmediateUpper(i64, -30),
+            Bytecode.encode(.Return, void, {}),
+        };
+
+        state.run(&instructions);
+    }
+}
+
 test "int comparisons" {
     const IntComparisonTester = struct {
         fn intCompare(state: *const Self, opcode: OpCode, src1Value: i64, src2Value: i64, shouldBeTrue: bool) !void {
@@ -598,7 +626,7 @@ test "int comparisons" {
 
             state.run(&instructions);
 
-            var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+            var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
             defer _ = frame.popFrame(&threadLocalStack);
 
             if (shouldBeTrue) {
@@ -692,7 +720,7 @@ test "int addition" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 11);
     }
@@ -719,7 +747,7 @@ test "int addition" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == math.MIN_INT);
     }
@@ -746,7 +774,7 @@ test "int subtraction" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 9);
     }
@@ -774,7 +802,7 @@ test "int subtraction" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == math.MAX_INT);
     }
@@ -804,7 +832,7 @@ test "int multiplication" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == math.MAX_INT);
     }
@@ -831,7 +859,7 @@ test "int multiplication" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == -2); // this ends up being the wrap around. same as unsigned bitshift left by 1 then bitcasted to signed
     }
@@ -858,7 +886,7 @@ test "int division truncation" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == -2);
     }
@@ -880,7 +908,7 @@ test "int division truncation" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == math.MIN_INT);
     }
@@ -925,7 +953,7 @@ test "int division floor" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == -3);
     }
@@ -947,7 +975,7 @@ test "int division floor" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == math.MIN_INT);
     }
@@ -992,7 +1020,7 @@ test "int modulo" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 1);
     }
@@ -1039,7 +1067,7 @@ test "int remainder" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == -1);
     }
@@ -1086,7 +1114,7 @@ test "int power" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 25);
     }
@@ -1110,7 +1138,7 @@ test "int power" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 0);
     }
@@ -1164,7 +1192,7 @@ test "bitwise complement" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).int == -1);
     }
@@ -1183,7 +1211,7 @@ test "bitwise complement" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).int == -2);
     }
@@ -1206,7 +1234,7 @@ test "bitwise and" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 0b010);
     }
@@ -1229,7 +1257,7 @@ test "bitwise or" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 0b111);
     }
@@ -1252,7 +1280,7 @@ test "bitwise xor" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 0b101);
     }
@@ -1277,7 +1305,7 @@ test "bitshift left" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == -2);
     }
@@ -1299,7 +1327,7 @@ test "bitshift left" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == -2);
     }
@@ -1324,7 +1352,7 @@ test "bitshift arithmetic right" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 0b011);
     }
@@ -1346,7 +1374,7 @@ test "bitshift arithmetic right" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == -1);
     }
@@ -1368,7 +1396,7 @@ test "bitshift arithmetic right" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 0b011);
     }
@@ -1393,7 +1421,7 @@ test "bitshift logical right" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 0b011);
     }
@@ -1415,7 +1443,7 @@ test "bitshift logical right" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == math.MAX_INT);
     }
@@ -1437,7 +1465,7 @@ test "bitshift logical right" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(2).int == 0b011);
     }
@@ -1455,7 +1483,7 @@ test "int to bool" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).boolean == false);
     }
@@ -1472,7 +1500,7 @@ test "int to bool" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).boolean == true);
     }
@@ -1489,7 +1517,7 @@ test "int to bool" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).boolean == true);
     }
@@ -1507,7 +1535,7 @@ test "int to float" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).float == 0.0);
     }
@@ -1524,7 +1552,7 @@ test "int to float" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).float == 1.0);
     }
@@ -1541,7 +1569,7 @@ test "int to float" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).float == -1.0);
     }
@@ -1558,7 +1586,7 @@ test "int to float" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).float == -2398712938.0);
     }
@@ -1576,7 +1604,7 @@ test "int to string" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("0"));
         frame.register(1).string.deinit();
@@ -1594,7 +1622,7 @@ test "int to string" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("1"));
         frame.register(1).string.deinit();
@@ -1612,7 +1640,7 @@ test "int to string" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("-1"));
         frame.register(1).string.deinit();
@@ -1630,7 +1658,7 @@ test "int to string" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("-2398712938"));
         frame.register(1).string.deinit();
@@ -1649,7 +1677,7 @@ test "bool not" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).boolean == true);
     }
@@ -1666,7 +1694,7 @@ test "bool not" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).boolean == false);
     }
@@ -1686,7 +1714,7 @@ test "bool to string" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("true"));
         frame.register(1).string.deinit();
@@ -1704,7 +1732,7 @@ test "bool to string" {
 
         state.run(&instructions);
 
-        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0) catch unreachable;
+        var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
         try expect(frame.register(1).string.eqlSlice("false"));
         frame.register(1).string.deinit();

@@ -1,6 +1,8 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const expect = std.testing.expect;
+const root = @import("../root.zig");
+const RawValue = root.RawValue;
 
 const Self = @This();
 
@@ -83,6 +85,7 @@ pub const OpCode = enum(u8) {
     // == GENERAL INSTRUCTIONS ==
 
     /// No operation. Allows 0 set memory to be a technically valid program.
+    /// TODO remove this.
     Nop,
     /// Copy value between registers src and dst.
     Move,
@@ -100,6 +103,9 @@ pub const OpCode = enum(u8) {
     JumpIfNotZero,
     /// Return from the calling function, moving the instruction pointer back to the calling function,
     /// or terminating the script if it was called by an owning process.
+    /// Uses `OperandsOptionalReturn` operands, but `void` can be passed in while encoding
+    /// if no value is returned. If the return value exists, copies `src` to a temporary location,
+    /// returns to the previous stack frame, and sets `dst` to the return value.
     Return,
     /// Call a function at `src`, moving the stack pointer, and setting the return address.
     Call,
@@ -279,6 +285,7 @@ pub const OperandsMove = packed struct { dst: u9, src: u8 };
 pub const OperandsOnlyDst = packed struct { dst: u8 };
 pub const OperandsDstTwoSrc = packed struct { dst: u8, src1: u8, src2: u8 };
 pub const OperandsDstSrc = packed struct { dst: u8, src: u8 };
+pub const OperandsOptionalReturn = extern struct { hasValue: bool, src: u8 };
 
 fn IntegerFromBitWidth(comptime width: comptime_int) type {
     switch (width) {
@@ -306,8 +313,6 @@ fn IntegerFromBitWidth(comptime width: comptime_int) type {
         22 => return u22,
         23 => return u23,
         24 => return u24,
-        25 => return u25,
-        26 => return u26,
         else => {
             @compileError("Incompatible bit width type for bytecode operands");
         },

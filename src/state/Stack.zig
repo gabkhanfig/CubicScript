@@ -28,57 +28,72 @@ nextBasePointer: usize = 0,
 /// offset to fetch the previous stack frame data, and restore it.
 currentFrameLength: usize = 0,
 instructionPointer: usize = 0,
+returnValueDst: ?*RawValue = null,
 
 pub const StackFrame = struct {
     const OLD_INSTRUCTION_POINTER = 0;
     const OLD_FRAME_LENGTH = 1;
+    const OLD_RETURN_VALUE_DST = 2;
     const FIELD_COUNT: usize = @typeInfo(StackFrame).Struct.fields.len;
 
     basePointer: [*]RawValue,
     frameLength: usize,
+    returnValueDst: ?*RawValue,
 
     /// `frameLength` does not include the reserved registers for stack frames.
     /// Works with recursive stack frames.
-    pub fn pushFrame(stack: *Stack, frameLength: usize, newInstructionPointer: usize) error{StackOverflow}!StackFrame {
+    pub fn pushFrame(stack: *Stack, frameLength: usize, newInstructionPointer: usize, returnValueDst: ?*RawValue) error{StackOverflow}!StackFrame {
         assert(frameLength != 0);
 
         const newBasePointer: [*]RawValue = @ptrCast(&stack.stack[stack.nextBasePointer]);
         if (stack.nextBasePointer == 0) { // is at the beginning of the stack, no recursiveness
             newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = 0;
             newBasePointer[OLD_FRAME_LENGTH].actualValue = 0;
+            newBasePointer[OLD_RETURN_VALUE_DST].actualValue = 0;
         } else {
             if ((stack.currentFrameLength + FIELD_COUNT) >= STACK_SPACES) {
                 return error.StackOverflow;
             }
             newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = stack.instructionPointer;
             newBasePointer[OLD_FRAME_LENGTH].actualValue = stack.currentFrameLength;
+            newBasePointer[OLD_RETURN_VALUE_DST].actualValue = @intFromPtr(stack.returnValueDst);
         }
         stack.nextBasePointer += frameLength + FIELD_COUNT;
         stack.currentFrameLength = frameLength;
         stack.instructionPointer = newInstructionPointer;
+        stack.returnValueDst = returnValueDst;
 
         return .{
             .basePointer = newBasePointer,
             .frameLength = frameLength,
+            .returnValueDst = returnValueDst,
         };
     }
 
     /// Gets the old stack frame, or null if there was no previous.
-    pub fn popFrame(self: *StackFrame, stack: *Stack) StackFrame {
-        assert(stack.nextBasePointer != 0); // Means that there is no stack to pop.
-
+    pub fn popFrame(self: *StackFrame, stack: *Stack) ?StackFrame {
+        if (stack.nextBasePointer == 0) { // calling pop multiple times is ok, and makes executing the bytecodes easier
+            return null;
+        }
         const offset: usize = stack.currentFrameLength + FIELD_COUNT;
         stack.nextBasePointer -= offset;
+        if (stack.nextBasePointer == 0) {
+            return null;
+        }
         const oldBasePointer: [*]RawValue = @ptrFromInt(@intFromPtr(self.basePointer) - (stack.nextBasePointer * 8));
         stack.currentFrameLength = self.oldFrameLength();
         const oldIP = self.oldInstructionPointer();
         stack.instructionPointer = oldIP;
+        const oldRetValueDst = self.oldReturnValueDst();
+        stack.returnValueDst = oldRetValueDst;
 
         self.basePointer = undefined;
+        self.frameLength = undefined;
         self.frameLength = undefined;
         return .{
             .basePointer = oldBasePointer,
             .frameLength = stack.currentFrameLength,
+            .returnValueDst = oldRetValueDst,
         };
     }
 
@@ -89,12 +104,26 @@ pub const StackFrame = struct {
         return &self.basePointer[FIELD_COUNT + registerIndex];
     }
 
+    /// Sets the return value of this stack frame to whatever is held at register `registerIndex`.
+    /// If this frame does not have a return value destination, safety check undefined behaviour is executed.
+    pub fn setReturnValue(self: *StackFrame, registerIndex: usize) void {
+        if (self.returnValueDst) |retDst| {
+            retDst.* = self.register(registerIndex).*;
+        } else {
+            unreachable;
+        }
+    }
+
     fn oldInstructionPointer(self: *const StackFrame) usize {
         return self.basePointer[OLD_INSTRUCTION_POINTER].actualValue;
     }
 
     fn oldFrameLength(self: *const StackFrame) usize {
         return self.basePointer[OLD_FRAME_LENGTH].actualValue;
+    }
+
+    fn oldReturnValueDst(self: *const StackFrame) ?*RawValue {
+        return @ptrFromInt(self.basePointer[OLD_RETURN_VALUE_DST].actualValue);
     }
 };
 
@@ -103,7 +132,7 @@ test "push/pop one stack frame" {
     defer std.testing.allocator.destroy(stack);
     stack.* = .{};
 
-    var frame = try StackFrame.pushFrame(stack, 1, 0);
+    var frame = try StackFrame.pushFrame(stack, 1, 0, null);
     defer _ = frame.popFrame(stack);
 }
 
@@ -112,14 +141,14 @@ test "push/pop two stack frames" {
     defer std.testing.allocator.destroy(stack);
     stack.* = .{};
 
-    var frame1 = try StackFrame.pushFrame(stack, 1, 0);
+    var frame1 = try StackFrame.pushFrame(stack, 1, 0, null);
     defer _ = frame1.popFrame(stack);
 
     const frame1BasePointer = stack.nextBasePointer;
     const frame1FrameLength = stack.currentFrameLength;
 
     {
-        var frame2 = try StackFrame.pushFrame(stack, 2, 0);
+        var frame2 = try StackFrame.pushFrame(stack, 2, 0, null);
         defer _ = frame2.popFrame(stack);
 
         try expect(stack.nextBasePointer != frame1BasePointer);
@@ -135,7 +164,7 @@ test "stack frame access register" {
     defer std.testing.allocator.destroy(stack);
     stack.* = .{};
 
-    var frame = try StackFrame.pushFrame(stack, 1, 0);
+    var frame = try StackFrame.pushFrame(stack, 1, 0, null);
     defer _ = frame.popFrame(stack);
 
     frame.register(0).int = -1;
@@ -147,14 +176,14 @@ test "stack frame nested retain register" {
     defer std.testing.allocator.destroy(stack);
     stack.* = .{};
 
-    var frame1 = try StackFrame.pushFrame(stack, 1, 0);
+    var frame1 = try StackFrame.pushFrame(stack, 1, 0, null);
     defer _ = frame1.popFrame(stack);
 
     frame1.register(0).int = 20;
     try expect(frame1.register(0).int == 20);
 
     {
-        var frame2 = try StackFrame.pushFrame(stack, 2, 0);
+        var frame2 = try StackFrame.pushFrame(stack, 2, 0, null);
         defer _ = frame2.popFrame(stack);
     }
 
