@@ -52,7 +52,7 @@ pub fn deinit(self: *Self) void {
     allocator().destroy(self);
 }
 
-pub fn run(self: *const Self, instructions: []const Bytecode) ScriptError!TaggedValue {
+pub fn run(self: *const Self, instructions: []const Bytecode) FatalScriptError!TaggedValue {
     const previousState = threadLocalStack.state;
     defer threadLocalStack.state = previousState; // Allows nesting script run calls with different state instances
     // NOTE should also do errdefer for if allocation fails anywhere.
@@ -195,8 +195,8 @@ pub fn run(self: *const Self, instructions: []const Bytecode) ScriptError!Tagged
                     };
                     defer allocator().free(message);
 
-                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
-                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
+                    return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 if (lhs == math.MIN_INT and rhs == -1) {
@@ -225,8 +225,8 @@ pub fn run(self: *const Self, instructions: []const Bytecode) ScriptError!Tagged
                     };
                     defer allocator().free(message);
 
-                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
-                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
+                    return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 if (lhs == math.MIN_INT and rhs == -1) {
@@ -255,8 +255,8 @@ pub fn run(self: *const Self, instructions: []const Bytecode) ScriptError!Tagged
                     };
                     defer allocator().free(message);
 
-                    self.runtimeError(RuntimeError.ModuloByZero, ErrorSeverity.Fatal, message);
-                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    self.runtimeError(RuntimeError.ModuloByZero, ErrorSeverity.Error, message);
+                    return FatalScriptError.ModuloByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 frame.register(operands.dst).int = @mod(lhs, rhs);
@@ -273,8 +273,8 @@ pub fn run(self: *const Self, instructions: []const Bytecode) ScriptError!Tagged
                     };
                     defer allocator().free(message);
 
-                    self.runtimeError(RuntimeError.RemainderByZero, ErrorSeverity.Fatal, message);
-                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    self.runtimeError(RuntimeError.RemainderByZero, ErrorSeverity.Error, message);
+                    return FatalScriptError.RemainderByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 frame.register(operands.dst).int = @rem(lhs, rhs);
@@ -303,8 +303,8 @@ pub fn run(self: *const Self, instructions: []const Bytecode) ScriptError!Tagged
                     };
                     defer allocator().free(message);
 
-                    self.runtimeError(RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Fatal, message);
-                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    self.runtimeError(RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Error, message);
+                    return FatalScriptError.ZeroToPowerOfNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
             },
             .BitwiseComplement => {
@@ -478,8 +478,8 @@ pub fn run(self: *const Self, instructions: []const Bytecode) ScriptError!Tagged
                     };
                     defer allocator().free(message);
 
-                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
-                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
+                    return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
@@ -534,8 +534,12 @@ fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, m
     context.runtimeError(self, err, severity, message);
 }
 
-pub const ScriptError = error{
-    Example,
+pub const FatalScriptError = error{
+    NullDereference,
+    DivideByZero,
+    ModuloByZero,
+    RemainderByZero,
+    ZeroToPowerOfNegative,
 };
 
 /// Handles reporting errors, and other user specific data.

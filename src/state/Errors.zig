@@ -14,7 +14,8 @@ pub const RuntimeError = enum(c_int) {
 };
 
 pub const Severity = enum(c_int) {
+    /// Script execution will continue.
     Warning = 0,
+    /// Script execution cannot continue.
     Error = 1,
-    Fatal = 2,
 };
