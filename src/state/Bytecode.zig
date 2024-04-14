@@ -285,7 +285,8 @@ pub const OperandsMove = packed struct { dst: u9, src: u8 };
 pub const OperandsOnlyDst = packed struct { dst: u8 };
 pub const OperandsDstTwoSrc = packed struct { dst: u8, src1: u8, src2: u8 };
 pub const OperandsDstSrc = packed struct { dst: u8, src: u8 };
-pub const OperandsOptionalReturn = extern struct { hasValue: bool, src: u8 };
+/// If `valueTag` is None, no value is returned.
+pub const OperandsOptionalReturn = extern struct { valueTag: root.ValueTag, src: u8 };
 
 fn IntegerFromBitWidth(comptime width: comptime_int) type {
     switch (width) {

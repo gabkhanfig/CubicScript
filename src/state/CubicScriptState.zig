@@ -4,6 +4,7 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
+const TaggedValue = root.TaggedValue;
 const Stack = @import("Stack.zig");
 const StackFrame = Stack.StackFrame;
 const Bytecode = @import("Bytecode.zig");
@@ -51,14 +52,15 @@ pub fn deinit(self: *Self) void {
     allocator().destroy(self);
 }
 
-pub fn run(self: *const Self, instructions: []const Bytecode) void {
+pub fn run(self: *const Self, instructions: []const Bytecode) ScriptError!TaggedValue {
     const previousState = threadLocalStack.state;
     defer threadLocalStack.state = previousState; // Allows nesting script run calls with different state instances
     // NOTE should also do errdefer for if allocation fails anywhere.
     threadLocalStack.state = self;
 
     //threadLocalStack.instructionPointer = 0; pushing a new frame sets the instructions pointer
-    var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch {
+    var captureReturn = TaggedValue{ .tag = .None, .value = RawValue{ .actualValue = 0 } };
+    var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, &captureReturn.value) catch {
         @panic("Script stack overflow");
     };
     defer _ = frame.popFrame(&threadLocalStack);
@@ -95,14 +97,15 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
             },
             .Return => {
                 const operands = bytecode.decode(Bytecode.OperandsOptionalReturn);
-                if (operands.hasValue) {
+                if (operands.valueTag != .None) {
                     frame.setReturnValue(operands.src);
                 }
                 if (frame.popFrame(&threadLocalStack)) |previousFrame| {
-                    frame = previousFrame;
+                    frame = previousFrame; // TODO allow runtime tracking of stack types, and use the valueTag to set them from return.
                 } else {
                     //std.debug.print("end of script execution\n", .{});
-                    return;
+                    captureReturn.tag = operands.valueTag;
+                    return captureReturn;
                 }
             },
             .IntIsEqual => {
@@ -193,7 +196,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
                     defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
-                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 if (lhs == math.MIN_INT and rhs == -1) {
@@ -223,7 +226,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
                     defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
-                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 if (lhs == math.MIN_INT and rhs == -1) {
@@ -253,7 +256,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
                     defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.ModuloByZero, ErrorSeverity.Fatal, message);
-                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 frame.register(operands.dst).int = @mod(lhs, rhs);
@@ -271,7 +274,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
                     defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.RemainderByZero, ErrorSeverity.Fatal, message);
-                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 frame.register(operands.dst).int = @rem(lhs, rhs);
@@ -301,7 +304,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
                     defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Fatal, message);
-                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
             },
             .BitwiseComplement => {
@@ -476,7 +479,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
                     defer allocator().free(message);
 
                     self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Fatal, message);
-                    return; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    return ScriptError.Example; // TODO figure out how to free all the memory and resources allocated in the callstack
                 }
 
                 frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
@@ -518,6 +521,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) void {
         }
         instructionPointer.* += 1;
     }
+    return captureReturn;
 }
 
 fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, message: []const u8) void {
@@ -529,6 +533,10 @@ fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, m
     const context: *ScriptContext = @constCast(&self._context);
     context.runtimeError(self, err, severity, message);
 }
+
+pub const ScriptError = error{
+    Example,
+};
 
 /// Handles reporting errors, and other user specific data.
 /// In `CubicScriptState.zig`, an example of implementing this can be found with `ScriptTestingContextError`.
@@ -587,7 +595,7 @@ test "nop" {
         Bytecode.encode(OpCode.Nop, void, {}),
     };
 
-    state.run(&instructions);
+    _ = try state.run(&instructions);
 }
 
 test "return" {
@@ -602,7 +610,22 @@ test "return" {
             Bytecode.encode(.Return, void, {}),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
+    }
+    { // return value
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(i64, -30),
+            Bytecode.encodeImmediateUpper(i64, -30),
+            Bytecode.encode(.Return, Bytecode.OperandsOptionalReturn, .{ .valueTag = .Int, .src = 0 }),
+        };
+
+        const returnedVal = try state.run(&instructions);
+        try expect(returnedVal.tag == .Int);
+        try expect(returnedVal.value.int == -30);
     }
 }
 
@@ -624,7 +647,7 @@ test "int comparisons" {
                 Bytecode.encode(opcode, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
             };
 
-            state.run(&instructions);
+            _ = try state.run(&instructions);
 
             var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
             defer _ = frame.popFrame(&threadLocalStack);
@@ -718,7 +741,7 @@ test "int addition" {
             Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -745,7 +768,7 @@ test "int addition" {
             Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -772,7 +795,7 @@ test "int subtraction" {
             Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -800,7 +823,7 @@ test "int subtraction" {
             Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -830,7 +853,7 @@ test "int multiplication" {
             Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -857,7 +880,7 @@ test "int multiplication" {
             Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -884,7 +907,7 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -906,7 +929,7 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -928,7 +951,11 @@ test "int division truncation" {
             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        if (state.run(&instructions)) |_| {
+            try expect(false);
+        } else |err| {
+            _ = err catch {};
+        }
     }
 }
 
@@ -951,7 +978,7 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -973,7 +1000,7 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -995,7 +1022,11 @@ test "int division floor" {
             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        if (state.run(&instructions)) |_| {
+            try expect(false);
+        } else |err| {
+            _ = err catch {};
+        }
     }
 }
 
@@ -1018,7 +1049,7 @@ test "int modulo" {
             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1042,7 +1073,11 @@ test "int modulo" {
             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        if (state.run(&instructions)) |_| {
+            try expect(false);
+        } else |err| {
+            _ = err catch {};
+        }
     }
 }
 
@@ -1065,7 +1100,7 @@ test "int remainder" {
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1089,7 +1124,11 @@ test "int remainder" {
             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        if (state.run(&instructions)) |_| {
+            try expect(false);
+        } else |err| {
+            _ = err catch {};
+        }
     }
 }
 
@@ -1112,7 +1151,7 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1136,7 +1175,7 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1158,7 +1197,7 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
     }
     { // 0 to the power of negative error
         var contextObject = ScriptTestingContextError(RuntimeError.ZeroToPowerOfNegative){ .shouldExpectError = true };
@@ -1176,7 +1215,11 @@ test "int power" {
             Bytecode.encode(OpCode.IntPower, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        if (state.run(&instructions)) |_| {
+            try expect(false);
+        } else |err| {
+            _ = err catch {};
+        }
     }
 }
 
@@ -1190,7 +1233,7 @@ test "bitwise complement" {
             Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1209,7 +1252,7 @@ test "bitwise complement" {
             Bytecode.encode(OpCode.BitwiseComplement, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1232,7 +1275,7 @@ test "bitwise and" {
             Bytecode.encode(OpCode.BitwiseAnd, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1255,7 +1298,7 @@ test "bitwise or" {
             Bytecode.encode(OpCode.BitwiseOr, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1278,7 +1321,7 @@ test "bitwise xor" {
             Bytecode.encode(OpCode.BitwiseXor, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1303,7 +1346,7 @@ test "bitshift left" {
             Bytecode.encode(OpCode.BitShiftLeft, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1325,7 +1368,7 @@ test "bitshift left" {
             Bytecode.encode(OpCode.BitShiftLeft, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1350,7 +1393,7 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1372,7 +1415,7 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1394,7 +1437,7 @@ test "bitshift arithmetic right" {
             Bytecode.encode(OpCode.BitArithmeticShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1419,7 +1462,7 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1441,7 +1484,7 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1463,7 +1506,7 @@ test "bitshift logical right" {
             Bytecode.encode(OpCode.BitLogicalShiftRight, Bytecode.OperandsDstTwoSrc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1481,7 +1524,7 @@ test "int to bool" {
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1498,7 +1541,7 @@ test "int to bool" {
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1515,7 +1558,7 @@ test "int to bool" {
             Bytecode.encode(OpCode.IntToBool, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1533,7 +1576,7 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1550,7 +1593,7 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1567,7 +1610,7 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1584,7 +1627,7 @@ test "int to float" {
             Bytecode.encode(OpCode.IntToFloat, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1602,7 +1645,7 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1620,7 +1663,7 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1638,7 +1681,7 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1656,7 +1699,7 @@ test "int to string" {
             Bytecode.encode(OpCode.IntToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1675,7 +1718,7 @@ test "bool not" {
             Bytecode.encode(OpCode.BoolNot, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1692,7 +1735,7 @@ test "bool not" {
             Bytecode.encode(OpCode.BoolNot, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1712,7 +1755,7 @@ test "bool to string" {
             Bytecode.encode(OpCode.BoolToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1730,7 +1773,7 @@ test "bool to string" {
             Bytecode.encode(OpCode.BoolToString, Bytecode.OperandsDstSrc, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 }),
         };
 
-        state.run(&instructions);
+        _ = try state.run(&instructions);
 
         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
         defer _ = frame.popFrame(&threadLocalStack);
