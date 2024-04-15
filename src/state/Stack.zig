@@ -114,6 +114,11 @@ pub const StackFrame = struct {
         }
     }
 
+    pub fn pushFunctionArgument(self: *StackFrame, value: RawValue, nextFrameRegister: usize) void {
+        const nextFrameArgsStart: [*]RawValue = @ptrCast(&self.basePointer[FIELD_COUNT + self.frameLength + FIELD_COUNT]);
+        nextFrameArgsStart[nextFrameRegister] = value;
+    }
+
     fn oldInstructionPointer(self: *const StackFrame) usize {
         return self.basePointer[OLD_INSTRUCTION_POINTER].actualValue;
     }
