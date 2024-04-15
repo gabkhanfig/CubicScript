@@ -49,6 +49,19 @@ pub fn encodeImmediateUpper(comptime T: type, immediate: T) Self {
     return Self{ .value = @intCast(@shrExact(immediateBits & HIGH_MASK, 32)) };
 }
 
+/// For odd number of function arguments, just pass in `null` for arg2.
+pub fn encodeFunctionArgPair(arg1: FunctionArg, arg2: ?FunctionArg) Self {
+    const arg1Bits: u16 = @bitCast(arg1);
+    const arg2Bits: u16 = blk: {
+        if (arg2 != null) {
+            break :blk @bitCast(arg2.?);
+        } else {
+            break :blk 0;
+        }
+    };
+    return Self{ .value = @as(u32, arg1Bits) | @shlExact(@as(u32, arg2Bits), 16) };
+}
+
 pub fn decode(self: *const Self, comptime OperandsT: type) OperandsT {
     if (OperandsT == void) {
         return;
@@ -107,6 +120,7 @@ pub const OpCode = enum(u8) {
     /// if no value is returned. If the return value exists, copies `src` to a temporary location,
     /// returns to the previous stack frame, and sets `dst` to the return value.
     Return,
+    /// Uses `OperandsFunctionArgs`.
     /// Call a function at `src`, moving the stack pointer, and setting the return address.
     Call,
     /// Call a function from the host process at `src`, moving the stack pointer and setting the return address.
@@ -287,6 +301,25 @@ pub const OperandsDstTwoSrc = packed struct { dst: u8, src1: u8, src2: u8 };
 pub const OperandsDstSrc = packed struct { dst: u8, src: u8 };
 /// If `valueTag` is None, no value is returned.
 pub const OperandsOptionalReturn = extern struct { valueTag: root.ValueTag, src: u8 };
+/// Permits functions to have up to 128 arguments.
+pub const OperandsFunctionArgs = packed struct {
+    funcSrc: u8,
+    returnDst: u8 = 0,
+    captureReturn: bool = false,
+    argCount: u7,
+};
+
+pub const FunctionArg = packed struct {
+    /// Register to get the function argument from.
+    src: u8,
+    /// Is `root.valueTag`.
+    valueTag: u5,
+    modifier: enum(u3) {
+        MoveOrClone,
+        ConstRef,
+        MutRef,
+    },
+};
 
 fn IntegerFromBitWidth(comptime width: comptime_int) type {
     switch (width) {

@@ -4,6 +4,7 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
+const ValueTag = root.ValueTag;
 const TaggedValue = root.TaggedValue;
 const Stack = @import("Stack.zig");
 const StackFrame = Stack.StackFrame;
@@ -103,10 +104,61 @@ pub fn run(self: *const Self, instructions: []const Bytecode) FatalScriptError!T
                 if (frame.popFrame(&threadLocalStack)) |previousFrame| {
                     frame = previousFrame; // TODO allow runtime tracking of stack types, and use the valueTag to set them from return.
                 } else {
-                    //std.debug.print("end of script execution\n", .{});
                     captureReturn.tag = operands.valueTag;
                     return captureReturn;
                 }
+            },
+            .Call => {
+                const operands = bytecode.decode(Bytecode.OperandsFunctionArgs);
+                const returnValueAddr: ?*RawValue = blk: {
+                    if (operands.captureReturn) {
+                        break :blk frame.register(operands.returnDst);
+                    } else {
+                        break :blk null;
+                    }
+                };
+
+                {
+                    const instructionPtrIncrement = blk: {
+                        if (operands.argCount == 0) {
+                            break :blk 0;
+                        } else {
+                            const out = (operands.argCount / @sizeOf(Bytecode.FunctionArg)) + 1;
+                            break :blk out;
+                        }
+                    };
+                    instructionPointer.* += instructionPtrIncrement;
+                }
+
+                const argsStart: [*]const Bytecode.FunctionArg = @ptrCast(&instructions[instructionPointer.* + 1]);
+                for (0..operands.argCount) |i| {
+                    const arg = argsStart[i];
+                    switch (arg.modifier) {
+                        .MoveOrClone => {
+                            switch (@as(ValueTag, @enumFromInt(arg.valueTag))) {
+                                .Bool, .Int, .Float => {
+                                    frame.pushFunctionArgument(frame.register(arg.src).*, i);
+                                },
+                                .String => {
+                                    frame.pushFunctionArgument(RawValue{ .string = frame.register(arg.src).string.clone() }, i);
+                                },
+                                else => {
+                                    @panic("Unsupported move/clone for function argument");
+                                },
+                            }
+                        },
+                        else => {
+                            @panic("Unsupported argument modifier");
+                        },
+                    }
+                }
+
+                frame = try StackFrame.pushFrame(
+                    &threadLocalStack,
+                    256,
+                    frame.register(operands.funcSrc).actualValue,
+                    returnValueAddr,
+                );
             },
             .IntIsEqual => {
                 const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -535,6 +587,7 @@ fn runtimeError(self: *const Self, err: RuntimeError, severity: ErrorSeverity, m
 }
 
 pub const FatalScriptError = error{
+    StackOverflow,
     NullDereference,
     DivideByZero,
     ModuloByZero,
@@ -630,6 +683,25 @@ test "return" {
         const returnedVal = try state.run(&instructions);
         try expect(returnedVal.tag == .Int);
         try expect(returnedVal.value.int == -30);
+    }
+}
+
+test "call" {
+    { // No args, no return
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }), // 0
+            Bytecode.encodeImmediateLower(usize, 5), // 1
+            Bytecode.encodeImmediateUpper(usize, 5), // 2
+            Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs, Bytecode.OperandsFunctionArgs{ .argCount = 0, .funcSrc = 0 }), // 3
+            Bytecode.encode(.Return, void, {}), // 4
+            // Function
+            Bytecode.encode(.Return, void, {}), // 5
+        };
+
+        _ = try state.run(&instructions);
     }
 }
 
