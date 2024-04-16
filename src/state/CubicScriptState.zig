@@ -78,7 +78,7 @@ pub fn run(self: *const Self, instructions: []const Bytecode) FatalScriptError!T
                 //std.debug.print("no operation\n", .{});
             },
             .Move => {
-                const operands = bytecode.decode(Bytecode.OperandsMove);
+                const operands = bytecode.decode(Bytecode.OperandsDstSrc);
                 frame.register(operands.dst).* = frame.register(operands.src).*;
             },
             .LoadZero => {
