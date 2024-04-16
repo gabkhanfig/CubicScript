@@ -109,7 +109,7 @@ pub const OpCode = enum(u8) {
     /// Registers may not overlap.
     LoadZero,
     /// Load the 64 bit immediate into `dst`. This is a 12 byte instruction.
-    LoadImmediate,
+    LoadImmediateLong,
     /// Unconditionally jump to `dst`
     Jump,
     /// Jump to `dst` if `src` is 0
