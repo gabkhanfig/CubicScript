@@ -749,6 +749,30 @@ test "call" {
 
         _ = try state.run(&instructions);
     }
+    { // 2 arg, no return
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }), // 0
+            Bytecode.encodeImmediateLower(usize, 10), // 1
+            Bytecode.encodeImmediateUpper(usize, 10), // 2
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }), // 3 (function argument)
+            Bytecode.encodeImmediateLower(i64, 1), // 4
+            Bytecode.encodeImmediateUpper(i64, 1), // 5
+            Bytecode.encode(.LoadZero, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 2 }), // 6
+            Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs, Bytecode.OperandsFunctionArgs{ .argCount = 2, .funcSrc = 0 }), // 7
+            Bytecode.encodeFunctionArgPair(
+                .{ .modifier = .Owned, .src = 1, .valueTag = @intFromEnum(ValueTag.Int) },
+                .{ .modifier = .Owned, .src = 2, .valueTag = @intFromEnum(ValueTag.Bool) },
+            ), // 8
+            Bytecode.encode(.Return, void, {}), // 9
+            // Function
+            Bytecode.encode(.Return, void, {}), // 10
+        };
+
+        _ = try state.run(&instructions);
+    }
 }
 
 test "int comparisons" {
