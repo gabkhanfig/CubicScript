@@ -9,6 +9,7 @@ const Self = @This();
 value: u32,
 
 pub fn encode(opcode: OpCode, comptime OperandsT: type, operands: OperandsT) Self {
+    validateOpCodeMatchesOperands(opcode, @TypeOf(operands));
     if (OperandsT == void) {
         return Self{ .value = @as(u32, @intFromEnum(opcode)) };
     } else {
@@ -122,7 +123,8 @@ pub const OpCode = enum(u8) {
     JumpIfNotZero,
     /// Return from the calling function, moving the instruction pointer back to the calling function,
     /// or terminating the script if it was called by an owning process.
-    /// Uses `OperandsOptionalReturn` operands, but `void` can be passed in while encoding
+    /// Uses `OperandsOptionalReturn` or `void` operands. `OperandsOptionalReturn` specifies that the function
+    /// may return if `.valueTag` is not `.None`, while `void` specifies no return value at all.
     /// if no value is returned. If the return value exists, copies `src` to a temporary location,
     /// returns to the previous stack frame, and sets `dst` to the return value.
     Return,
@@ -360,5 +362,100 @@ fn IntegerFromBitWidth(comptime width: comptime_int) type {
         else => {
             @compileError("Incompatible bit width type for bytecode operands");
         },
+    }
+}
+
+// TODO string instructions
+fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void {
+    const opcodeName = @tagName(opcode);
+    const allocator = std.heap.c_allocator;
+    const fmtMessage = "OpCode {s} may not use the type " ++ @typeName(OperandsT) ++ ". Must use {s} instead.";
+    const allocPrint = std.fmt.allocPrint;
+    switch (opcode) {
+        .Nop => {
+            if (OperandsT != void) {
+                @panic("OpCode Nop must use the type void");
+            }
+        },
+        .Move,
+        .BitwiseComplement,
+        .IntToBool,
+        .IntToFloat,
+        .IntToString,
+        .BoolNot,
+        .BoolToString,
+        .FloatToInt,
+        .FloatToString,
+        => {
+            if (OperandsT != OperandsDstSrc) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsDstSrc) }) catch unreachable;
+                @panic(message);
+            }
+        },
+        .LoadImmediate => {
+            if (OperandsT != OperandsImmediate) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsImmediate) }) catch unreachable;
+                @panic(message);
+            }
+        },
+        .LoadImmediateLong => {
+            if (OperandsT != OperandsOnlyDst) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsOnlyDst) }) catch unreachable;
+                @panic(message);
+            }
+        },
+        .Return => {
+            if (OperandsT != OperandsOptionalReturn and OperandsT != void) {
+                const message = allocPrint(
+                    allocator,
+                    "OpCode Return may not use the type " ++ @typeName(OperandsT) ++ ". Must use {s} or void instead.",
+                    .{@typeName(OperandsOptionalReturn)},
+                ) catch unreachable;
+                @panic(message);
+            }
+        },
+        .Call => {
+            if (OperandsT != OperandsFunctionArgs) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsFunctionArgs) }) catch unreachable;
+                @panic(message);
+            }
+        },
+        .IntIsEqual,
+        .IntIsNotEqual,
+        .IntIsLessThan,
+        .IntIsGreaterThan,
+        .IntIsLessOrEqual,
+        .IntIsGreaterOrEqual,
+        .IntAdd,
+        .IntSubtract,
+        .IntMultiply,
+        .IntDivideTrunc,
+        .IntDivideFloor,
+        .IntModulo,
+        .IntRemainder,
+        .IntPower,
+        .BitwiseAnd,
+        .BitwiseOr,
+        .BitwiseXor,
+        .BitShiftLeft,
+        .BitArithmeticShiftRight,
+        .BitLogicalShiftRight,
+        .FloatIsEqual,
+        .FloatIsNotEqual,
+        .FloatIsLessThan,
+        .FloatIsGreaterThan,
+        .FloatIsLessOrEqual,
+        .FloatIsGreaterOrEqual,
+        .FloatAdd,
+        .FloatSubtract,
+        .FloatMultiply,
+        .FloatDivide,
+        => {
+            if (OperandsT != OperandsDstTwoSrc) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsDstTwoSrc) }) catch unreachable;
+                @panic(message);
+            }
+        },
+        else => {},
     }
 }
