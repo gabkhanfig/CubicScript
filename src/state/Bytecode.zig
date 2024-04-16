@@ -8,8 +8,9 @@ const Self = @This();
 
 value: u32,
 
-pub fn encode(opcode: OpCode, comptime OperandsT: type, operands: OperandsT) Self {
-    validateOpCodeMatchesOperands(opcode, @TypeOf(operands));
+pub fn encode(opcode: OpCode, operands: anytype) Self {
+    const OperandsT: type = @TypeOf(operands);
+    validateOpCodeMatchesOperands(opcode, OperandsT);
     if (OperandsT == void) {
         return Self{ .value = @as(u32, @intFromEnum(opcode)) };
     } else {
