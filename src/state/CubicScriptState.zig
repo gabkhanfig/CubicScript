@@ -648,47 +648,47 @@ fn defaultContextErrorCallback(_: *anyopaque, _: *const Self, err: RuntimeError,
 
 fn defaultContextDeinit(_: *anyopaque) callconv(.C) void {}
 
-// test "nop" {
-//     const state = Self.init(null);
-//     defer state.deinit();
+test "nop" {
+    const state = Self.init(null);
+    defer state.deinit();
 
-//     const instructions = [_]Bytecode{
-//         Bytecode.encode(OpCode.Nop, void, {}),
-//     };
+    const instructions = [_]Bytecode{
+        Bytecode.encode(OpCode.Nop, void, {}),
+    };
 
-//     _ = try state.run(&instructions);
-// }
+    _ = try state.run(&instructions);
+}
 
-// test "return" {
-//     { // dont return value
-//         const state = Self.init(null);
-//         defer state.deinit();
+test "return" {
+    { // dont return value
+        const state = Self.init(null);
+        defer state.deinit();
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, -30),
-//             Bytecode.encodeImmediateUpper(i64, -30),
-//             Bytecode.encode(.Return, void, {}),
-//         };
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(i64, -30),
+            Bytecode.encodeImmediateUpper(i64, -30),
+            Bytecode.encode(.Return, void, {}),
+        };
 
-//         _ = try state.run(&instructions);
-//     }
-//     { // return value
-//         const state = Self.init(null);
-//         defer state.deinit();
+        _ = try state.run(&instructions);
+    }
+    { // return value
+        const state = Self.init(null);
+        defer state.deinit();
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, -30),
-//             Bytecode.encodeImmediateUpper(i64, -30),
-//             Bytecode.encode(.Return, Bytecode.OperandsOptionalReturn, .{ .valueTag = .Int, .src = 0 }),
-//         };
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }),
+            Bytecode.encodeImmediateLower(i64, -30),
+            Bytecode.encodeImmediateUpper(i64, -30),
+            Bytecode.encode(.Return, Bytecode.OperandsOptionalReturn, .{ .valueTag = .Int, .src = 0 }),
+        };
 
-//         const returnedVal = try state.run(&instructions);
-//         try expect(returnedVal.tag == .Int);
-//         try expect(returnedVal.value.int == -30);
-//     }
-// }
+        const returnedVal = try state.run(&instructions);
+        try expect(returnedVal.tag == .Int);
+        try expect(returnedVal.value.int == -30);
+    }
+}
 
 test "call" {
     { // No args, no return
