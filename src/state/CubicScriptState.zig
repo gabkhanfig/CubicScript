@@ -118,27 +118,13 @@ pub fn run(self: *const Self, instructions: []const Bytecode) FatalScriptError!T
                     }
                 };
 
-                {
-                    const instructionPtrIncrement = blk: {
-                        if (operands.argCount == 0) {
-                            break :blk 0;
-                        } else {
-                            const out = (operands.argCount / @sizeOf(Bytecode.FunctionArg)) + 1;
-                            break :blk out;
-                        }
-                    };
-                    // Forcefully increment the instruction pointer here, rather than later, to avoid
-                    // moving the instruction pointer in a function call.
-                    instructionPointer.* += instructionPtrIncrement;
-                    ipIncrement = 0;
-                }
-
                 const argsStart: [*]const Bytecode.FunctionArg = @ptrCast(&instructions[instructionPointer.* + 1]);
                 for (0..operands.argCount) |i| {
                     const arg = argsStart[i];
+                    const valueTag: ValueTag = @enumFromInt(arg.valueTag);
                     switch (arg.modifier) {
-                        .MoveOrClone => {
-                            switch (@as(ValueTag, @enumFromInt(arg.valueTag))) {
+                        .Owned => {
+                            switch (valueTag) {
                                 .Bool, .Int, .Float => {
                                     frame.pushFunctionArgument(frame.register(arg.src).*, i);
                                 },
@@ -154,6 +140,21 @@ pub fn run(self: *const Self, instructions: []const Bytecode) FatalScriptError!T
                             @panic("Unsupported argument modifier");
                         },
                     }
+                }
+
+                {
+                    const instructionPtrIncrement = blk: {
+                        if (operands.argCount == 0) {
+                            break :blk 0;
+                        } else {
+                            const out = (operands.argCount / @sizeOf(Bytecode.FunctionArg)) + 1;
+                            break :blk out;
+                        }
+                    };
+                    // Forcefully increment the instruction pointer here, rather than later, to avoid
+                    // moving the instruction pointer in a function call.
+                    instructionPointer.* += instructionPtrIncrement;
+                    ipIncrement = 0;
                 }
 
                 frame = try StackFrame.pushFrame(
@@ -727,6 +728,26 @@ test "call" {
 
         try expect(returnedValue.tag == .Int);
         try expect(returnedValue.value.int == -5);
+    }
+    { // 1 arg, no return
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 0 }), // 0
+            Bytecode.encodeImmediateLower(usize, 9), // 1
+            Bytecode.encodeImmediateUpper(usize, 9), // 2
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsOnlyDst, Bytecode.OperandsOnlyDst{ .dst = 1 }), // 3 (function argument)
+            Bytecode.encodeImmediateLower(i64, 1), // 4
+            Bytecode.encodeImmediateUpper(i64, 1), // 5
+            Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs, Bytecode.OperandsFunctionArgs{ .argCount = 1, .funcSrc = 0 }), // 6
+            Bytecode.encodeFunctionArgPair(Bytecode.FunctionArg{ .modifier = .Owned, .src = 1, .valueTag = @intFromEnum(ValueTag.Int) }, null), // 7
+            Bytecode.encode(.Return, void, {}), // 8
+            // Function
+            Bytecode.encode(.Return, void, {}), // 9
+        };
+
+        _ = try state.run(&instructions);
     }
 }
 

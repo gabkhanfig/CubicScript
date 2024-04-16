@@ -50,6 +50,8 @@ pub fn encodeImmediateUpper(comptime T: type, immediate: T) Self {
 }
 
 /// For odd number of function arguments, just pass in `null` for arg2.
+/// This encoding should occur AFTER a `Call` bytecode, as depending on the
+/// `argCount` for the call, the bytecodes after will be interpreted as `FunctionArg`
 pub fn encodeFunctionArgPair(arg1: FunctionArg, arg2: ?FunctionArg) Self {
     const arg1Bits: u16 = @bitCast(arg1);
     const arg2Bits: u16 = blk: {
@@ -315,7 +317,7 @@ pub const FunctionArg = packed struct {
     /// Is `root.valueTag`.
     valueTag: u5,
     modifier: enum(u3) {
-        MoveOrClone,
+        Owned,
         ConstRef,
         MutRef,
     },
