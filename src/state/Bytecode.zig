@@ -108,7 +108,11 @@ pub const OpCode = enum(u8) {
     /// # Asserts
     /// Registers may not overlap.
     LoadZero,
+    /// Load an immediate bool/int/float into `dst`.
+    /// The immediate value will be cast to the correct value.
+    LoadImmediate,
     /// Load the 64 bit immediate into `dst`. This is a 12 byte instruction.
+    /// The immediate value is NOT cast, rather simply has the bits interpreted as whatever type.
     LoadImmediateLong,
     /// Unconditionally jump to `dst`
     Jump,
@@ -309,6 +313,11 @@ pub const OperandsFunctionArgs = packed struct {
     returnDst: u8 = 0,
     captureReturn: bool = false,
     argCount: u7,
+};
+pub const OperandsImmediate = packed struct {
+    dst: u8,
+    valueTag: enum(u2) { Bool, Int, Float },
+    immediate: i14,
 };
 
 pub const FunctionArg = packed struct {

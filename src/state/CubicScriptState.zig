@@ -85,6 +85,26 @@ pub fn run(self: *const Self, instructions: []const Bytecode) FatalScriptError!T
                 const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
                 frame.register(operand.dst).* = std.mem.zeroes(RawValue);
             },
+            .LoadImmediate => {
+                const operands = bytecode.decode(Bytecode.OperandsImmediate);
+                switch (operands.valueTag) {
+                    .Bool => {
+                        if (operands.immediate == 0) {
+                            frame.register(operands.dst).boolean = false;
+                        } else if (operands.immediate == 1) {
+                            frame.register(operands.dst).boolean = true;
+                        } else {
+                            unreachable;
+                        }
+                    },
+                    .Int => {
+                        frame.register(operands.dst).int = operands.immediate;
+                    },
+                    .Float => {
+                        frame.register(operands.dst).float = @floatFromInt(operands.immediate);
+                    },
+                }
+            },
             .LoadImmediateLong => {
                 // NOTE the two bytecodes after `LoadImmediate` are the 64 bit immediate values, thus the instruction
                 // pointer will need to be further incremented.
@@ -657,6 +677,69 @@ test "nop" {
     };
 
     _ = try state.run(&instructions);
+}
+
+test "load immediate" {
+    {
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate, Bytecode.OperandsImmediate{ .dst = 0, .valueTag = .Bool, .immediate = 0 }),
+        };
+
+        _ = try state.run(&instructions);
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, 0, null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        try expect(frame.register(0).boolean == false);
+    }
+    {
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate, Bytecode.OperandsImmediate{ .dst = 0, .valueTag = .Bool, .immediate = 1 }),
+        };
+
+        _ = try state.run(&instructions);
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, 0, null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        try expect(frame.register(0).boolean == true);
+    }
+    {
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate, Bytecode.OperandsImmediate{ .dst = 0, .valueTag = .Int, .immediate = -50 }),
+        };
+
+        _ = try state.run(&instructions);
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, 0, null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        try expect(frame.register(0).int == -50);
+    }
+    {
+        const state = Self.init(null);
+        defer state.deinit();
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate, Bytecode.OperandsImmediate{ .dst = 0, .valueTag = .Float, .immediate = 50 }),
+        };
+
+        _ = try state.run(&instructions);
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, 0, null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        try expect(frame.register(0).float == 50);
+    }
 }
 
 test "return" {
