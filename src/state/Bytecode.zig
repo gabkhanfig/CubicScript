@@ -327,11 +327,13 @@ pub const FunctionArg = packed struct {
     src: u8,
     /// Is `root.valueTag`.
     valueTag: u5,
-    modifier: enum(u3) {
+    modifier: FunctionArgModifiers,
+
+    pub const FunctionArgModifiers = enum(u3) {
         Owned,
         ConstRef,
         MutRef,
-    },
+    };
 };
 
 fn IntegerFromBitWidth(comptime width: comptime_int) type {
@@ -460,3 +462,17 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
         else => {},
     }
 }
+
+pub const ScriptFunctionPtr = struct {
+    bytecodeStart: [*]const Self,
+    info: *const FunctionInfo,
+
+    pub const FunctionInfo = struct {
+        args: []const ArgInfo,
+    };
+
+    pub const ArgInfo = struct {
+        valueTag: root.ValueTag,
+        modifier: FunctionArg.FunctionArgModifiers,
+    };
+};
