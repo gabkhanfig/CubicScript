@@ -34,9 +34,14 @@ pub fn encodeImmediateLower(comptime T: type, immediate: T) Self {
     } else if (@sizeOf(T) != 8) {
         @compileError("Invalid immediate type. Must be 8 bytes in size or boolean");
     }
-
-    const immediateBits: usize = @bitCast(immediate);
-    return Self{ .value = @intCast(immediateBits & LOW_MASK) };
+    const info = @typeInfo(T);
+    if (info == .Pointer) {
+        const immediateBits: usize = @intFromPtr(immediate);
+        return Self{ .value = @intCast(immediateBits & LOW_MASK) };
+    } else {
+        const immediateBits: usize = @bitCast(immediate);
+        return Self{ .value = @intCast(immediateBits & LOW_MASK) };
+    }
 }
 
 pub fn encodeImmediateUpper(comptime T: type, immediate: T) Self {
@@ -46,9 +51,14 @@ pub fn encodeImmediateUpper(comptime T: type, immediate: T) Self {
     } else if (@sizeOf(T) != 8) {
         @compileError("Invalid immediate type. Must be 8 bytes in size or boolean");
     }
-
-    const immediateBits: usize = @bitCast(immediate);
-    return Self{ .value = @intCast(@shrExact(immediateBits & HIGH_MASK, 32)) };
+    const info = @typeInfo(T);
+    if (info == .Pointer) {
+        const immediateBits: usize = @intFromPtr(immediate);
+        return Self{ .value = @intCast(@shrExact(immediateBits & HIGH_MASK, 32)) };
+    } else {
+        const immediateBits: usize = @bitCast(immediate);
+        return Self{ .value = @intCast(@shrExact(immediateBits & HIGH_MASK, 32)) };
+    }
 }
 
 /// For odd number of function arguments, just pass in `null` for arg2.
@@ -463,13 +473,10 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
     }
 }
 
+/// By default, initializes to be a function with no arguments, with an undefined function pointer.
 pub const ScriptFunctionPtr = struct {
-    bytecodeStart: [*]const Self,
-    info: *const FunctionInfo,
-
-    pub const FunctionInfo = struct {
-        args: []const ArgInfo,
-    };
+    bytecodeStart: [*]const Self = undefined,
+    args: []const ArgInfo = &.{},
 
     pub const ArgInfo = struct {
         valueTag: root.ValueTag,
