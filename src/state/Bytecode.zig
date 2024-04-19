@@ -3,6 +3,7 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
+const ValueTag = root.ValueTag;
 
 const Self = @This();
 
@@ -74,6 +75,16 @@ pub fn encodeFunctionArgPair(arg1: FunctionArg, arg2: ?FunctionArg) Self {
         }
     };
     return Self{ .value = @as(u32, arg1Bits) | @shlExact(@as(u32, arg2Bits), 16) };
+}
+
+pub fn encodeCallImmediateLower(callData: CallImmediate) Self {
+    const immediateBits: usize = @bitCast(callData);
+    return Self{ .value = @intCast(immediateBits & LOW_MASK) };
+}
+
+pub fn encodeCallImmediateUpper(callData: CallImmediate) Self {
+    const immediateBits: usize = @bitCast(callData);
+    return Self{ .value = @intCast(@shrExact(immediateBits & HIGH_MASK, 32)) };
 }
 
 pub fn decode(self: *const Self, comptime OperandsT: type) OperandsT {
@@ -319,17 +330,21 @@ pub const OperandsDstTwoSrc = packed struct { dst: u8, src1: u8, src2: u8 };
 pub const OperandsDstSrc = packed struct { dst: u8, src: u8 };
 /// If `valueTag` is None, no value is returned.
 pub const OperandsOptionalReturn = extern struct { valueTag: root.ValueTag, src: u8 };
-/// Permits functions to have up to 128 arguments.
-pub const OperandsFunctionArgs = packed struct {
-    funcSrc: u8,
-    returnDst: u8 = 0,
+
+pub const OperandsFunctionArgs = extern struct {
+    argCount: u8,
     captureReturn: bool = false,
-    argCount: u7,
+    returnDst: u8 = 0,
 };
+
 pub const OperandsImmediate = packed struct {
     dst: u8,
     valueTag: enum(u2) { Bool, Int, Float },
     immediate: i14,
+};
+pub const OperandsImmediateLong = packed struct {
+    dst: u8,
+    tag: ValueTag,
 };
 
 pub const FunctionArg = packed struct {
@@ -343,6 +358,34 @@ pub const FunctionArg = packed struct {
         Owned,
         ConstRef,
         MutRef,
+    };
+};
+
+/// The immediate data for a call operation.
+pub const CallImmediate = extern struct {
+    const PTR_BITMASK = 0x0000FFFFFFFFFFFF;
+    const FUNCTION_TYPE_BITMASK = 0x00FF000000000000;
+    const REGISTER_BITMASK = 0xFF00000000000000;
+
+    inner: usize,
+
+    pub fn initScriptFunctionPtr(scriptFptr: *const ScriptFunctionPtr) CallImmediate {
+        return .{ .inner = @intFromPtr(scriptFptr) };
+    }
+
+    // TODO extern function pointer, and function pointer in register
+
+    pub fn getScriptFunctionPtr(self: *const CallImmediate) *const ScriptFunctionPtr {
+        assert(self.functionType() == .Script);
+        return @ptrFromInt(self.inner & PTR_BITMASK);
+    }
+
+    pub fn functionType(self: *const CallImmediate) FunctionType {
+        return @enumFromInt(self.inner & FUNCTION_TYPE_BITMASK);
+    }
+
+    pub const FunctionType = enum(usize) {
+        Script = 0,
     };
 };
 
@@ -412,8 +455,8 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
             }
         },
         .LoadImmediateLong => {
-            if (OperandsT != OperandsOnlyDst) {
-                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsOnlyDst) }) catch unreachable;
+            if (OperandsT != OperandsImmediateLong) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsImmediateLong) }) catch unreachable;
                 @panic(message);
             }
         },
