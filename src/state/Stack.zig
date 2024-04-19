@@ -5,6 +5,8 @@ const std = @import("std");
 const root = @import("../root.zig");
 const CubicScriptState = @import("CubicScriptState.zig");
 const RawValue = root.RawValue;
+const ValueTag = root.ValueTag;
+const Bytecode = @import("Bytecode.zig");
 const assert = std.debug.assert;
 const expect = std.testing.expect;
 
@@ -22,51 +24,68 @@ const Stack = @This();
 
 state: *const CubicScriptState = undefined,
 stack: [STACK_SPACES]RawValue align(64) = std.mem.zeroes([STACK_SPACES]RawValue),
+/// Tracks what stack spaces are holding what.
+tags: [STACK_SPACES]ValueTag align(64) = std.mem.zeroes([STACK_SPACES]ValueTag),
 /// Only used to handle recursive stack frames.
 nextBasePointer: usize = 0,
 /// If `currentBasePointer` is not zero, this can be used as a negative
 /// offset to fetch the previous stack frame data, and restore it.
 currentFrameLength: usize = 0,
-instructionPointer: usize = 0,
+instructionPointer: [*]const Bytecode = undefined,
 returnValueDst: ?*RawValue = null,
+returnTagDst: ?*ValueTag = null,
 
 pub const StackFrame = struct {
     const OLD_INSTRUCTION_POINTER = 0;
     const OLD_FRAME_LENGTH = 1;
     const OLD_RETURN_VALUE_DST = 2;
-    const FIELD_COUNT: usize = @typeInfo(StackFrame).Struct.fields.len;
+    const OLD_RETURN_TAG_DST = 3;
+    const RESERVED_SLOTS = 4;
 
     basePointer: [*]RawValue,
+    tagsBasePointer: [*]ValueTag,
     frameLength: usize,
     returnValueDst: ?*RawValue,
+    returnTagDst: ?*ValueTag,
 
     /// `frameLength` does not include the reserved registers for stack frames.
     /// Works with recursive stack frames.
-    pub fn pushFrame(stack: *Stack, frameLength: usize, newInstructionPointer: usize, returnValueDst: ?*RawValue) error{StackOverflow}!StackFrame {
+    pub fn pushFrame(stack: *Stack, frameLength: usize, newInstructionPointer: [*]const Bytecode, returnValueDst: ?FrameReturnDestination) error{StackOverflow}!StackFrame {
         assert(frameLength != 0);
 
         const newBasePointer: [*]RawValue = @ptrCast(&stack.stack[stack.nextBasePointer]);
+        const newTagsBasePointer: [*]ValueTag = @ptrCast(&stack.tags[stack.nextBasePointer]);
         if (stack.nextBasePointer == 0) { // is at the beginning of the stack, no recursiveness
             newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = 0;
             newBasePointer[OLD_FRAME_LENGTH].actualValue = 0;
             newBasePointer[OLD_RETURN_VALUE_DST].actualValue = 0;
+            newBasePointer[OLD_RETURN_TAG_DST].actualValue = 0;
         } else {
-            if ((stack.currentFrameLength + FIELD_COUNT) >= STACK_SPACES) {
+            if ((stack.currentFrameLength + RESERVED_SLOTS) >= STACK_SPACES) {
                 return error.StackOverflow;
             }
-            newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = stack.instructionPointer;
+            newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = @intFromPtr(stack.instructionPointer);
             newBasePointer[OLD_FRAME_LENGTH].actualValue = stack.currentFrameLength;
             newBasePointer[OLD_RETURN_VALUE_DST].actualValue = @intFromPtr(stack.returnValueDst);
+            newBasePointer[OLD_RETURN_TAG_DST].actualValue = @intFromPtr(stack.returnTagDst);
         }
-        stack.nextBasePointer += frameLength + FIELD_COUNT;
+        stack.nextBasePointer += frameLength + RESERVED_SLOTS;
         stack.currentFrameLength = frameLength;
         stack.instructionPointer = newInstructionPointer;
-        stack.returnValueDst = returnValueDst;
+        if (returnValueDst) |dst| {
+            stack.returnValueDst = dst.val;
+            stack.returnTagDst = dst.tag;
+        } else {
+            stack.returnValueDst = null;
+            stack.returnTagDst = null;
+        }
 
         return .{
             .basePointer = newBasePointer,
             .frameLength = frameLength,
-            .returnValueDst = returnValueDst,
+            .returnValueDst = stack.returnValueDst,
+            .returnTagDst = stack.returnTagDst,
+            .tagsBasePointer = newTagsBasePointer,
         };
     }
 
@@ -75,17 +94,20 @@ pub const StackFrame = struct {
         if (stack.nextBasePointer == 0) { // calling pop multiple times is ok, and makes executing the bytecodes easier
             return null;
         }
-        const offset: usize = stack.currentFrameLength + FIELD_COUNT;
+        const offset: usize = stack.currentFrameLength + RESERVED_SLOTS;
         stack.nextBasePointer -= offset;
         if (stack.nextBasePointer == 0) {
             return null;
         }
-        const oldBasePointer: [*]RawValue = @ptrFromInt(@intFromPtr(self.basePointer) - (stack.nextBasePointer * 8));
+        const oldBasePointer: [*]RawValue = @ptrFromInt(@intFromPtr(self.basePointer) - ((self.frameLength + RESERVED_SLOTS) * 8));
+        const oldTagsBasePointer: [*]ValueTag = @ptrFromInt(@intFromPtr(self.tagsBasePointer) - (self.frameLength + RESERVED_SLOTS));
         stack.currentFrameLength = self.oldFrameLength();
         const oldIP = self.oldInstructionPointer();
         stack.instructionPointer = oldIP;
         const oldRetValueDst = self.oldReturnValueDst();
         stack.returnValueDst = oldRetValueDst;
+        const oldRetTagDst = self.oldReturnTagDst();
+        stack.returnTagDst = oldRetTagDst;
 
         self.basePointer = undefined;
         self.frameLength = undefined;
@@ -94,6 +116,8 @@ pub const StackFrame = struct {
             .basePointer = oldBasePointer,
             .frameLength = stack.currentFrameLength,
             .returnValueDst = oldRetValueDst,
+            .returnTagDst = oldRetTagDst,
+            .tagsBasePointer = oldTagsBasePointer,
         };
     }
 
@@ -101,7 +125,12 @@ pub const StackFrame = struct {
     /// nor previous stack frame's frame length.
     pub fn register(self: *StackFrame, registerIndex: usize) *RawValue {
         assert(registerIndex < self.frameLength);
-        return &self.basePointer[FIELD_COUNT + registerIndex];
+        return &self.basePointer[RESERVED_SLOTS + registerIndex];
+    }
+
+    pub fn registerTag(self: *const StackFrame, registerIndex: usize) *ValueTag {
+        assert(registerIndex < self.frameLength);
+        return &self.tagsBasePointer[RESERVED_SLOTS + registerIndex];
     }
 
     /// Sets the return value of this stack frame to whatever is held at register `registerIndex`.
@@ -109,18 +138,21 @@ pub const StackFrame = struct {
     pub fn setReturnValue(self: *StackFrame, registerIndex: usize) void {
         if (self.returnValueDst) |retDst| {
             retDst.* = self.register(registerIndex).*;
+            self.returnTagDst.?.* = self.registerTag(registerIndex).*;
         } else {
             unreachable;
         }
     }
 
-    pub fn pushFunctionArgument(self: *StackFrame, value: RawValue, nextFrameRegister: usize) void {
-        const nextFrameArgsStart: [*]RawValue = @ptrCast(&self.basePointer[FIELD_COUNT + self.frameLength + FIELD_COUNT]);
+    pub fn pushFunctionArgument(self: *StackFrame, value: RawValue, valueTag: ValueTag, nextFrameRegister: usize) void {
+        const nextFrameArgsStart: [*]RawValue = @ptrCast(&self.basePointer[RESERVED_SLOTS + self.frameLength + RESERVED_SLOTS]);
+        const nextFrameTagsStart: [*]ValueTag = @ptrCast(&self.tagsBasePointer[RESERVED_SLOTS + self.frameLength + RESERVED_SLOTS]);
         nextFrameArgsStart[nextFrameRegister] = value;
+        nextFrameTagsStart[nextFrameRegister] = valueTag;
     }
 
-    fn oldInstructionPointer(self: *const StackFrame) usize {
-        return self.basePointer[OLD_INSTRUCTION_POINTER].actualValue;
+    fn oldInstructionPointer(self: *const StackFrame) [*]const Bytecode {
+        return @ptrFromInt(self.basePointer[OLD_INSTRUCTION_POINTER].actualValue);
     }
 
     fn oldFrameLength(self: *const StackFrame) usize {
@@ -130,14 +162,22 @@ pub const StackFrame = struct {
     fn oldReturnValueDst(self: *const StackFrame) ?*RawValue {
         return @ptrFromInt(self.basePointer[OLD_RETURN_VALUE_DST].actualValue);
     }
+
+    fn oldReturnTagDst(self: *const StackFrame) ?*ValueTag {
+        return @ptrFromInt(self.basePointer[OLD_RETURN_TAG_DST].actualValue);
+    }
+
+    pub const FrameReturnDestination = struct { val: *RawValue, tag: *ValueTag };
 };
+
+const unusedBytecode = [_]Bytecode{Bytecode.encode(.Nop, {})};
 
 test "push/pop one stack frame" {
     const stack = try std.testing.allocator.create(Stack);
     defer std.testing.allocator.destroy(stack);
     stack.* = .{};
 
-    var frame = try StackFrame.pushFrame(stack, 1, 0, null);
+    var frame = try StackFrame.pushFrame(stack, 1, &unusedBytecode, null);
     defer _ = frame.popFrame(stack);
 }
 
@@ -146,14 +186,14 @@ test "push/pop two stack frames" {
     defer std.testing.allocator.destroy(stack);
     stack.* = .{};
 
-    var frame1 = try StackFrame.pushFrame(stack, 1, 0, null);
+    var frame1 = try StackFrame.pushFrame(stack, 1, &unusedBytecode, null);
     defer _ = frame1.popFrame(stack);
 
     const frame1BasePointer = stack.nextBasePointer;
     const frame1FrameLength = stack.currentFrameLength;
 
     {
-        var frame2 = try StackFrame.pushFrame(stack, 2, 0, null);
+        var frame2 = try StackFrame.pushFrame(stack, 2, &unusedBytecode, null);
         defer _ = frame2.popFrame(stack);
 
         try expect(stack.nextBasePointer != frame1BasePointer);
@@ -169,7 +209,7 @@ test "stack frame access register" {
     defer std.testing.allocator.destroy(stack);
     stack.* = .{};
 
-    var frame = try StackFrame.pushFrame(stack, 1, 0, null);
+    var frame = try StackFrame.pushFrame(stack, 1, &unusedBytecode, null);
     defer _ = frame.popFrame(stack);
 
     frame.register(0).int = -1;
@@ -181,14 +221,14 @@ test "stack frame nested retain register" {
     defer std.testing.allocator.destroy(stack);
     stack.* = .{};
 
-    var frame1 = try StackFrame.pushFrame(stack, 1, 0, null);
+    var frame1 = try StackFrame.pushFrame(stack, 1, &unusedBytecode, null);
     defer _ = frame1.popFrame(stack);
 
     frame1.register(0).int = 20;
     try expect(frame1.register(0).int == 20);
 
     {
-        var frame2 = try StackFrame.pushFrame(stack, 2, 0, null);
+        var frame2 = try StackFrame.pushFrame(stack, 2, &unusedBytecode, null);
         defer _ = frame2.popFrame(stack);
     }
 
