@@ -327,9 +327,6 @@ pub const String = extern struct {
     // split
     // insert
     // remove
-    // toInt
-    // toFloat
-    // fromFloat
 
     pub fn fromBool(boolean: bool) Self {
         if (boolean) {
@@ -371,6 +368,44 @@ pub const String = extern struct {
 
         const length: usize = maxChars - tempAt;
         return Self.initSliceUnchecked(tempNums[tempAt..][0..length]);
+    }
+
+    pub fn fromFloat(num: f64) Self {
+        if (num == 0) {
+            return Self.initSliceUnchecked("0"); // TODO can the 0 string become a global?
+        }
+        // https://stackoverflow.com/questions/1701055/what-is-the-maximum-length-in-chars-needed-to-represent-any-double-value
+        var buf: [1079]u8 = undefined;
+        // UnrealEngine uses sprintf %f specifier, so decimal notation seems reasonable.
+        const numAsSlice = std.fmt.bufPrint(&buf, "{d}", .{num}) catch unreachable;
+        return Self.initSliceUnchecked(numAsSlice);
+    }
+
+    pub fn toBool(self: *const Self) error{NotBool}!bool {
+        const slice = self.toSlice();
+        if (std.mem.eql(u8, slice, "true")) {
+            return true;
+        } else if (std.mem.eql(u8, slice, "false")) {
+            return false;
+        } else {
+            return error.NotBool;
+        }
+    }
+
+    pub fn toInt(self: *const Self) error{NotInt}!i64 {
+        if (std.fmt.parseInt(i64, self.toSlice(), 0)) |num| {
+            return num;
+        } else |_| {
+            return error.NotInt;
+        }
+    }
+
+    pub fn toFloat(self: *const Self) error{NotFloat}!f64 {
+        if (std.fmt.parseFloat(f64, self.toSlice)) |num| {
+            return num;
+        } else |_| {
+            return error.NotFloat;
+        }
     }
 
     fn asInner(self: Self) *const Inner {
