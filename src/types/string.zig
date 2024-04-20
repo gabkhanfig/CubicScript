@@ -309,7 +309,21 @@ pub const String = extern struct {
         assert(bufCopyStart[literal.len] == 0); // ensure null terminator
     }
 
-    // substr
+    pub fn substr(self: *const Self, startInclusive: usize, endExclusive: usize) error{ IndexOutOfBounds, InvalidUtf8 }!Self {
+        if (startInclusive >= self.len() or endExclusive > self.len()) {
+            return error.IndexOutOfBounds;
+        }
+        if (startInclusive == endExclusive) {
+            return Self{};
+        }
+
+        if (Self.initSlice(self.toSlice()[startInclusive..endExclusive])) |string| {
+            return string;
+        } else |_| {
+            return error.InvalidUtf8;
+        }
+    }
+
     // split
     // insert
     // remove
@@ -468,6 +482,7 @@ pub const String = extern struct {
         }
 
         /// Increases the capacity of the string, accounting for the null terminator.
+        /// Should only be used for unique references.
         fn growCapacity(self: *Inner, increaseBy: usize) void {
             assert(self.refCount.count.load(std.builtin.AtomicOrder.acquire) == 1); // MUST be a ref count of 1.
             if (self.isSso()) {
@@ -1270,5 +1285,42 @@ test "String append" {
         s.appendUnchecked(" NO! I will never ever ever ever ever ever ever ever ever be here... I am a mysterious... slanger... aaaaaaaaaaa");
         try expect(s.len() == 136);
         try expect(s.eqlSlice("hello? is anyone there?? NO! I will never ever ever ever ever ever ever ever ever be here... I am a mysterious... slanger... aaaaaaaaaaa"));
+    }
+}
+
+test "String substr" {
+    {
+        var s = String{};
+        if (s.substr(0, 1)) |_| {
+            try expect(false);
+        } else |err| {
+            try expect(err == error.IndexOutOfBounds);
+        }
+
+        if (s.substr(0, 0)) |_| {
+            try expect(false);
+        } else |err| {
+            try expect(err == error.IndexOutOfBounds);
+        }
+    }
+    {
+        var s = String.initSliceUnchecked("hello world!");
+        defer s.deinit();
+
+        if (s.substr(0, 5)) |sub| {
+            try expect(sub.eqlSlice("hello"));
+            var subD = sub;
+            subD.deinit();
+        } else |_| {
+            try expect(false);
+        }
+
+        if (s.substr(0, s.len())) |sub| {
+            try expect(sub.eql(s));
+            var subD = sub;
+            subD.deinit();
+        } else |_| {
+            try expect(false);
+        }
     }
 }
