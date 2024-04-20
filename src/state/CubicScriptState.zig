@@ -715,7 +715,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
                     if (operands.argCount == 0) {
                         break :blk 2; // 2 bytecodes to increment for immediate
                     } else {
-                        const out = (operands.argCount / @sizeOf(Bytecode.FunctionArg)) + 3; // add 3 to be instruction after + immediate
+                        const out = ((operands.argCount + 1) / @sizeOf(Bytecode.FunctionArg)) + 2; // add 3 to be instruction after + immediate
                         break :blk out;
                     }
                 };
@@ -1384,7 +1384,7 @@ test "call" {
             Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs{ .argCount = 1 }), // 1
             Bytecode.encodeCallImmediateLower(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 2
             Bytecode.encodeCallImmediateUpper(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 3
-            Bytecode.encodeFunctionArgPair(Bytecode.FunctionArg{ .modifier = .Owned, .src = 1, .valueTag = @intFromEnum(ValueTag.Int) }, null), // 4
+            Bytecode.encodeFunctionArgPair(Bytecode.FunctionArg{ .modifier = .Owned, .src = 0, .valueTag = @intFromEnum(ValueTag.Int) }, null), // 4
             Bytecode.encode(.Return, {}), // 5
             // Function
             Bytecode.encode(.Return, {}), // 6
@@ -1406,30 +1406,88 @@ test "call" {
 
         try expect((try state.executeOperation(&threadLocalStack, &frame)) == false); // return
     }
-    // { // 2 arg, no return
-    //     const state = Self.init(null);
-    //     defer state.deinit();
+    { // 2 arg, no return
+        var fptr: Bytecode.ScriptFunctionPtr = .{};
 
-    //     const instructions = [_]Bytecode{
-    //         Bytecode.encode(.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }), // 0
-    //         Bytecode.encodeImmediateLower(usize, 10), // 1
-    //         Bytecode.encodeImmediateUpper(usize, 10), // 2
-    //         Bytecode.encode(.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }), // 3 (function argument)
-    //         Bytecode.encodeImmediateLower(i64, 1), // 4
-    //         Bytecode.encodeImmediateUpper(i64, 1), // 5
-    //         Bytecode.encode(.LoadZero, Bytecode.OperandsOnlyDst{ .dst = 2 }), // 6
-    //         Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs{ .argCount = 2, .funcSrc = 0 }), // 7
-    //         Bytecode.encodeFunctionArgPair(
-    //             .{ .modifier = .Owned, .src = 1, .valueTag = @intFromEnum(ValueTag.Int) },
-    //             .{ .modifier = .Owned, .src = 2, .valueTag = @intFromEnum(ValueTag.Bool) },
-    //         ), // 8
-    //         Bytecode.encode(.Return, {}), // 9
-    //         // Function
-    //         Bytecode.encode(.Return, {}), // 10
-    //     };
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate{ .dst = 0, .valueTag = .Int, .immediate = 1 }), // 0
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate{ .dst = 1, .valueTag = .Int, .immediate = 2 }), // 1
+            Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs{ .argCount = 2 }), // 2
+            Bytecode.encodeCallImmediateLower(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 3
+            Bytecode.encodeCallImmediateUpper(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 4
+            Bytecode.encodeFunctionArgPair(
+                Bytecode.FunctionArg{ .modifier = .Owned, .src = 0, .valueTag = @intFromEnum(ValueTag.Int) },
+                Bytecode.FunctionArg{ .modifier = .Owned, .src = 1, .valueTag = @intFromEnum(ValueTag.Int) },
+            ), // 5
+            Bytecode.encode(.Return, {}), // 6
+            // Function
+            Bytecode.encode(.Return, {}), // 7
+        };
 
-    //     _ = try state.run(&instructions);
-    // }
+        fptr.bytecodeStart = @ptrCast(&instructions[7]);
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, &instructions, null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // load immediate 0
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[1]);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // load immediate 1
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[2]);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // call
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[7]);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // return
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[6]);
+
+        try expect((try state.executeOperation(&threadLocalStack, &frame)) == false); // return
+    }
+    { // 3 arg, no return
+        var fptr: Bytecode.ScriptFunctionPtr = .{};
+
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate{ .dst = 0, .valueTag = .Int, .immediate = 1 }), // 0
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate{ .dst = 1, .valueTag = .Int, .immediate = 2 }), // 1
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate{ .dst = 2, .valueTag = .Int, .immediate = 3 }), // 2
+            Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs{ .argCount = 3 }), // 3
+            Bytecode.encodeCallImmediateLower(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 4
+            Bytecode.encodeCallImmediateUpper(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 5
+            Bytecode.encodeFunctionArgPair(
+                Bytecode.FunctionArg{ .modifier = .Owned, .src = 0, .valueTag = @intFromEnum(ValueTag.Int) },
+                Bytecode.FunctionArg{ .modifier = .Owned, .src = 1, .valueTag = @intFromEnum(ValueTag.Int) },
+            ), // 6
+            Bytecode.encodeFunctionArgPair(
+                Bytecode.FunctionArg{ .modifier = .Owned, .src = 2, .valueTag = @intFromEnum(ValueTag.Int) },
+                null,
+            ), // 7
+            Bytecode.encode(.Return, {}), // 8
+            // Function
+            Bytecode.encode(.Return, {}), // 9
+        };
+
+        fptr.bytecodeStart = @ptrCast(&instructions[9]);
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, &instructions, null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // load immediate 0
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[1]);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // load immediate 1
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[2]);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // load immediate 2
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[3]);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // call
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[9]);
+
+        _ = try state.executeOperation(&threadLocalStack, &frame); // return
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[8]);
+
+        try expect((try state.executeOperation(&threadLocalStack, &frame)) == false); // return
+    }
 }
 
 // test "int comparisons" {
