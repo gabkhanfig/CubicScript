@@ -188,6 +188,12 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
                 // },
             }
         },
+        .Deinit => {
+            const operands = bytecode.decode(Bytecode.OperandsSrcTag);
+            assert(frame.registerTag(operands.src).* == operands.tag);
+            frame.register(operands.src).deinit(operands.tag);
+            frame.registerTag(operands.src).* = .None;
+        },
         .IntIsEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src1).int == frame.register(operands.src2).int;

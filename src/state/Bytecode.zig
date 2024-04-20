@@ -160,6 +160,9 @@ pub const OpCode = enum(u8) {
     /// The runtime could assert that the correct type is returned. NOTE maybe should return only a raw value, and when "linking"
     /// the function, the return tag can be specified?
     CallExtern,
+    /// Deinitializes the value at register `src`, using `tag`. Uses `OperandsSrcTag`.
+    /// Sets the register tag to `.None`. Works with zeroed memory as well.
+    Deinit,
 
     // ! == Int Instructions (Some Bool compatible) ==
 
@@ -330,6 +333,7 @@ pub const OperandsDstTwoSrc = packed struct { dst: u8, src1: u8, src2: u8 };
 pub const OperandsDstSrc = packed struct { dst: u8, src: u8 };
 /// If `valueTag` is None, no value is returned.
 pub const OperandsOptionalReturn = extern struct { valueTag: root.ValueTag, src: u8 };
+pub const OperandsSrcTag = extern struct { src: u8, tag: ValueTag };
 
 pub const OperandsFunctionArgs = extern struct {
     argCount: u8,
@@ -473,6 +477,12 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
         .Call => {
             if (OperandsT != OperandsFunctionArgs) {
                 const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsFunctionArgs) }) catch unreachable;
+                @panic(message);
+            }
+        },
+        .Deinit => {
+            if (OperandsT != OperandsSrcTag) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsSrcTag) }) catch unreachable;
                 @panic(message);
             }
         },
