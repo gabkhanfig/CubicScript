@@ -992,205 +992,165 @@ test "int comparisons" {
     }
 }
 
-// /// Used for testing to validate that certain errors happened.
-// fn ScriptTestingContextError(comptime ErrTag: RuntimeError) type {
-//     return struct {
-//         shouldExpectError: bool,
-//         didErrorHappen: bool = false,
+/// Used for testing to validate that certain errors happened.
+fn ScriptTestingContextError(comptime ErrTag: RuntimeError) type {
+    return struct {
+        shouldExpectError: bool,
+        didErrorHappen: bool = false,
 
-//         fn errorCallback(self: *@This(), _: *const Self, err: RuntimeError, _: ErrorSeverity, _: [*c]const u8, _: usize) callconv(.C) void {
-//             if (err == ErrTag) {
-//                 self.didErrorHappen = true;
-//             } else {
-//                 @panic("unexpected error");
-//             }
-//         }
+        fn errorCallback(self: *@This(), _: *const Self, err: RuntimeError, _: ErrorSeverity, _: [*c]const u8, _: usize) callconv(.C) void {
+            if (err == ErrTag) {
+                self.didErrorHappen = true;
+            } else {
+                @panic("unexpected error");
+            }
+        }
 
-//         fn deinit(self: *@This()) callconv(.C) void {
-//             if (self.shouldExpectError) {
-//                 expect(self.didErrorHappen) catch unreachable;
-//             } else {
-//                 expect(!self.didErrorHappen) catch unreachable;
-//             }
-//         }
+        fn deinit(self: *@This()) callconv(.C) void {
+            if (self.shouldExpectError) {
+                expect(self.didErrorHappen) catch unreachable;
+            } else {
+                expect(!self.didErrorHappen) catch unreachable;
+            }
+        }
 
-//         fn asContext(self: *@This()) ScriptContext {
-//             return ScriptContext{
-//                 .ptr = @ptrCast(self),
-//                 .vtable = &.{ .errorCallback = @ptrCast(&@This().errorCallback), .deinit = @ptrCast(&@This().deinit) },
-//             };
-//         }
-//     };
-// }
+        fn asContext(self: *@This()) ScriptContext {
+            return ScriptContext{
+                .ptr = @ptrCast(self),
+                .vtable = &.{ .errorCallback = @ptrCast(&@This().errorCallback), .deinit = @ptrCast(&@This().deinit) },
+            };
+        }
+    };
+}
 
-// test "int addition" {
-//     { // normal
-//         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = false };
+test "int addition" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = false };
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const LOW_MASK = 0xFFFFFFFF;
-//         const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const instruction = Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const src1: i64 = 10;
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode{ .value = @intCast(src1 & LOW_MASK) },
-//             Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode{ .value = 1 }, // store decimal 1
-//             Bytecode{ .value = 0 },
-//             Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        frame.register(0).int = 10;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 1;
+        frame.registerTag(1).* = .Int;
 
-//         _ = try state.run(&instructions);
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == 11);
-//     }
-//     { // validate integer overflow is reported
-//         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = true };
+        try expect(frame.register(2).int == 11);
+    }
+    { // validate integer overflow is reported
+        var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = true };
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const LOW_MASK = 0xFFFFFFFF;
-//         const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const instruction = Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const src1: i64 = math.MAX_INT;
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode{ .value = @intCast(src1 & LOW_MASK) },
-//             Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode{ .value = 1 }, // store decimal 1
-//             Bytecode{ .value = 0 },
-//             Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        frame.register(0).int = math.MAX_INT;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 1;
+        frame.registerTag(1).* = .Int;
 
-//         _ = try state.run(&instructions);
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == math.MIN_INT);
-//     }
-// }
+        try expect(frame.register(2).int == math.MIN_INT);
+    }
+}
 
-// test "int subtraction" {
-//     { // normal
-//         var contextObject = ScriptTestingContextError(RuntimeError.AdditionIntegerOverflow){ .shouldExpectError = false };
+test "int subtraction" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.SubtractionIntegerOverflow){ .shouldExpectError = false };
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const src1: i64 = 10;
+        const instruction = Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, src1),
-//             Bytecode.encodeImmediateUpper(i64, src1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode{ .value = 1 }, // store decimal 1
-//             Bytecode{ .value = 0 },
-//             Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         _ = try state.run(&instructions);
+        frame.register(0).int = 10;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 1;
+        frame.registerTag(1).* = .Int;
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == 9);
-//     }
-//     { // validate integer overflow is reported
-//         var contextObject = ScriptTestingContextError(RuntimeError.SubtractionIntegerOverflow){ .shouldExpectError = true };
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        try expect(frame.register(2).int == 9);
+    }
+    { // validate integer overflow is reported
+        var contextObject = ScriptTestingContextError(RuntimeError.SubtractionIntegerOverflow){ .shouldExpectError = true };
 
-//         const LOW_MASK = 0xFFFFFFFF;
-//         const HIGH_MASK: usize = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const src1: i64 = math.MIN_INT;
-//         const srcAsUsize: usize = @bitCast(src1);
+        const instruction = Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode{ .value = @intCast(srcAsUsize & LOW_MASK) },
-//             Bytecode{ .value = @intCast(@shrExact(srcAsUsize & HIGH_MASK, 32)) },
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode{ .value = 1 }, // store decimal 1
-//             Bytecode{ .value = 0 },
-//             Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         _ = try state.run(&instructions);
+        frame.register(0).int = math.MIN_INT;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 1;
+        frame.registerTag(1).* = .Int;
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == math.MAX_INT);
-//     }
-// }
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-// test "int multiplication" {
-//     { // normal
-//         var contextObject = ScriptTestingContextError(RuntimeError.MultiplicationIntegerOverflow){ .shouldExpectError = false };
+        try expect(frame.register(2).int == math.MAX_INT);
+    }
+}
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+test "int multiplication" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.MultiplicationIntegerOverflow){ .shouldExpectError = false };
 
-//         const LOW_MASK = 0xFFFFFFFF;
-//         const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const src1: i64 = math.MAX_INT;
+        const instruction = Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode{ .value = @intCast(src1 & LOW_MASK) },
-//             Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode{ .value = 1 }, // store decimal 1
-//             Bytecode{ .value = 0 },
-//             Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         _ = try state.run(&instructions);
+        frame.register(0).int = math.MAX_INT;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 1;
+        frame.registerTag(1).* = .Int;
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == math.MAX_INT);
-//     }
-//     { // validate integer overflow is reported
-//         var contextObject = ScriptTestingContextError(RuntimeError.MultiplicationIntegerOverflow){ .shouldExpectError = true };
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        try expect(frame.register(2).int == math.MAX_INT);
+    }
+    { // validate integer overflow is reported
+        var contextObject = ScriptTestingContextError(RuntimeError.MultiplicationIntegerOverflow){ .shouldExpectError = true };
 
-//         const LOW_MASK = 0xFFFFFFFF;
-//         const HIGH_MASK: i64 = @bitCast(@as(usize, @shlExact(0xFFFFFFFF, 32)));
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const src1: i64 = math.MAX_INT;
+        const instruction = Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode{ .value = @intCast(src1 & LOW_MASK) },
-//             Bytecode{ .value = @intCast(@shrExact(src1 & HIGH_MASK, 32)) },
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode{ .value = 2 }, // store decimal 1
-//             Bytecode{ .value = 0 },
-//             Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         _ = try state.run(&instructions);
+        frame.register(0).int = math.MAX_INT;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 2;
+        frame.registerTag(1).* = .Int;
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == -2); // this ends up being the wrap around. same as unsigned bitshift left by 1 then bitcasted to signed
-//     }
-// }
+        _ = try state.executeOperation(&threadLocalStack, &frame);
+
+        try expect(frame.register(2).int == -2);
+    }
+}
 
 // test "int division truncation" {
 //     { // normal
