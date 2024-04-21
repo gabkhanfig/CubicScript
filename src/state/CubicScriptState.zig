@@ -597,10 +597,6 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
                 frame.register(operands.dst).int = @intFromFloat(src);
             }
         },
-        .StringDeinit => {
-            const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
-            frame.register(operand.dst).string.deinit();
-        },
         else => {
             @panic("OpCode not implemented");
         },
