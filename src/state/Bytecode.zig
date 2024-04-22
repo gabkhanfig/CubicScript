@@ -139,9 +139,21 @@ pub const OpCode = enum(u8) {
     LoadImmediateLong,
     /// Unconditionally jump to `dst`
     Jump,
-    /// Jump to `dst` if `src` is 0
+    /// Jump to `dst` if `src` is 0.
+    ///
+    /// For comparison `Ordering` prior to calling this `OpCode`, such as string compare:
+    /// - `<` performing an `.IntIsEqual` on the immediate `-1` will determine if the ordering value is less than.
+    /// - `>` performing an `.IntIsEqual` on the immediate `1` will determine if the ordering value is less than.
+    /// - `<=` performing an `.IntIsLessOrEqual` on the immediate `0` will determine if the ordering value is less or equal.
+    /// - `>=` performing an `.IntGreaterOrEqual` on the immediate `0` will determine if the ordering value is greater or equal.
     JumpIfZero,
-    /// Jump to `dst` if `src` is NOT 0
+    /// Jump to `dst` if `src` is NOT 0.
+    ///
+    /// For comparison `Ordering` prior to calling this `OpCode`, such as string compare:
+    /// - `<` performing an `.IntIsEqual` on the immediate `-1` will determine if the ordering value is less than.
+    /// - `>` performing an `.IntIsEqual` on the immediate `1` will determine if the ordering value is less than.
+    /// - `<=` performing an `.IntIsLessOrEqual` on the immediate `0` will determine if the ordering value is less or equal.
+    /// - `>=` performing an `.IntGreaterOrEqual` on the immediate `0` will determine if the ordering value is greater or equal.
     JumpIfNotZero,
     /// Return from the calling function, moving the instruction pointer back to the calling function,
     /// or terminating the script if it was called by an owning process.
@@ -153,13 +165,6 @@ pub const OpCode = enum(u8) {
     /// Uses `OperandsFunctionArgs`.
     /// Call a function at `src`, moving the stack pointer, and setting the return address.
     Call,
-    /// Call a function from the host process at `src`, moving the stack pointer and setting the return address.
-    /// Maybe all extern functions take a reference to a slice of the available stack frame arguments.
-    /// For C, this would be a pointer to the beginning of the available stack frame for arg1, and a length of the length of the slice for arg2.
-    /// The `extern` function would then return a `TaggedValue`, in which `void` uses the `None` tag.
-    /// The runtime could assert that the correct type is returned. NOTE maybe should return only a raw value, and when "linking"
-    /// the function, the return tag can be specified?
-    CallExtern,
     /// Deinitializes the value at register `src`, using `tag`. Uses `OperandsSrcTag`.
     /// Sets the register tag to `.None`. Works with zeroed memory as well.
     Deinit,
@@ -226,10 +231,6 @@ pub const OpCode = enum(u8) {
     BitwiseXor,
     /// Bit left-shift of `src1 << src2`, storing the result in `dst`.
     BitShiftLeft,
-    /// Bit right-shift of `src1 >> src2`, storing the result in `dst`.
-    /// The vacant bits will be filled by the sign bit.
-    /// https://learn.microsoft.com/en-us/cpp/cpp/left-shift-and-right-shift-operators-input-and-output?view=msvc-170#right-shifts
-    BitArithmeticShiftRight,
     /// Bit right-shift of `src1 >> src2`, storing the result in `dst`, but ALWAYS filling the upper bits with zeroes.
     BitLogicalShiftRight,
     /// Convert an integer `src` to a bool, storing the result in `dst`.
@@ -288,13 +289,9 @@ pub const OpCode = enum(u8) {
     /// Convert `src` float to a new string, storing it in `dst`.
     FloatToString,
 
-    // 48 instructions SO FAR up to this point
-
     // ! == String Instructions ==
     // NOTE LoadZero can make a default, empty string
 
-    /// Deinitialize the string at `src`.
-    StringDeinit,
     /// Make a clone of the string at `src`, storing it in `dst`.
     StringClone,
     /// Store the length in bytes of the string at `src`, storing the value in `dst`.
@@ -390,6 +387,17 @@ pub const CallImmediate = extern struct {
 
     pub const FunctionType = enum(usize) {
         Script = 0,
+    };
+};
+
+/// By default, initializes to be a function with no arguments, with an undefined function pointer.
+pub const ScriptFunctionPtr = struct {
+    bytecodeStart: [*]const Self = undefined,
+    args: []const ArgInfo = &.{},
+
+    pub const ArgInfo = struct {
+        valueTag: root.ValueTag,
+        modifier: FunctionArg.FunctionArgModifiers,
     };
 };
 
@@ -525,14 +533,3 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
         else => {},
     }
 }
-
-/// By default, initializes to be a function with no arguments, with an undefined function pointer.
-pub const ScriptFunctionPtr = struct {
-    bytecodeStart: [*]const Self = undefined,
-    args: []const ArgInfo = &.{},
-
-    pub const ArgInfo = struct {
-        valueTag: root.ValueTag,
-        modifier: FunctionArg.FunctionArgModifiers,
-    };
-};

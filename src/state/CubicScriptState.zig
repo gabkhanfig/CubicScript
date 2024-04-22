@@ -428,25 +428,6 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
 
             frame.register(operands.dst).int = frame.register(operands.src1).int << @intCast(frame.register(operands.src2).int & MASK);
         },
-        .BitArithmeticShiftRight => {
-            const MASK = 0b111111;
-
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-
-            if (frame.register(operands.src2).int > 63 or frame.register(operands.src2).int < 0) {
-                const message = allocPrintZ(allocator(), "Cannot bitwise right shift by [{}] bits. Instead right shifting using 6 least significant bits: [{}]", .{
-                    frame.register(operands.src2).int,
-                    frame.register(operands.src2).int & MASK,
-                }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
-
-                self.runtimeError(RuntimeError.InvalidBitShiftAmount, ErrorSeverity.Warning, message);
-            }
-
-            frame.register(operands.dst).int = frame.register(operands.src1).int >> @intCast(frame.register(operands.src2).int & MASK);
-        },
         .BitLogicalShiftRight => {
             const MASK = 0b111111;
 
