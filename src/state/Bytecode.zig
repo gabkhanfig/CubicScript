@@ -170,6 +170,12 @@ pub const OpCode = enum(u8) {
     /// Deinitializes the value at register `src`, using `tag`. Uses `OperandsSrcTag`.
     /// Sets the register tag to `.None`. Works with zeroed memory as well.
     Deinit,
+    /// Multibyte instruction. Uses `OperandsSync` to determine how long the instruction is.
+    /// If `.count` of `OperandsSync` is 1, uses the immediate sync data to synchronize just that one object.
+    /// If `.count` is not 1, will read the immediate, along with the following bytecodes as an array of `OperandsSync.SyncModifier`.
+    Sync,
+    /// Uses `void` operands.
+    Unsync,
 
     // ! == Int Instructions (Some Bool compatible) ==
 
@@ -333,6 +339,16 @@ pub const OperandsDstSrc = packed struct { dst: u8, src: u8 };
 /// If `valueTag` is None, no value is returned.
 pub const OperandsOptionalReturn = extern struct { valueTag: root.ValueTag, src: u8 };
 pub const OperandsSrcTag = extern struct { src: u8, tag: ValueTag };
+pub const OperandsSync = extern struct {
+    /// May not be 0
+    count: u8,
+    firstSync: SyncModifier,
+
+    pub const SyncModifier = extern struct {
+        src: u8,
+        access: enum(u8) { Shared, Exclusive },
+    };
+};
 
 pub const OperandsFunctionArgs = extern struct {
     argCount: u8,

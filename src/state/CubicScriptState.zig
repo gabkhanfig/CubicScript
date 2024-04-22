@@ -17,6 +17,7 @@ const allocPrintZ = std.fmt.allocPrintZ;
 const runtime_safety: bool = std.debug.runtime_safety;
 const Mutex = std.Thread.Mutex;
 const allocator = @import("global_allocator.zig").allocator;
+const sync_queue = @import("sync_queue.zig");
 
 // TODO scripts using different allocators can risk passing around memory to different states.
 // Therefore, all states should use the same global allocator. Perhaps there can be a function to change the allocator.
@@ -193,6 +194,52 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             assert(frame.registerTag(operands.src).* == operands.tag);
             frame.register(operands.src).deinit(operands.tag);
             frame.registerTag(operands.src).* = .None;
+        },
+        .Sync => {
+            const operands = bytecode.decode(Bytecode.OperandsSync);
+            assert(operands.count != 0);
+            { // Since the first sync operand is within `operands`, the truncation division will correctly specify the increment amount
+                const instructionPtrIncrement = operands.count / 2;
+                stack.instructionPointer = @ptrCast(&stack.instructionPointer[instructionPtrIncrement]);
+                ipIncrement = 0;
+            }
+
+            const QueueScriptLock = struct {
+                fn queue(stackFrame: *StackFrame, syncObj: Bytecode.OperandsSync.SyncModifier) void {
+                    switch (stackFrame.registerTag(syncObj.src).*) {
+                        .Shared => {
+                            switch (syncObj.access) {
+                                .Shared => {
+                                    sync_queue.queueScriptSharedRefShared(&stackFrame.register(syncObj.src).shared);
+                                },
+                                .Exclusive => {
+                                    sync_queue.queueScriptSharedRefExclusive(&stackFrame.register(syncObj.src).shared);
+                                },
+                            }
+                        },
+                        .Class => {
+                            @panic("TODO implement class acquire");
+                        },
+                        else => {
+                            @panic("Cannot lock other data types");
+                        },
+                    }
+                }
+            };
+
+            QueueScriptLock.queue(frame, operands.firstSync);
+            if (operands.count > 1) {
+                const syncStart: [*]const Bytecode.OperandsSync.SyncModifier = @ptrCast(&stack.instructionPointer[1]);
+                for (0..(operands.count - 1)) |i| { // Subtract 1 because the first sync object is within the initial bytecode
+                    QueueScriptLock.queue(frame, syncStart[i]);
+                }
+            }
+
+            // TODO maybe try lock?
+            sync_queue.acquire();
+        },
+        .Unsync => {
+            sync_queue.release();
         },
         .IntIsEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
