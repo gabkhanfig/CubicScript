@@ -1135,249 +1135,225 @@ test "int multiplication" {
     }
 }
 
-// test "int division truncation" {
-//     { // normal
-//         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = false };
+test "int division truncation" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = false };
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const src1: i64 = -5;
+        const instruction = Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, src1),
-//             Bytecode.encodeImmediateUpper(i64, src1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, 2),
-//             Bytecode.encodeImmediateUpper(i64, 2),
-//             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         _ = try state.run(&instructions);
+        frame.register(0).int = -5;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 2;
+        frame.registerTag(1).* = .Int;
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == -2);
-//     }
-//     { // validate integer overflow
-//         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        try expect(frame.register(2).int == -2);
+    }
+    { // validate integer overflow
+        var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, math.MIN_INT),
-//             Bytecode.encodeImmediateUpper(i64, math.MIN_INT),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, -1),
-//             Bytecode.encodeImmediateUpper(i64, -1),
-//             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         _ = try state.run(&instructions);
+        const instruction = Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == math.MIN_INT);
-//     }
-//     { // validate divide by zero
-//         var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        frame.register(0).int = math.MIN_INT;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = -1;
+        frame.registerTag(1).* = .Int;
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, 1),
-//             Bytecode.encodeImmediateUpper(i64, 1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, 0),
-//             Bytecode.encodeImmediateUpper(i64, 0),
-//             Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         if (state.run(&instructions)) |_| {
-//             try expect(false);
-//         } else |err| {
-//             _ = err catch {};
-//         }
-//     }
-// }
+        try expect(frame.register(2).int == math.MIN_INT);
+    }
+    { // validate divide by zero
+        var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
 
-// test "int division floor" {
-//     { // normal
-//         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = false };
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        const instruction = Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const src1: i64 = -5;
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, src1),
-//             Bytecode.encodeImmediateUpper(i64, src1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, 2),
-//             Bytecode.encodeImmediateUpper(i64, 2),
-//             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        frame.register(0).int = 1;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 0;
+        frame.registerTag(1).* = .Int;
 
-//         _ = try state.run(&instructions);
+        if (state.executeOperation(&threadLocalStack, &frame)) |_| {
+            try expect(false);
+        } else |err| {
+            try expect(err == FatalScriptError.DivideByZero);
+        }
+    }
+}
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == -3);
-//     }
-//     { // validate integer overflow
-//         var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
+test "int division floor" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = false };
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, math.MIN_INT),
-//             Bytecode.encodeImmediateUpper(i64, math.MIN_INT),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, -1),
-//             Bytecode.encodeImmediateUpper(i64, -1),
-//             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        const instruction = Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         _ = try state.run(&instructions);
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == math.MIN_INT);
-//     }
-//     { // validate divide by zero
-//         var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
+        frame.register(0).int = -5;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 2;
+        frame.registerTag(1).* = .Int;
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, 1),
-//             Bytecode.encodeImmediateUpper(i64, 1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, 0),
-//             Bytecode.encodeImmediateUpper(i64, 0),
-//             Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        try expect(frame.register(2).int == -3);
+    }
+    { // validate integer overflow
+        var contextObject = ScriptTestingContextError(RuntimeError.DivisionIntegerOverflow){ .shouldExpectError = true };
 
-//         if (state.run(&instructions)) |_| {
-//             try expect(false);
-//         } else |err| {
-//             _ = err catch {};
-//         }
-//     }
-// }
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-// test "int modulo" {
-//     { // normal
-//         var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = false };
+        const instruction = Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         const src1: i64 = -5;
+        frame.register(0).int = math.MIN_INT;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = -1;
+        frame.registerTag(1).* = .Int;
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, src1),
-//             Bytecode.encodeImmediateUpper(i64, src1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, 2),
-//             Bytecode.encodeImmediateUpper(i64, 2),
-//             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         _ = try state.run(&instructions);
+        try expect(frame.register(2).int == math.MIN_INT);
+    }
+    { // validate divide by zero
+        var contextObject = ScriptTestingContextError(RuntimeError.DivideByZero){ .shouldExpectError = true };
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == 1);
-//     }
-//     { // divide by zero
-//         var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = true };
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        const instruction = Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const src1: i64 = -5;
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, src1),
-//             Bytecode.encodeImmediateUpper(i64, src1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, 0),
-//             Bytecode.encodeImmediateUpper(i64, 0),
-//             Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        frame.register(0).int = 1;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 0;
+        frame.registerTag(1).* = .Int;
 
-//         if (state.run(&instructions)) |_| {
-//             try expect(false);
-//         } else |err| {
-//             _ = err catch {};
-//         }
-//     }
-// }
+        if (state.executeOperation(&threadLocalStack, &frame)) |_| {
+            try expect(false);
+        } else |err| {
+            try expect(err == FatalScriptError.DivideByZero);
+        }
+    }
+}
 
-// test "int remainder" {
-//     { // normal
-//         var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = false };
+test "int modulo" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = false };
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const src1: i64 = -5;
+        const instruction = Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, src1),
-//             Bytecode.encodeImmediateUpper(i64, src1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, 2),
-//             Bytecode.encodeImmediateUpper(i64, 2),
-//             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
 
-//         _ = try state.run(&instructions);
+        frame.register(0).int = -5;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 2;
+        frame.registerTag(1).* = .Int;
 
-//         var frame = StackFrame.pushFrame(&threadLocalStack, 256, 0, null) catch unreachable;
-//         defer _ = frame.popFrame(&threadLocalStack);
-//         try expect(frame.register(2).int == -1);
-//     }
-//     { // divide by zero
-//         var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = true };
+        _ = try state.executeOperation(&threadLocalStack, &frame);
 
-//         const state = Self.init(contextObject.asContext());
-//         defer state.deinit();
+        try expect(frame.register(2).int == 1);
+    }
+    { // validate modulo by zero
+        var contextObject = ScriptTestingContextError(RuntimeError.ModuloByZero){ .shouldExpectError = true };
 
-//         const src1: i64 = -5;
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
 
-//         const instructions = [_]Bytecode{
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 0 }),
-//             Bytecode.encodeImmediateLower(i64, src1),
-//             Bytecode.encodeImmediateUpper(i64, src1),
-//             Bytecode.encode(OpCode.LoadImmediateLong, Bytecode.OperandsOnlyDst{ .dst = 1 }),
-//             Bytecode.encodeImmediateLower(i64, 0),
-//             Bytecode.encodeImmediateUpper(i64, 0),
-//             Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 }),
-//         };
+        const instruction = Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
-//         if (state.run(&instructions)) |_| {
-//             try expect(false);
-//         } else |err| {
-//             _ = err catch {};
-//         }
-//     }
-// }
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        frame.register(0).int = 1;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 0;
+        frame.registerTag(1).* = .Int;
+
+        if (state.executeOperation(&threadLocalStack, &frame)) |_| {
+            try expect(false);
+        } else |err| {
+            try expect(err == FatalScriptError.ModuloByZero);
+        }
+    }
+}
+
+test "int remainder" {
+    { // normal
+        var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = false };
+
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
+
+        const instruction = Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        frame.register(0).int = -5;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 2;
+        frame.registerTag(1).* = .Int;
+
+        _ = try state.executeOperation(&threadLocalStack, &frame);
+
+        try expect(frame.register(2).int == -1);
+    }
+    { // validate modulo by zero
+        var contextObject = ScriptTestingContextError(RuntimeError.RemainderByZero){ .shouldExpectError = true };
+
+        const state = Self.init(contextObject.asContext());
+        defer state.deinit();
+
+        const instruction = Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        frame.register(0).int = 1;
+        frame.registerTag(0).* = .Int;
+        frame.register(1).int = 0;
+        frame.registerTag(1).* = .Int;
+
+        if (state.executeOperation(&threadLocalStack, &frame)) |_| {
+            try expect(false);
+        } else |err| {
+            try expect(err == FatalScriptError.RemainderByZero);
+        }
+    }
+}
 
 // test "int power" {
 //     { // normal
