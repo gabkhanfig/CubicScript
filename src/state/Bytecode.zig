@@ -162,7 +162,9 @@ pub const OpCode = enum(u8) {
     /// if no value is returned. If the return value exists, copies `src` to a temporary location,
     /// returns to the previous stack frame, and sets `dst` to the return value.
     Return,
-    /// Uses `OperandsFunctionArgs`.
+    /// Uses `OperandsFunctionArgs` along with `CallImmediate`. This is a multibyte instruction.
+    /// Depending on the amount of function args, will read more bytecodes as argument information.
+    /// This is in the form `FunctionArg`, where the bytecodes will be interpreted as a pointer to an array of them.
     /// Call a function at `src`, moving the stack pointer, and setting the return address.
     Call,
     /// Deinitializes the value at register `src`, using `tag`. Uses `OperandsSrcTag`.
@@ -512,7 +514,6 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
         .BitwiseOr,
         .BitwiseXor,
         .BitShiftLeft,
-        .BitArithmeticShiftRight,
         .BitLogicalShiftRight,
         .FloatIsEqual,
         .FloatIsNotEqual,
