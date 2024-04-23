@@ -68,10 +68,12 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
         .Move => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).* = frame.register(operands.src).*;
+            frame.registerTag(operands.dst).* = frame.registerTag(operands.src).*;
         },
         .LoadZero => {
-            const operand = bytecode.decode(Bytecode.OperandsOnlyDst);
-            frame.register(operand.dst).* = std.mem.zeroes(RawValue);
+            const operands = bytecode.decode(Bytecode.OperandsZero);
+            frame.register(operands.dst).* = std.mem.zeroes(RawValue);
+            frame.registerTag(operands.dst).* = operands.tag;
         },
         .LoadImmediate => {
             const operands = bytecode.decode(Bytecode.OperandsImmediate);
@@ -244,26 +246,32 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
         .IntIsEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src1).int == frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .IntIsNotEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src1).int != frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .IntIsLessThan => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src1).int < frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .IntIsGreaterThan => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src1).int > frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .IntIsLessOrEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src1).int <= frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .IntIsGreaterOrEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src1).int >= frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .IntAdd => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -281,6 +289,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
                 self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
             }
             frame.register(operands.dst).int = temp.@"0";
+            frame.registerTag(operands.dst).* = .Int;
         },
         .IntSubtract => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -298,6 +307,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
                 self.runtimeError(RuntimeError.SubtractionIntegerOverflow, ErrorSeverity.Warning, message);
             }
             frame.register(operands.dst).int = temp.@"0";
+            frame.registerTag(operands.dst).* = .Int;
         },
         .IntMultiply => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -315,6 +325,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
                 self.runtimeError(RuntimeError.MultiplicationIntegerOverflow, ErrorSeverity.Warning, message);
             }
             frame.register(operands.dst).int = temp.@"0";
+            frame.registerTag(operands.dst).* = .Int;
         },
         .IntDivideTrunc => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -345,6 +356,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             } else {
                 frame.register(operands.dst).int = @divTrunc(lhs, rhs);
             }
+            frame.registerTag(operands.dst).* = .Int;
         },
         .IntDivideFloor => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -375,6 +387,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             } else {
                 frame.register(operands.dst).int = @divFloor(lhs, rhs);
             }
+            frame.registerTag(operands.dst).* = .Int;
         },
         .IntModulo => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -393,6 +406,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             }
 
             frame.register(operands.dst).int = @mod(lhs, rhs);
+            frame.registerTag(operands.dst).* = .Int;
         },
         .IntRemainder => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -411,6 +425,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             }
 
             frame.register(operands.dst).int = @rem(lhs, rhs);
+            frame.registerTag(operands.dst).* = .Int;
         },
         .IntPower => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -421,6 +436,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             const result = math.powOverflow(base, exp);
             if (result) |numAndOverflow| {
                 frame.register(operands.dst).int = numAndOverflow[0];
+                frame.registerTag(operands.dst).* = .Int;
 
                 if (numAndOverflow[1]) {
                     const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]. Using wrap around result of [{}]", .{ base, exp, numAndOverflow[0] }) catch {
@@ -443,18 +459,22 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
         .BitwiseComplement => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).int = ~frame.register(operands.src).int;
+            frame.registerTag(operands.dst).* = .Int;
         },
         .BitwiseAnd => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).int = frame.register(operands.src1).int & frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Int;
         },
         .BitwiseOr => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).int = frame.register(operands.src1).int | frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Int;
         },
         .BitwiseXor => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).int = frame.register(operands.src1).int ^ frame.register(operands.src2).int;
+            frame.registerTag(operands.dst).* = .Int;
         },
         .BitShiftLeft => {
             const MASK = 0b111111;
@@ -474,6 +494,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             }
 
             frame.register(operands.dst).int = frame.register(operands.src1).int << @intCast(frame.register(operands.src2).int & MASK);
+            frame.registerTag(operands.dst).* = .Int;
         },
         .BitLogicalShiftRight => {
             const MASK = 0b111111;
@@ -493,26 +514,32 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             }
 
             frame.register(operands.dst).actualValue = frame.register(operands.src1).actualValue >> @intCast(frame.register(operands.src2).actualValue & MASK);
+            frame.registerTag(operands.dst).* = .Int;
         },
         .IntToBool => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src).int != 0;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .IntToFloat => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).float = @floatFromInt(frame.register(operands.src).int);
+            frame.registerTag(operands.dst).* = .Float;
         },
         .IntToString => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).string = String.fromInt(frame.register(operands.src).int);
+            frame.registerTag(operands.dst).* = .String;
         },
         .BoolNot => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).boolean = !frame.register(operands.src).boolean;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .BoolToString => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).string = String.fromBool(frame.register(operands.src).boolean);
+            frame.registerTag(operands.dst).* = .String;
         },
         .FloatIsEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -522,6 +549,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             assert(operands.src1 != operands.src2);
 
             frame.register(operands.dst).boolean = frame.register(operands.src1).float == frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .FloatIsNotEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -531,6 +559,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             assert(operands.src1 != operands.src2);
 
             frame.register(operands.dst).boolean = frame.register(operands.src1).float != frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .FloatIsLessThan => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -540,6 +569,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             assert(operands.src1 != operands.src2);
 
             frame.register(operands.dst).boolean = frame.register(operands.src1).float < frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .FloatIsGreaterThan => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -549,6 +579,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             assert(operands.src1 != operands.src2);
 
             frame.register(operands.dst).boolean = frame.register(operands.src1).float > frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .FloatIsLessOrEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -558,6 +589,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             assert(operands.src1 != operands.src2);
 
             frame.register(operands.dst).boolean = frame.register(operands.src1).float <= frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .FloatIsGreaterOrEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -567,18 +599,22 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             assert(operands.src1 != operands.src2);
 
             frame.register(operands.dst).boolean = frame.register(operands.src1).float >= frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Bool;
         },
         .FloatAdd => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).float = frame.register(operands.src1).float + frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Float;
         },
         .FloatSubtract => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).float = frame.register(operands.src1).float - frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Float;
         },
         .FloatMultiply => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).float = frame.register(operands.src1).float * frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Float;
         },
         .FloatDivide => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -597,6 +633,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             }
 
             frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
+            frame.registerTag(operands.dst).* = .Float;
         },
         .FloatToInt => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
@@ -624,6 +661,7 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             } else {
                 frame.register(operands.dst).int = @intFromFloat(src);
             }
+            frame.registerTag(operands.dst).* = .Int;
         },
         else => {
             @panic("OpCode not implemented");

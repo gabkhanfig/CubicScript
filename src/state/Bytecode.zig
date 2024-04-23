@@ -127,9 +127,7 @@ pub const OpCode = enum(u8) {
     Nop,
     /// Copy value between registers src and dst.
     Move,
-    /// Set the register `dst` to zero.
-    /// # Asserts
-    /// Registers may not overlap.
+    /// Set the register `dst` to zero. Uses `OperandsZero`
     LoadZero,
     /// Load an immediate bool/int/float into `dst`.
     /// The immediate value will be cast to the correct value.
@@ -356,6 +354,7 @@ pub const OperandsFunctionArgs = extern struct {
     returnDst: u8 = 0,
 };
 
+pub const OperandsZero = extern struct { dst: u8, tag: ValueTag };
 pub const OperandsImmediate = packed struct {
     dst: u8,
     valueTag: enum(u2) { Bool, Int, Float },
