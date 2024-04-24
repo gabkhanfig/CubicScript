@@ -249,7 +249,6 @@ pub const OpCode = enum(u8) {
     BitLogicalShiftRight,
 
     // ! == Bool Instructions ==
-    // NOTE converting a bool to int can just use the same register.
 
     /// If `src == true`, stores `false` in `dst`. If `src == false`, stores `true` in `dst`.
     BoolNot,
