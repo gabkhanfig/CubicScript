@@ -243,6 +243,108 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
         .Unsync => {
             sync_queue.release();
         },
+        .Cast => {
+            const operands = bytecode.decode(Bytecode.OperandsCast);
+            const srcTag = frame.registerTag(operands.src).*;
+            const dstTag = operands.tag;
+            const src = frame.register(operands.src);
+            const dst = frame.register(operands.dst);
+
+            assert(srcTag != .None);
+            assert(dstTag != .None);
+
+            frame.registerTag(operands.dst).* = dstTag;
+
+            switch (srcTag) {
+                .Bool => {
+                    switch (dstTag) {
+                        .Bool => {
+                            dst.boolean = src.boolean;
+                        },
+                        .Int => {
+                            dst.int = @intFromBool(src.boolean);
+                        },
+                        .Float => {
+                            dst.float = if (src.boolean) 1.0 else 0.0;
+                        },
+                        .String => {
+                            dst.string = String.fromBool(src.boolean);
+                        },
+                        else => {
+                            const message = allocPrintZ(std.heap.c_allocator, "Cannot cast Bool to {s}", .{@tagName(dstTag)}) catch unreachable;
+                            @panic(message);
+                        },
+                    }
+                },
+                .Int => {
+                    switch (dstTag) {
+                        .Bool => {
+                            dst.boolean = src.int != 0;
+                        },
+                        .Int => {
+                            dst.int = src.int;
+                        },
+                        .Float => {
+                            dst.float = @floatFromInt(src.int);
+                        },
+                        .String => {
+                            dst.string = String.fromInt(src.int);
+                        },
+                        else => {
+                            const message = allocPrintZ(std.heap.c_allocator, "Cannot cast Int to {s}", .{@tagName(dstTag)}) catch unreachable;
+                            @panic(message);
+                        },
+                    }
+                },
+                .Float => {
+                    switch (dstTag) {
+                        .Bool => {
+                            dst.boolean = src.float != 0.0;
+                        },
+                        .Int => {
+                            const MAX_INT_AS_FLOAT: f64 = @floatFromInt(math.MAX_INT);
+                            const MIN_INT_AS_FLOAT: f64 = @floatFromInt(math.MIN_INT);
+
+                            if (src.float > MAX_INT_AS_FLOAT) {
+                                const message = allocPrintZ(allocator(), "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT }) catch {
+                                    @panic("Script out of memory");
+                                };
+                                defer allocator().free(message);
+
+                                self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
+                                dst.int = math.MAX_INT;
+                            } else if (src.float < MIN_INT_AS_FLOAT) {
+                                const message = allocPrintZ(allocator(), "Float number [{}] is less than than the min int value of [{}]. Clamping to min int", .{ src, math.MIN_INT }) catch {
+                                    @panic("Script out of memory");
+                                };
+                                defer allocator().free(message);
+
+                                self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
+                                dst.int = math.MIN_INT;
+                            } else {
+                                dst.int = @intFromFloat(src.float);
+                            }
+                        },
+                        .Float => {
+                            dst.float = src.float;
+                        },
+                        .String => {
+                            dst.string = String.fromFloat(src.float);
+                        },
+                        else => {
+                            const message = allocPrintZ(std.heap.c_allocator, "Cannot cast Float to {s}", .{@tagName(dstTag)}) catch unreachable;
+                            @panic(message);
+                        },
+                    }
+                },
+                .String => {
+                    @panic("TODO string casts");
+                },
+                else => {
+                    @panic("Unsupported cast src type");
+                },
+            }
+        },
         .IntIsEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             frame.register(operands.dst).boolean = frame.register(operands.src1).int == frame.register(operands.src2).int;

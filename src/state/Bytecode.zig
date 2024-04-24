@@ -174,6 +174,13 @@ pub const OpCode = enum(u8) {
     Sync,
     /// Uses `void` operands.
     Unsync,
+    /// Casts `src` to `dst` where the `src` type is the register tag, and the `dst` type is `tag`.
+    /// Works with casting types to strings, but when casting strings to a type, it'll return a result.
+    ///
+    /// Technical Note:
+    /// While specializing a bunch of different cast instructions could be argued to be more performant, the difference in practice would be minimal,
+    /// and in the end would result in many more instructions that need to be accounted for and maintained in the future.
+    Cast,
 
     // ! == Int Instructions (Some Bool compatible) ==
 
@@ -377,6 +384,12 @@ pub const FunctionArg = packed struct {
         ConstRef,
         MutRef,
     };
+};
+
+pub const OperandsCast = extern struct {
+    dst: u8,
+    src: u8,
+    tag: ValueTag,
 };
 
 /// The immediate data for a call operation.
