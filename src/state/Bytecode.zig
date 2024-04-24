@@ -126,6 +126,7 @@ pub const OpCode = enum(u8) {
     /// TODO remove this.
     Nop,
     /// Copy value between registers src and dst.
+    /// TODO figure out how to handle ownership movement? For example with moving a string to another register?
     Move,
     /// Set the register `dst` to zero. Uses `OperandsZero`
     LoadZero,
@@ -246,21 +247,12 @@ pub const OpCode = enum(u8) {
     BitShiftLeft,
     /// Bit right-shift of `src1 >> src2`, storing the result in `dst`, but ALWAYS filling the upper bits with zeroes.
     BitLogicalShiftRight,
-    /// Convert an integer `src` to a bool, storing the result in `dst`.
-    /// If `src` is non-zero, `true` is stored. If `src` is zero, `false` is stored.
-    IntToBool,
-    /// Convert an integer `src` to a float, storing the result in `dst`.
-    IntToFloat,
-    /// Convert an integer `src` to a new string, storing the result in `dst`.
-    IntToString,
 
     // ! == Bool Instructions ==
     // NOTE converting a bool to int can just use the same register.
 
     /// If `src == true`, stores `false` in `dst`. If `src == false`, stores `true` in `dst`.
     BoolNot,
-    /// Convert bool `src` into a new string, storing the result in `dst`.
-    BoolToString,
 
     // ! == Float Instructions ==
 
@@ -296,11 +288,6 @@ pub const OpCode = enum(u8) {
     FloatMultiply,
     /// Divide `src1` by `src2` storing the result in `dst`. If `src2 == 0`, this is considered a fatal error.
     FloatDivide,
-    /// Convert `src` float to an int, storing it in `dst`.
-    /// If `src` is out of the range of an integer, the value will be clamped to the max/min int values.
-    FloatToInt,
-    /// Convert `src` float to a new string, storing it in `dst`.
-    FloatToString,
 
     // ! == String Instructions ==
     // NOTE LoadZero can make a default, empty string
@@ -322,9 +309,6 @@ pub const OpCode = enum(u8) {
     StringSubstring,
     StringSplit,
     StringRemove,
-    StringToInt,
-    StringToFloat,
-    StringToBool,
 
     // NOTE should these math functions be part of a math library?
     // FloatPower,
@@ -470,20 +454,17 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
     const fmtMessage = "OpCode {s} may not use the type " ++ @typeName(OperandsT) ++ ". Must use {s} instead.";
     const allocPrint = std.fmt.allocPrint;
     switch (opcode) {
-        .Nop => {
+        .Nop,
+        .Unsync,
+        => {
             if (OperandsT != void) {
-                @panic("OpCode Nop must use the type void");
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(void) }) catch unreachable;
+                @panic(message);
             }
         },
         .Move,
         .BitwiseComplement,
-        .IntToBool,
-        .IntToFloat,
-        .IntToString,
         .BoolNot,
-        .BoolToString,
-        .FloatToInt,
-        .FloatToString,
         => {
             if (OperandsT != OperandsDstSrc) {
                 const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsDstSrc) }) catch unreachable;
@@ -521,6 +502,18 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
         .Deinit => {
             if (OperandsT != OperandsSrcTag) {
                 const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsSrcTag) }) catch unreachable;
+                @panic(message);
+            }
+        },
+        .Sync => {
+            if (OperandsT != OperandsSync) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsSync) }) catch unreachable;
+                @panic(message);
+            }
+        },
+        .Cast => {
+            if (OperandsT != OperandsCast) {
+                const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsCast) }) catch unreachable;
                 @panic(message);
             }
         },

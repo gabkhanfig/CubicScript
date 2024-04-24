@@ -618,30 +618,10 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             frame.register(operands.dst).actualValue = frame.register(operands.src1).actualValue >> @intCast(frame.register(operands.src2).actualValue & MASK);
             frame.registerTag(operands.dst).* = .Int;
         },
-        .IntToBool => {
-            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-            frame.register(operands.dst).boolean = frame.register(operands.src).int != 0;
-            frame.registerTag(operands.dst).* = .Bool;
-        },
-        .IntToFloat => {
-            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-            frame.register(operands.dst).float = @floatFromInt(frame.register(operands.src).int);
-            frame.registerTag(operands.dst).* = .Float;
-        },
-        .IntToString => {
-            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-            frame.register(operands.dst).string = String.fromInt(frame.register(operands.src).int);
-            frame.registerTag(operands.dst).* = .String;
-        },
         .BoolNot => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).boolean = !frame.register(operands.src).boolean;
             frame.registerTag(operands.dst).* = .Bool;
-        },
-        .BoolToString => {
-            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-            frame.register(operands.dst).string = String.fromBool(frame.register(operands.src).boolean);
-            frame.registerTag(operands.dst).* = .String;
         },
         .FloatIsEqual => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -736,34 +716,6 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
 
             frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
             frame.registerTag(operands.dst).* = .Float;
-        },
-        .FloatToInt => {
-            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-
-            const MAX_INT_AS_FLOAT: f64 = @floatFromInt(math.MAX_INT);
-            const MIN_INT_AS_FLOAT: f64 = @floatFromInt(math.MIN_INT);
-            const src = frame.register(operands.src).float;
-
-            if (src > MAX_INT_AS_FLOAT) {
-                const message = allocPrintZ(allocator(), "Float number [{}] is greater than the max int value of [{}]. Clamping to max int", .{ src, math.MAX_INT }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
-
-                self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
-                frame.register(operands.dst).int = math.MAX_INT;
-            } else if (src < MIN_INT_AS_FLOAT) {
-                const message = allocPrintZ(allocator(), "Float number [{}] is less than than the min int value of [{}]. Clamping to max int", .{ src, math.MIN_INT }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
-
-                self.runtimeError(RuntimeError.FloatToIntOverflow, ErrorSeverity.Warning, message);
-                frame.register(operands.dst).int = math.MIN_INT;
-            } else {
-                frame.register(operands.dst).int = @intFromFloat(src);
-            }
-            frame.registerTag(operands.dst).* = .Int;
         },
         else => {
             @panic("OpCode not implemented");
