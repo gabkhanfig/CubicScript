@@ -38,7 +38,9 @@ const assert = std.debug.assert;
 const expect = std.testing.expect;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 const RwLock = @import("../types/RwLock.zig");
-const Shared = @import("../types/shared.zig").Shared;
+const root = @import("../root.zig");
+const Shared = root.Shared;
+const Weak = root.Weak;
 
 threadlocal var threadLocalSyncQueue: SyncQueues = .{};
 
@@ -102,7 +104,27 @@ pub fn queueScriptSharedRefExclusive(sharedRef: *Shared) void {
 pub fn queueScriptSharedRefShared(sharedRef: *const Shared) void {
     ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
 
-    const object = SyncObject{ .object = @ptrCast(@constCast(sharedRef)), .vtable = SHARED_REF_VTABLE, .lockType = .Exclusive };
+    const object = SyncObject{ .object = @ptrCast(@constCast(sharedRef)), .vtable = SHARED_REF_VTABLE, .lockType = .Shared };
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
+        threadLocalSyncQueue.allocator,
+        object,
+    ) catch unreachable;
+}
+
+pub fn queueScriptWeakRefExclusive(sharedRef: *Weak) void {
+    ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
+
+    const object = SyncObject{ .object = @ptrCast(sharedRef), .vtable = WEAK_REF_VTABLE, .lockType = .Exclusive };
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
+        threadLocalSyncQueue.allocator,
+        object,
+    ) catch unreachable;
+}
+
+pub fn queueScriptWeakRefShared(sharedRef: *const Weak) void {
+    ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
+
+    const object = SyncObject{ .object = @ptrCast(@constCast(sharedRef)), .vtable = WEAK_REF_VTABLE, .lockType = .Shared };
     threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
         threadLocalSyncQueue.allocator,
         object,
@@ -279,6 +301,15 @@ const SHARED_REF_VTABLE: *const VTable = &.{
     .lockShared = @ptrCast(&Shared.read),
     .tryLockShared = @ptrCast(&Shared.tryRead),
     .unlockShared = @ptrCast(&Shared.unlockRead),
+};
+
+const WEAK_REF_VTABLE: *const VTable = &.{
+    .lockExclusive = @ptrCast(&Weak.write),
+    .tryLockExclusive = @ptrCast(&Weak.tryWrite),
+    .unlockExclusive = @ptrCast(&Weak.unlockWrite),
+    .lockShared = @ptrCast(&Weak.read),
+    .tryLockShared = @ptrCast(&Weak.tryRead),
+    .unlockShared = @ptrCast(&Weak.unlockRead),
 };
 
 const std_locking_functions = struct {
