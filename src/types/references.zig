@@ -357,3 +357,43 @@ test "two shared make two weak ref" {
         shared2.deinit();
     }
 }
+
+test "thread safe" {
+    for (0..10) |_| { // do a few times for pseudo-random scheduling
+        var shared1 = Shared.init(TaggedValue.initInt(10));
+        var shared2 = shared1.clone();
+        var weak1 = shared1.makeWeak();
+        var weak2 = shared1.makeWeak();
+
+        const ThreadExecute = struct {
+            fn shared(sharedObj: *Shared) void {
+                sharedObj.write();
+                sharedObj.getUncheckedMut().int += 1;
+                sharedObj.unlockWrite();
+                sharedObj.deinit();
+            }
+
+            fn weak(weakObj: *Weak) void {
+                weakObj.write();
+                if (weakObj.expired()) {
+                    weakObj.unlockWrite();
+                    weakObj.deinit();
+                } else {
+                    weakObj.getUncheckedMut().int += 1;
+                    weakObj.unlockWrite();
+                    weakObj.deinit();
+                }
+            }
+        };
+
+        const t1 = try std.Thread.spawn(.{}, ThreadExecute.shared, .{&shared1});
+        const t2 = try std.Thread.spawn(.{}, ThreadExecute.shared, .{&shared2});
+        const t3 = try std.Thread.spawn(.{}, ThreadExecute.weak, .{&weak1});
+        const t4 = try std.Thread.spawn(.{}, ThreadExecute.weak, .{&weak2});
+
+        t1.join();
+        t2.join();
+        t3.join();
+        t4.join();
+    }
+}
