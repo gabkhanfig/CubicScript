@@ -30,7 +30,7 @@ const vector_types = @import("types/vector.zig");
 
 pub const Bytecode = @import("state/Bytecode.zig");
 
-pub const ValueTag = enum(u8) {
+pub const ValueTag = enum(c_int) {
     None = 0,
     Bool = 1,
     Int = 2,
@@ -55,7 +55,15 @@ pub const ValueTag = enum(u8) {
     // TODO function pointer
 
     pub fn asUsize(self: @This()) usize {
-        return @intFromEnum(self);
+        return @intCast(@as(c_int, @intFromEnum(self)));
+    }
+
+    pub fn asU8(self: @This()) u8 {
+        return @intCast(@as(c_int, @intFromEnum(self)));
+    }
+
+    pub fn asU5(self: @This()) u5 {
+        return @intCast(@as(c_int, @intFromEnum(self)));
     }
 };
 

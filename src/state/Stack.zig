@@ -33,7 +33,7 @@ nextBasePointer: usize = 0,
 currentFrameLength: usize = 0,
 instructionPointer: [*]const Bytecode = undefined,
 returnValueDst: ?*RawValue = null,
-returnTagDst: ?*ValueTag = null,
+returnTagDst: ?*u8 = null,
 
 pub const StackFrame = struct {
     const OLD_INSTRUCTION_POINTER = 0;
@@ -43,10 +43,10 @@ pub const StackFrame = struct {
     const RESERVED_SLOTS = 4;
 
     basePointer: [*]RawValue,
-    tagsBasePointer: [*]ValueTag,
+    tagsBasePointer: [*]u8,
     frameLength: usize,
     returnValueDst: ?*RawValue,
-    returnTagDst: ?*ValueTag,
+    returnTagDst: ?*u8,
 
     /// `frameLength` does not include the reserved registers for stack frames.
     /// Works with recursive stack frames.
@@ -54,7 +54,7 @@ pub const StackFrame = struct {
         assert(frameLength != 0);
 
         const newBasePointer: [*]RawValue = @ptrCast(&stack.stack[stack.nextBasePointer]);
-        const newTagsBasePointer: [*]ValueTag = @ptrCast(&stack.tags[stack.nextBasePointer]);
+        const newTagsBasePointer: [*]u8 = @ptrCast(&stack.tags[stack.nextBasePointer]);
         if (stack.nextBasePointer == 0) { // is at the beginning of the stack, no recursiveness
             newBasePointer[OLD_INSTRUCTION_POINTER].actualValue = 0;
             newBasePointer[OLD_FRAME_LENGTH].actualValue = 0;
@@ -100,7 +100,7 @@ pub const StackFrame = struct {
             return null;
         }
         const oldBasePointer: [*]RawValue = @ptrFromInt(@intFromPtr(self.basePointer) - ((self.frameLength + RESERVED_SLOTS) * 8));
-        const oldTagsBasePointer: [*]ValueTag = @ptrFromInt(@intFromPtr(self.tagsBasePointer) - (self.frameLength + RESERVED_SLOTS));
+        const oldTagsBasePointer: [*]u8 = @ptrFromInt(@intFromPtr(self.tagsBasePointer) - (self.frameLength + RESERVED_SLOTS));
         stack.currentFrameLength = self.oldFrameLength();
         const oldIP = self.oldInstructionPointer();
         stack.instructionPointer = oldIP;
@@ -128,7 +128,17 @@ pub const StackFrame = struct {
         return &self.basePointer[RESERVED_SLOTS + registerIndex];
     }
 
-    pub fn registerTag(self: *const StackFrame, registerIndex: usize) *ValueTag {
+    pub fn registerTag(self: *const StackFrame, registerIndex: usize) ValueTag {
+        assert(registerIndex < self.frameLength);
+        return @enumFromInt(self.tagsBasePointer[RESERVED_SLOTS + registerIndex]);
+    }
+
+    pub fn setRegisterTag(self: *StackFrame, registerIndex: usize, tag: ValueTag) void {
+        assert(registerIndex < self.frameLength);
+        self.tagsBasePointer[RESERVED_SLOTS + registerIndex] = tag.asU8();
+    }
+
+    pub fn registerTagAddr(self: *StackFrame, registerIndex: usize) *u8 {
         assert(registerIndex < self.frameLength);
         return &self.tagsBasePointer[RESERVED_SLOTS + registerIndex];
     }
@@ -138,7 +148,7 @@ pub const StackFrame = struct {
     pub fn setReturnValue(self: *StackFrame, registerIndex: usize) void {
         if (self.returnValueDst) |retDst| {
             retDst.* = self.register(registerIndex).*;
-            self.returnTagDst.?.* = self.registerTag(registerIndex).*;
+            self.returnTagDst.?.* = self.registerTag(registerIndex).asU8();
         } else {
             unreachable;
         }
@@ -146,9 +156,9 @@ pub const StackFrame = struct {
 
     pub fn pushFunctionArgument(self: *StackFrame, value: RawValue, valueTag: ValueTag, nextFrameRegister: usize) void {
         const nextFrameArgsStart: [*]RawValue = @ptrCast(&self.basePointer[RESERVED_SLOTS + self.frameLength + RESERVED_SLOTS]);
-        const nextFrameTagsStart: [*]ValueTag = @ptrCast(&self.tagsBasePointer[RESERVED_SLOTS + self.frameLength + RESERVED_SLOTS]);
+        const nextFrameTagsStart: [*]u8 = @ptrCast(&self.tagsBasePointer[RESERVED_SLOTS + self.frameLength + RESERVED_SLOTS]);
         nextFrameArgsStart[nextFrameRegister] = value;
-        nextFrameTagsStart[nextFrameRegister] = valueTag;
+        nextFrameTagsStart[nextFrameRegister] = valueTag.asU8();
     }
 
     fn oldInstructionPointer(self: *const StackFrame) [*]const Bytecode {
@@ -163,11 +173,11 @@ pub const StackFrame = struct {
         return @ptrFromInt(self.basePointer[OLD_RETURN_VALUE_DST].actualValue);
     }
 
-    fn oldReturnTagDst(self: *const StackFrame) ?*ValueTag {
+    fn oldReturnTagDst(self: *const StackFrame) ?*u8 {
         return @ptrFromInt(self.basePointer[OLD_RETURN_TAG_DST].actualValue);
     }
 
-    pub const FrameReturnDestination = struct { val: *RawValue, tag: *ValueTag };
+    pub const FrameReturnDestination = struct { val: *RawValue, tag: *u8 };
 };
 
 const unusedBytecode = [_]Bytecode{Bytecode.encode(.Nop, {})};
