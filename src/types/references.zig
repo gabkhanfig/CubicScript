@@ -263,13 +263,13 @@ test "shared acquire in sync queue" {
 }
 
 test "shared make one weak ref" {
-    { // deinit shared AFTER weak
+    { // deinit shared BEFORE weak
         var shared = Shared.init(TaggedValue.initInt(10));
         defer shared.deinit();
         var weak = shared.makeWeak();
         defer weak.deinit();
     }
-    { // deinit shared BEFORE weak
+    { // deinit shared AFTER weak
 
         var shared = Shared.init(TaggedValue.initInt(10));
         var weak = shared.makeWeak();
@@ -279,7 +279,7 @@ test "shared make one weak ref" {
 }
 
 test "shared make two weak ref" {
-    { // deinit shared AFTER both weak
+    { // deinit shared BEFIRE both weak
         var shared = Shared.init(TaggedValue.initInt(10));
         defer shared.deinit();
         var weak1 = shared.makeWeak();
@@ -295,12 +295,65 @@ test "shared make two weak ref" {
         shared.deinit();
         weak2.deinit();
     }
-    { // deinit shared BEFORE both weak
+    { // deinit shared AFTER both weak
         var shared = Shared.init(TaggedValue.initInt(10));
         var weak1 = shared.makeWeak();
         var weak2 = shared.makeWeak();
         weak1.deinit();
         weak2.deinit();
         shared.deinit();
+    }
+}
+
+test "two shared make two weak ref" {
+    { // deinit both shared BEFORE both weak
+        var shared1 = Shared.init(TaggedValue.initInt(10));
+        defer shared1.deinit();
+        var shared2 = shared1.clone();
+        defer shared2.deinit();
+        var weak1 = shared1.makeWeak();
+        defer weak1.deinit();
+        var weak2 = shared1.makeWeak();
+        defer weak2.deinit();
+    }
+    { // deinit both shared BEFORE 1 weak and AFTER another
+        var shared1 = Shared.init(TaggedValue.initInt(10));
+        var shared2 = shared1.clone();
+        var weak1 = shared1.makeWeak();
+        var weak2 = shared1.makeWeak();
+        weak1.deinit();
+        shared1.deinit();
+        shared2.deinit();
+        weak2.deinit();
+    }
+    { // deinit both shared AFTER both weak
+        var shared1 = Shared.init(TaggedValue.initInt(10));
+        var shared2 = shared1.clone();
+        var weak1 = shared1.makeWeak();
+        var weak2 = shared1.makeWeak();
+        weak1.deinit();
+        weak2.deinit();
+        shared1.deinit();
+        shared2.deinit();
+    }
+    { // deinit mixed
+        var shared1 = Shared.init(TaggedValue.initInt(10));
+        var shared2 = shared1.clone();
+        var weak1 = shared1.makeWeak();
+        var weak2 = shared1.makeWeak();
+        shared1.deinit();
+        weak1.deinit();
+        shared2.deinit();
+        weak2.deinit();
+    }
+    { // deinit mixed sanity
+        var shared1 = Shared.init(TaggedValue.initInt(10));
+        var shared2 = shared1.clone();
+        var weak1 = shared1.makeWeak();
+        var weak2 = shared1.makeWeak();
+        weak1.deinit();
+        shared1.deinit();
+        weak2.deinit();
+        shared2.deinit();
     }
 }
