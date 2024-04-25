@@ -125,6 +125,20 @@ pub fn powOverflow(base: Int, exp: Int) error{ZeroPowNegative}!struct { Int, boo
     return .{ accumulate, didOverflow };
 }
 
+pub fn powFloat(base: f64, exp: f64) error{ZeroPowNegative}!f64 {
+    if (base == 0 and exp < 0) {
+        return error.ZeroPowNegative;
+    }
+    if (base == 1 or exp == 0) {
+        return 1;
+    }
+    if (base == -1 or base == 0) {
+        return base;
+    }
+
+    return std.math.pow(f64, base, exp);
+}
+
 test "add overflow" {
     {
         const result = addOverflow(1, 1);

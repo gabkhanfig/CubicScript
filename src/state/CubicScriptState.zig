@@ -717,6 +717,61 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
             frame.registerTag(operands.dst).* = .Float;
         },
+        .FloatPower => {
+            // TODO handle negative base to the power of non-integer
+            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+            const base = frame.register(operands.src1).float;
+            const exp = frame.register(operands.src2).float;
+
+            const result = math.powFloat(base, exp);
+            if (result) |num| {
+                frame.register(operands.dst).float = num;
+                frame.registerTag(operands.dst).* = .Float;
+            } else |_| {
+                const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]", .{ base, exp }) catch {
+                    @panic("Script out of memory");
+                };
+                defer allocator().free(message);
+
+                self.runtimeError(RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Error, message);
+                return FatalScriptError.ZeroToPowerOfNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
+            }
+        },
+        .FloatSquareRoot => {
+            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+
+            const num = frame.register(operands.src).float;
+
+            if (num < 0) {
+                const message = allocPrintZ(allocator(), "Cannot get square root of negative number [{}]", .{num}) catch {
+                    @panic("Script out of memory");
+                };
+                defer allocator().free(message);
+
+                self.runtimeError(RuntimeError.NegativeRoot, ErrorSeverity.Error, message);
+                return FatalScriptError.NegativeRoot; // TODO figure out how to free all the memory and resources allocated in the callstack
+            }
+            frame.register(operands.dst).float = @sqrt(num);
+            frame.registerTag(operands.dst).* = .Float;
+        },
+        .FloatLog => {
+            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+            const num = frame.register(operands.src1).float;
+            if (num <= 0) {
+                const message = allocPrintZ(allocator(), "Cannot get logarithm of negative number or 0 [{}]", .{num}) catch {
+                    @panic("Script out of memory");
+                };
+                defer allocator().free(message);
+
+                self.runtimeError(RuntimeError.LogarithmZeroOrNegative, ErrorSeverity.Error, message);
+                return FatalScriptError.LogarithmZeroOrNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
+            }
+
+            frame.register(operands.dst).float = std.math.log(f64, frame.register(operands.src2).float, num);
+            frame.registerTag(operands.dst).* = .Float;
+        },
         else => {
             @panic("OpCode not implemented");
         },
@@ -742,6 +797,8 @@ pub const FatalScriptError = error{
     ModuloByZero,
     RemainderByZero,
     ZeroToPowerOfNegative,
+    NegativeRoot,
+    LogarithmZeroOrNegative,
 };
 
 /// Handles reporting errors, and other user specific data.

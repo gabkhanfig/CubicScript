@@ -11,6 +11,8 @@ pub const RuntimeError = enum(c_int) {
     ZeroToPowerOfNegative = 10,
     InvalidBitShiftAmount = 11,
     FloatToIntOverflow = 12,
+    NegativeRoot = 13,
+    LogarithmZeroOrNegative = 14,
 };
 
 pub const Severity = enum(c_int) {
