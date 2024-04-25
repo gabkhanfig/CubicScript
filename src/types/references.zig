@@ -48,7 +48,7 @@ pub const Shared = extern struct {
         const inner = self.asInnerMut();
         self.inner = 0;
         if (inner.refCount.removeRef()) {
-            inner.weakRef.lock.write();
+            inner.weakRef.lock.write(); // a weak reference could be currently read/write
             inner.weakRef.shared.store(null, AtomicOrder.release);
             const shouldDestroyWeak = inner.weakRef.refCount.count.load(AtomicOrder.acquire) == 0;
             inner.value.deinit(valueTag);
