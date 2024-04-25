@@ -975,41 +975,41 @@ test "call" {
 
         try expect((try state.executeOperation(&threadLocalStack, &frame)) == false); // return from instructions
     }
-    // { // No args, returns an int
-    //     var fptr: Bytecode.ScriptFunctionPtr = .{};
+    { // No args, returns an int
+        var fptr: Bytecode.ScriptFunctionPtr = .{};
 
-    //     const instructions = [_]Bytecode{
-    //         Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs{ .argCount = 0, .captureReturn = true, .returnDst = 0 }), // 0
-    //         Bytecode.encodeCallImmediateLower(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 1
-    //         Bytecode.encodeCallImmediateUpper(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 2
-    //         Bytecode.encode(.Return, Bytecode.OperandsOptionalReturn{ .src = 0, .valueTag = ValueTag.Int.asU8() }), // 3
-    //         // Function
-    //         Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate{ .dst = 0, .valueTag = .Int, .immediate = -5 }), // 4
-    //         Bytecode.encode(.Return, Bytecode.OperandsOptionalReturn{ .src = 0, .valueTag = ValueTag.Int.asU8() }), // 5
-    //     };
+        const instructions = [_]Bytecode{
+            Bytecode.encode(.Call, Bytecode.OperandsFunctionArgs{ .argCount = 0, .captureReturn = true, .returnDst = 0 }), // 0
+            Bytecode.encodeCallImmediateLower(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 1
+            Bytecode.encodeCallImmediateUpper(Bytecode.CallImmediate.initScriptFunctionPtr(&fptr)), // 2
+            Bytecode.encode(.Return, Bytecode.OperandsOptionalReturn{ .src = 0, .valueTag = ValueTag.Int.asU8() }), // 3
+            // Function
+            Bytecode.encode(.LoadImmediate, Bytecode.OperandsImmediate{ .dst = 0, .valueTag = .Int, .immediate = -5 }), // 4
+            Bytecode.encode(.Return, Bytecode.OperandsOptionalReturn{ .src = 0, .valueTag = ValueTag.Int.asU8() }), // 5
+        };
 
-    //     fptr.bytecodeStart = @ptrCast(&instructions[4]);
+        fptr.bytecodeStart = @ptrCast(&instructions[4]);
 
-    //     var retVal: RawValue = undefined;
-    //     var retTag: u8 = undefined;
+        var retVal: RawValue = undefined;
+        var retTag: u8 = undefined;
 
-    //     var frame = try StackFrame.pushFrame(&threadLocalStack, 256, &instructions, .{ .val = &retVal, .tag = &retTag });
-    //     defer _ = frame.popFrame(&threadLocalStack);
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, &instructions, .{ .val = &retVal, .tag = &retTag });
+        defer _ = frame.popFrame(&threadLocalStack);
 
-    //     _ = try state.executeOperation(&threadLocalStack, &frame); // call
-    //     try expect(&threadLocalStack.instructionPointer[0] == &instructions[4]);
+        _ = try state.executeOperation(&threadLocalStack, &frame); // call
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[4]);
 
-    //     _ = try state.executeOperation(&threadLocalStack, &frame); // load immediate
-    //     try expect(&threadLocalStack.instructionPointer[0] == &instructions[5]);
+        _ = try state.executeOperation(&threadLocalStack, &frame); // load immediate
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[5]);
 
-    //     try expect((try state.executeOperation(&threadLocalStack, &frame)) == true); // return immediate
-    //     try expect(&threadLocalStack.instructionPointer[0] == &instructions[3]);
+        try expect((try state.executeOperation(&threadLocalStack, &frame)) == true); // return immediate
+        try expect(&threadLocalStack.instructionPointer[0] == &instructions[3]);
 
-    //     try expect((try state.executeOperation(&threadLocalStack, &frame)) == false); // return from instructions
+        try expect((try state.executeOperation(&threadLocalStack, &frame)) == false); // return from instructions
 
-    //     try expect(retTag == ValueTag.Int.asU8());
-    //     try expect(retVal.int == -5);
-    // }
+        try expect(retTag == ValueTag.Int.asU8());
+        try expect(retVal.int == -5);
+    }
     { // 1 arg, no return
         var fptr: Bytecode.ScriptFunctionPtr = .{};
 

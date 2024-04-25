@@ -25,7 +25,7 @@ const Stack = @This();
 state: *const CubicScriptState = undefined,
 stack: [STACK_SPACES]RawValue align(64) = std.mem.zeroes([STACK_SPACES]RawValue),
 /// Tracks what stack spaces are holding what.
-tags: [STACK_SPACES]ValueTag align(64) = std.mem.zeroes([STACK_SPACES]ValueTag),
+tags: [STACK_SPACES]u8 align(64) = std.mem.zeroes([STACK_SPACES]u8),
 /// Only used to handle recursive stack frames.
 nextBasePointer: usize = 0,
 /// If `currentBasePointer` is not zero, this can be used as a negative
@@ -75,6 +75,7 @@ pub const StackFrame = struct {
         if (returnValueDst) |dst| {
             stack.returnValueDst = dst.val;
             stack.returnTagDst = dst.tag;
+            //std.debug.print("ret dst {s}")
         } else {
             stack.returnValueDst = null;
             stack.returnTagDst = null;
