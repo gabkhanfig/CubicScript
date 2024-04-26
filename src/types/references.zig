@@ -15,11 +15,14 @@ const sync_queue = @import("../state/sync_queue.zig");
 const PTR_BITMASK = 0xFFFFFFFFFFFF;
 const TAG_BITMASK: usize = ~@as(usize, PTR_BITMASK);
 
+// TODO combine into one allocation rather than two for the weak ref container. When the shared ref is destroyed,
+// but a weak ref still exists, deinit the raw value, but dont free the allocated memory for the shared object itself.
 pub const Shared = extern struct {
     const Self = @This();
 
     inner: usize,
 
+    /// Takes ownership of `value`.
     pub fn init(value: TaggedValue) Self {
         const tagInt: usize = @shlExact(value.tag.asUsize(), 48);
         const newInner = allocator().create(Inner) catch {
@@ -28,7 +31,7 @@ pub const Shared = extern struct {
         const newWeakContainer = allocator().create(WeakRefContainer) catch {
             @panic("Script out of memory");
         };
-        newWeakContainer.* = WeakRefContainer{ .shared = AtomicValue(?*Shared.Inner){ .raw = newInner } };
+        newWeakContainer.* = WeakRefContainer{ .shared = AtomicValue(?*RawValue).init(&newInner.value) };
         newInner.* = Inner{ .value = value.value, .weakRef = newWeakContainer };
         return Self{ .inner = tagInt | @intFromPtr(newInner) };
     }
@@ -121,7 +124,7 @@ pub const Shared = extern struct {
 };
 
 /// Is created from a `Shared` object. See `Shared.makeWeak()`.
-pub const WeakShared = struct {
+pub const WeakShared = extern struct {
     const Self = @This();
 
     inner: usize,
@@ -176,11 +179,11 @@ pub const WeakShared = struct {
     }
 
     pub fn getUnchecked(self: *const Self) *const RawValue {
-        return &self.asInner().shared.raw.?.value;
+        return self.asInner().shared.raw.?;
     }
 
     pub fn getUncheckedMut(self: *Self) *RawValue {
-        return &self.asInner().shared.raw.?.value;
+        return self.asInner().shared.raw.?;
     }
 
     /// This should only be called while a lock is acquired.
@@ -200,7 +203,7 @@ pub const WeakShared = struct {
 };
 
 const WeakRefContainer = struct {
-    shared: AtomicValue(?*Shared.Inner),
+    shared: AtomicValue(?*RawValue),
     /// The shared object ALSO uses this lock. `sync_queue` allows trying to acquire the same lock.
     lock: RwLock = .{},
     refCount: AtomicRefCount = AtomicRefCount{ .count = AtomicValue(usize).init(0) },
