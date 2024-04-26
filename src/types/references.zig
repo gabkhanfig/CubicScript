@@ -96,10 +96,10 @@ pub const Shared = extern struct {
         return &self.asInnerMut().value;
     }
 
-    pub fn makeWeak(self: *Self) Weak {
+    pub fn makeWeak(self: *Self) WeakShared {
         const inner = self.asInnerMut();
         inner.weakRef.refCount.addRef();
-        return Weak{ .inner = (self.inner & TAG_BITMASK) | @intFromPtr(inner.weakRef) };
+        return WeakShared{ .inner = (self.inner & TAG_BITMASK) | @intFromPtr(inner.weakRef) };
     }
 
     fn asInner(self: *const Self) *const Inner {
@@ -121,7 +121,7 @@ pub const Shared = extern struct {
 };
 
 /// Is created from a `Shared` object. See `Shared.makeWeak()`.
-pub const Weak = struct {
+pub const WeakShared = struct {
     const Self = @This();
 
     inner: usize,
@@ -373,7 +373,7 @@ test "thread safe" {
                 sharedObj.deinit();
             }
 
-            fn weak(weakObj: *Weak) void {
+            fn weak(weakObj: *WeakShared) void {
                 weakObj.write();
                 if (weakObj.expired()) {
                     weakObj.unlockWrite();
