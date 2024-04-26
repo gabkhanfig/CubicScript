@@ -178,11 +178,11 @@ pub const WeakShared = extern struct {
         inner.lock.unlockRead();
     }
 
-    pub fn getUnchecked(self: *const Self) *const RawValue {
+    pub fn get(self: *const Self) *const RawValue {
         return self.asInner().shared.raw.?;
     }
 
-    pub fn getUncheckedMut(self: *Self) *RawValue {
+    pub fn getMut(self: *Self) *RawValue {
         return self.asInner().shared.raw.?;
     }
 
