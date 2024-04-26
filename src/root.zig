@@ -83,6 +83,7 @@ pub const RawValue = extern union {
     option: Option,
     result: Result,
     shared: Shared,
+    weakShared: WeakShared,
     vec2i: Vec2i,
     vec3i: Vec3i,
     vec4i: Vec4i,
@@ -115,6 +116,9 @@ pub const RawValue = extern union {
             },
             .Shared => {
                 self.shared.deinit();
+            },
+            .WeakShared => {
+                self.weakShared.deinit();
             },
             .Vec2i => {
                 self.vec2i.deinit();
