@@ -55,6 +55,8 @@ pub fn acquire() void {
 }
 
 /// Tries to acquire the currently queued sync objects, returning true on success, false otherwise.
+/// If ALL locks cannot be acquired, the queue clears the objects that are currently held. This
+/// means that the objects will need to be re-queued.
 /// Any queue operations before `release()` is called will be queued on a deeper nested
 /// queue. Failing to call `release()` is undefined behaviour.
 pub fn tryAcquire() bool {
@@ -230,6 +232,7 @@ const SyncQueue = struct {
                     },
                 }
             }
+            self.objects.items.len = 0; // "Clear" the currently held sync objects.
             return false;
         }
     }
