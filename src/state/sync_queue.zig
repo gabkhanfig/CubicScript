@@ -40,8 +40,9 @@ const ArrayListUnmanaged = std.ArrayListUnmanaged;
 const RwLock = @import("../types/RwLock.zig");
 const root = @import("../root.zig");
 const references = @import("../types/references.zig");
+const Unique = root.Unique;
 const Shared = root.Shared;
-const WeakShared = root.WeakShared;
+const Weak = root.Weak;
 
 threadlocal var threadLocalSyncQueue: SyncQueues = .{};
 
@@ -92,6 +93,26 @@ pub fn queueScriptRwLockShared(lock: *const RwLock) void {
     ) catch unreachable;
 }
 
+pub fn queueScriptUniqueRefExclusive(uniqueRef: *Unique) void {
+    ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
+
+    const object = SyncObject{ .object = @ptrCast(references.getUniqueLock(uniqueRef.*)), .vtable = SCRIPT_RWLOCK_VTABLE, .lockType = .Exclusive };
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
+        threadLocalSyncQueue.allocator,
+        object,
+    ) catch unreachable;
+}
+
+pub fn queueScriptUniqueRefShared(uniqueRef: *const Unique) void {
+    ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
+
+    const object = SyncObject{ .object = @ptrCast(references.getUniqueLock(uniqueRef.*)), .vtable = SCRIPT_RWLOCK_VTABLE, .lockType = .Shared };
+    threadLocalSyncQueue.queues[threadLocalSyncQueue.current].addSyncObject(
+        threadLocalSyncQueue.allocator,
+        object,
+    ) catch unreachable;
+}
+
 pub fn queueScriptSharedRefExclusive(sharedRef: *Shared) void {
     ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
 
@@ -112,7 +133,7 @@ pub fn queueScriptSharedRefShared(sharedRef: *const Shared) void {
     ) catch unreachable;
 }
 
-pub fn queueScriptWeakRefExclusive(weakRef: *WeakShared) void {
+pub fn queueScriptWeakRefExclusive(weakRef: *Weak) void {
     ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
 
     const object = SyncObject{ .object = @ptrCast(references.getWeakLock(weakRef.*)), .vtable = SCRIPT_RWLOCK_VTABLE, .lockType = .Exclusive };
@@ -122,7 +143,7 @@ pub fn queueScriptWeakRefExclusive(weakRef: *WeakShared) void {
     ) catch unreachable;
 }
 
-pub fn queueScriptWeakRefShared(weakRef: *const WeakShared) void {
+pub fn queueScriptWeakRefShared(weakRef: *const Weak) void {
     ensureTotalCapacityThreadLocal(threadLocalSyncQueue.current + 1);
 
     const object = SyncObject{ .object = @ptrCast(references.getWeakLock(weakRef.*)), .vtable = SCRIPT_RWLOCK_VTABLE, .lockType = .Shared };
