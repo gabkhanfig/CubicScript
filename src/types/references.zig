@@ -15,11 +15,112 @@ const sync_queue = @import("../state/sync_queue.zig");
 const PTR_BITMASK = 0xFFFFFFFFFFFF;
 const TAG_BITMASK: usize = ~@as(usize, PTR_BITMASK);
 
-// TODO combine into one allocation rather than two for the weak ref container. When the shared ref is destroyed,
-// but a weak ref still exists, deinit the raw value, but dont free the allocated memory for the shared object itself.
-pub const Shared = extern struct {
+/// Holds a unique reference to a script value. Weak references can be created from
+/// the `Unique` instance, which will invalidate themselves when this `Unique` instance is deinitialized.
+pub const Unique = extern struct {
     const Self = @This();
 
+    inner: usize,
+
+    /// Takes ownership of `value`.
+    pub fn init(value: TaggedValue) Self {
+        const tagInt: usize = @shlExact(value.tag.asUsize(), 48);
+        const newInner = allocator().create(Inner) catch {
+            @panic("Script out of memory");
+        };
+        const newWeakContainer = allocator().create(WeakRefContainer) catch {
+            @panic("Script out of memory");
+        };
+        newWeakContainer.* = WeakRefContainer{ .shared = AtomicValue(?*RawValue).init(&newInner.value) };
+        newInner.* = Inner{ .value = value.value, .weakRef = newWeakContainer };
+        return Self{ .inner = tagInt | @intFromPtr(newInner) };
+    }
+
+    pub fn deinit(self: *Self) void {
+        const valueTag = self.tag();
+        if (self.inner == 0) {
+            return;
+        }
+
+        const inner = self.asInnerMut();
+        self.inner = 0;
+        inner.weakRef.lock.write();
+        inner.weakRef.shared.store(null, AtomicOrder.release);
+        const shouldDestroyWeak = inner.weakRef.refCount.count.load(AtomicOrder.acquire) == 0;
+        inner.value.deinit(valueTag);
+        inner.weakRef.lock.unlockWrite();
+        if (shouldDestroyWeak) {
+            allocator().destroy(inner.weakRef);
+        }
+        allocator().destroy(inner);
+    }
+
+    pub fn tag(self: *const Self) ValueTag {
+        return @enumFromInt(@shrExact(self.inner & TAG_BITMASK, 48));
+    }
+
+    pub fn write(self: *Self) callconv(.C) void {
+        self.asInnerMut().weakRef.lock.write();
+    }
+
+    pub fn tryWrite(self: *Self) callconv(.C) bool {
+        return self.asInnerMut().weakRef.lock.tryWrite();
+    }
+
+    pub fn unlockWrite(self: *Self) callconv(.C) void {
+        self.asInnerMut().weakRef.lock.unlockWrite();
+    }
+
+    pub fn read(self: *const Self) callconv(.C) void {
+        self.asInner().weakRef.lock.read();
+    }
+
+    pub fn tryRead(self: *const Self) callconv(.C) bool {
+        return self.asInner().weakRef.lock.tryRead();
+    }
+
+    pub fn unlockRead(self: *const Self) callconv(.C) void {
+        self.asInner().weakRef.lock.unlockRead();
+    }
+
+    pub fn get(self: *const Self) *const RawValue {
+        return &self.asInner().value;
+    }
+
+    pub fn getMut(self: *Self) *RawValue {
+        return &self.asInnerMut().value;
+    }
+
+    pub fn makeWeak(self: *Self) Weak {
+        const inner = self.asInnerMut();
+        inner.weakRef.refCount.addRef();
+        return Weak{ .inner = (self.inner & TAG_BITMASK) | @intFromPtr(inner.weakRef) };
+    }
+
+    fn asInner(self: *const Self) *const Inner {
+        const ptr: *anyopaque = @ptrFromInt(self.inner & PTR_BITMASK);
+        return @ptrCast(@alignCast(ptr));
+    }
+
+    fn asInnerMut(self: *Self) *Inner {
+        const ptr: *anyopaque = @ptrFromInt(self.inner & PTR_BITMASK);
+        return @ptrCast(@alignCast(ptr));
+    }
+
+    const Inner = struct {
+        value: RawValue,
+        /// This holds the actual lock
+        weakRef: *WeakRefContainer,
+    };
+};
+
+/// Holds a shared reference to a script value, using atomic reference counting to keep track of it.
+/// Weak references can be created from the `Shared` instance, which will invalidate themselves when
+/// this `Shared` instance is deinitialized.
+pub const Shared = extern struct {
+    const Self = @This();
+    // TODO combine into one allocation rather than two for the weak ref container. When the shared ref is destroyed,
+    // but a weak ref still exists, deinit the raw value, but dont free the allocated memory for the shared object itself.
     inner: usize,
 
     /// Takes ownership of `value`.
@@ -99,10 +200,10 @@ pub const Shared = extern struct {
         return &self.asInnerMut().value;
     }
 
-    pub fn makeWeak(self: *Self) WeakShared {
+    pub fn makeWeak(self: *Self) Weak {
         const inner = self.asInnerMut();
         inner.weakRef.refCount.addRef();
-        return WeakShared{ .inner = (self.inner & TAG_BITMASK) | @intFromPtr(inner.weakRef) };
+        return Weak{ .inner = (self.inner & TAG_BITMASK) | @intFromPtr(inner.weakRef) };
     }
 
     fn asInner(self: *const Self) *const Inner {
@@ -124,7 +225,7 @@ pub const Shared = extern struct {
 };
 
 /// Is created from a `Shared` object. See `Shared.makeWeak()`.
-pub const WeakShared = extern struct {
+pub const Weak = extern struct {
     const Self = @This();
 
     inner: usize,
@@ -209,12 +310,32 @@ const WeakRefContainer = struct {
     refCount: AtomicRefCount = AtomicRefCount{ .count = AtomicValue(usize).init(0) },
 };
 
+pub fn getUniqueLock(unique: Unique) *RwLock {
+    return &unique.asInner().weakRef.lock;
+}
+
 pub fn getSharedLock(shared: Shared) *RwLock {
     return &shared.asInner().weakRef.lock;
 }
 
-pub fn getWeakLock(weak: WeakShared) *RwLock {
+pub fn getWeakLock(weak: Weak) *RwLock {
     return &weak.asInner().lock;
+}
+
+test "unique init deinit" {
+    var unique = Unique.init(TaggedValue.initInt(10));
+    defer unique.deinit();
+
+    try expect(unique.tag() == .Int);
+    try expect(unique.get().int == 10);
+}
+
+test "unique free memory on deinit" {
+    var unique = Unique.init(TaggedValue.initString(root.String.initSliceUnchecked("erm...")));
+    defer unique.deinit();
+
+    try expect(unique.tag() == .String);
+    try expect(unique.get().string.eqlSlice("erm..."));
 }
 
 test "shared init deinit" {
@@ -384,7 +505,7 @@ test "thread safe" {
                 sharedObj.deinit();
             }
 
-            fn weak(weakObj: *WeakShared) void {
+            fn weak(weakObj: *Weak) void {
                 weakObj.write();
                 if (weakObj.expired()) {
                     weakObj.unlockWrite();

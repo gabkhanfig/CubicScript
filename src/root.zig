@@ -18,8 +18,10 @@ pub const Map = @import("types/map.zig").Map;
 pub const Set = @import("types/set.zig").Set;
 pub const Option = @import("types/option.zig").Option;
 pub const Result = @import("types/result.zig").Result;
+//pub const Class = @import("types/class.zig").Class;
+pub const Unique = @import("types/references.zig").Unique;
 pub const Shared = @import("types/references.zig").Shared;
-pub const WeakShared = @import("types/references.zig").WeakShared;
+pub const Weak = @import("types/references.zig").Weak;
 pub const Vec2i = vector_types.Vec2i;
 pub const Vec3i = vector_types.Vec3i;
 pub const Vec4i = vector_types.Vec4i;
@@ -43,8 +45,9 @@ pub const ValueTag = enum(c_int) {
     Option = 8,
     Result = 9,
     Class = 10,
-    Shared = 11,
-    WeakShared = 12,
+    Unique = 11,
+    Shared = 12,
+    Weak = 13,
     ConstRef,
     MutRef,
     Vec2i,
@@ -81,8 +84,10 @@ pub const RawValue = extern union {
     set: Set,
     option: Option,
     result: Result,
+    //class: Class,
+    unique: Unique,
     shared: Shared,
-    weakShared: WeakShared,
+    weak: Weak,
     vec2i: Vec2i,
     vec3i: Vec3i,
     vec4i: Vec4i,
@@ -113,11 +118,14 @@ pub const RawValue = extern union {
             .Result => {
                 self.result.deinit();
             },
+            .Unique => {
+                self.unique.deinit();
+            },
             .Shared => {
                 self.shared.deinit();
             },
-            .WeakShared => {
-                self.weakShared.deinit();
+            .Weak => {
+                self.weak.deinit();
             },
             .Vec2i => {
                 self.vec2i.deinit();
