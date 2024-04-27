@@ -209,6 +209,14 @@ const WeakRefContainer = struct {
     refCount: AtomicRefCount = AtomicRefCount{ .count = AtomicValue(usize).init(0) },
 };
 
+pub fn getSharedLock(shared: Shared) *RwLock {
+    return &shared.asInner().weakRef.lock;
+}
+
+pub fn getWeakLock(weak: WeakShared) *RwLock {
+    return &weak.asInner().lock;
+}
+
 test "shared init deinit" {
     var shared = Shared.init(TaggedValue.initInt(10));
     defer shared.deinit();
@@ -382,7 +390,7 @@ test "thread safe" {
                     weakObj.unlockWrite();
                     weakObj.deinit();
                 } else {
-                    weakObj.getUncheckedMut().int += 1;
+                    weakObj.getMut().int += 1;
                     weakObj.unlockWrite();
                     weakObj.deinit();
                 }
