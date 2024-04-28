@@ -7,7 +7,6 @@ const ValueTag = root.ValueTag;
 const String = root.String;
 const allocator = @import("../state/global_allocator.zig").allocator;
 
-/// Classes can make weak references, however if the class becomes a shared object, all existing weak references become invalid.
 pub const Class = extern struct {
     const PTR_BITMASK: usize = 0x0000FFFFFFFFFFFF;
     const MAX_CLASS_MEMBERS = std.math.maxInt(u16);
