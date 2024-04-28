@@ -52,10 +52,18 @@ pub const Class = extern struct {
         return runtimeInfo.members[memberIndex].dataType;
     }
 
-    /// Get the name of this class. This value is the same across multiple
-    /// instances of this class.
+    /// Get the name of this class. An example would be `"Player"`.
+    /// To get the fully qualified name, see `fullyQualifiedClassName()`.
+    /// This value is the same across multiple instances of this class.
     pub fn className(self: *const Self) *const String {
         return &getRuntimeClassInfo(self).className;
+    }
+
+    /// Get the fully qualified name of this class. An example would be `"example.Player"`.
+    /// To get the class name alone, see `className()`.
+    /// This value is the same across multiple instances of this class.
+    pub fn fullyQualifiedClassName(self: *const Self) *const String {
+        return &getRuntimeClassInfo(self).fullyQualifiedName;
     }
 
     /// Get a slice of the info of all the members of this class.
@@ -71,6 +79,7 @@ pub fn getRuntimeClassInfo(class: *const Class) *const RuntimeClassInfo {
 
 pub const RuntimeClassInfo = struct {
     className: String,
+    fullyQualifiedName: String,
     members: []ClassMemberInfo,
     // TODO onDeinit, interfaces
 };
