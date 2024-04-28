@@ -329,7 +329,7 @@ pub const String = extern struct {
     // remove
 
     pub fn fromBool(boolean: bool) Self {
-        if (boolean) {
+        if (boolean) { // TODO is it possible to make these globals without running into tests leaking memory issues?
             return Self.initSliceUnchecked("true");
         } else {
             return Self.initSliceUnchecked("false");
