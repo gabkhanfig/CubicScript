@@ -76,14 +76,14 @@ pub fn getRuntimeClassInfo(class: *const Class) *const RuntimeClassInfo {
     return @ptrFromInt(class.inner);
 }
 
+pub const ClassMemberInfo = extern struct {
+    name: String,
+    dataType: ValueTag,
+};
+
 pub const RuntimeClassInfo = struct {
     className: String,
     fullyQualifiedName: String,
     members: []ClassMemberInfo,
     // TODO onDeinit, interfaces
-};
-
-pub const ClassMemberInfo = extern struct {
-    name: String,
-    dataType: ValueTag,
 };
