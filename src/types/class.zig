@@ -9,7 +9,6 @@ const allocator = @import("../state/global_allocator.zig").allocator;
 
 pub const Class = extern struct {
     const PTR_BITMASK: usize = 0x0000FFFFFFFFFFFF;
-    const MAX_CLASS_MEMBERS = std.math.maxInt(u16);
 
     const Self = @This();
 

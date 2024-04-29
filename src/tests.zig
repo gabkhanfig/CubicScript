@@ -14,4 +14,5 @@ comptime {
     _ = @import("state/global_allocator.zig");
     _ = @import("types/result.zig");
     _ = @import("types/references.zig");
+    _ = @import("types/class.zig");
 }
