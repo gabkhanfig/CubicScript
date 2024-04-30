@@ -12,8 +12,16 @@ pub const Class = extern struct {
 
     const Self = @This();
 
-    /// Points to a region of memory starting with a pointer to the runtime class info,
-    /// followed by all of the class members.
+    /// Stores a pointer to the arbitrary memory in the following layout
+    /// - [0] class RTTI
+    /// - [1 -> n] class members
+    /// - [v1] interface 1 vtable
+    /// - [m1] interface 1 members
+    /// - [v2] interface 2 vtable
+    /// - [m2] interface 2 members
+    /// - ...
+    ///
+    /// If the class implements no interfaces, only the RTTI and members are stored.
     inner: usize,
 
     pub fn deinit(self: *Self) void {
