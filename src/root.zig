@@ -18,7 +18,8 @@ pub const Map = @import("types/map.zig").Map;
 pub const Set = @import("types/set.zig").Set;
 pub const Option = @import("types/option.zig").Option;
 pub const Result = @import("types/result.zig").Result;
-//pub const Class = @import("types/class.zig").Class;
+pub const Class = @import("types/class.zig").Class;
+pub const Interface = @import("types/interface.zig").Interface;
 pub const Unique = @import("types/references.zig").Unique;
 pub const Shared = @import("types/references.zig").Shared;
 pub const Weak = @import("types/references.zig").Weak;
@@ -45,9 +46,10 @@ pub const ValueTag = enum(c_int) {
     Option = 8,
     Result = 9,
     Class = 10,
-    Unique = 11,
-    Shared = 12,
-    Weak = 13,
+    Interface = 11,
+    Unique = 12,
+    Shared = 13,
+    Weak = 14,
     ConstRef,
     MutRef,
     Vec2i,
