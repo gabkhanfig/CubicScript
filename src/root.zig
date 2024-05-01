@@ -19,7 +19,8 @@ pub const Set = @import("types/set.zig").Set;
 pub const Option = @import("types/option.zig").Option;
 pub const Result = @import("types/result.zig").Result;
 pub const Class = @import("types/class.zig").Class;
-pub const Interface = @import("types/interface.zig").Interface;
+pub const OwnedInterface = @import("types/interface.zig").OwnedInterface;
+pub const InterfaceRef = @import("types/interface.zig").InterfaceRef;
 pub const Unique = @import("types/references.zig").Unique;
 pub const Shared = @import("types/references.zig").Shared;
 pub const Weak = @import("types/references.zig").Weak;
@@ -46,12 +47,13 @@ pub const ValueTag = enum(c_int) {
     Option = 8,
     Result = 9,
     Class = 10,
-    Interface = 11,
-    Unique = 12,
-    Shared = 13,
-    Weak = 14,
-    ConstRef,
-    MutRef,
+    OwnedInterface = 11,
+    InterfaceRef = 12,
+    ConstRef = 13,
+    MutRef = 14,
+    Unique = 15,
+    Shared = 16,
+    Weak = 17,
     Vec2i,
     Vec3i,
     Vec4i,
@@ -86,7 +88,9 @@ pub const RawValue = extern union {
     set: Set,
     option: Option,
     result: Result,
-    //class: Class,
+    class: Class,
+    ownedInterface: OwnedInterface,
+    interfaceRef: *InterfaceRef,
     unique: Unique,
     shared: Shared,
     weak: Weak,
@@ -99,9 +103,11 @@ pub const RawValue = extern union {
     // TODO other primitive types
 
     /// In some cases, it's more convenient to just deinit here.
+    /// If `tag` is `.Interface`, the programmer must ensure
+    /// that `self` owns the interface, rather than is holding a reference to it.
     pub fn deinit(self: *RawValue, tag: ValueTag) void {
         switch (tag) {
-            .Bool, .Int, .Float => {},
+            .Bool, .Int, .Float, .ConstRef, .MutRef, .InterfaceRef => {},
             .String => {
                 self.string.deinit();
             },
@@ -119,6 +125,12 @@ pub const RawValue = extern union {
             },
             .Result => {
                 self.result.deinit();
+            },
+            .Class => {
+                self.class.deinit();
+            },
+            .OwnedInterface => {
+                self.ownedInterface.deinit();
             },
             .Unique => {
                 self.unique.deinit();

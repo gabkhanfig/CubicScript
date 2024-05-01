@@ -10,20 +10,35 @@ const Class = @import("class.zig").Class;
 const ClassMemberInfo = @import("class.zig").ClassMemberInfo;
 const RuntimeClassInfo = @import("class.zig").RuntimeClassInfo;
 
-/// `Interface` is actually just an offset pointer into a class, starting at the class's
-/// version of the interface vtable.
-pub const Interface = extern struct {
+/// Wrapper around an `InterfaceRef` that specifies ownership.
+pub const OwnedInterface = extern struct {
     const Self = @This();
 
+    inner: usize,
+
     /// Frees the actual class that this interface "owns".
-    ///
-    /// NOTE
-    ///
-    /// Ensure that this instance actually owns the class, rather than is a reference.
     pub fn deinit(self: *Self) void {
-        var classObj = Class{ .inner = @intFromPtr(self) };
+        if (self.inner == 0) {
+            return;
+        }
+        var classObj = Class{ .inner = @intFromPtr(classStartPtrMut(@ptrFromInt(self.inner))) };
         classObj.deinit();
+        self.inner = 0;
     }
+
+    pub fn ref(self: *const Self) *const InterfaceRef {
+        return @ptrFromInt(self.inner);
+    }
+
+    pub fn refMut(self: *Self) *InterfaceRef {
+        return @ptrFromInt(self.inner);
+    }
+};
+
+/// `InterfaceRef` is actually just an offset pointer into a class, starting at the class's
+/// version of the interface vtable.
+pub const InterfaceRef = extern struct {
+    const Self = @This();
 
     pub fn interfaceName(self: *const Self) *const String {
         return &getRuntimeInterfaceInfo(self).interfaceName;
@@ -44,14 +59,18 @@ pub const Interface = extern struct {
     }
 };
 
-pub fn getRuntimeInterfaceInfo(interface: *const Interface) *const RuntimeInterfaceInfo {
+pub fn takeOwnership(interface: *InterfaceRef) OwnedInterface {
+    return OwnedInterface{ .inner = @intFromPtr(interface) };
+}
+
+pub fn getRuntimeInterfaceInfo(interface: *const InterfaceRef) *const RuntimeInterfaceInfo {
     // The first element is always the runtime interface info
-    return @ptrCast(interface);
+    return @ptrCast(@alignCast(interface));
 }
 
 /// Returns a pointer to the start of the class data.
 /// This also happens to be `*const RuntimeClassInfo`.
-fn classStartPtr(interface: *const Interface) *align(@alignOf(usize)) const anyopaque {
+fn classStartPtr(interface: *const InterfaceRef) *align(@alignOf(usize)) const anyopaque {
     const topOffset = getRuntimeInterfaceInfo(interface).topOffset;
     const interfaceAddr = @intFromPtr(interface);
     const classAddr: usize = interfaceAddr - topOffset;
@@ -60,7 +79,7 @@ fn classStartPtr(interface: *const Interface) *align(@alignOf(usize)) const anyo
 
 /// Returns a pointer to the start of the class data.
 /// This also happens to be `*const RuntimeClassInfo`.
-fn classStartPtrMut(interface: *Interface) *align(@alignOf(usize)) anyopaque {
+fn classStartPtrMut(interface: *InterfaceRef) *align(@alignOf(usize)) anyopaque {
     const topOffset = getRuntimeInterfaceInfo(interface).topOffset;
     const interfaceAddr = @intFromPtr(interface);
     const classAddr: usize = interfaceAddr - topOffset;

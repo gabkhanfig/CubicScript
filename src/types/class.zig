@@ -27,10 +27,10 @@ pub const Class = extern struct {
     pub fn deinit(self: *Self) void {
         // TODO execute script deinit as well
         for (self.membersInfo(), 0..) |info, i| {
-            self.valueAt(i).deinit(info.dataType);
+            self.mutValueAt(i).deinit(info.dataType);
         }
         const allocationSize = @sizeOf(*const RuntimeClassInfo) + (@sizeOf(RawValue) * self.membersInfo().len);
-        const ptr: *u8 = @ptrFromInt(self.inner);
+        const ptr: [*]u8 = @ptrFromInt(self.inner);
         allocator().free(ptr[0..allocationSize]);
     }
 
