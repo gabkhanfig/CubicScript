@@ -6,6 +6,8 @@ const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
 const String = root.String;
 const allocator = @import("../state/global_allocator.zig").allocator;
+const InterfaceRef = @import("interface.zig").InterfaceRef;
+const OwnedInterface = @import("interface.zig").OwnedInterface;
 
 pub const Class = extern struct {
     const PTR_BITMASK: usize = 0x0000FFFFFFFFFFFF;
@@ -77,6 +79,60 @@ pub const Class = extern struct {
     pub fn membersInfo(self: *const Self) []const ClassMemberInfo {
         return getRuntimeClassInfo(self).members;
     }
+
+    pub fn interfaces(self: *const Self) []const ClassInterfaceImplInfo {
+        return getRuntimeClassInfo(self).interfaces;
+    }
+
+    /// `interfaceName` is expected to be fully qualified.
+    pub fn doesImplement(self: *const Self, interfaceName: *const String) bool {
+        const classInfo = getRuntimeClassInfo(self);
+        for (classInfo.interfaces) |iface| {
+            if (iface.fullyQualifiedInterfaceName.eql(interfaceName.*)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// `interfaceName` is expected to be fully qualified.
+    pub fn interfaceRef(self: *const Self, interfaceName: *const String) *const InterfaceRef {
+        const offset = self.findInterfaceOffset(interfaceName);
+        if (offset) |byteOffset| {
+            return @ptrFromInt(self.inner + @as(usize, byteOffset));
+        } else {
+            @panic("Class does not implement interface");
+        }
+    }
+
+    /// `interfaceName` is expected to be fully qualified.
+    pub fn interfaceRefMut(self: *Self, interfaceName: *const String) *InterfaceRef {
+        const offset = self.findInterfaceOffset(interfaceName);
+        if (offset) |byteOffset| {
+            return @ptrFromInt(self.inner + @as(usize, byteOffset));
+        } else {
+            @panic("Class does not implement interface");
+        }
+    }
+
+    /// `interfaceName` is expected to be fully qualified.
+    pub fn toOwnedInterface(self: *Self, interfaceName: *const String) OwnedInterface {
+        const iface = self.interfaceRefMut(interfaceName);
+        const takeOwnership = @import("interface.zig").takeOwnership;
+        const owned = takeOwnership(iface);
+        self.inner = 0;
+        return owned;
+    }
+
+    fn findInterfaceOffset(self: *const Self, interfaceName: *const String) ?u32 {
+        const classInfo = getRuntimeClassInfo(self);
+        for (classInfo.interfaces, 0..) |iface, i| {
+            if (iface.fullyQualifiedInterfaceName.eql(interfaceName.*)) {
+                return @intCast(i);
+            }
+        }
+        return null;
+    }
 };
 
 pub fn getRuntimeClassInfo(class: *const Class) *const RuntimeClassInfo {
@@ -88,9 +144,16 @@ pub const ClassMemberInfo = extern struct {
     dataType: ValueTag,
 };
 
+pub const ClassInterfaceImplInfo = extern struct {
+    fullyQualifiedInterfaceName: String,
+    /// Specifies the offset in bytes required to get to the class's implementation of the interface.
+    offset: usize,
+};
+
 pub const RuntimeClassInfo = struct {
     className: String,
     fullyQualifiedName: String,
     members: []ClassMemberInfo,
-    // TODO onDeinit, interfaces
+    interfaces: []ClassInterfaceImplInfo,
+    // TODO onDeinit
 };
