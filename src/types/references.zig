@@ -13,7 +13,48 @@ const allocator = @import("../state/global_allocator.zig").allocator;
 const sync_queue = @import("../state/sync_queue.zig");
 
 const PTR_BITMASK = 0xFFFFFFFFFFFF;
-const TAG_BITMASK: usize = ~@as(usize, PTR_BITMASK);
+const TAG_SHIFT = 48;
+const TAG_BITMASK: usize = 0b11111 << 48;
+
+/// Can be zero initialized, meaning it's a `None` or `null` option.
+pub const ValueConstRef = extern struct {
+    taggedPtr: usize = 0,
+
+    pub fn init(inTag: ValueTag, inValue: *const RawValue) @This() {
+        const maskTag: usize = @shlExact(inTag.asUsize(), TAG_SHIFT);
+        return .{ .taggedPtr = maskTag | @intFromPtr(inValue) };
+    }
+
+    pub fn tag(self: *const @This()) ValueTag {
+        const mask = self.taggedPtr & TAG_BITMASK;
+        return @enumFromInt(@shrExact(mask, TAG_SHIFT));
+    }
+
+    pub fn value(self: *const @This()) *const RawValue {
+        const mask = self.taggedPtr & PTR_BITMASK;
+        return @ptrCast(@alignCast(@as(*anyopaque, @ptrFromInt(mask))));
+    }
+};
+
+/// Can be zero initialized, meaning it's a `None` or `null` option.
+pub const ValueMutRef = extern struct {
+    taggedPtr: usize = 0,
+
+    pub fn init(inTag: ValueTag, inValue: *RawValue) @This() {
+        const maskTag: usize = @shlExact(inTag.asUsize(), TAG_SHIFT);
+        return .{ .taggedPtr = maskTag | @intFromPtr(inValue) };
+    }
+
+    pub fn tag(self: *const @This()) ValueTag {
+        const mask = self.taggedPtr & TAG_BITMASK;
+        return @enumFromInt(@shrExact(mask, TAG_SHIFT));
+    }
+
+    pub fn value(self: *const @This()) *RawValue {
+        const mask = self.taggedPtr & PTR_BITMASK;
+        return @ptrCast(@alignCast(@as(*anyopaque, @ptrFromInt(mask))));
+    }
+};
 
 /// Holds a unique reference to a script value. Weak references can be created from
 /// the `Unique` instance, which will invalidate themselves when this `Unique` instance is deinitialized.

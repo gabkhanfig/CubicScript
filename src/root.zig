@@ -21,6 +21,8 @@ pub const Result = @import("types/result.zig").Result;
 pub const Class = @import("types/class.zig").Class;
 pub const OwnedInterface = @import("types/interface.zig").OwnedInterface;
 pub const InterfaceRef = @import("types/interface.zig").InterfaceRef;
+pub const ValueConstRef = @import("types/references.zig").ValueConstRef;
+pub const ValueMutRef = @import("types/references.zig").ValueMutRef;
 pub const Unique = @import("types/references.zig").Unique;
 pub const Shared = @import("types/references.zig").Shared;
 pub const Weak = @import("types/references.zig").Weak;
@@ -61,6 +63,7 @@ pub const ValueTag = enum(c_int) {
     Vec3f,
     Vec4f,
     Mat4f,
+    Quat, // maybe unnecessary
     // TODO function pointer
 
     pub fn asUsize(self: @This()) usize {
@@ -91,6 +94,8 @@ pub const RawValue = extern union {
     class: Class,
     ownedInterface: OwnedInterface,
     interfaceRef: *InterfaceRef,
+    constRef: ValueConstRef,
+    mutRef: ValueMutRef,
     unique: Unique,
     shared: Shared,
     weak: Weak,
@@ -260,104 +265,6 @@ pub const TaggedValue = extern struct {
 
     pub fn deinit(self: *TaggedValue) void {
         self.value.deinit(self.tag);
-    }
-};
-
-const TAGGED_REF_PTR_BITMASK = 0xFFFFFFFFFFFF;
-const TAGGED_REF_TAG_BITMASK: usize = ~@as(usize, TAGGED_REF_PTR_BITMASK);
-const TAGGED_REF_SHIFT = 48;
-
-pub const TaggedValueMutRef = extern struct {
-    taggedPtr: usize,
-
-    pub fn init(inTag: ValueTag, inValue: *RawValue) @This() {
-        const maskTag: usize = @shlExact(inTag.asUsize(), TAGGED_REF_SHIFT);
-        return .{ .taggedPtr = maskTag | @intFromPtr(inValue) };
-    }
-
-    pub fn tag(self: *const @This()) ValueTag {
-        const mask = self.taggedPtr & TAGGED_REF_TAG_BITMASK;
-        return @enumFromInt(@shrExact(mask, TAGGED_REF_SHIFT));
-    }
-
-    pub fn value(self: *const @This()) *RawValue {
-        const mask = self.taggedPtr & TAGGED_REF_PTR_BITMASK;
-        return @ptrCast(@alignCast(@as(*anyopaque, @ptrFromInt(mask))));
-    }
-};
-
-pub const TaggedValueConstRef = extern struct {
-    taggedPtr: usize,
-
-    pub fn init(inTag: ValueTag, inValue: *const RawValue) @This() {
-        const maskTag: usize = @shlExact(inTag.asUsize(), TAGGED_REF_SHIFT);
-        return .{ .taggedPtr = maskTag | @intFromPtr(inValue) };
-    }
-
-    pub fn tag(self: *const @This()) ValueTag {
-        const mask = self.taggedPtr & TAGGED_REF_TAG_BITMASK;
-        return @enumFromInt(@shrExact(mask, TAGGED_REF_SHIFT));
-    }
-
-    pub fn value(self: *const @This()) *const RawValue {
-        const mask = self.taggedPtr & TAGGED_REF_PTR_BITMASK;
-        return @ptrCast(@alignCast(@as(*anyopaque, @ptrFromInt(mask))));
-    }
-};
-
-/// Zero initialized means none option.
-pub const OptionalTaggedValueMutRef = extern struct {
-    taggedPtr: usize = 0,
-
-    pub fn init(inTag: ValueTag, inValue: *RawValue) @This() {
-        const maskTag: usize = @shlExact(inTag.asUsize(), TAGGED_REF_SHIFT);
-        return .{ .taggedPtr = maskTag | @intFromPtr(inValue) };
-    }
-
-    pub fn isNone(self: *const @This()) bool {
-        return self.taggedPtr == 0;
-    }
-
-    /// Asserts `!self.isNone()`.
-    pub fn tag(self: *const @This()) ValueTag {
-        assert(!self.isNone());
-        const mask = self.taggedPtr & TAGGED_REF_TAG_BITMASK;
-        return @enumFromInt(@shrExact(mask, TAGGED_REF_SHIFT));
-    }
-
-    /// Asserts `!self.isNone()`.
-    pub fn value(self: *const @This()) *RawValue {
-        assert(!self.isNone());
-        const mask = self.taggedPtr & TAGGED_REF_PTR_BITMASK;
-        return @ptrCast(@alignCast(@as(*anyopaque, @ptrFromInt(mask))));
-    }
-};
-
-/// Zero initialized means none option.
-pub const OptionalTaggedValueConstRef = extern struct {
-    taggedPtr: usize = 0,
-
-    pub fn init(inTag: ValueTag, inValue: *const RawValue) @This() {
-        const maskTag: usize = @shlExact(inTag.asUsize(), TAGGED_REF_SHIFT);
-        return .{ .taggedPtr = maskTag | @intFromPtr(inValue) };
-    }
-
-    pub fn isNone(self: *const @This()) bool {
-        return self.taggedPtr == 0;
-    }
-
-    /// Asserts `!self.isNone()`.
-    pub fn tag(self: *const @This()) ValueTag {
-        assert(!self.isNone());
-        const mask = self.taggedPtr & TAGGED_REF_TAG_BITMASK;
-        return @enumFromInt(@shrExact(mask, TAGGED_REF_SHIFT));
-    }
-
-    /// Asserts `!self.isNone()`.
-    pub fn value(self: *const @This()) *const RawValue {
-        assert(!self.isNone());
-        const mask = self.taggedPtr & TAGGED_REF_PTR_BITMASK;
-        return @ptrCast(@alignCast(@as(*anyopaque, @ptrFromInt(mask))));
     }
 };
 

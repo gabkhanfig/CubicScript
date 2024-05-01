@@ -64,7 +64,7 @@ pub const Map = extern struct {
     }
 
     /// The returned reference may become invalidated when this `Map` is mutated.
-    pub fn find(self: *const Self, key: TaggedValue) root.OptionalTaggedValueConstRef {
+    pub fn find(self: *const Self, key: TaggedValue) root.ValueConstRef {
         assert(key.tag == self.keyTag());
 
         if (self.asInner()) |inner| {
@@ -77,14 +77,14 @@ pub const Map = extern struct {
                 return .{};
             }
 
-            return root.OptionalTaggedValueConstRef.init(self.valueTag(), &inner.groups[groupIndex].pairs[found.?].value);
+            return root.ValueConstRef.init(self.valueTag(), &inner.groups[groupIndex].pairs[found.?].value);
         } else {
             return .{};
         }
     }
 
     /// The returned reference may become invalidated when this `Map` is mutated.
-    pub fn findMut(self: *Self, key: TaggedValue) root.OptionalTaggedValueMutRef {
+    pub fn findMut(self: *Self, key: TaggedValue) root.ValueMutRef {
         assert(key.tag == self.keyTag());
 
         if (self.asInner()) |inner| {
@@ -97,7 +97,7 @@ pub const Map = extern struct {
                 return .{};
             }
 
-            return root.OptionalTaggedValueMutRef.init(self.valueTag(), &inner.groups[groupIndex].pairs[found.?].value);
+            return root.ValueMutRef.init(self.valueTag(), &inner.groups[groupIndex].pairs[found.?].value);
         } else {
             return .{};
         }
@@ -528,7 +528,7 @@ test "map find empty" {
         defer findValue.deinit();
 
         try expect(map.size() == 0);
-        try expect(map.find(findValue).isNone());
+        try expect(map.find(findValue).tag() == .None);
     }
 }
 
@@ -545,9 +545,9 @@ test "map insert one element" {
         defer findValue.deinit();
 
         try expect(map.size() == 1);
-        try expect(map.find(findValue).isNone() == false);
+        try expect(map.find(findValue).tag() != .None);
         const found = map.find(findValue);
-        try expect(!found.isNone());
+        try expect(found.tag() != .None);
         switch (found.tag()) {
             .Int => {
                 try expect(found.value().int == 1);
@@ -576,7 +576,7 @@ test "map erase one element" {
         var findValue = TaggedValue.initString(eraseValue.value.string.clone());
         defer findValue.deinit();
 
-        try expect(map.find(findValue).isNone());
+        try expect(map.find(findValue).tag() == .None);
     }
 }
 
