@@ -115,6 +115,8 @@ pub const Class = extern struct {
         }
     }
 
+    /// Invalidates `self`, converting this into an owned interface, which takes ownership
+    /// of the class data.
     /// `interfaceName` is expected to be fully qualified.
     pub fn toOwnedInterface(self: *Self, interfaceName: *const String) OwnedInterface {
         const iface = self.interfaceRefMut(interfaceName);
