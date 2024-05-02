@@ -28,11 +28,12 @@ pub const Class = extern struct {
 
     pub fn deinit(self: *Self) void {
         // TODO execute script deinit as well
+        std.debug.print("erm\n", .{});
         for (self.membersInfo(), 0..) |info, i| {
             self.mutValueAt(i).deinit(info.dataType);
         }
-        const allocationSize = @sizeOf(*const RuntimeClassInfo) + (@sizeOf(RawValue) * self.membersInfo().len);
-        const ptr: [*]u8 = @ptrFromInt(self.inner);
+        const allocationSize = getRuntimeClassInfo(self).size / 8;
+        const ptr: [*]usize = @ptrFromInt(self.inner);
         allocator().free(ptr[0..allocationSize]);
     }
 
@@ -138,7 +139,8 @@ pub const Class = extern struct {
 };
 
 pub fn getRuntimeClassInfo(class: *const Class) *const RuntimeClassInfo {
-    return @ptrFromInt(class.inner);
+    const elements: [*]const usize = @ptrFromInt(class.inner);
+    return @ptrFromInt(elements[0]);
 }
 
 pub const ClassMemberInfo = extern struct {
@@ -155,6 +157,8 @@ pub const ClassInterfaceImplInfo = extern struct {
 pub const RuntimeClassInfo = struct {
     className: String,
     fullyQualifiedName: String,
+    /// Number of bytes this class uses
+    size: usize,
     members: []ClassMemberInfo,
     interfaces: []ClassInterfaceImplInfo,
     // TODO onDeinit
