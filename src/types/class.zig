@@ -28,7 +28,6 @@ pub const Class = extern struct {
 
     pub fn deinit(self: *Self) void {
         // TODO execute script deinit as well
-        std.debug.print("erm\n", .{});
         for (self.membersInfo(), 0..) |info, i| {
             self.mutValueAt(i).deinit(info.dataType);
         }
