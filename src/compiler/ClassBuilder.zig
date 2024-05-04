@@ -14,6 +14,7 @@ const ClassMemberInfo = @import("../types/class.zig").ClassMemberInfo;
 const RuntimeClassInfo = @import("../types/class.zig").RuntimeClassInfo;
 const InterfaceRef = @import("../types/interface.zig").InterfaceRef;
 const OwnedInterface = @import("../types/interface.zig").OwnedInterface;
+const AllocatoError = std.mem.Allocator.Error;
 
 // TODO default class values, rather than 0 initialized.
 
@@ -36,36 +37,45 @@ pub fn deinit(self: *Self) void {
         }
         allocator().free(classConstruct.rtti.members);
         allocator().free(classConstruct.classBaseMem);
+        var it = classConstruct.rtti.memberMapping.keyIterator();
+        while (it.next()) |k| {
+            k.deinit();
+        }
+        classConstruct.rtti.memberMapping.deinit(allocator());
+
         allocator().destroy(classConstruct.rtti);
     } else {
         self.classSpecificMembers.deinit(allocator());
     }
 }
 
-/// Takes ownership of `member`.
-pub fn addMember(self: *Self, member: ClassMemberInfo) void {
+/// Takes ownership of `name`.
+pub fn addMember(self: *Self, name: *const String, dataType: ValueTag) AllocatoError!void {
     assert(self.classConstruct == null);
-    self.classSpecificMembers.append(allocator(), member) catch {
-        @panic("Script out of memory");
-    };
+    try self.classSpecificMembers.append(allocator(), ClassMemberInfo{
+        .name = name.clone(),
+        .dataType = dataType,
+        .index = 0, // Temporary value
+    });
 }
 
 /// Constructs the memory layout, default values,
-pub fn build(self: *Self) void {
+pub fn build(self: *Self) AllocatoError!void {
     assert(self.classConstruct == null);
 
-    const rtti = allocator().create(RuntimeClassInfo) catch {
-        @panic("Script out of memory");
-    };
-    const classMemberInfo = allocator().alloc(ClassMemberInfo, self.classSpecificMembers.items.len) catch {
-        @panic("Script out of memory");
-    };
+    const rtti = try allocator().create(RuntimeClassInfo);
+    const classMemberInfo = try allocator().alloc(ClassMemberInfo, self.classSpecificMembers.items.len);
     @memcpy(classMemberInfo, self.classSpecificMembers.items);
     // Add one for RTTI. TODO interfaces
-    const classBaseMem = allocator().alloc(usize, self.classSpecificMembers.items.len + 1) catch {
-        @panic("Script out of memory");
-    };
+    const classBaseMem = try allocator().alloc(usize, self.classSpecificMembers.items.len + 1);
     @memset(classBaseMem, 0);
+
+    var memberMapping = RuntimeClassInfo.MemberHashMap{};
+    var memberIndex: u16 = 1;
+    for (self.classSpecificMembers.items) |member| {
+        try memberMapping.put(allocator(), member.name.clone(), memberIndex);
+        memberIndex += 1;
+    }
 
     // TODO some default values
 
@@ -76,6 +86,7 @@ pub fn build(self: *Self) void {
         .size = @sizeOf(usize) * (self.classSpecificMembers.items.len + 1),
         .interfaces = undefined,
         .members = classMemberInfo,
+        .memberMapping = memberMapping,
     };
     // Calling deinit on the strings held in `self.classSpecificMembers` is unnecessary because they have been moved to a different allocation
     self.classSpecificMembers.deinit(allocator());
@@ -110,13 +121,13 @@ test "class with no member variables or member functions" {
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
         defer builder.deinit();
 
-        builder.build();
+        try builder.build();
     }
     { // create class
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
         defer builder.deinit();
 
-        builder.build();
+        try builder.build();
 
         var c = builder.new();
         defer c.deinit();
