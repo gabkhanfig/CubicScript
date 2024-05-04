@@ -206,3 +206,92 @@ test "class with one member variable" {
         try expect(c.member(&memberName).int == 10);
     }
 }
+
+test "class with multiple member variables" {
+    const state = CubicScriptState.init(null);
+    defer state.deinit();
+    { // dont build
+        var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
+        defer builder.deinit();
+
+        var memberName1 = String.initSliceUnchecked("wuh");
+        defer memberName1.deinit();
+        var memberName2 = String.initSliceUnchecked("erm");
+        defer memberName2.deinit();
+        var memberName3 = String.initSliceUnchecked("tuna");
+        defer memberName3.deinit();
+
+        try builder.addMember(&memberName1, .Int);
+        try builder.addMember(&memberName2, .Float);
+        try builder.addMember(&memberName3, .Bool);
+    }
+    { // build but dont create class
+
+        var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
+        defer builder.deinit();
+
+        var memberName1 = String.initSliceUnchecked("wuh");
+        defer memberName1.deinit();
+        var memberName2 = String.initSliceUnchecked("erm");
+        defer memberName2.deinit();
+        var memberName3 = String.initSliceUnchecked("tuna");
+        defer memberName3.deinit();
+
+        try builder.addMember(&memberName1, .Int);
+        try builder.addMember(&memberName2, .Float);
+        try builder.addMember(&memberName3, .Bool);
+
+        try builder.build(state);
+    }
+    { // create class
+        var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
+        defer builder.deinit();
+
+        var memberName1 = String.initSliceUnchecked("wuh");
+        defer memberName1.deinit();
+        var memberName2 = String.initSliceUnchecked("erm");
+        defer memberName2.deinit();
+        var memberName3 = String.initSliceUnchecked("tuna");
+        defer memberName3.deinit();
+
+        try builder.addMember(&memberName1, .Int);
+        try builder.addMember(&memberName2, .Float);
+        try builder.addMember(&memberName3, .Bool);
+
+        try builder.build(state);
+
+        var c = builder.new();
+        defer c.deinit();
+
+        try expect(c.className().eqlSlice("test"));
+        try expect(c.fullyQualifiedClassName().eqlSlice("example.test"));
+
+        try expect(c.memberTagAt(0) == .None); // Index 0 is RTTI
+
+        try expect(c.membersInfo().len == 3);
+
+        try expect(c.membersInfo()[0].name.eql(memberName1));
+        try expect(c.memberIndex(&memberName1).? == 1);
+        try expect(c.memberTag(&memberName1) == .Int);
+        try expect(c.memberTagAt(1) == .Int);
+
+        try expect(c.membersInfo()[1].name.eql(memberName2));
+        try expect(c.memberIndex(&memberName2).? == 2);
+        try expect(c.memberTag(&memberName2) == .Float);
+        try expect(c.memberTagAt(2) == .Float);
+
+        try expect(c.membersInfo()[2].name.eql(memberName3));
+        try expect(c.memberIndex(&memberName3).? == 3);
+        try expect(c.memberTag(&memberName3) == .Bool);
+        try expect(c.memberTagAt(3) == .Bool);
+
+        c.memberMut(&memberName1).int = 10;
+        try expect(c.member(&memberName1).int == 10);
+
+        c.memberMut(&memberName2).float = 5.5;
+        try expect(c.member(&memberName2).float == 5.5);
+
+        c.memberMut(&memberName3).boolean = true;
+        try expect(c.member(&memberName3).boolean == true);
+    }
+}
