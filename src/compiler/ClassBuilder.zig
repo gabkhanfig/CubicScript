@@ -45,6 +45,9 @@ pub fn deinit(self: *Self) void {
 
         allocator().destroy(classConstruct.rtti);
     } else {
+        for (self.classSpecificMembers.items) |*member| {
+            member.name.deinit();
+        }
         self.classSpecificMembers.deinit(allocator());
     }
 }
@@ -72,8 +75,13 @@ pub fn build(self: *Self) AllocatoError!void {
 
     var memberMapping = RuntimeClassInfo.MemberHashMap{};
     var memberIndex: u16 = 1;
-    for (self.classSpecificMembers.items) |member| {
-        try memberMapping.put(allocator(), member.name.clone(), memberIndex);
+    for (classMemberInfo) |*member| {
+        member.index = memberIndex;
+        try memberMapping.put(
+            allocator(),
+            member.name.clone(),
+            member,
+        );
         memberIndex += 1;
     }
 
@@ -115,7 +123,7 @@ const ClassConstructionInfo = struct {
 test "class with no member variables or member functions" {
     { // dont build
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
-        defer builder.deinit(); // deinit should work if the builder doesnt build regardless
+        defer builder.deinit();
     }
     { // build but dont create class
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
@@ -135,5 +143,52 @@ test "class with no member variables or member functions" {
         try expect(c.className().eqlSlice("test"));
         try expect(c.fullyQualifiedClassName().eqlSlice("example.test"));
         try expect(c.membersInfo().len == 0);
+    }
+}
+
+test "class with one member variable" {
+    { // dont build
+        var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
+        defer builder.deinit();
+
+        var memberName = String.initSliceUnchecked("wuh");
+        defer memberName.deinit();
+
+        try builder.addMember(&memberName, .Int);
+    }
+    { // build but dont create class
+        var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
+        defer builder.deinit();
+
+        var memberName = String.initSliceUnchecked("wuh");
+        defer memberName.deinit();
+
+        try builder.addMember(&memberName, .Int);
+
+        try builder.build();
+    }
+    { // create class
+        var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
+        defer builder.deinit();
+
+        var memberName = String.initSliceUnchecked("wuh");
+        defer memberName.deinit();
+
+        try builder.addMember(&memberName, .Int);
+
+        try builder.build();
+
+        var c = builder.new();
+        defer c.deinit();
+
+        try expect(c.className().eqlSlice("test"));
+        try expect(c.fullyQualifiedClassName().eqlSlice("example.test"));
+        try expect(c.membersInfo().len == 1);
+        try expect(c.membersInfo()[0].name.eql(memberName));
+        try expect(c.memberIndex(&memberName).? == 1);
+        try expect(c.memberTag(&memberName) == .Int);
+
+        c.memberMut(&memberName).int = 10;
+        try expect(c.member(&memberName).int == 10);
     }
 }

@@ -29,7 +29,7 @@ pub const Class = extern struct {
     pub fn deinit(self: *Self) void {
         // TODO execute script deinit as well
         for (self.membersInfo()) |info| {
-            self.uncheckedValueAtMut(info.index).deinit(info.dataType);
+            self.uncheckedMemberAtMut(info.index).deinit(info.dataType);
         }
         const allocationSize = getRuntimeClassInfo(self).size / 8;
         const ptr: [*]usize = @ptrFromInt(self.inner);
@@ -39,51 +39,54 @@ pub const Class = extern struct {
     /// Get the index of a given class member. The index is consistent
     /// for all instances of this class.
     pub fn memberIndex(self: *const Self, memberName: *const String) ?u16 {
-        return getRuntimeClassInfo(self).memberMapping.get(memberName.*);
+        if (getRuntimeClassInfo(self).memberMapping.get(memberName.*)) |info| {
+            return info.index;
+        }
+        return null;
     }
 
-    /// Combines `memberIndex()` and `uncheckedValueAt()` to safely get an immutable reference to a class member.
+    /// Combines `memberIndex()` and `uncheckedMemberAt()` to safely get an immutable reference to a class member.
     /// If this class doesn't contain `memberName`, safety checked undefined behaviour is invoked.
-    pub fn value(self: *const Self, memberName: *const String) *const RawValue {
+    pub fn member(self: *const Self, memberName: *const String) *const RawValue {
         if (self.memberIndex(memberName)) |index| {
-            return self.uncheckedValueAt(index);
+            return self.uncheckedMemberAt(index);
         } else {
             unreachable;
         }
     }
 
-    /// Combines `memberIndex()` and `uncheckedValueAtMut()` to safely get a mutable reference to a class member.
+    /// Combines `memberIndex()` and `uncheckedMemberAtMut()` to safely get a mutable reference to a class member.
     /// If this class doesn't contain `memberName`, safety checked undefined behaviour is invoked.
-    pub fn valueMut(self: *Self, memberName: *const String) *const RawValue {
+    pub fn memberMut(self: *Self, memberName: *const String) *RawValue {
         if (self.memberIndex(memberName)) |index| {
-            return self.uncheckedValueAtMut(index);
+            return self.uncheckedMemberAtMut(index);
         } else {
             unreachable;
         }
     }
 
     /// Get the type of script value of the class at a specific member index.
-    /// Combines with `valueAt()` or `mutValueAt()` to determine the active union member.
+    /// Use with `memberAt()`, `memberAtMut()`, `uncheckedMemberAt()` or `uncheckedMemberAtMut()`
+    /// to determine the active union member.
     /// If this class doesn't contain `memberName`, safety checked undefined behaviour is invoked.
-    pub fn valueTag(self: *const Self, memberName: *const String) ValueTag {
-        if (self.memberIndex(memberName)) |index| {
-            const runtimeInfo = getRuntimeClassInfo(self);
-            return runtimeInfo.members[index].dataType;
+    pub fn memberTag(self: *const Self, memberName: *const String) ValueTag {
+        if (getRuntimeClassInfo(self).memberMapping.get(memberName.*)) |info| {
+            return info.dataType;
         } else {
             unreachable;
         }
     }
 
-    /// Directly gets the value at a given index.
+    /// Directly gets the class member at a given index.
     /// Does not check if `index` is valid memory.
-    pub fn uncheckedValueAt(self: *const Self, index: u16) *const RawValue {
+    pub fn uncheckedMemberAt(self: *const Self, index: u16) *const RawValue {
         const members: [*]const RawValue = @ptrFromInt(self.inner);
         return &members[index];
     }
 
-    /// Directly gets the value at a given index.
+    /// Directly gets the class member at a given index.
     /// Does not check if `index` is valid memory.
-    pub fn uncheckedValueAtMut(self: *Self, index: u16) *RawValue {
+    pub fn uncheckedMemberAtMut(self: *Self, index: u16) *RawValue {
         const members: [*]RawValue = @ptrFromInt(self.inner);
         return &members[index];
     }
@@ -192,7 +195,7 @@ pub const RuntimeClassInfo = struct {
     interfaces: []ClassInterfaceImplInfo,
     // TODO onDeinit
 
-    pub const MemberHashMap = std.HashMapUnmanaged(String, u16, MemberHashContext, 80);
+    pub const MemberHashMap = std.HashMapUnmanaged(String, *const ClassMemberInfo, MemberHashContext, 80);
 
     const MemberHashContext = struct {
         pub fn hash(self: @This(), s: String) u64 {
