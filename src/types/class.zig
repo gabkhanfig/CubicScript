@@ -78,18 +78,26 @@ pub const Class = extern struct {
         }
     }
 
-    /// Directly gets the class member at a given index.
-    /// Does not check if `index` is valid memory.
+    /// Get an immutable reference to a class member at `index` in constant time.
+    /// Does not check if `index` is valid memory, as it could point to
+    /// class RTTI.
     pub fn uncheckedMemberAt(self: *const Self, index: u16) *const RawValue {
         const members: [*]const RawValue = @ptrFromInt(self.inner);
         return &members[index];
     }
 
-    /// Directly gets the class member at a given index.
-    /// Does not check if `index` is valid memory.
+    /// Get a mutable reference to a class member at `index` in constant time.
+    /// Does not check if `index` is valid memory, as it could point to
+    /// class RTTI.
     pub fn uncheckedMemberAtMut(self: *Self, index: u16) *RawValue {
         const members: [*]RawValue = @ptrFromInt(self.inner);
         return &members[index];
+    }
+
+    /// Get the tag of a given class member at `index` in constant time.
+    /// For an `index` value that corresponds to RTTI, returns `.None`.
+    pub fn memberTagAt(self: *const Self, index: u16) ValueTag {
+        return @enumFromInt(getRuntimeClassInfo(self).memberTags[index]);
     }
 
     /// Get the name of this class. An example would be `"Player"`.
@@ -194,6 +202,8 @@ pub const RuntimeClassInfo = struct {
     size: usize,
     members: []ClassMemberInfo,
     memberMapping: MemberHashMap,
+    /// For RTTI instances, stores `.None`
+    memberTags: []u8,
     interfaces: []ClassInterfaceImplInfo,
     // TODO onDeinit
 

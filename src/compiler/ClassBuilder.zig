@@ -38,6 +38,7 @@ pub fn deinit(self: *Self) void {
         }
         allocator().free(classConstruct.rtti.members);
         allocator().free(classConstruct.classBaseMem);
+        allocator().free(classConstruct.rtti.memberTags);
         var it = classConstruct.rtti.memberMapping.keyIterator();
         while (it.next()) |k| {
             k.deinit();
@@ -73,6 +74,8 @@ pub fn build(self: *Self, state: *const CubicScriptState) AllocatoError!void {
     // Add one for RTTI. TODO interfaces
     const classBaseMem = try allocator().alloc(usize, self.classSpecificMembers.items.len + 1);
     @memset(classBaseMem, 0);
+    const classMemberTags = try allocator().alloc(u8, self.classSpecificMembers.items.len + 1);
+    @memset(classMemberTags, 0);
 
     var memberMapping = RuntimeClassInfo.MemberHashMap{};
     var memberIndex: u16 = 1;
@@ -83,6 +86,7 @@ pub fn build(self: *Self, state: *const CubicScriptState) AllocatoError!void {
             member.name.clone(),
             member,
         );
+        classMemberTags[memberIndex] = member.dataType.asU8();
         memberIndex += 1;
     }
 
@@ -97,6 +101,7 @@ pub fn build(self: *Self, state: *const CubicScriptState) AllocatoError!void {
         .interfaces = undefined,
         .members = classMemberInfo,
         .memberMapping = memberMapping,
+        .memberTags = classMemberTags,
     };
     // Calling deinit on the strings held in `self.classSpecificMembers` is unnecessary because they have been moved to a different allocation
     self.classSpecificMembers.deinit(allocator());
@@ -190,10 +195,12 @@ test "class with one member variable" {
 
         try expect(c.className().eqlSlice("test"));
         try expect(c.fullyQualifiedClassName().eqlSlice("example.test"));
+        try expect(c.memberTagAt(0) == .None); // Index 0 is RTTI
         try expect(c.membersInfo().len == 1);
         try expect(c.membersInfo()[0].name.eql(memberName));
         try expect(c.memberIndex(&memberName).? == 1);
         try expect(c.memberTag(&memberName) == .Int);
+        try expect(c.memberTagAt(1) == .Int);
 
         c.memberMut(&memberName).int = 10;
         try expect(c.member(&memberName).int == 10);
