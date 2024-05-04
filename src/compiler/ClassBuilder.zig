@@ -15,6 +15,7 @@ const RuntimeClassInfo = @import("../types/class.zig").RuntimeClassInfo;
 const InterfaceRef = @import("../types/interface.zig").InterfaceRef;
 const OwnedInterface = @import("../types/interface.zig").OwnedInterface;
 const AllocatoError = std.mem.Allocator.Error;
+const CubicScriptState = @import("../state/CubicScriptState.zig");
 
 // TODO default class values, rather than 0 initialized.
 
@@ -63,7 +64,7 @@ pub fn addMember(self: *Self, name: *const String, dataType: ValueTag) AllocatoE
 }
 
 /// Constructs the memory layout, default values,
-pub fn build(self: *Self) AllocatoError!void {
+pub fn build(self: *Self, state: *const CubicScriptState) AllocatoError!void {
     assert(self.classConstruct == null);
 
     const rtti = try allocator().create(RuntimeClassInfo);
@@ -89,6 +90,7 @@ pub fn build(self: *Self) AllocatoError!void {
 
     classBaseMem[0] = @intFromPtr(rtti);
     rtti.* = RuntimeClassInfo{
+        .state = state,
         .className = self.name.clone(),
         .fullyQualifiedName = self.fullyQualifiedName.clone(),
         .size = @sizeOf(usize) * (self.classSpecificMembers.items.len + 1),
@@ -121,6 +123,8 @@ const ClassConstructionInfo = struct {
 };
 
 test "class with no member variables or member functions" {
+    const state = CubicScriptState.init(null);
+    defer state.deinit();
     { // dont build
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
         defer builder.deinit();
@@ -129,13 +133,13 @@ test "class with no member variables or member functions" {
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
         defer builder.deinit();
 
-        try builder.build();
+        try builder.build(state);
     }
     { // create class
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
         defer builder.deinit();
 
-        try builder.build();
+        try builder.build(state);
 
         var c = builder.new();
         defer c.deinit();
@@ -147,6 +151,8 @@ test "class with no member variables or member functions" {
 }
 
 test "class with one member variable" {
+    const state = CubicScriptState.init(null);
+    defer state.deinit();
     { // dont build
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
         defer builder.deinit();
@@ -157,6 +163,7 @@ test "class with one member variable" {
         try builder.addMember(&memberName, .Int);
     }
     { // build but dont create class
+
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
         defer builder.deinit();
 
@@ -165,7 +172,7 @@ test "class with one member variable" {
 
         try builder.addMember(&memberName, .Int);
 
-        try builder.build();
+        try builder.build(state);
     }
     { // create class
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
@@ -176,7 +183,7 @@ test "class with one member variable" {
 
         try builder.addMember(&memberName, .Int);
 
-        try builder.build();
+        try builder.build(state);
 
         var c = builder.new();
         defer c.deinit();

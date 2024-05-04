@@ -8,6 +8,7 @@ const String = root.String;
 const allocator = @import("../state/global_allocator.zig").allocator;
 const InterfaceRef = @import("interface.zig").InterfaceRef;
 const OwnedInterface = @import("interface.zig").OwnedInterface;
+const CubicScriptState = @import("../state/CubicScriptState.zig");
 
 pub const Class = extern struct {
     const PTR_BITMASK: usize = 0x0000FFFFFFFFFFFF;
@@ -186,6 +187,7 @@ pub const ClassInterfaceImplInfo = extern struct {
 };
 
 pub const RuntimeClassInfo = struct {
+    state: *const CubicScriptState,
     className: String,
     fullyQualifiedName: String,
     /// Number of bytes this class uses
