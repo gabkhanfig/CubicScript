@@ -13,7 +13,7 @@ name: String,
 fullyQualifiedName: String,
 _returnType: ValueTag = .None,
 _argTypes: ArrayListUnmanaged(ValueTag) = .{},
-_function: ?*anyopaque,
+_function: ?*anyopaque = null,
 
 pub fn deinit(self: *Self) void {
     self.name.deinit();
