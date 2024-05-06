@@ -7,6 +7,8 @@ const String = root.String;
 const allocator = @import("../state/global_allocator.zig").allocator;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 const Bytecode = @import("../state/Bytecode.zig");
+const AllocatoError = std.mem.Allocator.Error;
+//const CubicScriptState = @import("../state/CubicScriptState.zig");
 
 // TODO should recursion be allowed?
 
@@ -26,6 +28,35 @@ pub fn deinit(self: *Self) void {
     } else {
         self._argTypes.deinit(allocator());
     }
+}
+
+/// Asserts that the final instruction in `bytecode` is a return instruction.
+pub fn build(self: *Self, bytecode: []Bytecode) AllocatoError!void {
+    assert(bytecode[bytecode.len - 1].getOpCode() == .Return);
+
+    const argTypes: ?[]ValueTag = blk: {
+        if (self._argTypes.items.len == 0) {
+            break :blk null;
+        } else {
+            const argMem = try allocator().alloc(ValueTag, self._argTypes.items.len);
+            @memcpy(argMem, self._argTypes.items);
+            break :blk argMem;
+        }
+    };
+    const definition = try allocator().create(FunctionDefinition);
+    definition.* = FunctionDefinition{
+        .name = self.name.clone(),
+        .fullyQualifiedName = self.fullyQualifiedName.clone(),
+        .declaration = FunctionDeclaration{
+            .returnType = self._returnType,
+            .argCount = argTypes.len,
+            .argTypes = if (argTypes) |a| a.ptr else null,
+        },
+        .defintion = bytecode,
+    };
+
+    self._function = definition;
+    self._argTypes.deinit(allocator());
 }
 
 pub const FunctionDefinition = struct {
