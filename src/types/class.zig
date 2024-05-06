@@ -195,7 +195,6 @@ pub const ClassInterfaceImplInfo = extern struct {
 };
 
 pub const RuntimeClassInfo = struct {
-    state: *const CubicScriptState,
     className: String,
     fullyQualifiedName: String,
     /// Number of bytes this class uses
