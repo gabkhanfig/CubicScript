@@ -46,10 +46,12 @@ pub fn addArg(self: *Self, name: *const String, argType: ValueTag) AllocatoError
     try self._argTypes.append(allocator(), argType);
 }
 
-/// Takes ownership of `bytecode`.
+/// Takes ownership of `bytecode`. `stackSpaceRequired` includes function arguments.
 /// Asserts that the final instruction in `bytecode` is a return instruction.
-pub fn build(self: *Self, bytecode: []Bytecode) AllocatoError!void {
+/// Asserts that `stackSpaceRequired` is greater than or equal to the number of function arguments.
+pub fn build(self: *Self, bytecode: []Bytecode, stackSpaceRequired: u8) AllocatoError!void {
     assert(bytecode[bytecode.len - 1].getOpCode() == .Return);
+    assert(stackSpaceRequired >= self._argTypes.items.len);
 
     const argTypes: ?[]ValueTag = blk: {
         if (self._argTypes.items.len == 0) {
@@ -70,6 +72,7 @@ pub fn build(self: *Self, bytecode: []Bytecode) AllocatoError!void {
             .argTypes = if (argTypes) |a| a.ptr else null,
         },
         .defintion = bytecode,
+        .stackSpaceRequired = stackSpaceRequired,
     };
 
     self._function = definition;
@@ -82,6 +85,7 @@ pub const FunctionDefinition = struct {
     declaration: FunctionDeclaration,
     /// The bytecode will ALWAYS end in a return instruction.
     defintion: []Bytecode,
+    stackSpaceRequired: u8,
 };
 
 pub const FunctionDeclaration = extern struct {
@@ -107,7 +111,7 @@ test "function no return no args one instruction" {
         const functionInstructions = try allocator().alloc(Bytecode, 1);
         @memcpy(functionInstructions, &inst);
 
-        try builder.build(functionInstructions);
+        try builder.build(functionInstructions, 0);
     }
     {
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
@@ -116,7 +120,7 @@ test "function no return no args one instruction" {
         const functionInstructions = try allocator().alloc(Bytecode, 1);
         @memcpy(functionInstructions, &inst);
 
-        try builder.build(functionInstructions);
+        try builder.build(functionInstructions, 0);
 
         try expect(builder._function.?.name.eqlSlice("test"));
         try expect(builder._function.?.fullyQualifiedName.eqlSlice("example.test"));
