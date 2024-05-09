@@ -8,7 +8,7 @@ const allocator = @import("../state/global_allocator.zig").allocator;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 const Bytecode = @import("../state/Bytecode.zig");
 const AllocatoError = std.mem.Allocator.Error;
-//const CubicScriptState = @import("../state/CubicScriptState.zig");
+const CubicScriptState = @import("../state/CubicScriptState.zig");
 
 // TODO should recursion be allowed?
 
@@ -49,7 +49,7 @@ pub fn addArg(self: *Self, name: *const String, argType: ValueTag) AllocatoError
 /// Takes ownership of `bytecode`. `stackSpaceRequired` includes function arguments.
 /// Asserts that the final instruction in `bytecode` is a return instruction.
 /// Asserts that `stackSpaceRequired` is greater than or equal to the number of function arguments.
-pub fn build(self: *Self, bytecode: []Bytecode, stackSpaceRequired: u8) AllocatoError!void {
+pub fn build(self: *Self, state: *const CubicScriptState, bytecode: []Bytecode, stackSpaceRequired: u8) AllocatoError!void {
     assert(bytecode[bytecode.len - 1].getOpCode() == .Return);
     assert(stackSpaceRequired >= self._argTypes.items.len);
 
@@ -64,6 +64,7 @@ pub fn build(self: *Self, bytecode: []Bytecode, stackSpaceRequired: u8) Allocato
     };
     const definition = try allocator().create(FunctionDefinition);
     definition.* = FunctionDefinition{
+        .state = state,
         .name = self.name.clone(),
         .fullyQualifiedName = self.fullyQualifiedName.clone(),
         .declaration = FunctionDeclaration{
@@ -80,6 +81,7 @@ pub fn build(self: *Self, bytecode: []Bytecode, stackSpaceRequired: u8) Allocato
 }
 
 pub const FunctionDefinition = struct {
+    state: *const CubicScriptState,
     name: String,
     fullyQualifiedName: String,
     declaration: FunctionDeclaration,
@@ -99,6 +101,9 @@ pub const FunctionDeclaration = extern struct {
 };
 
 test "function no return no args one instruction" {
+    const state = CubicScriptState.init(null);
+    defer state.deinit();
+
     const inst = [_]Bytecode{Bytecode.encode(.Return, {})};
     {
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
@@ -111,7 +116,7 @@ test "function no return no args one instruction" {
         const functionInstructions = try allocator().alloc(Bytecode, 1);
         @memcpy(functionInstructions, &inst);
 
-        try builder.build(functionInstructions, 0);
+        try builder.build(state, functionInstructions, 0);
     }
     {
         var builder = Self{ .name = String.initSliceUnchecked("test"), .fullyQualifiedName = String.initSliceUnchecked("example.test") };
@@ -120,7 +125,7 @@ test "function no return no args one instruction" {
         const functionInstructions = try allocator().alloc(Bytecode, 1);
         @memcpy(functionInstructions, &inst);
 
-        try builder.build(functionInstructions, 0);
+        try builder.build(state, functionInstructions, 0);
 
         try expect(builder._function.?.name.eqlSlice("test"));
         try expect(builder._function.?.fullyQualifiedName.eqlSlice("example.test"));
