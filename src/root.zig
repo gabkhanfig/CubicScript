@@ -26,6 +26,7 @@ pub const ValueMutRef = @import("types/references.zig").ValueMutRef;
 pub const Unique = @import("types/references.zig").Unique;
 pub const Shared = @import("types/references.zig").Shared;
 pub const Weak = @import("types/references.zig").Weak;
+pub const FunctionPtr = @import("types/function.zig").FunctionPtr;
 pub const Vec2i = vector_types.Vec2i;
 pub const Vec3i = vector_types.Vec3i;
 pub const Vec4i = vector_types.Vec4i;
@@ -56,6 +57,7 @@ pub const ValueTag = enum(c_int) {
     Unique = 15,
     Shared = 16,
     Weak = 17,
+    FunctionPtr = 18,
     Vec2i,
     Vec3i,
     Vec4i,
@@ -64,7 +66,6 @@ pub const ValueTag = enum(c_int) {
     Vec4f,
     Mat4f,
     Quat, // maybe unnecessary
-    // TODO function pointer
 
     pub fn asUsize(self: @This()) usize {
         return @intCast(@as(c_int, @intFromEnum(self)));
@@ -267,6 +268,8 @@ pub const TaggedValue = extern struct {
         self.value.deinit(self.tag);
     }
 };
+
+pub const ScriptFunctionArgs = @import("types/function.zig").ScriptFunctionArgs;
 
 pub const Ordering = enum(i64) {
     Less = -1,
