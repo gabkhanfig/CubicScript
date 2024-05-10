@@ -113,7 +113,6 @@ pub const RawValue = extern union {
     vec4f: Vec4f,
     mat3f: Mat3f,
     mat4f: Mat4f,
-    // TODO other primitive types
 
     /// In some cases, it's more convenient to just deinit here.
     /// If `tag` is `.Interface`, the programmer must ensure
