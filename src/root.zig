@@ -61,15 +61,15 @@ pub const ValueTag = enum(c_int) {
     Shared = 16,
     Weak = 17,
     FunctionPtr = 18,
-    Vec2i,
-    Vec3i,
-    Vec4i,
-    Vec2f,
-    Vec3f,
-    Vec4f,
-    Mat3f,
-    Mat4f,
-    Quat, // maybe unnecessary
+    Vec2i = 19,
+    Vec3i = 20,
+    Vec4i = 21,
+    Vec2f = 22,
+    Vec3f = 23,
+    Vec4f = 24,
+    Mat3f = 25,
+    Mat4f = 26,
+    //Quat, // maybe unnecessary
 
     pub fn asUsize(self: @This()) usize {
         return @intCast(@as(c_int, @intFromEnum(self)));
@@ -86,6 +86,7 @@ pub const ValueTag = enum(c_int) {
 
 /// Untagged union representing all primitive value types and classes.
 pub const RawValue = extern union {
+    /// This is never an active union member, but is useful for just getting the bytes that represent the raw value.
     actualValue: usize,
     boolean: bool,
     int: i64,
