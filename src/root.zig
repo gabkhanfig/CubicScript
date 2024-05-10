@@ -12,6 +12,7 @@ pub const CubicScriptState = @import("state/CubicScriptState.zig");
 pub const allocator = global_allocator.allocator;
 pub const setAllocator = global_allocator.setAllocator;
 pub const sync_queue = @import("state/sync_queue.zig");
+
 pub const String = @import("types/string.zig").String;
 pub const Array = @import("types/array.zig").Array;
 pub const Map = @import("types/map.zig").Map;
