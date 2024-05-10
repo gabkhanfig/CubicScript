@@ -34,6 +34,8 @@ pub const Vec4i = vector_types.Vec4i;
 pub const Vec2f = vector_types.Vec2f;
 pub const Vec3f = vector_types.Vec3f;
 pub const Vec4f = vector_types.Vec4f;
+pub const Mat3f = @import("types/matrix.zig").Mat3f;
+pub const Mat4f = @import("types/matrix.zig").Mat4f;
 
 const vector_types = @import("types/vector.zig");
 
@@ -65,6 +67,7 @@ pub const ValueTag = enum(c_int) {
     Vec2f,
     Vec3f,
     Vec4f,
+    Mat3f,
     Mat4f,
     Quat, // maybe unnecessary
 
@@ -101,12 +104,15 @@ pub const RawValue = extern union {
     unique: Unique,
     shared: Shared,
     weak: Weak,
+    functionPtr: FunctionPtr,
     vec2i: Vec2i,
     vec3i: Vec3i,
     vec4i: Vec4i,
     vec2f: Vec2f,
     vec3f: Vec3f,
     vec4f: Vec4f,
+    mat3f: Mat3f,
+    mat4f: Mat4f,
     // TODO other primitive types
 
     /// In some cases, it's more convenient to just deinit here.
@@ -114,7 +120,7 @@ pub const RawValue = extern union {
     /// that `self` owns the interface, rather than is holding a reference to it.
     pub fn deinit(self: *RawValue, tag: ValueTag) void {
         switch (tag) {
-            .Bool, .Int, .Float, .ConstRef, .MutRef, .InterfaceRef => {},
+            .Bool, .Int, .Float, .ConstRef, .MutRef, .InterfaceRef, .FunctionPtr => {},
             .String => {
                 self.string.deinit();
             },
@@ -165,6 +171,12 @@ pub const RawValue = extern union {
             },
             .Vec4f => {
                 self.vec4f.deinit();
+            },
+            .Mat3f => {
+                self.mat3f.deinit();
+            },
+            .Mat4f => {
+                self.mat4f.deinit();
             },
             else => {
                 @panic("Unsupported");
