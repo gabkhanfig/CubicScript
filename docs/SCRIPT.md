@@ -54,11 +54,11 @@ sync
 
 ## Multithreading
 
-Thread safety is a priority for CubicScript. Async and threads are not provided by default, but the scripts themselves are thread safe where appropriate.
+Multithreading, and thus thread safety is the number 1 priority for CubicScript. Async and threads are not provided by default (for now), but the scripts themselves are thread safe where appropriate.
 
 ### Sync Blocks
 
-Any class that implements the `ThreadSync` interface will be forced to execute it's logic in `sync` blocks. The compiler will validate the callstack for what classes require syncing.
+Any `Unique`, `Shared`, or `Weak` owned objects will require explicit synchronization through `sync` blocks. The compiler will validate the callstack for what classes require syncing.
 
 ```text
 class Example {
@@ -67,7 +67,7 @@ class Example {
 
 impl ThreadSync for Person {}
 
-fn doSomeLogic(obj Example) {
+fn doSomeLogic(obj Unique(Example)) {
     obj.someValue = 1; // Compiler won't allow this because Example implements ThreadSync, UNLESS this function is ONLY called in a sync block in another function
 
     sync {
@@ -76,15 +76,16 @@ fn doSomeLogic(obj Example) {
 }
 ```
 
-From a technical standpoint, sync blocks and structure that implement `ThreadSync` use RWLocks, and the compiler determines if a read or write lock should be acquired for the given class instance. Objects may not be acquired during a sync block due to the potential for deadlocks. A sync block must be escaped in order for new objects to be sync'd. Since since blocks are just expression blocks, values can be "returned" from them.
+*From a technical standpoint, sync blocks use RWLocks, and the compiler determines if a read or write lock should be acquired for the given class instance.*
+
+Objects within a sync block may not be acquired due to the potential for deadlocks. A sync block must be escaped in order for new objects to be sync'd. Since since blocks are just expression blocks, values can be "returned" from them.
 
 ```text
-
 fn getAnotherObj() Example {
     ...
 }
 
-fn doLogicOnAnotherObject(obj Example) {
+fn doLogicOnAnotherObject(obj Shared(Example)) {
     mut otherObj = sync {
         obj.someValue = 1;
         getAnotherObj()
@@ -119,6 +120,8 @@ fn doubleSyncThroughFunctionCallB() {
     }
 }
 ```
+
+For calling extern functions, classes and shared references will track if they have been locked or not, so upon fetching their data, they can assert that they have been locked.
 
 ## Classes
 
@@ -223,9 +226,15 @@ ptr2 = &otherValue; // FAILS TO COMPILE despite ptr2 being a mutable variable. C
 
 References, or primitive types (Array, Map, Set) containing references, may **never** be stored in classes, with the one exception being shared references.
 
+### Unique References
+
+Unique references own some data, and enforce thread synchronization on it. Furthermore, weak references can be created from a Unique instance, which will invalidate themselves in a thread safe way when the owning Unique instance is freed. Calling `Unique.new(...)`, passing in ownership (move or copy) of some value, will make a unique instance. The type of the value may not be a reference (`&` or `&mut`) type.
+
+Unique references are not trivially copyable.
+
 ### Shared References
 
-There are situations where references need to be stored, but the lifetimes of them cannot be reasonably validated on their own, especially given frame boundaries. As such, the compromise is using shared, atomic reference counted objects. Creating a new one is as simple as `Shared.new(...)`, passing in ownership (move or copy) of some value. The type of the value may not be a reference (`&` or `&mut`) type.
+Shared references use atomic reference counting to share ownership of some data, and enforce thread synchronization on it. There can be multiple owners of the same Shared data, destroying the actual data when there are no more alive Shared references. Furthermore, weak references can be created from a Shared instance, which will invalidate themselves in a thread safe way when the owning Shared instance is freed. Calling `Shared.new(...)`, passing in ownership (move or copy) of some value, will make a unique instance. The type of the value may not be a reference (`&` or `&mut`) type. Trying to acquire the same Shared object in the same `sync` block is fine, as the second acquisition will be ignored.
 
 Shared references are trivially copyable.
 
@@ -259,6 +268,10 @@ fn doSomeStuff() {
     const willNotCompile = Shared.new(&otherValue);
 }
 ```
+
+### Weak References
+
+Weak references can be created from both Unique and Shared references, being opaque as to the origin for simplicity. Weak references use atomic reference counting similar to a Shared instance, but uses a distinct reference counter for the weak reference. If the owning Unique or Shared data is destroyed, the weak reference becomes invalid. Accessing the weak reference data requires checking if it's valid, along with using `sync` blocks. Syncing a weak reference and a Unique/Shared that own the same data is fine, and the second acquisition will be ignored.
 
 ## Enums
 
