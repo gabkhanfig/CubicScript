@@ -11,7 +11,8 @@ const allocator = @import("../state/global_allocator.zig").allocator;
 /// 3x3 64 bit float matrix
 pub const Mat3f = extern struct {
     const Self = @This();
-    const LEN = 27;
+    const DIM = 3;
+    const LEN: comptime_int = DIM * DIM;
 
     inner: ?[*]f64 = null,
 
@@ -26,7 +27,8 @@ pub const Mat3f = extern struct {
 /// 4x4 64 bit float matrix
 pub const Mat4f = extern struct {
     const Self = @This();
-    const LEN = 27;
+    const DIM = 4;
+    const LEN: comptime_int = DIM * DIM;
 
     inner: ?[*]align(64) f64 = null,
 
