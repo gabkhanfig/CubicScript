@@ -10,6 +10,9 @@ const StackFrame = Stack.StackFrame;
 const Bytecode = @import("Bytecode.zig");
 const OpCode = Bytecode.OpCode;
 const String = root.String;
+const Array = root.Array;
+const Set = root.Set;
+const Map = root.Map;
 const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
 const allocPrintZ = std.fmt.allocPrintZ;
@@ -38,11 +41,66 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.register(operands.dst).* = frame.register(operands.src).*;
             frame.setRegisterTag(operands.dst, frame.registerTag(operands.src));
+            frame.setRegisterTag(operands.src, .None);
+        },
+        .Clone => {
+            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+            const tag = frame.registerTag(operands.src);
+
+            switch (tag) {
+                .Bool, .Int, .Float, .ConstRef, .MutRef, .InterfaceRef => {
+                    frame.register(operands.dst).actualValue = frame.register(operands.src).actualValue;
+                    frame.setRegisterTag(operands.dst, tag);
+                },
+                .String => {
+                    frame.register(operands.dst).string = frame.register(operands.src).string.clone();
+                    frame.setRegisterTag(operands.dst, .String);
+                },
+                .Array => {
+                    frame.register(operands.dst).array = frame.register(operands.src).array.clone();
+                    frame.setRegisterTag(operands.dst, .Array);
+                },
+                else => {
+                    @panic("Unsupported type for clone");
+                },
+            }
         },
         .LoadZero => {
             const operands = bytecode.decode(Bytecode.OperandsZero);
+            const tag: ValueTag = @enumFromInt(operands.tag);
+            if (std.debug.runtime_safety) {
+                switch (tag) {
+                    .Array, .Set, .Map => {
+                        @panic("Incompatible type for load zero");
+                    },
+                    else => {},
+                }
+            }
             frame.register(operands.dst).* = std.mem.zeroes(RawValue);
-            frame.setRegisterTag(operands.dst, @enumFromInt(operands.tag));
+            frame.setRegisterTag(operands.dst, tag);
+        },
+        .LoadDefault => {
+            const operands = bytecode.decode(Bytecode.OperandsDefault);
+            const tag: ValueTag = @enumFromInt(operands.tag);
+            const keyTag: ValueTag = @enumFromInt(operands.keyTag);
+            assert(keyTag != .None);
+            switch (tag) {
+                .Array => {
+                    frame.register(operands.dst).array = Array.init(keyTag);
+                },
+                .Set => {
+                    frame.register(operands.dst).set = Set.init(keyTag);
+                },
+                .Map => {
+                    const valueTag: ValueTag = @enumFromInt(operands.valueTag);
+                    assert(valueTag != .None);
+                    frame.register(operands.dst).map = Map.init(keyTag, valueTag);
+                },
+                else => {
+                    @panic("Incompatible type for custom default load");
+                },
+            }
+            frame.setRegisterTag(operands.dst, tag);
         },
         .LoadImmediate => {
             const operands = bytecode.decode(Bytecode.OperandsImmediate);

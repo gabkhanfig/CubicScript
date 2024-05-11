@@ -124,12 +124,15 @@ pub const OpCode = enum(u8) {
 
     /// No operation. Allows 0 set memory to be a technically valid program.
     /// TODO remove this.
-    Nop,
-    /// Move value between registers src and dst.
-    /// TODO figure out how to handle ownership movement? For example with moving a string to another register?
-    Move,
+    Nop = 0,
+    /// Move value between registers `src` and `dst`. The tag at `src` is set to `.None`.
+    Move = 1,
+    /// Explicitly clone the value at `src`, storing the clone in `dst`.
+    Clone = 2,
     /// Set the register `dst` to zero. Uses `OperandsZero`
     LoadZero,
+    /// Performs special initialization for types that cannot just be zero intiailized, such as arrays, sets, and maps.
+    LoadDefault,
     /// Load an immediate bool/int/float into `dst`.
     /// The immediate value will be cast to the correct value.
     LoadImmediate,
@@ -255,21 +258,15 @@ pub const OpCode = enum(u8) {
     /// Stores the logarithm of `src1` as the argument, and `src2` as the base into `dst`.
     /// Bases of e, 2, and 10 are handled in `OpCode.MathExt`.
     FloatLogWithBase,
-    // /// Stores the sine of `src` in `dst`. TODO determine degrees or radians or both?
-    // FloatSin,
-    // /// Stores the cosine of `src` in `dst`. TODO determine degrees or radians or both?
-    // FloatCos,
-    // /// Stores the tangent of `src` in `dst`. TODO determine degrees or radians or both?
-    // FloatTan,
-    // NOTE are arc and hyberbolic trig functions necessary?
+    /// Get the length or size of a value at `src`, storing it in `dst`.
+    /// The type depends on the register tag.
+    Len,
 
     // ! == String Instructions ==
     // NOTE LoadZero can make a default, empty string
 
     /// Make a clone of the string at `src`, storing it in `dst`.
     StringClone,
-    /// Store the length in bytes of the string at `src`, storing the value in `dst`.
-    StringLen,
     /// Variable length instruction.
     StringFormat,
     StringFind,
@@ -304,6 +301,19 @@ pub const OperandsFunctionArgs = extern struct {
 };
 
 pub const OperandsZero = extern struct { dst: u8, tag: u8 };
+
+pub const OperandsDefault = packed struct {
+    dst: u8,
+    /// Is the actual tag of the type, such as `.Int` or `.Array`
+    tag: u5,
+    /// If `tag` is:
+    /// - `.Array` -> this is the type that the array holds.
+    /// - `.Set` or `.Map` -> the key type
+    keyTag: u5,
+    /// Used only for if tag is `.Map`, specifying the value type.
+    valueTag: u5 = 0,
+};
+
 pub const OperandsImmediate = packed struct {
     dst: u8,
     valueTag: enum(u2) { Bool, Int, Float },

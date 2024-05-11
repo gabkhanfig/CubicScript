@@ -23,13 +23,13 @@ pub const Set = extern struct {
 
     inner: ?*anyopaque,
 
-    /// Initialize a new Map instance.
+    /// Initialize a new Set instance.
     pub fn init(inKeyTag: ValueTag) Self {
         const keyTagInt: usize = @intCast(@intFromEnum(inKeyTag));
         return Self{ .inner = @ptrFromInt(@shlExact(keyTagInt, 48)) };
     }
 
-    /// Free the memory allocated for this map, as well as deinit'ing the values it owns.
+    /// Free the memory allocated for this set, as well as deinit'ing the values it owns.
     pub fn deinit(self: *Self) void {
         if (self.asInnerMut()) |inner| {
             for (inner.groups) |*group| {
@@ -46,7 +46,7 @@ pub const Set = extern struct {
         return @enumFromInt(@shrExact(mask, 48));
     }
 
-    /// Get the number of entries in the hashmap.
+    /// Get the number of entries in the hashset.
     pub fn size(self: *const Self) Int {
         if (self.asInner()) |inner| {
             return @intCast(inner.count);
