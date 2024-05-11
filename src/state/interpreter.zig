@@ -478,6 +478,12 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             frame.register(operands.dst).boolean = result;
             frame.setRegisterTag(operands.dst, .Bool);
         },
+        .BoolNot => {
+            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+            assert(frame.registerTag(operands.src) == .Bool);
+            frame.register(operands.dst).boolean = !frame.register(operands.src).boolean;
+            frame.setRegisterTag(operands.dst, .Bool);
+        },
         .Add => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
             assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
@@ -663,7 +669,7 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             }
             frame.setRegisterTag(operands.dst, .Int);
         },
-        .IntModulo => {
+        .Modulo => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
             const lhs = frame.register(operands.src1).int;
@@ -682,8 +688,10 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             frame.register(operands.dst).int = @mod(lhs, rhs);
             frame.setRegisterTag(operands.dst, .Int);
         },
-        .IntRemainder => {
+        .Remainder => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == .Int);
+            assert(frame.registerTag(operands.src2) == .Int);
 
             const lhs = frame.register(operands.src1).int;
             const rhs = frame.register(operands.src2).int;
@@ -701,33 +709,61 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             frame.register(operands.dst).int = @rem(lhs, rhs);
             frame.setRegisterTag(operands.dst, .Int);
         },
-        .IntPower => {
+        .Power => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
 
-            const base = frame.register(operands.src1).int;
-            const exp = frame.register(operands.src2).int;
+            switch (frame.registerTag(operands.src1)) {
+                .Int => {
+                    const base = frame.register(operands.src1).int;
+                    const exp = frame.register(operands.src2).int;
 
-            const result = math.powOverflow(base, exp);
-            if (result) |numAndOverflow| {
-                frame.register(operands.dst).int = numAndOverflow[0];
-                frame.setRegisterTag(operands.dst, .Int);
+                    const result = math.powOverflow(base, exp);
+                    if (result) |numAndOverflow| {
+                        frame.register(operands.dst).int = numAndOverflow[0];
+                        frame.setRegisterTag(operands.dst, .Int);
 
-                if (numAndOverflow[1]) {
-                    const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]. Using wrap around result of [{}]", .{ base, exp, numAndOverflow[0] }) catch {
-                        @panic("Script out of memory");
-                    };
-                    defer allocator().free(message);
+                        if (numAndOverflow[1]) {
+                            const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]. Using wrap around result of [{}]", .{ base, exp, numAndOverflow[0] }) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
 
-                    runtimeError(state, RuntimeError.PowerIntegerOverflow, ErrorSeverity.Warning, message);
-                }
-            } else |_| {
-                const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]", .{ base, exp }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
+                            runtimeError(state, RuntimeError.PowerIntegerOverflow, ErrorSeverity.Warning, message);
+                        }
+                    } else |_| {
+                        const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]", .{ base, exp }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
 
-                runtimeError(state, RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Error, message);
-                return FatalScriptError.ZeroToPowerOfNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        runtimeError(state, RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Error, message);
+                        return FatalScriptError.ZeroToPowerOfNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    }
+                },
+                .Float => {
+                    // TODO handle negative base to the power of non-integer
+
+                    const base = frame.register(operands.src1).float;
+                    const exp = frame.register(operands.src2).float;
+
+                    const result = math.powFloat(base, exp);
+                    if (result) |num| {
+                        frame.register(operands.dst).float = num;
+                        frame.setRegisterTag(operands.dst, .Float);
+                    } else |_| {
+                        const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]", .{ base, exp }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
+
+                        runtimeError(state, RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Error, message);
+                        return FatalScriptError.ZeroToPowerOfNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    }
+                },
+                else => {
+                    @panic("Unsupported type for exponent");
+                },
             }
         },
         .BitwiseComplement => {
@@ -789,32 +825,6 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
 
             frame.register(operands.dst).actualValue = frame.register(operands.src1).actualValue >> @intCast(frame.register(operands.src2).actualValue & MASK);
             frame.setRegisterTag(operands.dst, .Int);
-        },
-        .BoolNot => {
-            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
-            frame.register(operands.dst).boolean = !frame.register(operands.src).boolean;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .FloatPower => {
-            // TODO handle negative base to the power of non-integer
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-
-            const base = frame.register(operands.src1).float;
-            const exp = frame.register(operands.src2).float;
-
-            const result = math.powFloat(base, exp);
-            if (result) |num| {
-                frame.register(operands.dst).float = num;
-                frame.setRegisterTag(operands.dst, .Float);
-            } else |_| {
-                const message = allocPrintZ(allocator(), "Numbers base[{}] to the power of exp[{}]", .{ base, exp }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
-
-                runtimeError(state, RuntimeError.ZeroToPowerOfNegative, ErrorSeverity.Error, message);
-                return FatalScriptError.ZeroToPowerOfNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
-            }
         },
         .FloatSquareRoot => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
@@ -1492,7 +1502,7 @@ test "int modulo" {
         const state = CubicScriptState.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Modulo, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1512,7 +1522,7 @@ test "int modulo" {
         const state = CubicScriptState.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntModulo, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Modulo, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1537,7 +1547,7 @@ test "int remainder" {
         const state = CubicScriptState.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Remainder, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1557,7 +1567,7 @@ test "int remainder" {
         const state = CubicScriptState.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntRemainder, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Remainder, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);

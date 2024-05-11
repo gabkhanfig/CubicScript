@@ -202,6 +202,8 @@ pub const OpCode = enum(u8) {
     /// Checks if `src1` is greater than or equal to `src2`, storing the boolean result in `dst`.
     /// The type of comparison used depends on the register tags. Is implemented for bool, int, float, and string, currently.
     GreaterOrEqual,
+    /// If `src == true`, stores `false` in `dst`. If `src == false`, stores `true` in `dst`.
+    BoolNot,
     /// Adds `src2` to `src1`, storing the result in `dst`. The functionality is dependent on the register tags.
     /// For both ints and floats, its numerical addition with overflow checks for ints. For strings, `src2` is appended to `src1`.
     Add,
@@ -227,12 +229,13 @@ pub const OpCode = enum(u8) {
     /// Integer modulus operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
     /// This is equivalent to `src1 % src2` in python, where the sign of `dst` is the sign of `src2`. Maybe operator should be `%_`.
     /// https://core.ac.uk/download/pdf/187613369.pdf
-    IntModulo,
+    Modulo,
     /// Integer remainder operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
     /// This is equivalent to `src1 % src2` in C, C++, and Rust.
-    IntRemainder,
+    Remainder,
     /// Exponent. Raises `src1` to the power of `src2`, storing the result in `dst`. If `src1 == 0` and `src2 < 0`, a fatal error occurs.
-    IntPower,
+    /// Works with integers and floats, depending on the register tag.
+    Power,
     /// Inverts the bits of integer `src`, storing the result in `dst`.
     BitwiseComplement,
     /// Bitwise AND between integers `src1 & src2`, storing the result in `dst`.
@@ -246,15 +249,8 @@ pub const OpCode = enum(u8) {
     /// Bit right-shift of `src1 >> src2`, storing the result in `dst`, but ALWAYS filling the upper bits with zeroes.
     BitLogicalShiftRight,
 
-    // ! == Bool Instructions ==
-
-    /// If `src == true`, stores `false` in `dst`. If `src == false`, stores `true` in `dst`.
-    BoolNot,
-
     // ! == Float Instructions ==
 
-    /// Exponent. Raises `src1` to the power of `src2`, storing the result in `dst`. If `src1 == 0` and `src2 < 0`, a fatal error occurs.
-    FloatPower,
     /// Stores the square root of `src` in `dst`. Technically this can be done with `.FloatPower`.
     FloatSquareRoot,
     /// Stores the logarithm of `src1` as the argument, and `src2` as the base into `dst`.
@@ -479,35 +475,14 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
                 @panic(message);
             }
         },
-        // .IntIsEqual,
-        // .IntIsNotEqual,
-        // .IntIsLessThan,
-        // .IntIsGreaterThan,
-        // .IntIsLessOrEqual,
-        // .IntIsGreaterOrEqual,
-        // .IntAdd,
-        // .IntSubtract,
-        // .IntMultiply,
-        // .IntDivideTrunc,
-        // .IntDivideFloor,
-        .IntModulo,
-        .IntRemainder,
-        .IntPower,
+        .Modulo,
+        .Remainder,
+        .Power,
         .BitwiseAnd,
         .BitwiseOr,
         .BitwiseXor,
         .BitShiftLeft,
         .BitLogicalShiftRight,
-        // .FloatIsEqual,
-        // .FloatIsNotEqual,
-        // .FloatIsLessThan,
-        // .FloatIsGreaterThan,
-        // .FloatIsLessOrEqual,
-        // .FloatIsGreaterOrEqual,
-        // .FloatAdd,
-        // .FloatSubtract,
-        // .FloatMultiply,
-        // .FloatDivide,
         => {
             if (OperandsT != OperandsDstTwoSrc) {
                 const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsDstTwoSrc) }) catch unreachable;
