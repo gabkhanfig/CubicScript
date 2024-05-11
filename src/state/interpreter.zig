@@ -830,8 +830,20 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             const operands = bytecode.decode(Bytecode.OperandsMathExt);
             assert(frame.registerTag(operands.src) == .Float);
 
-            const result: f64 = blk: {
+            const result: f64 = blk: { // TODO maybe ese instructions can be used for ints and vectors as well?
                 switch (operands.op) {
+                    .Floor => {
+                        break :blk @floor(frame.register(operands.src).float);
+                    },
+                    .Ceil => {
+                        break :blk @ceil(frame.register(operands.src).float);
+                    },
+                    .Round => {
+                        break :blk @round(frame.register(operands.src).float);
+                    },
+                    .Trunc => {
+                        break :blk @trunc(frame.register(operands.src).float);
+                    },
                     .Sqrt => {
                         const num = frame.register(operands.src).float;
 
@@ -917,6 +929,42 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
                     },
                     .Arctan => {
                         break :blk std.math.atan(frame.register(operands.src).float);
+                    },
+                    .HyperbolicSin => {
+                        break :blk std.math.sinh(frame.register(operands.src).float);
+                    },
+                    .HyperbolicCos => {
+                        break :blk std.math.cosh(frame.register(operands.src).float);
+                    },
+                    .HyperbolicTan => {
+                        break :blk std.math.tanh(frame.register(operands.src).float);
+                    },
+                    .HyperbolicArcsin => {
+                        break :blk std.math.asinh(frame.register(operands.src).float);
+                    },
+                    .HyperbolicArccos => {
+                        const num = frame.register(operands.src).float;
+                        if (num < 1) {
+                            const message = allocPrintZ(allocator(), "Hyperbolic arc-cosine of value [{}] is undefined", .{num}) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
+                            runtimeError(state, RuntimeError.HyperbolicArccosUndefined, ErrorSeverity.Error, message);
+                            return FatalScriptError.HyperbolicArccosUndefined; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        }
+                        break :blk std.math.acosh(num);
+                    },
+                    .HyperbolicArctan => {
+                        const num = frame.register(operands.src).float;
+                        if (num >= 1 or num <= -1) {
+                            const message = allocPrintZ(allocator(), "Hyperbolic arc-tangent of value [{}] is undefined", .{num}) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
+                            runtimeError(state, RuntimeError.HyperbolicArctanUndefined, ErrorSeverity.Error, message);
+                            return FatalScriptError.HyperbolicArctanUndefined; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        }
+                        break :blk std.math.atanh(num);
                     },
                     // else => {
                     //     @panic("Unsupported float math extension operation");

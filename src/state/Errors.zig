@@ -15,6 +15,8 @@ pub const RuntimeError = enum(c_int) {
     LogarithmZeroOrNegative = 14,
     ArcsinUndefined = 15,
     ArccosUndefined = 16,
+    HyperbolicArccosUndefined = 17,
+    HyperbolicArctanUndefined = 18,
 };
 
 pub const Severity = enum(c_int) {
@@ -35,4 +37,6 @@ pub const FatalScriptError = error{
     LogarithmZeroOrNegative,
     ArcsinUndefined,
     ArccosUndefined,
+    HyperbolicArccosUndefined,
+    HyperbolicArctanUndefined,
 };

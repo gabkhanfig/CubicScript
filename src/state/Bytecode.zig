@@ -338,6 +338,10 @@ pub const OperandsMathExt = packed struct {
     src: u8,
     dst: u8,
     op: enum(u8) {
+        Floor,
+        Ceil,
+        Round,
+        Trunc,
         Sqrt,
         LogE,
         Log2,
@@ -354,6 +358,12 @@ pub const OperandsMathExt = packed struct {
         Arccos,
         /// Uses radians
         Arctan,
+        HyperbolicSin,
+        HyperbolicCos,
+        HyperbolicTan,
+        HyperbolicArcsin,
+        HyperbolicArccos,
+        HyperbolicArctan,
     },
 };
 
