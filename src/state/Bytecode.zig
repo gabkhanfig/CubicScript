@@ -249,12 +249,12 @@ pub const OpCode = enum(u8) {
     /// Bit right-shift of `src1 >> src2`, storing the result in `dst`, but ALWAYS filling the upper bits with zeroes.
     BitLogicalShiftRight,
 
-    // ! == Float Instructions ==
-
-    /// Stores the square root of `src` in `dst`. Technically this can be done with `.FloatPower`.
-    FloatSquareRoot,
+    /// Math operations that have one input and one output.
+    /// Does an `op` on `src`, storing the result in `dst`. Uses `OperandsMathExt`
+    FloatMathExt,
     /// Stores the logarithm of `src1` as the argument, and `src2` as the base into `dst`.
-    FloatLog,
+    /// Bases of e, 2, and 10 are handled in `OpCode.MathExt`.
+    FloatLogWithBase,
     // /// Stores the sine of `src` in `dst`. TODO determine degrees or radians or both?
     // FloatSin,
     // /// Stores the cosine of `src` in `dst`. TODO determine degrees or radians or both?
@@ -332,6 +332,29 @@ pub const OperandsCast = extern struct {
     dst: u8,
     src: u8,
     tag: u8,
+};
+
+pub const OperandsMathExt = packed struct {
+    src: u8,
+    dst: u8,
+    op: enum(u8) {
+        Sqrt,
+        LogE,
+        Log2,
+        Log10,
+        /// Uses radians
+        Sin,
+        /// Uses radians
+        Cos,
+        /// Uses radians
+        Tan,
+        /// Uses radians
+        Arcsin,
+        /// Uses radians
+        Arccos,
+        /// Uses radians
+        Arctan,
+    },
 };
 
 /// The immediate data for a call operation.

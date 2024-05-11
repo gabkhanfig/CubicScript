@@ -826,24 +826,77 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             frame.register(operands.dst).actualValue = frame.register(operands.src1).actualValue >> @intCast(frame.register(operands.src2).actualValue & MASK);
             frame.setRegisterTag(operands.dst, .Int);
         },
-        .FloatSquareRoot => {
-            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+        .FloatMathExt => {
+            const operands = bytecode.decode(Bytecode.OperandsMathExt);
+            assert(frame.registerTag(operands.src) == .Float);
 
-            const num = frame.register(operands.src).float;
+            const result: f64 = blk: {
+                switch (operands.op) {
+                    .Sqrt => {
+                        const num = frame.register(operands.src).float;
 
-            if (num < 0) {
-                const message = allocPrintZ(allocator(), "Cannot get square root of negative number [{}]", .{num}) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
+                        if (num < 0) {
+                            const message = allocPrintZ(allocator(), "Cannot get square root of negative number [{}]", .{num}) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
 
-                runtimeError(state, RuntimeError.NegativeRoot, ErrorSeverity.Error, message);
-                return FatalScriptError.NegativeRoot; // TODO figure out how to free all the memory and resources allocated in the callstack
-            }
-            frame.register(operands.dst).float = @sqrt(num);
+                            runtimeError(state, RuntimeError.NegativeRoot, ErrorSeverity.Error, message);
+                            return FatalScriptError.NegativeRoot; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        }
+                        break :blk @sqrt(num);
+                    },
+                    .LogE => {
+                        const num = frame.register(operands.src).float;
+                        if (num <= 0) {
+                            const message = allocPrintZ(allocator(), "Logarithm of value [{}] is undefined. Base e.", .{num}) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
+                            runtimeError(state, RuntimeError.LogarithmZeroOrNegative, ErrorSeverity.Error, message);
+                            return FatalScriptError.LogarithmZeroOrNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        }
+                        break :blk @log(num);
+                    },
+                    .Log2 => {
+                        const num = frame.register(operands.src).float;
+                        if (num <= 0) {
+                            const message = allocPrintZ(allocator(), "Logarithm of value [{}] is undefined. Base 2.", .{num}) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
+                            runtimeError(state, RuntimeError.LogarithmZeroOrNegative, ErrorSeverity.Error, message);
+                            return FatalScriptError.LogarithmZeroOrNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        }
+                        break :blk @log2(num);
+                    },
+                    .Log10 => {
+                        const num = frame.register(operands.src).float;
+                        if (num <= 0) {
+                            const message = allocPrintZ(allocator(), "Logarithm of value [{}] is undefined. Base 10.", .{num}) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
+                            runtimeError(state, RuntimeError.LogarithmZeroOrNegative, ErrorSeverity.Error, message);
+                            return FatalScriptError.LogarithmZeroOrNegative; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        }
+                        break :blk @log10(num);
+                    },
+                    .Sin => {
+                        break :blk @sin(frame.register(operands.src).float);
+                    },
+                    .Cos => {
+                        break :blk @cos(frame.register(operands.src).float);
+                    },
+                    else => {
+                        @panic("Unsupported float math extension operation");
+                    },
+                }
+            };
+            frame.register(operands.dst).float = result;
             frame.setRegisterTag(operands.dst, .Float);
         },
-        .FloatLog => {
+        .FloatLogWithBase => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
             const num = frame.register(operands.src1).float;
