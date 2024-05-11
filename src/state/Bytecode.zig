@@ -364,6 +364,7 @@ pub const OperandsMathExt = packed struct {
         HyperbolicArcsin,
         HyperbolicArccos,
         HyperbolicArctan,
+        // TODO maybe other trig functions like csc?
     },
 };
 
