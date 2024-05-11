@@ -18,4 +18,5 @@ comptime {
     _ = @import("compiler/FunctionBuilder.zig");
     _ = @import("compiler/ClassBuilder.zig");
     _ = @import("types/function.zig");
+    _ = @import("state/interpreter.zig");
 }

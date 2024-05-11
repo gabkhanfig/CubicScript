@@ -4,7 +4,6 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
-const CubicScriptState = @import("CubicScriptState.zig");
 
 const Self = @This();
 
@@ -183,7 +182,6 @@ pub const OpCode = enum(u8) {
     /// While specializing a bunch of different cast instructions could be argued to be more performant, the difference in practice would be minimal,
     /// and in the end would result in many more instructions that need to be accounted for and maintained in the future.
     Cast,
-
     /// Checks the values at `src1` and `src2` for equality, storing the boolean result in `dst`.
     /// The type of comparison used depends on the register tags. Is implemented for bool, int, float, string, and array
     /// currently.
@@ -226,53 +224,11 @@ pub const OpCode = enum(u8) {
     /// https://python-history.blogspot.com/2010/08/why-pythons-integer-division-floors.html
     DivideFloor,
 
-    // ! == Int Instructions (Some Bool compatible) ==
-
-    // /// WORKS WITH BOOLS. Int/Bool equality comparison between `src1` and `src2`. Stores the result in `dst`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // IntIsEqual,
-    // /// WORKS WITH BOOLS. Int/Bool inequality comparison between `sr1` and `src2`. Stores the result on `dst`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // IntIsNotEqual,
-    // /// WORKS WITH BOOLS. Int/Bool less than comparison. Stores a bool result in `dst` register being the condition `src1` is less than `src2`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // IntIsLessThan,
-    // /// WORKS WITH BOOLS. Int/Bool greater than comparison. Stores a bool result in `dst` register being the condition `src1` is greater than `src2`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // IntIsGreaterThan,
-    // /// WORKS WITH BOOLS. Int/Bool less than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is less than or equal to `src2`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // IntIsLessOrEqual,
-    // /// WORKS WITH BOOLS. Int/Bool greater than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is greater than or equal to `src2`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // IntIsGreaterOrEqual,
-    // /// Add integers `src1` and `src2`, storing the result in `dst`.
-    // IntAdd,
-    // /// Subtracts integers `src2` from `src1`, storing the result in `dst`.
-    // IntSubtract,
-    // /// Multiplies integers `src1` and `src2`, storing the result in `dst`.
-    // IntMultiply,
-    // /// Divides integers `src2` from `src1`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
-    // /// The behaviour is rounding TOWARDS zero. This is equivalent to `src1 / src2` in C, C++, and Rust.
-    // /// https://doc.rust-lang.org/reference/expressions/operator-expr.html#arithmetic-and-logical-binary-operators
-    // /// https://news.ycombinator.com/item?id=29729890
-    // /// https://core.ac.uk/download/pdf/187613369.pdf
-    // IntDivideTrunc,
-    // /// Divides integers `src2` from `src1`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
-    // /// The behaviour is rounding down to the nearest integer. This is equivalent to `src1 / src2` in Python. Maybe operator should be `/_`.
-    // /// https://python-history.blogspot.com/2010/08/why-pythons-integer-division-floors.html
-    // IntDivideFloor,
-    /// Modulus operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
+    /// Integer modulus operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
     /// This is equivalent to `src1 % src2` in python, where the sign of `dst` is the sign of `src2`. Maybe operator should be `%_`.
     /// https://core.ac.uk/download/pdf/187613369.pdf
     IntModulo,
-    /// Remainder operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
+    /// Integer remainder operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
     /// This is equivalent to `src1 % src2` in C, C++, and Rust.
     IntRemainder,
     /// Exponent. Raises `src1` to the power of `src2`, storing the result in `dst`. If `src1 == 0` and `src2 < 0`, a fatal error occurs.
@@ -297,38 +253,6 @@ pub const OpCode = enum(u8) {
 
     // ! == Float Instructions ==
 
-    // /// Float equality comparison between `src1` and `src2`. Stores the result in `dst`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // FloatIsEqual,
-    // /// Float inequality comparison between `src1` and `src2`. Stores the result in `dst`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // FloatIsNotEqual,
-    // /// Float less than comparison. Stores a bool result in `dst` register being the condition `src1` is less than `src2`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // FloatIsLessThan,
-    // /// Float greater than comparison. Stores a bool result in `dst` register being the condition `src1` is greater than `src2`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // FloatIsGreaterThan,
-    // /// Float less than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is less than or equal to `src2`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // FloatIsLessOrEqual,
-    // /// Float greater than or equal to comparison. Stores a bool result in `dst` register being the condition `src1` is greater than or equal to `src2`.
-    // /// # Asserts
-    // /// Registers may not overlap
-    // FloatIsGreaterOrEqual,
-    // /// Add `src1` with `src2` storing the result in `dst`.
-    // FloatAdd,
-    // /// Subtract `src1` by `src2` storing the result in `dst`.
-    // FloatSubtract,
-    // /// Multiply `src1` with `src2` storing the result in `dst`.
-    // FloatMultiply,
-    // /// Divide `src1` by `src2` storing the result in `dst`. If `src2 == 0`, this is considered a fatal error.
-    // FloatDivide,
     /// Exponent. Raises `src1` to the power of `src2`, storing the result in `dst`. If `src1 == 0` and `src2 < 0`, a fatal error occurs.
     FloatPower,
     /// Stores the square root of `src` in `dst`. Technically this can be done with `.FloatPower`.
@@ -352,11 +276,6 @@ pub const OpCode = enum(u8) {
     StringLen,
     /// Variable length instruction.
     StringFormat,
-    /// Check if strings `src1` and `src2` are equal, storing the boolean result in `dst`.
-    //StringIsEqual,
-    /// Compare strings at `src1` and `src2`, storing the ordering as an integer at `dst`.
-    /// The integer can be cast to the enum `Ordering` to determine comparison result.
-    //StringCompare,
     StringFind,
     StringReverseFind,
     //StringAppend,
