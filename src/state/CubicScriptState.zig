@@ -345,123 +345,326 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
                 },
             }
         },
-        .IntIsEqual => {
+        .Equal => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).boolean = frame.register(operands.src1).int == frame.register(operands.src2).int;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .IntIsNotEqual => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).boolean = frame.register(operands.src1).int != frame.register(operands.src2).int;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .IntIsLessThan => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).boolean = frame.register(operands.src1).int < frame.register(operands.src2).int;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .IntIsGreaterThan => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).boolean = frame.register(operands.src1).int > frame.register(operands.src2).int;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .IntIsLessOrEqual => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).boolean = frame.register(operands.src1).int <= frame.register(operands.src2).int;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .IntIsGreaterOrEqual => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).boolean = frame.register(operands.src1).int >= frame.register(operands.src2).int;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .IntAdd => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
 
-            const lhs = frame.register(operands.src1).int;
-            const rhs = frame.register(operands.src2).int;
+            const result = blk: {
+                switch (frame.registerTag(operands.src1)) {
+                    .Bool => {
+                        break :blk frame.register(operands.src1).boolean == frame.register(operands.src2).boolean;
+                    },
+                    .Int => {
+                        break :blk frame.register(operands.src1).int == frame.register(operands.src2).int;
+                    },
+                    .Float => {
+                        break :blk frame.register(operands.src1).float == frame.register(operands.src2).float;
+                    },
+                    .String => {
+                        break :blk frame.register(operands.src1).string.eql(frame.register(operands.src2).string);
+                    },
+                    .Array => {
+                        break :blk frame.register(operands.src1).array.eql(frame.register(operands.src2).array);
+                    },
+                    else => {
+                        @panic("Unimplemented equality type");
+                    },
+                }
+            };
+            frame.register(operands.dst).boolean = result;
+            frame.setRegisterTag(operands.dst, .Bool);
+        },
+        .NotEqual => {
+            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
 
-            const temp = math.addOverflow(lhs, rhs);
-            if (temp.@"1") {
-                const message = allocPrintZ(allocator(), "Numbers lhs[{}] + rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
+            const result = blk: {
+                switch (frame.registerTag(operands.src1)) {
+                    .Bool => {
+                        break :blk frame.register(operands.src1).boolean != frame.register(operands.src2).boolean;
+                    },
+                    .Int => {
+                        break :blk frame.register(operands.src1).int != frame.register(operands.src2).int;
+                    },
+                    .Float => {
+                        break :blk frame.register(operands.src1).float != frame.register(operands.src2).float;
+                    },
+                    .String => {
+                        break :blk !frame.register(operands.src1).string.eql(frame.register(operands.src2).string);
+                    },
+                    .Array => {
+                        break :blk !frame.register(operands.src1).array.eql(frame.register(operands.src2).array);
+                    },
+                    else => {
+                        @panic("Unimplemented equality type");
+                    },
+                }
+            };
+            frame.register(operands.dst).boolean = result;
+            frame.setRegisterTag(operands.dst, .Bool);
+        },
+        .Less => {
+            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
 
-                self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
+            const result = blk: {
+                switch (frame.registerTag(operands.src1)) {
+                    .Bool => {
+                        break :blk @intFromBool(frame.register(operands.src1).boolean) < @intFromBool(frame.register(operands.src2).boolean);
+                    },
+                    .Int => {
+                        break :blk frame.register(operands.src1).int < frame.register(operands.src2).int;
+                    },
+                    .Float => {
+                        break :blk frame.register(operands.src1).float < frame.register(operands.src2).float;
+                    },
+                    .String => {
+                        break :blk frame.register(operands.src1).string.cmp(frame.register(operands.src2).string) == .Less;
+                    },
+                    else => {
+                        @panic("Unimplemented equality type");
+                    },
+                }
+            };
+            frame.register(operands.dst).boolean = result;
+            frame.setRegisterTag(operands.dst, .Bool);
+        },
+        .Greater => {
+            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
+
+            const result = blk: {
+                switch (frame.registerTag(operands.src1)) {
+                    .Bool => {
+                        break :blk @intFromBool(frame.register(operands.src1).boolean) > @intFromBool(frame.register(operands.src2).boolean);
+                    },
+                    .Int => {
+                        break :blk frame.register(operands.src1).int > frame.register(operands.src2).int;
+                    },
+                    .Float => {
+                        break :blk frame.register(operands.src1).float > frame.register(operands.src2).float;
+                    },
+                    .String => {
+                        break :blk frame.register(operands.src1).string.cmp(frame.register(operands.src2).string) == .Greater;
+                    },
+                    else => {
+                        @panic("Unimplemented equality type");
+                    },
+                }
+            };
+            frame.register(operands.dst).boolean = result;
+            frame.setRegisterTag(operands.dst, .Bool);
+        },
+        .LessOrEqual => {
+            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
+
+            const result = blk: {
+                switch (frame.registerTag(operands.src1)) {
+                    .Bool => {
+                        break :blk @intFromBool(frame.register(operands.src1).boolean) <= @intFromBool(frame.register(operands.src2).boolean);
+                    },
+                    .Int => {
+                        break :blk frame.register(operands.src1).int <= frame.register(operands.src2).int;
+                    },
+                    .Float => {
+                        break :blk frame.register(operands.src1).float <= frame.register(operands.src2).float;
+                    },
+                    .String => {
+                        const cmp = frame.register(operands.src1).string.cmp(frame.register(operands.src2).string);
+                        break :blk cmp == .Less or cmp == .Equal;
+                    },
+                    else => {
+                        @panic("Unimplemented equality type");
+                    },
+                }
+            };
+            frame.register(operands.dst).boolean = result;
+            frame.setRegisterTag(operands.dst, .Bool);
+        },
+        .GreaterOrEqual => {
+            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
+
+            const result = blk: {
+                switch (frame.registerTag(operands.src1)) {
+                    .Bool => {
+                        break :blk @intFromBool(frame.register(operands.src1).boolean) >= @intFromBool(frame.register(operands.src2).boolean);
+                    },
+                    .Int => {
+                        break :blk frame.register(operands.src1).int >= frame.register(operands.src2).int;
+                    },
+                    .Float => {
+                        break :blk frame.register(operands.src1).float >= frame.register(operands.src2).float;
+                    },
+                    .String => {
+                        const cmp = frame.register(operands.src1).string.cmp(frame.register(operands.src2).string);
+                        break :blk cmp == .Greater or cmp == .Equal;
+                    },
+                    else => {
+                        @panic("Unimplemented equality type");
+                    },
+                }
+            };
+            frame.register(operands.dst).boolean = result;
+            frame.setRegisterTag(operands.dst, .Bool);
+        },
+        .Add => {
+            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
+
+            switch (frame.registerTag(operands.src1)) {
+                .Int => {
+                    const lhs = frame.register(operands.src1).int;
+                    const rhs = frame.register(operands.src2).int;
+
+                    const temp = math.addOverflow(lhs, rhs);
+                    if (temp.@"1") {
+                        const message = allocPrintZ(allocator(), "Numbers lhs[{}] + rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
+
+                        self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
+                    }
+                    frame.register(operands.dst).int = temp.@"0";
+                    frame.setRegisterTag(operands.dst, .Int);
+                },
+                .Float => {
+                    frame.register(operands.dst).float = frame.register(operands.src1).float + frame.register(operands.src2).float;
+                    frame.setRegisterTag(operands.dst, .Float);
+                },
+                .String => {
+                    var clone = frame.register(operands.src1).string.clone();
+                    clone.appendUnchecked(frame.register(operands.src2).string.toSlice());
+                    frame.register(operands.dst).string = clone;
+                    frame.setRegisterTag(operands.dst, .String);
+                },
+                else => {
+                    @panic("Unimplemented add type");
+                },
             }
-            frame.register(operands.dst).int = temp.@"0";
-            frame.setRegisterTag(operands.dst, .Int);
         },
-        .IntSubtract => {
+        .Subtract => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
 
-            const lhs = frame.register(operands.src1).int;
-            const rhs = frame.register(operands.src2).int;
+            switch (frame.registerTag(operands.src1)) {
+                .Int => {
+                    const lhs = frame.register(operands.src1).int;
+                    const rhs = frame.register(operands.src2).int;
 
-            const temp = math.subOverflow(lhs, rhs);
-            if (temp.@"1") {
-                const message = allocPrintZ(allocator(), "Numbers lhs[{}] - rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
+                    const temp = math.subOverflow(lhs, rhs);
+                    if (temp.@"1") {
+                        const message = allocPrintZ(allocator(), "Numbers lhs[{}] - rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
 
-                self.runtimeError(RuntimeError.SubtractionIntegerOverflow, ErrorSeverity.Warning, message);
+                        self.runtimeError(RuntimeError.SubtractionIntegerOverflow, ErrorSeverity.Warning, message);
+                    }
+                    frame.register(operands.dst).int = temp.@"0";
+                    frame.setRegisterTag(operands.dst, .Int);
+                },
+                .Float => {
+                    frame.register(operands.dst).float = frame.register(operands.src1).float - frame.register(operands.src2).float;
+                    frame.setRegisterTag(operands.dst, .Float);
+                },
+                else => {
+                    @panic("Unimplemented subtract type");
+                },
             }
-            frame.register(operands.dst).int = temp.@"0";
-            frame.setRegisterTag(operands.dst, .Int);
         },
-        .IntMultiply => {
+        .Multiply => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
 
-            const lhs = frame.register(operands.src1).int;
-            const rhs = frame.register(operands.src2).int;
+            switch (frame.registerTag(operands.src1)) {
+                .Int => {
+                    const lhs = frame.register(operands.src1).int;
+                    const rhs = frame.register(operands.src2).int;
 
-            const temp = math.mulOverflow(lhs, rhs);
-            if (temp.@"1") {
-                const message = allocPrintZ(allocator(), "Numbers lhs[{}] * rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
+                    const temp = math.mulOverflow(lhs, rhs);
+                    if (temp.@"1") {
+                        const message = allocPrintZ(allocator(), "Numbers lhs[{}] * rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
 
-                self.runtimeError(RuntimeError.MultiplicationIntegerOverflow, ErrorSeverity.Warning, message);
+                        self.runtimeError(RuntimeError.MultiplicationIntegerOverflow, ErrorSeverity.Warning, message);
+                    }
+                    frame.register(operands.dst).int = temp.@"0";
+                    frame.setRegisterTag(operands.dst, .Int);
+                },
+                .Float => {
+                    frame.register(operands.dst).float = frame.register(operands.src1).float * frame.register(operands.src2).float;
+                    frame.setRegisterTag(operands.dst, .Float);
+                },
+                else => {
+                    @panic("Unimplemented multiply type");
+                },
             }
-            frame.register(operands.dst).int = temp.@"0";
-            frame.setRegisterTag(operands.dst, .Int);
         },
-        .IntDivideTrunc => {
+        .Divide => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == frame.registerTag(operands.src2));
 
-            const lhs = frame.register(operands.src1).int;
-            const rhs = frame.register(operands.src2).int;
+            switch (frame.registerTag(operands.src1)) {
+                .Int => {
+                    const lhs = frame.register(operands.src1).int;
+                    const rhs = frame.register(operands.src2).int;
 
-            if (rhs == 0) {
-                const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer truncation division", .{ lhs, rhs }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
+                    if (rhs == 0) {
+                        const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer truncation division", .{ lhs, rhs }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
 
-                self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
-                return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
+                        return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    }
+
+                    if (lhs == math.MIN_INT and rhs == -1) {
+                        // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
+                        // interestingly the wrap around result would just be MIN_INT.
+                        const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer truncation division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
+
+                        self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
+                        frame.register(operands.dst).int = math.MIN_INT; // zig doesnt have divison overflow operator
+                    } else {
+                        frame.register(operands.dst).int = @divTrunc(lhs, rhs);
+                    }
+                    frame.setRegisterTag(operands.dst, .Int);
+                },
+                .Float => {
+                    if (frame.register(operands.src2).float == 0) {
+                        const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing float division", .{
+                            frame.register(operands.src1).float,
+                            frame.register(operands.src2).float,
+                        }) catch {
+                            @panic("Script out of memory");
+                        };
+                        defer allocator().free(message);
+
+                        self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
+                        return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
+                    }
+
+                    frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
+                    frame.setRegisterTag(operands.dst, .Float);
+                },
+                else => {
+                    @panic("Unimplemented divide type");
+                },
             }
-
-            if (lhs == math.MIN_INT and rhs == -1) {
-                // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
-                // interestingly the wrap around result would just be MIN_INT.
-                const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer truncation division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
-
-                self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
-                frame.register(operands.dst).int = math.MIN_INT; // zig doesnt have divison overflow operator
-            } else {
-                frame.register(operands.dst).int = @divTrunc(lhs, rhs);
-            }
-            frame.setRegisterTag(operands.dst, .Int);
         },
-        .IntDivideFloor => {
+        .DivideFloor => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+            assert(frame.registerTag(operands.src1) == .Int);
+            assert(frame.registerTag(operands.src2) == .Int);
 
             const lhs = frame.register(operands.src1).int;
             const rhs = frame.register(operands.src2).int;
@@ -491,6 +694,153 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             }
             frame.setRegisterTag(operands.dst, .Int);
         },
+
+        // .IntIsEqual => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).int == frame.register(operands.src2).int;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .IntIsNotEqual => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).int != frame.register(operands.src2).int;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .IntIsLessThan => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).int < frame.register(operands.src2).int;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .IntIsGreaterThan => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).int > frame.register(operands.src2).int;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .IntIsLessOrEqual => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).int <= frame.register(operands.src2).int;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .IntIsGreaterOrEqual => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).int >= frame.register(operands.src2).int;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .IntAdd => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+        //     const lhs = frame.register(operands.src1).int;
+        //     const rhs = frame.register(operands.src2).int;
+
+        //     const temp = math.addOverflow(lhs, rhs);
+        //     if (temp.@"1") {
+        //         const message = allocPrintZ(allocator(), "Numbers lhs[{}] + rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+        //             @panic("Script out of memory");
+        //         };
+        //         defer allocator().free(message);
+
+        //         self.runtimeError(RuntimeError.AdditionIntegerOverflow, ErrorSeverity.Warning, message);
+        //     }
+        //     frame.register(operands.dst).int = temp.@"0";
+        //     frame.setRegisterTag(operands.dst, .Int);
+        // },
+        // .IntSubtract => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+        //     const lhs = frame.register(operands.src1).int;
+        //     const rhs = frame.register(operands.src2).int;
+
+        //     const temp = math.subOverflow(lhs, rhs);
+        //     if (temp.@"1") {
+        //         const message = allocPrintZ(allocator(), "Numbers lhs[{}] - rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+        //             @panic("Script out of memory");
+        //         };
+        //         defer allocator().free(message);
+
+        //         self.runtimeError(RuntimeError.SubtractionIntegerOverflow, ErrorSeverity.Warning, message);
+        //     }
+        //     frame.register(operands.dst).int = temp.@"0";
+        //     frame.setRegisterTag(operands.dst, .Int);
+        // },
+        // .IntMultiply => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+        //     const lhs = frame.register(operands.src1).int;
+        //     const rhs = frame.register(operands.src2).int;
+
+        //     const temp = math.mulOverflow(lhs, rhs);
+        //     if (temp.@"1") {
+        //         const message = allocPrintZ(allocator(), "Numbers lhs[{}] * rhs[{}]. Using wrap around result of [{}]", .{ lhs, rhs, temp.@"0" }) catch {
+        //             @panic("Script out of memory");
+        //         };
+        //         defer allocator().free(message);
+
+        //         self.runtimeError(RuntimeError.MultiplicationIntegerOverflow, ErrorSeverity.Warning, message);
+        //     }
+        //     frame.register(operands.dst).int = temp.@"0";
+        //     frame.setRegisterTag(operands.dst, .Int);
+        // },
+        // .IntDivideTrunc => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+        //     const lhs = frame.register(operands.src1).int;
+        //     const rhs = frame.register(operands.src2).int;
+
+        //     if (rhs == 0) {
+        //         const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer truncation division", .{ lhs, rhs }) catch {
+        //             @panic("Script out of memory");
+        //         };
+        //         defer allocator().free(message);
+
+        //         self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
+        //         return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
+        //     }
+
+        //     if (lhs == math.MIN_INT and rhs == -1) {
+        //         // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
+        //         // interestingly the wrap around result would just be MIN_INT.
+        //         const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer truncation division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT }) catch {
+        //             @panic("Script out of memory");
+        //         };
+        //         defer allocator().free(message);
+
+        //         self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
+        //         frame.register(operands.dst).int = math.MIN_INT; // zig doesnt have divison overflow operator
+        //     } else {
+        //         frame.register(operands.dst).int = @divTrunc(lhs, rhs);
+        //     }
+        //     frame.setRegisterTag(operands.dst, .Int);
+        // },
+        // .IntDivideFloor => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+
+        //     const lhs = frame.register(operands.src1).int;
+        //     const rhs = frame.register(operands.src2).int;
+
+        //     if (rhs == 0) {
+        //         const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer floor division", .{ lhs, rhs }) catch {
+        //             @panic("Script out of memory");
+        //         };
+        //         defer allocator().free(message);
+
+        //         self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
+        //         return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
+        //     }
+
+        //     if (lhs == math.MIN_INT and rhs == -1) {
+        //         // the absolute value of MIN_INT is 1 greater than MAX_INT, thus overflow would happen.
+        //         // interestingly the wrap around result would just be MIN_INT.
+        //         const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing integer floor division. Using wrap around result of [{}]", .{ lhs, rhs, math.MIN_INT }) catch {
+        //             @panic("Script out of memory");
+        //         };
+        //         defer allocator().free(message);
+
+        //         self.runtimeError(RuntimeError.DivisionIntegerOverflow, ErrorSeverity.Warning, message);
+        //         frame.register(operands.dst).int = math.MIN_INT; // zig doesnt have divison overflow operator
+        //     } else {
+        //         frame.register(operands.dst).int = @divFloor(lhs, rhs);
+        //     }
+        //     frame.setRegisterTag(operands.dst, .Int);
+        // },
         .IntModulo => {
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
@@ -623,100 +973,100 @@ fn executeOperation(self: *const Self, stack: *Stack, frame: *StackFrame) FatalS
             frame.register(operands.dst).boolean = !frame.register(operands.src).boolean;
             frame.setRegisterTag(operands.dst, .Bool);
         },
-        .FloatIsEqual => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        // .FloatIsEqual => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            assert(operands.dst != operands.src1);
-            assert(operands.dst != operands.src2);
-            assert(operands.src1 != operands.src2);
+        //     assert(operands.dst != operands.src1);
+        //     assert(operands.dst != operands.src2);
+        //     assert(operands.src1 != operands.src2);
 
-            frame.register(operands.dst).boolean = frame.register(operands.src1).float == frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .FloatIsNotEqual => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).float == frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .FloatIsNotEqual => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            assert(operands.dst != operands.src1);
-            assert(operands.dst != operands.src2);
-            assert(operands.src1 != operands.src2);
+        //     assert(operands.dst != operands.src1);
+        //     assert(operands.dst != operands.src2);
+        //     assert(operands.src1 != operands.src2);
 
-            frame.register(operands.dst).boolean = frame.register(operands.src1).float != frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .FloatIsLessThan => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).float != frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .FloatIsLessThan => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            assert(operands.dst != operands.src1);
-            assert(operands.dst != operands.src2);
-            assert(operands.src1 != operands.src2);
+        //     assert(operands.dst != operands.src1);
+        //     assert(operands.dst != operands.src2);
+        //     assert(operands.src1 != operands.src2);
 
-            frame.register(operands.dst).boolean = frame.register(operands.src1).float < frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .FloatIsGreaterThan => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).float < frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .FloatIsGreaterThan => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            assert(operands.dst != operands.src1);
-            assert(operands.dst != operands.src2);
-            assert(operands.src1 != operands.src2);
+        //     assert(operands.dst != operands.src1);
+        //     assert(operands.dst != operands.src2);
+        //     assert(operands.src1 != operands.src2);
 
-            frame.register(operands.dst).boolean = frame.register(operands.src1).float > frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .FloatIsLessOrEqual => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).float > frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .FloatIsLessOrEqual => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            assert(operands.dst != operands.src1);
-            assert(operands.dst != operands.src2);
-            assert(operands.src1 != operands.src2);
+        //     assert(operands.dst != operands.src1);
+        //     assert(operands.dst != operands.src2);
+        //     assert(operands.src1 != operands.src2);
 
-            frame.register(operands.dst).boolean = frame.register(operands.src1).float <= frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .FloatIsGreaterOrEqual => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).float <= frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .FloatIsGreaterOrEqual => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            assert(operands.dst != operands.src1);
-            assert(operands.dst != operands.src2);
-            assert(operands.src1 != operands.src2);
+        //     assert(operands.dst != operands.src1);
+        //     assert(operands.dst != operands.src2);
+        //     assert(operands.src1 != operands.src2);
 
-            frame.register(operands.dst).boolean = frame.register(operands.src1).float >= frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Bool);
-        },
-        .FloatAdd => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).float = frame.register(operands.src1).float + frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Float);
-        },
-        .FloatSubtract => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).float = frame.register(operands.src1).float - frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Float);
-        },
-        .FloatMultiply => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
-            frame.register(operands.dst).float = frame.register(operands.src1).float * frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Float);
-        },
-        .FloatDivide => {
-            const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).boolean = frame.register(operands.src1).float >= frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Bool);
+        // },
+        // .FloatAdd => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).float = frame.register(operands.src1).float + frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Float);
+        // },
+        // .FloatSubtract => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).float = frame.register(operands.src1).float - frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Float);
+        // },
+        // .FloatMultiply => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
+        //     frame.register(operands.dst).float = frame.register(operands.src1).float * frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Float);
+        // },
+        // .FloatDivide => {
+        //     const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
 
-            if (frame.register(operands.src2).float == 0) {
-                const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing float division", .{
-                    frame.register(operands.src1).float,
-                    frame.register(operands.src2).float,
-                }) catch {
-                    @panic("Script out of memory");
-                };
-                defer allocator().free(message);
+        //     if (frame.register(operands.src2).float == 0) {
+        //         const message = allocPrintZ(allocator(), "Numbers lhs[{}] / rhs[{}] doing float division", .{
+        //             frame.register(operands.src1).float,
+        //             frame.register(operands.src2).float,
+        //         }) catch {
+        //             @panic("Script out of memory");
+        //         };
+        //         defer allocator().free(message);
 
-                self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
-                return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
-            }
+        //         self.runtimeError(RuntimeError.DivideByZero, ErrorSeverity.Error, message);
+        //         return FatalScriptError.DivideByZero; // TODO figure out how to free all the memory and resources allocated in the callstack
+        //     }
 
-            frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
-            frame.setRegisterTag(operands.dst, .Float);
-        },
+        //     frame.register(operands.dst).float = frame.register(operands.src1).float / frame.register(operands.src2).float;
+        //     frame.setRegisterTag(operands.dst, .Float);
+        // },
         .FloatPower => {
             // TODO handle negative base to the power of non-integer
             const operands = bytecode.decode(Bytecode.OperandsDstTwoSrc);
@@ -1133,7 +1483,9 @@ test "int comparisons" {
             defer _ = frame.popFrame(&threadLocalStack);
 
             frame.register(0).int = src1Value;
+            frame.setRegisterTag(0, .Int);
             frame.register(1).int = src2Value;
+            frame.setRegisterTag(1, .Int);
 
             _ = try state.executeOperation(&threadLocalStack, &frame);
 
@@ -1149,27 +1501,27 @@ test "int comparisons" {
         const state = Self.init(null);
         defer state.deinit();
 
-        try IntComparisonTester.intCompare(state, OpCode.IntIsEqual, math.MAX_INT, math.MAX_INT, true);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsEqual, math.MAX_INT, 123456789, false);
+        try IntComparisonTester.intCompare(state, OpCode.Equal, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.Equal, math.MAX_INT, 123456789, false);
 
-        try IntComparisonTester.intCompare(state, OpCode.IntIsNotEqual, math.MAX_INT, math.MAX_INT, false);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsNotEqual, math.MAX_INT, 123456789, true);
+        try IntComparisonTester.intCompare(state, OpCode.NotEqual, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.NotEqual, math.MAX_INT, 123456789, true);
 
-        try IntComparisonTester.intCompare(state, OpCode.IntIsLessThan, math.MAX_INT, math.MAX_INT, false);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsLessThan, math.MAX_INT, 123456789, false);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsLessThan, -1, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.Less, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.Less, math.MAX_INT, 123456789, false);
+        try IntComparisonTester.intCompare(state, OpCode.Less, -1, math.MAX_INT, true);
 
-        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterThan, math.MAX_INT, math.MAX_INT, false);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterThan, math.MAX_INT, 123456789, true);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterThan, -1, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.Greater, math.MAX_INT, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.Greater, math.MAX_INT, 123456789, true);
+        try IntComparisonTester.intCompare(state, OpCode.Greater, -1, math.MAX_INT, false);
 
-        try IntComparisonTester.intCompare(state, OpCode.IntIsLessOrEqual, math.MAX_INT, math.MAX_INT, true);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsLessOrEqual, math.MAX_INT, 123456789, false);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsLessOrEqual, -1, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.LessOrEqual, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.LessOrEqual, math.MAX_INT, 123456789, false);
+        try IntComparisonTester.intCompare(state, OpCode.LessOrEqual, -1, math.MAX_INT, true);
 
-        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterOrEqual, math.MAX_INT, math.MAX_INT, true);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterOrEqual, math.MAX_INT, 123456789, true);
-        try IntComparisonTester.intCompare(state, OpCode.IntIsGreaterOrEqual, -1, math.MAX_INT, false);
+        try IntComparisonTester.intCompare(state, OpCode.GreaterOrEqual, math.MAX_INT, math.MAX_INT, true);
+        try IntComparisonTester.intCompare(state, OpCode.GreaterOrEqual, math.MAX_INT, 123456789, true);
+        try IntComparisonTester.intCompare(state, OpCode.GreaterOrEqual, -1, math.MAX_INT, false);
     }
 }
 
@@ -1211,7 +1563,7 @@ test "int addition" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Add, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1231,7 +1583,7 @@ test "int addition" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntAdd, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Add, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1254,7 +1606,7 @@ test "int subtraction" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Subtract, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1274,7 +1626,7 @@ test "int subtraction" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntSubtract, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Subtract, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1297,7 +1649,7 @@ test "int multiplication" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Multiply, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1317,7 +1669,7 @@ test "int multiplication" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntMultiply, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Multiply, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1340,7 +1692,7 @@ test "int division truncation" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Divide, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1360,7 +1712,7 @@ test "int division truncation" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Divide, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1380,7 +1732,7 @@ test "int division truncation" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntDivideTrunc, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.Divide, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1405,7 +1757,7 @@ test "int division floor" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.DivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1425,7 +1777,7 @@ test "int division floor" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.DivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
@@ -1445,7 +1797,7 @@ test "int division floor" {
         const state = Self.init(contextObject.asContext());
         defer state.deinit();
 
-        const instruction = Bytecode.encode(OpCode.IntDivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
+        const instruction = Bytecode.encode(OpCode.DivideFloor, Bytecode.OperandsDstTwoSrc{ .dst = 2, .src1 = 0, .src2 = 1 });
 
         var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
         defer _ = frame.popFrame(&threadLocalStack);
