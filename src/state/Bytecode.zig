@@ -346,11 +346,11 @@ pub const OperandsMathExt = packed struct {
         Sin,
         /// Uses radians
         Cos,
-        /// Uses radians
+        /// Uses radians. Due to PI being impossible to accurately represent in floating point form, the result will never be undefined.
         Tan,
-        /// Uses radians
+        /// Uses radians. If the value at `src` is greater than 1, or less than -1, a fatal error occurs.
         Arcsin,
-        /// Uses radians
+        /// Uses radians. If the value at `src` is greater than 1, or less than -1, a fatal error occurs.
         Arccos,
         /// Uses radians
         Arctan,

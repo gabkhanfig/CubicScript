@@ -24,6 +24,7 @@ const sync_queue = @import("sync_queue.zig");
 
 pub const RuntimeError = Error.RuntimeError;
 pub const ErrorSeverity = Error.Severity;
+pub const FatalScriptError = Error.FatalScriptError;
 // https://github.com/ziglang/zig/issues/16419
 pub const RuntimeErrorCallback = *const fn (err: RuntimeError, severity: ErrorSeverity, message: []const u8) void;
 pub const CRuntimeErrorCallback = *const fn (err: c_int, severity: c_int, message: ?[*c]const u8, messageLength: usize) void;
@@ -51,17 +52,6 @@ pub fn deinit(self: *Self) void {
     self._context.deinit();
     allocator().destroy(self);
 }
-
-pub const FatalScriptError = error{
-    StackOverflow,
-    NullDereference,
-    DivideByZero,
-    ModuloByZero,
-    RemainderByZero,
-    ZeroToPowerOfNegative,
-    NegativeRoot,
-    LogarithmZeroOrNegative,
-};
 
 /// Handles reporting errors, and other user specific data.
 /// In `CubicScriptState.zig`, an example of implementing this can be found with `ScriptTestingContextError`.

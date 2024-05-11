@@ -13,6 +13,8 @@ pub const RuntimeError = enum(c_int) {
     FloatToIntOverflow = 12,
     NegativeRoot = 13,
     LogarithmZeroOrNegative = 14,
+    ArcsinUndefined = 15,
+    ArccosUndefined = 16,
 };
 
 pub const Severity = enum(c_int) {
@@ -20,4 +22,17 @@ pub const Severity = enum(c_int) {
     Warning = 0,
     /// Script execution cannot continue.
     Error = 1,
+};
+
+pub const FatalScriptError = error{
+    StackOverflow,
+    NullDereference,
+    DivideByZero,
+    ModuloByZero,
+    RemainderByZero,
+    ZeroToPowerOfNegative,
+    NegativeRoot,
+    LogarithmZeroOrNegative,
+    ArcsinUndefined,
+    ArccosUndefined,
 };

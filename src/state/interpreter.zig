@@ -888,9 +888,39 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
                     .Cos => {
                         break :blk @cos(frame.register(operands.src).float);
                     },
-                    else => {
-                        @panic("Unsupported float math extension operation");
+                    .Tan => {
+                        break :blk @tan(frame.register(operands.src).float);
                     },
+                    .Arcsin => {
+                        const num = frame.register(operands.src).float;
+                        if (num > 1 or num < -1) {
+                            const message = allocPrintZ(allocator(), "Arcsin of value [{}] is undefined", .{num}) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
+                            runtimeError(state, RuntimeError.ArcsinUndefined, ErrorSeverity.Error, message);
+                            return FatalScriptError.ArcsinUndefined; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        }
+                        break :blk std.math.asin(num);
+                    },
+                    .Arccos => {
+                        const num = frame.register(operands.src).float;
+                        if (num > 1 or num < -1) {
+                            const message = allocPrintZ(allocator(), "Arccos of value [{}] is undefined", .{num}) catch {
+                                @panic("Script out of memory");
+                            };
+                            defer allocator().free(message);
+                            runtimeError(state, RuntimeError.ArccosUndefined, ErrorSeverity.Error, message);
+                            return FatalScriptError.ArccosUndefined; // TODO figure out how to free all the memory and resources allocated in the callstack
+                        }
+                        break :blk std.math.acos(num);
+                    },
+                    .Arctan => {
+                        break :blk std.math.atan(frame.register(operands.src).float);
+                    },
+                    // else => {
+                    //     @panic("Unsupported float math extension operation");
+                    // },
                 }
             };
             frame.register(operands.dst).float = result;
