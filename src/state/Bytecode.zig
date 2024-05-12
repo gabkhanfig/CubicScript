@@ -120,8 +120,6 @@ pub fn getOpCode(self: Self) OpCode {
 /// All Bytecodes follow the format I, dst, src1, src2, where DST is always A, src1 is always B, and src2 is always C.
 /// If there is only one `src`, and there is a `dst`, `src` occupies B.
 pub const OpCode = enum(u8) {
-    // == GENERAL INSTRUCTIONS ==
-
     /// No operation. Allows 0 set memory to be a technically valid program.
     /// TODO remove this.
     Nop = 0,
@@ -130,32 +128,21 @@ pub const OpCode = enum(u8) {
     /// Explicitly clone the value at `src`, storing the clone in `dst`.
     Clone = 2,
     /// Set the register `dst` to zero. Uses `OperandsZero`
-    LoadZero,
+    LoadZero = 3,
     /// Performs special initialization for types that cannot just be zero intiailized, such as arrays, sets, and maps.
-    LoadDefault,
+    LoadDefault = 4,
     /// Load an immediate bool/int/float into `dst`.
     /// The immediate value will be cast to the correct value.
-    LoadImmediate,
+    LoadImmediate = 5,
     /// Load the 64 bit immediate into `dst`. This is a 12 byte instruction.
-    /// The immediate value is NOT cast, rather simply has the bits interpreted as whatever type.
-    LoadImmediateLong,
+    /// Expects the bits to be a valid `RawValue`, in which the held value is cloned.
+    /// Uses `OperandsImmediateLong`.
+    LoadImmediateLong = 6,
     /// Unconditionally jump to `dst`
     Jump,
     /// Jump to `dst` if `src` is 0.
-    ///
-    /// For comparison `Ordering` prior to calling this `OpCode`, such as string compare:
-    /// - `<` performing an `.IntIsEqual` on the immediate `-1` will determine if the ordering value is less than.
-    /// - `>` performing an `.IntIsEqual` on the immediate `1` will determine if the ordering value is less than.
-    /// - `<=` performing an `.IntIsLessOrEqual` on the immediate `0` will determine if the ordering value is less or equal.
-    /// - `>=` performing an `.IntGreaterOrEqual` on the immediate `0` will determine if the ordering value is greater or equal.
     JumpIfZero,
     /// Jump to `dst` if `src` is NOT 0.
-    ///
-    /// For comparison `Ordering` prior to calling this `OpCode`, such as string compare:
-    /// - `<` performing an `.IntIsEqual` on the immediate `-1` will determine if the ordering value is less than.
-    /// - `>` performing an `.IntIsEqual` on the immediate `1` will determine if the ordering value is less than.
-    /// - `<=` performing an `.IntIsLessOrEqual` on the immediate `0` will determine if the ordering value is less or equal.
-    /// - `>=` performing an `.IntGreaterOrEqual` on the immediate `0` will determine if the ordering value is greater or equal.
     JumpIfNotZero,
     /// Return from the calling function, moving the instruction pointer back to the calling function,
     /// or terminating the script if it was called by an owning process.
@@ -228,7 +215,6 @@ pub const OpCode = enum(u8) {
     /// The behaviour is rounding down to the nearest integer. This is equivalent to `src1 / src2` in Python. Maybe operator should be `/_`.
     /// https://python-history.blogspot.com/2010/08/why-pythons-integer-division-floors.html
     DivideFloor,
-
     /// Integer modulus operator of `src1` and `src2`, storing the result in `dst`. `src2` may not be 0. If it is, an error will have to be handled.
     /// This is equivalent to `src1 % src2` in python, where the sign of `dst` is the sign of `src2`. Maybe operator should be `%_`.
     /// https://core.ac.uk/download/pdf/187613369.pdf
@@ -262,11 +248,6 @@ pub const OpCode = enum(u8) {
     /// The type depends on the register tag.
     Len,
 
-    // ! == String Instructions ==
-    // NOTE LoadZero can make a default, empty string
-
-    /// Make a clone of the string at `src`, storing it in `dst`.
-    StringClone,
     /// Variable length instruction.
     StringFormat,
     StringFind,
@@ -322,6 +303,12 @@ pub const OperandsImmediate = packed struct {
 pub const OperandsImmediateLong = packed struct {
     dst: u8,
     tag: u8,
+};
+
+pub const OperandsTaggedDstSrc = extern struct {
+    tag: u8,
+    dst: u8,
+    src: u8,
 };
 
 pub const FunctionArg = packed struct {

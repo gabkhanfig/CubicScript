@@ -129,11 +129,10 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             // NOTE the two bytecodes after `LoadImmediate` are the 64 bit immediate values, thus the instruction
             // pointer will need to be further incremented.
             const operands = bytecode.decode(Bytecode.OperandsImmediateLong);
-            const immediate: usize =
-                @as(usize, @intCast(stack.instructionPointer[1].value)) |
-                @shlExact(@as(usize, @intCast(stack.instructionPointer[2].value)), 32);
+            const immediate: RawValue = @bitCast(@as(usize, @intCast(stack.instructionPointer[1].value)) |
+                @shlExact(@as(usize, @intCast(stack.instructionPointer[2].value)), 32));
 
-            frame.register(operands.dst).actualValue = immediate;
+            frame.register(operands.dst).* = immediate.clone(@enumFromInt(operands.tag));
             frame.setRegisterTag(operands.dst, @enumFromInt(operands.tag));
             ipIncrement += 2;
         },
@@ -1048,6 +1047,31 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
 
             frame.register(operands.dst).float = std.math.log(f64, frame.register(operands.src2).float, num);
             frame.setRegisterTag(operands.dst, .Float);
+        },
+        .Len => {
+            const operands = bytecode.decode(Bytecode.OperandsTaggedDstSrc);
+            const tag: ValueTag = @enumFromInt(operands.tag);
+            const len: usize = blk: {
+                switch (tag) {
+                    .String => {
+                        break :blk frame.register(operands.src).string.len();
+                    },
+                    .Array => {
+                        break :blk frame.register(operands.src).array.len();
+                    },
+                    .Set => {
+                        break :blk frame.register(operands.src).set.size();
+                    },
+                    .Map => {
+                        break :blk frame.register(operands.src).map.size();
+                    },
+                    else => {
+                        @panic("Unsupported type for Len");
+                    },
+                }
+            };
+            frame.register(operands.dst).int = @intCast(len);
+            frame.setRegisterTag(operands.dst, .Int);
         },
         else => {
             @panic("OpCode not implemented");
