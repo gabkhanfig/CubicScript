@@ -121,7 +121,6 @@ pub fn getOpCode(self: Self) OpCode {
 /// If there is only one `src`, and there is a `dst`, `src` occupies B.
 pub const OpCode = enum(u8) {
     /// No operation. Allows 0 set memory to be a technically valid program.
-    /// TODO remove this.
     Nop = 0,
     /// Move value between registers `src` and `dst`. The tag at `src` is set to `.None`.
     Move = 1,
@@ -237,7 +236,6 @@ pub const OpCode = enum(u8) {
     BitShiftLeft,
     /// Bit right-shift of `src1 >> src2`, storing the result in `dst`, but ALWAYS filling the upper bits with zeroes.
     BitLogicalShiftRight,
-
     /// Math operations that have one input and one output.
     /// Does an `op` on `src`, storing the result in `dst`. Uses `OperandsMathExt`
     FloatMathExt,
@@ -245,7 +243,8 @@ pub const OpCode = enum(u8) {
     /// Bases of e, 2, and 10 are handled in `OpCode.MathExt`.
     FloatLogWithBase,
     /// Get the length or size of a value at `src`, storing it in `dst`.
-    /// The type depends on the register tag.
+    /// The type depends on the register tag. Works with strings, arrays, sets, and maps.
+    /// Uses `OperandsDstSrc`.
     Len,
 
     /// Variable length instruction.
@@ -303,12 +302,6 @@ pub const OperandsImmediate = packed struct {
 pub const OperandsImmediateLong = packed struct {
     dst: u8,
     tag: u8,
-};
-
-pub const OperandsTaggedDstSrc = extern struct {
-    tag: u8,
-    dst: u8,
-    src: u8,
 };
 
 pub const FunctionArg = packed struct {
