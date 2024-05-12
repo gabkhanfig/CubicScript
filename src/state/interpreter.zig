@@ -1033,8 +1033,8 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             frame.setRegisterTag(operands.dst, .Float);
         },
         .Len => {
-            const operands = bytecode.decode(Bytecode.OperandsTaggedDstSrc);
-            const tag: ValueTag = @enumFromInt(operands.tag);
+            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+            const tag = frame.registerTag(operands.src);
             const len: usize = blk: {
                 switch (tag) {
                     .String => {
