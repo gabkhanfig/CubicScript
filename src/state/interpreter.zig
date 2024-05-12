@@ -46,24 +46,8 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
         .Clone => {
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             const tag = frame.registerTag(operands.src);
-
-            switch (tag) {
-                .Bool, .Int, .Float, .ConstRef, .MutRef, .InterfaceRef => {
-                    frame.register(operands.dst).actualValue = frame.register(operands.src).actualValue;
-                    frame.setRegisterTag(operands.dst, tag);
-                },
-                .String => {
-                    frame.register(operands.dst).string = frame.register(operands.src).string.clone();
-                    frame.setRegisterTag(operands.dst, .String);
-                },
-                .Array => {
-                    frame.register(operands.dst).array = frame.register(operands.src).array.clone();
-                    frame.setRegisterTag(operands.dst, .Array);
-                },
-                else => {
-                    @panic("Unsupported type for clone");
-                },
-            }
+            frame.register(operands.dst).* = frame.register(operands.src).clone(tag);
+            frame.setRegisterTag(operands.dst, tag);
         },
         .LoadZero => {
             const operands = bytecode.decode(Bytecode.OperandsZero);
