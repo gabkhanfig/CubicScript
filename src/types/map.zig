@@ -5,7 +5,6 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
-const Int = i64;
 const hash = @import("hash.zig");
 const HashGroupBitmask = hash.HashGroupBitmask;
 const HashPairBitmask = hash.HashPairBitmask;
@@ -55,9 +54,9 @@ pub const Map = extern struct {
     }
 
     /// Get the number of entries in the hashmap.
-    pub fn size(self: *const Self) Int {
+    pub fn size(self: *const Self) usize {
         if (self.asInner()) |inner| {
-            return @intCast(inner.count);
+            return inner.count;
         } else {
             return 0;
         }
@@ -586,8 +585,8 @@ test "Map add more than 32 elements" {
         defer map.deinit();
 
         for (0..36) |i| {
-            var addKey = TaggedValue.initString(root.String.fromInt(@as(Int, @intCast(i))));
-            var addValue = TaggedValue.initInt(@as(Int, @intCast(i)));
+            var addKey = TaggedValue.initString(root.String.fromInt(@as(i64, @intCast(i))));
+            var addValue = TaggedValue.initInt(@as(i64, @intCast(i)));
 
             map.insert(&addKey, &addValue);
         }
@@ -597,7 +596,7 @@ test "Map add more than 32 elements" {
         defer map.deinit();
 
         for (0..36) |i| {
-            var addKey = TaggedValue.initInt(@as(Int, @intCast(i)));
+            var addKey = TaggedValue.initInt(@as(i64, @intCast(i)));
             var addValue = TaggedValue.initFloat(@floatFromInt(i));
 
             map.insert(&addKey, &addValue);

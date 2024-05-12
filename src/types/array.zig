@@ -5,7 +5,6 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
-const Int = i64;
 const CubicScriptState = @import("../state/CubicScriptState.zig");
 const allocator = @import("../state/global_allocator.zig").allocator;
 
@@ -63,7 +62,7 @@ pub const Array = extern struct {
         return @enumFromInt(@shrExact(self.inner & TAG_BITMASK, 48));
     }
 
-    pub fn len(self: *const Self) Int {
+    pub fn len(self: *const Self) usize {
         if (self.header()) |h| {
             return h.length;
         } else {
@@ -84,7 +83,7 @@ pub const Array = extern struct {
 
     /// operator[]. If `index` is out of bounds, returns `Array.Error.OutOfBounds`.
     /// Otherwise, an immutable reference to the value at the index is returned.
-    pub fn at(self: *const Self, index: Int) Error!*const RawValue {
+    pub fn at(self: *const Self, index: usize) Error!*const RawValue {
         if (index < 0) {
             return Error.OutOfBounds;
         }
@@ -99,7 +98,7 @@ pub const Array = extern struct {
 
     /// operator[]. If `index` is out of bounds, returns `Array.Error.OutOfBounds`.
     /// Otherwise, a mutable reference to the value at the index is returned.
-    pub fn atMut(self: *Self, index: Int) Error!*RawValue {
+    pub fn atMut(self: *Self, index: usize) Error!*RawValue {
         if (index < 0) {
             return Error.OutOfBounds;
         }
@@ -213,7 +212,7 @@ pub const Array = extern struct {
         return @ptrFromInt(self.inner & PTR_BITMASK);
     }
 
-    fn ensureTotalCapacity(self: *Self, minCapacity: Int) void {
+    fn ensureTotalCapacity(self: *Self, minCapacity: usize) void {
         const h = self.headerMut();
         if (h) |headerData| {
             if (headerData.capacity >= minCapacity) {
@@ -267,7 +266,7 @@ pub const Array = extern struct {
         }
     }
 
-    fn growCapacity(current: Int, minimum: Int) Int {
+    fn growCapacity(current: usize, minimum: usize) usize {
         var new = current;
         while (true) {
             new +|= @divTrunc(new, 2) + 8;
@@ -291,15 +290,14 @@ pub const Array = extern struct {
     }
 
     const Header = extern struct {
-        length: Int,
-        capacity: Int,
+        length: usize,
+        capacity: usize,
 
         /// Creates a 0 initialized array with the correctly set header data.
-        pub fn init(minCapacity: Int) *align(ELEMENT_ALIGN) anyopaque {
-            const minCapacityUsize: usize = @intCast(minCapacity);
+        pub fn init(minCapacity: usize) *align(ELEMENT_ALIGN) anyopaque {
             const newData = allocator().alloc(
                 usize,
-                minCapacityUsize + @sizeOf(Header), // allocate space for the header
+                minCapacity + @sizeOf(Header), // allocate space for the header
             ) catch {
                 @panic("Script out of memory");
             };

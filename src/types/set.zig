@@ -5,7 +5,6 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
-const Int = i64;
 const hash = @import("hash.zig");
 const HashGroupBitmask = hash.HashGroupBitmask;
 const HashPairBitmask = hash.HashPairBitmask;
@@ -47,9 +46,9 @@ pub const Set = extern struct {
     }
 
     /// Get the number of entries in the hashset.
-    pub fn size(self: *const Self) Int {
+    pub fn size(self: *const Self) usize {
         if (self.asInner()) |inner| {
-            return @intCast(inner.count);
+            return inner.count;
         } else {
             return 0;
         }
@@ -505,7 +504,7 @@ test "set add more than 32 elements" {
         defer set.deinit();
 
         for (0..36) |i| {
-            var addKey = TaggedValue.initString(root.String.fromInt(@as(Int, @intCast(i))));
+            var addKey = TaggedValue.initString(root.String.fromInt(@as(i64, @intCast(i))));
             set.insert(&addKey);
         }
     }
@@ -514,7 +513,7 @@ test "set add more than 32 elements" {
         defer set.deinit();
 
         for (0..36) |i| {
-            var addKey = TaggedValue.initInt(@as(Int, @intCast(i)));
+            var addKey = TaggedValue.initInt(@as(i64, @intCast(i)));
             set.insert(&addKey);
         }
     }
