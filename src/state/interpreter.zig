@@ -4,6 +4,7 @@ const expect = std.testing.expect;
 const root = @import("../root.zig");
 const RawValue = root.RawValue;
 const ValueTag = root.ValueTag;
+const TaggedValue = root.TaggedValue;
 const CubicScriptState = @import("CubicScriptState.zig");
 const Stack = @import("Stack.zig");
 const StackFrame = Stack.StackFrame;
@@ -13,6 +14,8 @@ const String = root.String;
 const Array = root.Array;
 const Set = root.Set;
 const Map = root.Map;
+const Option = root.Option;
+const Result = root.Result;
 const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
 const allocPrintZ = std.fmt.allocPrintZ;
@@ -1056,6 +1059,26 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             };
             frame.register(operands.dst).int = @intCast(len);
             frame.setRegisterTag(operands.dst, .Int);
+        },
+        .Substring => {
+            const operands: Bytecode.OperandsSubstring = @bitCast(stack.instructionPointer[1].value);
+
+            assert(frame.registerTag(operands.strSrc) == .String);
+            assert(frame.registerTag(operands.startSrc) == .Int);
+            assert(frame.registerTag(operands.endSrc) == .Int);
+
+            const result = frame.register(operands.strSrc).string.substr(
+                @intCast(frame.register(operands.startSrc).int),
+                @intCast(frame.register(operands.endSrc).int),
+            );
+            if (result) |sub| {
+                frame.register(operands.dst).result = Result.initOk(TaggedValue.initString(sub));
+            } else |err| {
+                _ = err catch {}; // NOTE maybe send the error to the script in the future
+                frame.register(operands.dst).result = Result.initErr(TaggedValue{ .tag = .None, .value = RawValue{ .actualValue = 0 } });
+            }
+            frame.setRegisterTag(operands.dst, .Result);
+            ipIncrement += 1;
         },
         else => {
             @panic("OpCode not implemented");

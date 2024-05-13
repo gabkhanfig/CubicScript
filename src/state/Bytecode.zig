@@ -28,6 +28,14 @@ pub fn encode(opcode: OpCode, operands: anytype) Self {
 const LOW_MASK = 0xFFFFFFFF;
 const HIGH_MASK = @shlExact(0xFFFFFFFF, 32);
 
+pub fn encodeDataAsBytecode(comptime T: type, data: T) Self {
+    if (@sizeOf(T) > @sizeOf(Self)) {
+        @compileError("Invalid encoding type. Must be 4 bytes or smaller");
+    }
+    const bytecodeValue: IntegerFromBitWidth(@bitSizeOf(T)) = @bitCast(data);
+    return Self{ .value = @intCast(bytecodeValue) };
+}
+
 pub fn encodeImmediateLower(comptime T: type, immediate: T) Self {
     if (T == bool) {
         const immediateBits: usize = @intFromBool(immediate);
@@ -246,15 +254,17 @@ pub const OpCode = enum(u8) {
     /// The type depends on the register tag. Works with strings, arrays, sets, and maps.
     /// Uses `OperandsDstSrc`.
     Len,
+    /// 8 byte (2 bytecode) instruction.
+    /// The bytecode after is an `OperandsSubstring`
+    Substring,
 
-    /// Variable length instruction.
-    StringFormat,
-    StringFind,
-    StringReverseFind,
-    //StringAppend,
-    StringSubstring,
-    StringSplit,
-    StringRemove,
+    //StringFind, TODO find and reverse find can be generic for strings, arrays, sets, and maps, returning the appropriate optional type
+    //StringReverseFind,
+
+    // Variable length instruction.
+    //StringFormat,
+    //StringSplit,
+    //StringRemove,
 };
 
 pub const OperandsOnlyDst = packed struct { dst: u8 };
@@ -358,6 +368,8 @@ pub const OperandsMathExt = packed struct {
     },
 };
 
+pub const OperandsSubstring = extern struct { dst: u8, strSrc: u8, startSrc: u8, endSrc: u8 };
+
 /// The immediate data for a call operation.
 pub const CallImmediate = extern struct {
     const PTR_BITMASK = 0x0000FFFFFFFFFFFF;
@@ -423,8 +435,16 @@ fn IntegerFromBitWidth(comptime width: comptime_int) type {
         22 => return u22,
         23 => return u23,
         24 => return u24,
+        25 => return u25,
+        26 => return u26,
+        27 => return u27,
+        28 => return u28,
+        29 => return u29,
+        30 => return u30,
+        31 => return u31,
+        32 => return u32,
         else => {
-            @compileError("Incompatible bit width type for bytecode operands");
+            @compileError("Unsupported bit width");
         },
     }
 }
