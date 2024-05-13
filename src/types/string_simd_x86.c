@@ -1,5 +1,3 @@
-#define LOG_DYNAMIC_DISPATCH false
-
 #if defined(_WIN32) || defined(WIN32)
 
 #define NOMINMAX
@@ -132,9 +130,11 @@ size_t avx512FindStrSliceInString(const char* buffer, size_t length, const char*
 
         while(true) {
             unsigned long index;
+            #if defined(_WIN32) || defined(WIN32)
             if(!_BitScanForward64(&index, bitmask)) {
                 break;
             }
+            #endif
             bitmask = (bitmask & ~(1ULL << index));
 
             const size_t actualIndex = index + (i * 64);
