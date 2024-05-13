@@ -123,5 +123,5 @@ pub fn linkCubicScriptLocal(cubic_script: *std.Build.Module, c: *std.Build.Step.
 
 pub const cubic_script_c_sources = [_][]const u8{
     "src/runtime/cpu_features.c",
-    "src/types/string_simd.c",
+    "src/types/string_simd_x86.c",
 };

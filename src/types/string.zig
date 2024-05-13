@@ -91,31 +91,32 @@ pub const String = extern struct {
             if (selfLength != otherLength) {
                 return false;
             }
+            if (@import("builtin").target.cpu.arch.isX86()) { // TODO SIMD for other platforms such as ARM MacOS (neon?)
+                const Optimal = struct {
+                    var func: *const fn (selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) callconv(.C) bool = undefined;
+                    var once = std.once(@This().assignFunc);
 
-            const Optimal = struct {
-                var func: *const fn (selfBuffer: [*c]const u8, otherBuffer: [*c]const u8, len: c_ulonglong) callconv(.C) bool = undefined;
-                var once = std.once(@This().assignFunc);
+                    fn assignFunc() void {
+                        func = blk: {
+                            if (string_simd_x86.is_avx512f_supported()) {
+                                break :blk string_simd_x86.avx512CompareEqualStringAndString;
+                            } else if (string_simd_x86.is_avx2_supported()) {
+                                break :blk string_simd_x86.avx2CompareEqualStringAndString;
+                            } else {
+                                @panic("Required AVX-512 or AVX-2");
+                            }
+                        };
+                    }
+                };
 
-                fn assignFunc() void {
-                    func = blk: {
-                        if (string_simd_x86.is_avx512f_supported()) {
-                            break :blk string_simd_x86.avx512CompareEqualStringAndString;
-                        } else if (string_simd_x86.is_avx2_supported()) {
-                            break :blk string_simd_x86.avx2CompareEqualStringAndString;
-                        } else {
-                            @panic("Required AVX-512 or AVX-2");
-                        }
-                    };
-                }
-            };
+                Optimal.once.call();
 
-            Optimal.once.call();
-
-            return Optimal.func(
-                @ptrCast(self.asInner().rep.heap.data),
-                @ptrCast(other.asInner().rep.heap.data),
-                @intCast(selfLength),
-            );
+                return Optimal.func(
+                    @ptrCast(self.asInner().rep.heap.data),
+                    @ptrCast(other.asInner().rep.heap.data),
+                    @intCast(selfLength),
+                );
+            }
         }
         return std.mem.eql(u8, self.toSlice(), other.toSlice());
     }

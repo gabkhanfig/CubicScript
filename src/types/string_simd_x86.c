@@ -8,8 +8,6 @@
 
 #endif // WIN32 def
 
-#ifdef CUBS_X86_64
-
 #include <immintrin.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -161,10 +159,7 @@ size_t avx512FindStrSliceInString(const char* buffer, size_t length, const char*
     return NOT_FOUND;
 }
 
-#endif // CUBS_X86_64
-
 size_t cubs_string_compute_hash_simd(const char* selfBuffer, size_t len) {
-#if CUBS_X86_64
     const size_t HASH_MODIFIER = 0xc6a4a7935bd1e995ULL;
 	const size_t HASH_SHIFT = 47;
 
@@ -211,8 +206,6 @@ size_t cubs_string_compute_hash_simd(const char* selfBuffer, size_t len) {
 	h *= HASH_MODIFIER;
 	h ^= h >> HASH_SHIFT;
 	return h;
-
-#endif
 }
 
 
