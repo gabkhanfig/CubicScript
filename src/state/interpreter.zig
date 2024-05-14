@@ -1082,62 +1082,32 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
         },
         .Push => {
             const operands = bytecode.decode(Bytecode.OperandsPush);
-            const pushSrcTag = frame.registerTag(operands.pushSrc);
-
-            const PushHelper = struct {
-                fn arrayPush(f: *StackFrame, arr: *Array, op: Bytecode.OperandsPush) void {
-                    assert(f.registerTag(op.keySrc) == arr.tag());
-                    arr.add(f.register(op.keySrc), f.registerTag(op.keySrc));
-                    f.setRegisterTag(op.keySrc, .None);
-                }
-
-                fn setPush(f: *StackFrame, s: *Set, op: Bytecode.OperandsPush) void {
-                    assert(f.registerTag(op.keySrc) == s.keyTag());
-                    var val = TaggedValue{ .tag = f.registerTag(op.keySrc), .value = f.register(op.keySrc).* };
-                    s.insert(&val);
-                    f.setRegisterTag(op.keySrc, .None);
-                }
-
-                fn mapPush(f: *StackFrame, m: *Map, op: Bytecode.OperandsPush) void {
-                    assert(f.registerTag(op.keySrc) == m.keyTag());
-                    assert(f.registerTag(op.valSrcOptional) == m.valueTag());
-                    var keyVal = TaggedValue{ .tag = f.registerTag(op.keySrc), .value = f.register(op.keySrc).* };
-                    var valueVal = TaggedValue{ .tag = f.registerTag(op.valSrcOptional), .value = f.register(op.valSrcOptional).* };
-                    m.insert(&keyVal, &valueVal);
-                    f.setRegisterTag(op.keySrc, .None);
-                }
-            };
+            // If the register holding the push target is a reference, unwrap it
+            const pushSrcTag = unwrapReferenceTag(frame.register(operands.pushSrc), frame.registerTag(operands.pushSrc));
+            const pushSrc = unwrapReference(frame.register(operands.pushSrc), frame.registerTag(operands.pushSrc));
 
             switch (pushSrcTag) {
                 .Array => {
-                    const array = &frame.register(operands.pushSrc).array;
-                    PushHelper.arrayPush(frame, array, operands);
+                    const array = &pushSrc.array;
+                    assert(frame.registerTag(operands.keySrc) == array.tag());
+                    array.add(frame.register(operands.keySrc), frame.registerTag(operands.keySrc));
+                    frame.setRegisterTag(operands.keySrc, .None);
                 },
                 .Set => {
-                    const set = &frame.register(operands.pushSrc).set;
-                    PushHelper.setPush(frame, set, operands);
+                    const set = &pushSrc.set;
+                    assert(frame.registerTag(operands.keySrc) == set.keyTag());
+                    var val = TaggedValue{ .tag = frame.registerTag(operands.keySrc), .value = frame.register(operands.keySrc).* };
+                    set.insert(&val);
+                    frame.setRegisterTag(operands.keySrc, .None);
                 },
                 .Map => {
-                    const map = &frame.register(operands.pushSrc).map;
-                    PushHelper.mapPush(frame, map, operands);
-                },
-                .MutRef => { // TODO handle references to references, such as getting a reference to the value in an optional, which could be another reference
-                    const ref = &frame.register(operands.pushSrc).mutRef;
-                    const refTag = frame.register(operands.pushSrc).mutRef.tag();
-                    switch (refTag) {
-                        .Array => {
-                            PushHelper.arrayPush(frame, &ref.value().array, operands);
-                        },
-                        .Set => {
-                            PushHelper.setPush(frame, &ref.value().set, operands);
-                        },
-                        .Map => {
-                            PushHelper.mapPush(frame, &ref.value().map, operands);
-                        },
-                        else => {
-                            @panic("Unsupported type to push");
-                        },
-                    }
+                    const map = &pushSrc.map;
+                    assert(frame.registerTag(operands.keySrc) == map.keyTag());
+                    assert(frame.registerTag(operands.valSrcOptional) == map.valueTag());
+                    var keyVal = TaggedValue{ .tag = frame.registerTag(operands.keySrc), .value = frame.register(operands.keySrc).* };
+                    var valueVal = TaggedValue{ .tag = frame.registerTag(operands.valSrcOptional), .value = frame.register(operands.valSrcOptional).* };
+                    map.insert(&keyVal, &valueVal);
+                    frame.setRegisterTag(operands.keySrc, .None);
                 },
                 else => {
                     @panic("Unsupported type to push");
@@ -1177,6 +1147,20 @@ fn unwrapReference(value: *RawValue, tag: ValueTag) *RawValue {
     }
 }
 
+fn unwrapReferenceTag(value: *RawValue, tag: ValueTag) ValueTag {
+    switch (tag) {
+        .ConstRef => {
+            return unwrapReferenceTag(@constCast(value.constRef.value()), value.constRef.tag());
+        },
+        .MutRef => {
+            return unwrapReferenceTag(value.mutRef.value(), value.mutRef.tag());
+        },
+        else => {
+            return tag;
+        },
+    }
+}
+
 /// Handles unwrapping references to validate theyre the correct tag.
 /// Is a no-op without runtime safety.
 fn validateTagUnwrapReference(value: *const RawValue, current: ValueTag, expected: ValueTag) void {
@@ -1199,6 +1183,55 @@ fn validateTagUnwrapReference(value: *const RawValue, current: ValueTag, expecte
         },
     }
 }
+
+const FindHelper = struct {
+    fn stringFind(frame: *StackFrame, string: *const String, operands: Bytecode.OperandsDstTwoSrc) void {
+        validateTagUnwrapReference(frame.register(operands.src2), frame.registerTag(operands.src2), .String);
+        const substringToFind = unwrapReference(frame.register(operands.src2), frame.registerTag(operands.src2)).string;
+        const found = string.find(substringToFind.toSlice());
+        const opt = blk: {
+            if (found) |index| {
+                break :blk Option.init(TaggedValue{ .value = RawValue{ .int = @intCast(index) }, .tag = .Int });
+            } else {
+                break :blk Option{};
+            }
+        };
+        frame.register(operands.dst).option = opt;
+        frame.setRegisterTag(operands.dst, .Option);
+    }
+
+    // fn arrayFind(frame: *StackFrame, array: *const Array, operands: Bytecode.OperandsDstTwoSrc) void {
+    //     const tag = array.tag();
+    //     validateTag(frame, tag, operands.src2);
+    //     const elementToFind = blk: {
+    //         const reg = frame.register(operands.src2);
+    //         switch (frame.registerTag(operands.src2)) {
+    //             .ConstRef => {
+    //                 break :blk reg.constRef.value().*;
+    //             },
+    //             .MutRef => {
+    //                 break :blk reg.mutRef.value().*;
+    //             },
+    //             tag => {
+    //                 break :blk reg.*;
+    //             },
+    //             else => {
+    //                 unreachable;
+    //             },
+    //         }
+    //     };
+    //     const opt = blk: {
+    //         for (array.asSlice(), 0..) |elem, i| {
+    //             if (elem.eql(elementToFind, tag)) {
+    //                 break :blk Option.init(TaggedValue{ .value = RawValue{ .int = @intCast(i) }, .tag = .Int });
+    //             }
+    //         }
+    //         break :blk Option{};
+    //     };
+    //     frame.register(operands.dst).option = opt;
+    //     frame.setRegisterTag(operands.dst, .Option);
+    // }
+};
 
 // ! TESTS
 
