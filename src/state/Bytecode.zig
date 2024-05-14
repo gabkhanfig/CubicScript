@@ -263,14 +263,18 @@ pub const OpCode = enum(u8) {
     /// For maps, pushes a key and value into the map.
     /// Uses `OperandsPush`.
     Push,
-
-    //StringFind, TODO find and reverse find can be generic for strings, arrays, sets, and maps, returning the appropriate optional type
-    //StringReverseFind,
-
-    // Variable length instruction.
-    //StringFormat,
-    //StringSplit,
-    //StringRemove,
+    // ///
+    // Find,
+    // ///
+    // ReverseFind,
+    // ///
+    // FindFrom,
+    // ///
+    // ReverseFindFrom,
+    // /// Variable length instruction.
+    // StringFormat,
+    // StringSplit,
+    // StringRemove,
 };
 
 pub const OperandsOnlyDst = packed struct { dst: u8 };
