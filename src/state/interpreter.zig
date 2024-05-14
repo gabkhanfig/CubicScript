@@ -1080,6 +1080,70 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             frame.setRegisterTag(operands.dst, .Result);
             ipIncrement += 1;
         },
+        .Push => {
+            const operands = bytecode.decode(Bytecode.OperandsPush);
+            const pushSrcTag = frame.registerTag(operands.pushSrc);
+
+            const PushHelper = struct {
+                fn arrayPush(f: *StackFrame, arr: *Array, op: Bytecode.OperandsPush) void {
+                    assert(f.registerTag(op.keySrc) == arr.tag());
+                    arr.add(f.register(op.keySrc), f.registerTag(op.keySrc));
+                    f.setRegisterTag(op.keySrc, .None);
+                }
+
+                fn setPush(f: *StackFrame, s: *Set, op: Bytecode.OperandsPush) void {
+                    assert(f.registerTag(op.keySrc) == s.keyTag());
+                    var val = TaggedValue{ .tag = f.registerTag(op.keySrc), .value = f.register(op.keySrc).* };
+                    s.insert(&val);
+                    f.setRegisterTag(op.keySrc, .None);
+                }
+
+                fn mapPush(f: *StackFrame, m: *Map, op: Bytecode.OperandsPush) void {
+                    assert(f.registerTag(op.keySrc) == m.keyTag());
+                    assert(f.registerTag(op.valSrcOptional) == m.valueTag());
+                    var keyVal = TaggedValue{ .tag = f.registerTag(op.keySrc), .value = f.register(op.keySrc).* };
+                    var valueVal = TaggedValue{ .tag = f.registerTag(op.valSrcOptional), .value = f.register(op.valSrcOptional).* };
+                    m.insert(&keyVal, &valueVal);
+                    f.setRegisterTag(op.keySrc, .None);
+                }
+            };
+
+            switch (pushSrcTag) {
+                .Array => {
+                    const array = &frame.register(operands.pushSrc).array;
+                    PushHelper.arrayPush(frame, array, operands);
+                },
+                .Set => {
+                    const set = &frame.register(operands.pushSrc).set;
+                    PushHelper.setPush(frame, set, operands);
+                },
+                .Map => {
+                    const map = &frame.register(operands.pushSrc).map;
+                    PushHelper.mapPush(frame, map, operands);
+                },
+                .MutRef => { // TODO what if references of references are allowed?
+                    const ref = &frame.register(operands.pushSrc).mutRef;
+                    const refTag = frame.register(operands.pushSrc).mutRef.tag();
+                    switch (refTag) {
+                        .Array => {
+                            PushHelper.arrayPush(frame, &ref.value().array, operands);
+                        },
+                        .Set => {
+                            PushHelper.setPush(frame, &ref.value().set, operands);
+                        },
+                        .Map => {
+                            PushHelper.mapPush(frame, &ref.value().map, operands);
+                        },
+                        else => {
+                            @panic("Unsupported type to push");
+                        },
+                    }
+                },
+                else => {
+                    @panic("Unsupported type to push");
+                },
+            }
+        },
         else => {
             @panic("OpCode not implemented");
         },

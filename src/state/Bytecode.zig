@@ -257,6 +257,12 @@ pub const OpCode = enum(u8) {
     /// 8 byte (2 bytecode) instruction.
     /// The bytecode after is an `OperandsSubstring`
     Substring,
+    /// Pushes data into a structure.
+    /// For arrays, pushes an element to the end of the array.
+    /// For sets, pushes an element into the set.
+    /// For maps, pushes a key and value into the map.
+    /// Uses `OperandsPush`.
+    Push,
 
     //StringFind, TODO find and reverse find can be generic for strings, arrays, sets, and maps, returning the appropriate optional type
     //StringReverseFind,
@@ -369,6 +375,8 @@ pub const OperandsMathExt = packed struct {
 };
 
 pub const OperandsSubstring = extern struct { dst: u8, strSrc: u8, startSrc: u8, endSrc: u8 };
+
+pub const OperandsPush = extern struct { pushSrc: u8, keySrc: u8, valSrcOptional: u8 = 0 };
 
 /// The immediate data for a call operation.
 pub const CallImmediate = extern struct {
