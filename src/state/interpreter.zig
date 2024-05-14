@@ -1121,7 +1121,7 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
                     const map = &frame.register(operands.pushSrc).map;
                     PushHelper.mapPush(frame, map, operands);
                 },
-                .MutRef => { // TODO what if references of references are allowed?
+                .MutRef => { // TODO handle references to references, such as getting a reference to the value in an optional, which could be another reference
                     const ref = &frame.register(operands.pushSrc).mutRef;
                     const refTag = frame.register(operands.pushSrc).mutRef.tag();
                     switch (refTag) {
@@ -1160,6 +1160,21 @@ pub fn runtimeError(state: *const CubicScriptState, err: RuntimeError, severity:
 
     const context: *ScriptContext = @constCast(&state._context);
     context.runtimeError(state, err, severity, message);
+}
+
+/// Will remove const where appropriate. It is up to the programmer to ensure correct access.
+fn unwrapReference(value: *RawValue, tag: ValueTag) *RawValue {
+    switch (tag) {
+        .MutRef => {
+            return unwrapReference(value.mutRef.value(), value.mutRef.tag());
+        },
+        .ConstRef => {
+            return unwrapReference(@constCast(value.constRef.value()), value.constRef.tag());
+        },
+        else => {
+            return value;
+        },
+    }
 }
 
 // ! TESTS
