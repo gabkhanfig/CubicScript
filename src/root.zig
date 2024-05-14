@@ -202,6 +202,26 @@ pub const RawValue = extern union {
             },
         }
     }
+
+    pub fn eql(self: *const RawValue, other: RawValue, tag: ValueTag) bool {
+        switch (tag) {
+            .Bool, .Int, .ConstRef, .MutRef => {
+                return self.actualValue == other.actualValue;
+            },
+            .Float => {
+                return self.float == other.float;
+            },
+            .String => {
+                return self.string.eql(other.string);
+            },
+            .Array => {
+                return self.array.eql(other.array);
+            },
+            else => {
+                @panic("Unsupported equality check");
+            },
+        }
+    }
 };
 
 /// Compatible with C
