@@ -1165,14 +1165,37 @@ pub fn runtimeError(state: *const CubicScriptState, err: RuntimeError, severity:
 /// Will remove const where appropriate. It is up to the programmer to ensure correct access.
 fn unwrapReference(value: *RawValue, tag: ValueTag) *RawValue {
     switch (tag) {
-        .MutRef => {
-            return unwrapReference(value.mutRef.value(), value.mutRef.tag());
-        },
         .ConstRef => {
             return unwrapReference(@constCast(value.constRef.value()), value.constRef.tag());
         },
+        .MutRef => {
+            return unwrapReference(value.mutRef.value(), value.mutRef.tag());
+        },
         else => {
             return value;
+        },
+    }
+}
+
+/// Handles unwrapping references to validate theyre the correct tag.
+/// Is a no-op without runtime safety.
+fn validateTagUnwrapReference(value: *const RawValue, current: ValueTag, expected: ValueTag) void {
+    if (!std.debug.runtime_safety) {
+        return;
+    }
+    switch (current) {
+        expected => {},
+        .ConstRef => {
+            validateTagUnwrapReference(value.constRef.value(), value.constRef.tag(), expected);
+        },
+        .MutRef => {
+            validateTagUnwrapReference(@constCast(value).mutRef.value(), value.constRef.tag(), expected);
+        },
+        else => {
+            const message = allocPrintZ(std.heap.c_allocator, "Tag mismatch... Expected {s}, found {s}\n", .{ @tagName(expected), @tagName(current) }) catch {
+                @panic("Out of memory");
+            };
+            @panic(message);
         },
     }
 }
