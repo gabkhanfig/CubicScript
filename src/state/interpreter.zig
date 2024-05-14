@@ -1134,7 +1134,7 @@ pub fn runtimeError(state: *const CubicScriptState, err: RuntimeError, severity:
 
 /// Will remove const where appropriate. It is up to the programmer to ensure correct access.
 fn unwrapReference(value: *RawValue, tag: ValueTag) *RawValue {
-    switch (tag) {
+    switch (tag) { // TODO handle unique, shared, and weak references
         .ConstRef => {
             return unwrapReference(@constCast(value.constRef.value()), value.constRef.tag());
         },
@@ -1148,7 +1148,7 @@ fn unwrapReference(value: *RawValue, tag: ValueTag) *RawValue {
 }
 
 fn unwrapReferenceTag(value: *RawValue, tag: ValueTag) ValueTag {
-    switch (tag) {
+    switch (tag) { // TODO handle unique, shared, and weak references
         .ConstRef => {
             return unwrapReferenceTag(@constCast(value.constRef.value()), value.constRef.tag());
         },
@@ -1167,7 +1167,7 @@ fn validateTagUnwrapReference(value: *const RawValue, current: ValueTag, expecte
     if (!std.debug.runtime_safety) {
         return;
     }
-    switch (current) {
+    switch (current) { // TODO handle unique, shared, and weak references
         expected => {},
         .ConstRef => {
             validateTagUnwrapReference(value.constRef.value(), value.constRef.tag(), expected);
