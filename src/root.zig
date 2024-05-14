@@ -1,16 +1,14 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const expect = std.testing.expect;
-const Allocator = std.mem.Allocator;
-const global_allocator = @import("state/global_allocator.zig");
 
 comptime {
     _ = @import("c_export.zig");
 }
 
 pub const CubicScriptState = @import("state/CubicScriptState.zig");
-pub const allocator = global_allocator.allocator;
-pub const setAllocator = global_allocator.setAllocator;
+pub const allocator = @import("state/global_allocator.zig").allocator;
+pub const setAllocator = @import("state/global_allocator.zig").setAllocator;
 pub const sync_queue = @import("state/sync_queue.zig");
 
 pub const String = @import("types/string.zig").String;
