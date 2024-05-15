@@ -172,6 +172,10 @@ pub const OpCode = enum(u8) {
     /// Works with `.ConstRef`, `.MutRef`, `.Unique`, `.Shared`, and `.Weak`.
     /// Uses `OperandsDstSrc`.
     Dereference,
+    /// Sets the value of the reference type at `dst` to the value at `src`, moving it.
+    /// Works with `.ConstRef`, `.MutRef`, `.Unique`, `.Shared`, and `.Weak`.
+    /// Uses `OperandsDstSrc`.
+    SetReferenceValue,
     /// Multibyte instruction. Uses `OperandsSync` to determine how long the instruction is.
     /// If `.count` of `OperandsSync` is 1, uses the immediate sync data to synchronize just that one object.
     /// If `.count` is not 1, will read the immediate, along with the following bytecodes as an array of `OperandsSync.SyncModifier`.

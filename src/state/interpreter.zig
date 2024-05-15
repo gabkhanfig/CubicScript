@@ -215,6 +215,41 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             const operands = bytecode.decode(Bytecode.OperandsDstSrc);
             frame.dereference(operands.dst, operands.src);
         },
+        .SetReferenceValue => {
+            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+            const srcTag = frame.registerTag(operands.src);
+            const dstReg = frame.register(operands.dst);
+            switch (frame.registerTag(operands.dst)) {
+                .MutRef => {
+                    assert(dstReg.mutRef.tag() == srcTag);
+                    dstReg.mutRef.value().deinit(srcTag);
+                    dstReg.mutRef.value().* = frame.register(operands.src).*;
+                    frame.setRegisterTag(operands.src, .None);
+                },
+                .Unique => {
+                    assert(dstReg.unique.tag() == srcTag);
+                    dstReg.unique.getMut().deinit(srcTag);
+                    dstReg.unique.getMut().* = frame.register(operands.src).*;
+                    frame.setRegisterTag(operands.src, .None);
+                },
+                .Shared => {
+                    assert(dstReg.shared.tag() == srcTag);
+                    dstReg.shared.getUncheckedMut().deinit(srcTag);
+                    dstReg.shared.getUncheckedMut().* = frame.register(operands.src).*;
+                    frame.setRegisterTag(operands.src, .None);
+                },
+                .Weak => {
+                    assert(dstReg.weak.expired() == false);
+                    assert(dstReg.weak.tag() == srcTag);
+                    dstReg.weak.getMut().deinit(srcTag);
+                    dstReg.weak.getMut().* = frame.register(operands.src).*;
+                    frame.setRegisterTag(operands.src, .None);
+                },
+                else => {
+                    @panic("Incompatible type to set reference value");
+                },
+            }
+        },
         .Sync => {
             const operands = bytecode.decode(Bytecode.OperandsSync);
             assert(operands.count != 0);
