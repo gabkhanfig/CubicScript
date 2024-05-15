@@ -207,8 +207,7 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
         .Deinit => {
             const operands = bytecode.decode(Bytecode.OperandsSrcTag);
             assert(frame.registerTag(operands.src).asU8() == operands.tag);
-            frame.register(operands.src).deinit(@enumFromInt(operands.tag));
-            frame.setRegisterTag(operands.src, .None);
+            frame.deinitRegister(operands.src);
         },
         .Sync => {
             const operands = bytecode.decode(Bytecode.OperandsSync);

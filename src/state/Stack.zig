@@ -41,6 +41,8 @@ pub const StackFrame = struct {
     const OLD_RETURN_VALUE_DST = 2;
     const OLD_RETURN_TAG_DST = 3;
     const RESERVED_SLOTS = 4;
+    const REFERENCE_FLAG: u8 = 0b1000000;
+    const TAG_MASK: u8 = 0b00011111;
 
     basePointer: [*]RawValue,
     tagsBasePointer: [*]u8,
@@ -131,12 +133,58 @@ pub const StackFrame = struct {
 
     pub fn registerTag(self: *const StackFrame, registerIndex: usize) ValueTag {
         assert(registerIndex < self.frameLength);
-        return @enumFromInt(self.tagsBasePointer[RESERVED_SLOTS + registerIndex]);
+        return @enumFromInt(self.tagsBasePointer[RESERVED_SLOTS + registerIndex] & 0b00011111);
     }
 
     pub fn setRegisterTag(self: *StackFrame, registerIndex: usize, tag: ValueTag) void {
         assert(registerIndex < self.frameLength);
         self.tagsBasePointer[RESERVED_SLOTS + registerIndex] = tag.asU8();
+    }
+
+    pub fn dereference(self: *StackFrame, dst: usize, src: usize) void {
+        const reg = self.register(src);
+        switch (self.registerTag(src)) {
+            .ConstRef => {
+                self.basePointer[RESERVED_SLOTS + dst] = reg.constRef.value().*;
+                self.tagsBasePointer[RESERVED_SLOTS + dst] = REFERENCE_FLAG | reg.constRef.tag().asU8();
+            },
+            .MutRef => {
+                self.basePointer[RESERVED_SLOTS + dst] = reg.mutRef.value().*;
+                self.tagsBasePointer[RESERVED_SLOTS + dst] = REFERENCE_FLAG | reg.mutRef.tag().asU8();
+            },
+            .Unique => {
+                self.basePointer[RESERVED_SLOTS + dst] = reg.unique.getMut().*;
+                self.tagsBasePointer[RESERVED_SLOTS + dst] = REFERENCE_FLAG | reg.unique.tag().asU8();
+            },
+            .Shared => {
+                self.basePointer[RESERVED_SLOTS + dst] = reg.shared.getUncheckedMut().*;
+                self.tagsBasePointer[RESERVED_SLOTS + dst] = REFERENCE_FLAG | reg.shared.tag().asU8();
+            },
+            .Weak => {
+                self.basePointer[RESERVED_SLOTS + dst] = reg.weak.getMut().*;
+                self.tagsBasePointer[RESERVED_SLOTS + dst] = REFERENCE_FLAG | reg.weak.tag().asU8();
+            },
+            else => {
+                @panic("Cannot dereference non reference type");
+            },
+        }
+    }
+
+    /// For dereferenced types, doesn't actually call deinit.
+    pub fn deinitRegister(self: *StackFrame, registerIndex: usize) void {
+        const bitmask = self.tagsBasePointer[RESERVED_SLOTS + registerIndex];
+        self.tagsBasePointer[RESERVED_SLOTS + registerIndex] = 0;
+        if ((bitmask & REFERENCE_FLAG) != 0) {
+            return;
+        }
+        const tag: ValueTag = @enumFromInt(bitmask & 0b00011111);
+        self.basePointer[RESERVED_SLOTS + registerIndex].deinit(tag);
+    }
+
+    pub fn deinitAllRegisters(self: *StackFrame) void {
+        for (0..self.frameLength) |i| {
+            self.deinitRegister(i);
+        }
     }
 
     pub fn registerTagAddr(self: *StackFrame, registerIndex: usize) *u8 {
