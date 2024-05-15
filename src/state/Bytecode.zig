@@ -169,6 +169,7 @@ pub const OpCode = enum(u8) {
     /// Dereference the reference type at `src`, storing the value in `dst`.
     /// Calling `deinit` on this dereferenced value through the stack frame will not
     /// actually deinitialize the value, as it's flagged as a non-owning value.
+    /// Works with `.ConstRef`, `.MutRef`, `.Unique`, `.Shared`, and `.Weak`.
     /// Uses `OperandsDstSrc`.
     Dereference,
     /// Multibyte instruction. Uses `OperandsSync` to determine how long the instruction is.
