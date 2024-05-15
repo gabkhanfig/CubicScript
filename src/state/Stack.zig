@@ -178,7 +178,7 @@ pub const StackFrame = struct {
     pub fn deinitRegister(self: *StackFrame, registerIndex: usize) void {
         const bitmask = self.tagsBasePointer[RESERVED_SLOTS + registerIndex];
         self.tagsBasePointer[RESERVED_SLOTS + registerIndex] = 0;
-        if ((bitmask & REFERENCE_FLAG) != 0) {
+        if ((bitmask & REFERENCE_FLAG) != 0 or (bitmask == 0)) {
             return;
         }
         const tag: ValueTag = @enumFromInt(bitmask & 0b00011111);
