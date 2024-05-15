@@ -166,6 +166,11 @@ pub const OpCode = enum(u8) {
     /// Deinitializes the value at register `src`, using `tag`. Uses `OperandsSrcTag`.
     /// Sets the register tag to `.None`. Works with zeroed memory as well.
     Deinit,
+    /// Dereference the reference type at `src`, storing the value in `dst`.
+    /// Calling `deinit` on this dereferenced value through the stack frame will not
+    /// actually deinitialize the value, as it's flagged as a non-owning value.
+    /// Uses `OperandsDstSrc`.
+    Dereference,
     /// Multibyte instruction. Uses `OperandsSync` to determine how long the instruction is.
     /// If `.count` of `OperandsSync` is 1, uses the immediate sync data to synchronize just that one object.
     /// If `.count` is not 1, will read the immediate, along with the following bytecodes as an array of `OperandsSync.SyncModifier`.
@@ -479,6 +484,7 @@ fn validateOpCodeMatchesOperands(opcode: OpCode, comptime OperandsT: type) void 
         .Move,
         .BitwiseComplement,
         .BoolNot,
+        .Dereference,
         => {
             if (OperandsT != OperandsDstSrc) {
                 const message = allocPrint(allocator, fmtMessage, .{ opcodeName, @typeName(OperandsDstSrc) }) catch unreachable;

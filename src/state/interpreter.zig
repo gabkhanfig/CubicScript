@@ -16,6 +16,8 @@ const Set = root.Set;
 const Map = root.Map;
 const Option = root.Option;
 const Result = root.Result;
+const ValueConstRef = root.ValueConstRef;
+const ValueMutRef = root.ValueMutRef;
 const math = @import("../types/math.zig");
 const Error = @import("Errors.zig");
 const allocPrintZ = std.fmt.allocPrintZ;
@@ -208,6 +210,10 @@ pub fn executeOperation(state: *const CubicScriptState, stack: *Stack, frame: *S
             const operands = bytecode.decode(Bytecode.OperandsSrcTag);
             assert(frame.registerTag(operands.src).asU8() == operands.tag);
             frame.deinitRegister(operands.src);
+        },
+        .Dereference => {
+            const operands = bytecode.decode(Bytecode.OperandsDstSrc);
+            frame.dereference(operands.dst, operands.src);
         },
         .Sync => {
             const operands = bytecode.decode(Bytecode.OperandsSync);
@@ -1506,6 +1512,42 @@ test "call" {
 
         try expect((try executeOperation(state, &threadLocalStack, &frame)) == false); // return
     }
+}
+
+test "dereference" {
+    const state = CubicScriptState.init(null);
+    defer state.deinit();
+    {
+        const instruction = Bytecode.encode(.Dereference, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 });
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        const num = RawValue{ .int = 55 };
+        frame.register(0).constRef = ValueConstRef.init(.Int, &num);
+        frame.setRegisterTag(0, .ConstRef);
+
+        _ = try executeOperation(state, &threadLocalStack, &frame);
+
+        assert(frame.registerTag(1) == .Int);
+        assert(frame.register(1).int == 55);
+    }
+    {
+        const instruction = Bytecode.encode(.Dereference, Bytecode.OperandsDstSrc{ .dst = 1, .src = 0 });
+
+        var frame = try StackFrame.pushFrame(&threadLocalStack, 256, @ptrCast(&instruction), null);
+        defer _ = frame.popFrame(&threadLocalStack);
+
+        var num = RawValue{ .int = 55 };
+        frame.register(0).mutRef = ValueMutRef.init(.Int, &num);
+        frame.setRegisterTag(0, .MutRef);
+
+        _ = try executeOperation(state, &threadLocalStack, &frame);
+
+        assert(frame.registerTag(1) == .Int);
+        assert(frame.register(1).int == 55);
+    }
+    // TODO unique, shared, and weak references
 }
 
 test "int comparisons" {

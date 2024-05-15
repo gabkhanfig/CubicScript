@@ -142,6 +142,7 @@ pub const StackFrame = struct {
     }
 
     /// `dst` and `src` may not overlap.
+    /// For weak references, asserts that they are still valid.
     pub fn dereference(self: *StackFrame, dst: usize, src: usize) void {
         assert(dst != src);
         const reg = self.register(src);
@@ -163,6 +164,7 @@ pub const StackFrame = struct {
                 self.tagsBasePointer[RESERVED_SLOTS + dst] = REFERENCE_FLAG | reg.shared.tag().asU8();
             },
             .Weak => {
+                assert(reg.weak.expired() == false);
                 self.basePointer[RESERVED_SLOTS + dst] = reg.weak.getMut().*;
                 self.tagsBasePointer[RESERVED_SLOTS + dst] = REFERENCE_FLAG | reg.weak.tag().asU8();
             },
