@@ -141,7 +141,9 @@ pub const StackFrame = struct {
         self.tagsBasePointer[RESERVED_SLOTS + registerIndex] = tag.asU8();
     }
 
+    /// `dst` and `src` may not overlap.
     pub fn dereference(self: *StackFrame, dst: usize, src: usize) void {
+        assert(dst != src);
         const reg = self.register(src);
         switch (self.registerTag(src)) {
             .ConstRef => {
