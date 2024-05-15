@@ -31,6 +31,14 @@
         "xstring": "c",
         "xutility": "c",
         "stdlib.h": "c",
-        "vcruntime.h": "c"
+        "vcruntime.h": "c",
+        "assert.h": "c",
+        "corecrt.h": "c",
+        "stdatomic.h": "c",
+        "vcruntime_c11_stdatomic.h": "c",
+        "__msvc_cxx_stdatomic.hpp": "c",
+        "atomic_ref_count.h": "c",
+        "stdbool.h": "c",
+        "global_allocator.h": "c"
     }
 }
