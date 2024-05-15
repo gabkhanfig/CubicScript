@@ -129,22 +129,22 @@ pub fn getOpCode(self: Self) OpCode {
 /// If there is only one `src`, and there is a `dst`, `src` occupies B.
 pub const OpCode = enum(u8) {
     /// No operation. Allows 0 set memory to be a technically valid program.
-    Nop = 0,
+    Nop,
     /// Move value between registers `src` and `dst`. The tag at `src` is set to `.None`.
-    Move = 1,
+    Move,
     /// Explicitly clone the value at `src`, storing the clone in `dst`.
-    Clone = 2,
+    Clone,
     /// Set the register `dst` to zero. Uses `OperandsZero`
-    LoadZero = 3,
+    LoadZero,
     /// Performs special initialization for types that cannot just be zero intiailized, such as arrays, sets, and maps.
-    LoadDefault = 4,
+    LoadDefault,
     /// Load an immediate bool/int/float into `dst`.
     /// The immediate value will be cast to the correct value.
-    LoadImmediate = 5,
+    LoadImmediate,
     /// Load the 64 bit immediate into `dst`. This is a 12 byte instruction.
     /// Expects the bits to be a valid `RawValue`, in which the held value is cloned.
     /// Uses `OperandsImmediateLong`.
-    LoadImmediateLong = 6,
+    LoadImmediateLong,
     /// Unconditionally jump to `dst`
     Jump,
     /// Jump to `dst` if `src` is 0.
