@@ -234,19 +234,6 @@ bool cubs_string_eql(const CubsString *self, const CubsString *other)
   return simd_compare_equal_string_and_string(buf_start(self), buf_start(other), selfLen);
 }
 
-static __m256i avx2StringHashIteration(const __m256i* vec, char num) {
-  // in the case of SSO, will ignore the 
-	const __m256i seed = _mm256_set1_epi64x(0);
-	const __m256i indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-	const __m256i numVec = _mm256_set1_epi8(num);
-
-	// Checks if num is greater than each value of indices.
-	// Mask is 0xFF if greater than, and 0x00 otherwise. 
-	const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
-	const __m256i partial = _mm256_and_si256(*vec, mask);
-	return _mm256_add_epi8(partial, numVec);
-}
-
 size_t cubs_string_hash(const CubsString *self)
 {
   //#if __AVX2__
