@@ -11,28 +11,28 @@ typedef struct CubsString {
 } CubsString;
 
 typedef struct CubsArray {
-  size_t _inner;
+  void* _inner;
 } CubsArray;
 
 typedef struct CubsSet {
-  size_t _inner;
+  void* _inner;
 } CubsSet;
 
 typedef struct CubsMap {
-  size_t _inner;
+  void* _inner;
 } CubsMap;
 
 /// 0 / null intialization makes it a none option.
 typedef struct CubsOption {
-  size_t _inner;
+  void* _inner;
 } CubsOption;
 
 typedef struct CubsResult {
-  size_t _inner;
+  void* _inner;
 } CubsResult;
 
 typedef struct CubsClass {
-  size_t _inner;
+  void* _inner;
 } CubsClass;
 
 typedef struct CubsOwnedInterface {
@@ -44,27 +44,27 @@ typedef struct CubsInterfaceRef {
 } Cubs;
 
 typedef struct CubsConstRef {
-  size_t _inner;
+  void* _inner;
 } CubsConstRef;
 
 typedef struct CubsMutRef {
-  size_t _inner;
+  void* _inner;
 } CubsMutRef;
 
 typedef struct CubsUnique {
-  size_t _inner;
+  void* _inner;
 } CubsUnique;
 
 typedef struct CubsShared {
-  size_t _inner;
+  void* _inner;
 } CubsShared;
 
 typedef struct CubsWeak {
-  size_t _inner;
+  void* _inner;
 } CubsWeak;
 
 typedef struct CubsFunctionPtr {
-  size_t _inner;
+  void* _inner;
 } CubsFunctionPtr;
 
 typedef struct CubsVec2i {
