@@ -51,6 +51,9 @@ pub fn mulOverflow(a: Int, b: Int) struct { Int, bool } {
     if (a == MIN_INT and b == -1) {
         return .{ MIN_INT, true };
     }
+    if (a == -1 and b == MIN_INT) {
+        return .{ MIN_INT, true };
+    }
 
     if (b > 0) {
         if (a > @divTrunc(MAX_INT, b) or a < @divTrunc(MIN_INT, b)) {
