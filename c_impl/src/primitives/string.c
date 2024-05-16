@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "../util/panic.h"
+#include <immintrin.h>
 
 #define STRING_ALIGN 32
 
@@ -73,8 +74,8 @@ typedef struct Inner {
 } Inner;
 
 static Inner* inner_init_slice(CubsStringSlice slice) {
-  const remainder = slice.len % 32;
-  const requiredStringAllocation = slice.len + (32 - remainder); // allocate 32 byte chunks for AVX2
+  const size_t remainder = slice.len % 32;
+  const size_t requiredStringAllocation = slice.len + (32 - remainder); // allocate 32 byte chunks for AVX2
   const size_t allocSize = sizeof(Inner) + requiredStringAllocation;
   
   Inner* self = cubs_malloc(allocSize, STRING_ALIGN);
@@ -107,6 +108,16 @@ static const Inner* as_inner(const CubsString* self) {
 static Inner* as_inner_mut(CubsString* self) {
   assert(self->_inner != NULL);
   return (Inner*)self->_inner;
+}
+
+static const char* buf_start(const CubsString* self) {
+  assert(self->_inner != NULL);
+  return (const char*)(as_inner(self) + 1); // buffer starts at the memory immediately after inner
+}
+
+static char* buf_start_mut(CubsString* self) {
+  assert(self->_inner != NULL);
+  return (char*)(as_inner_mut(self) + 1); // buffer starts at the memory immediately after inner
 }
 
 CubsStringError cubs_string_init(CubsString* stringToInit, CubsStringSlice slice)
@@ -165,4 +176,60 @@ size_t cubs_string_len(const CubsString* self)
     const Inner* inner = as_inner(self);
     return inner->len;
   }
+}
+
+CubsStringSlice cubs_string_as_slice(const CubsString *self)
+{
+  CubsStringSlice slice;
+  if(self->_inner == NULL) {
+    slice.str = NULL;
+    slice.len = 0;
+  } else {
+    slice.str = buf_start(self);
+    slice.len = as_inner(self)->len;
+  }
+  return slice;
+}
+
+static bool simd_compare_equal_string_and_string(const char* buffer, const char* otherBuffer, size_t len) {
+  //#if __AVX2__
+  assert((((size_t)buffer) % 32 == 0) && "String buffer must be 32 byte aligned");
+  assert((((size_t)otherBuffer) % 32 == 0) && "String buffer must be 32 byte aligned");
+
+  const __m256i* thisVec = (const __m256i*)buffer;
+  const __m256i* otherVec = (const __m256i*)otherBuffer;
+
+  const size_t remainder = (len + 1) % 32; // add one for null terminator
+  const size_t bytesToCheck = remainder ? ((len + 1) + (32 - remainder)) : len + 1;
+  for(size_t i = 0; i < bytesToCheck; i += 32) {
+    // _mm256_cmpeq_epi8_mask is an AVX512 extension
+    const __m256i result = _mm256_cmpeq_epi8(*thisVec, *otherVec);
+    const int mask = _mm256_movemask_epi8(result);
+    if(mask == (int)~0) {
+      thisVec++;
+      otherVec++;
+      continue;
+    }
+    return false;
+  }
+  return true;
+  //#endif
+}
+
+bool cubs_string_eql(const CubsString *self, const CubsString *other)
+{
+  if(self->_inner == other->_inner) {
+    return true;
+  }
+
+  if(self->_inner == NULL) {
+    return cubs_string_len(other) == 0;
+  } 
+
+  const size_t selfLen = cubs_string_len(self);
+  if (other->_inner == NULL) {
+    return selfLen == 0;
+  }
+
+  return simd_compare_equal_string_and_string(buf_start(self), buf_start(other), selfLen);
 }

@@ -1,6 +1,8 @@
-#pragma once;
+#pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "script_value.h"
 
 typedef enum CubsStringError {
@@ -33,3 +35,10 @@ CubsString cubs_string_clone(const CubsString* self);
 
 size_t cubs_string_len(const CubsString* self);
 
+/// Get an immutable reference to the slice that this string owns. This string slice is null terminated.
+/// Mutation operations on this string may make the slice point to invalid memory.
+/// If the string is empty, returns a slice where `.str == NULL` and `.len == 0`
+CubsStringSlice cubs_string_as_slice(const CubsString* self);
+
+/// Equality comparison of two strings. Uses 32 byte SIMD optimizations (AVX2 on x86) when available.
+bool cubs_string_eql(const CubsString* self, const CubsString* other);
