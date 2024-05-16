@@ -42,3 +42,5 @@ CubsStringSlice cubs_string_as_slice(const CubsString* self);
 
 /// Equality comparison of two strings. Uses 32 byte SIMD optimizations (AVX2 on x86) when available.
 bool cubs_string_eql(const CubsString* self, const CubsString* other);
+
+size_t cubs_string_hash(const CubsString* self);

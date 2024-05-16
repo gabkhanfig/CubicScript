@@ -233,3 +233,60 @@ bool cubs_string_eql(const CubsString *self, const CubsString *other)
 
   return simd_compare_equal_string_and_string(buf_start(self), buf_start(other), selfLen);
 }
+
+static __m256i avx2StringHashIteration(const __m256i* vec, char num) {
+  // in the case of SSO, will ignore the 
+	const __m256i seed = _mm256_set1_epi64x(0);
+	const __m256i indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+	const __m256i numVec = _mm256_set1_epi8(num);
+
+	// Checks if num is greater than each value of indices.
+	// Mask is 0xFF if greater than, and 0x00 otherwise. 
+	const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
+	const __m256i partial = _mm256_and_si256(*vec, mask);
+	return _mm256_add_epi8(partial, numVec);
+}
+
+size_t cubs_string_hash(const CubsString *self)
+{
+  //#if __AVX2__
+  const size_t HASH_MODIFIER = 0xc6a4a7935bd1e995ULL;
+	const size_t HASH_SHIFT = 47;
+
+  size_t h = 0;
+  const size_t len = cubs_string_len(self);
+  const size_t iterationsToDo = ((len) % 32 == 0 ? len : len + (32 - (len % 32))) / 32;
+
+  if(iterationsToDo > 0) {
+    const __m256i* thisVec = (const __m256i*)buf_start(self);
+   
+    const __m256i seed = _mm256_set1_epi64x(0);
+    const __m256i indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+      
+    for(size_t i = 0; i < iterationsToDo; i++) {
+      const char num = i != (iterationsToDo - 1) ? (char)(32) : (char)((iterationsToDo * i) - len);
+
+      // in the case of SSO, will ignore the 
+      const __m256i numVec = _mm256_set1_epi8(num);
+
+      // Checks if num is greater than each value of indices.
+      // Mask is 0xFF if greater than, and 0x00 otherwise. 
+      const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
+      const __m256i partial = _mm256_and_si256(thisVec[i], mask);
+      const __m256i hashIter = _mm256_add_epi8(partial, numVec);
+
+      const size_t* hashPtr = (const size_t*)(&hashIter);
+			for (size_t j = 0; j < 4; j++) {
+			  h ^= hashPtr[i];
+				h *= HASH_MODIFIER;
+				h ^= h >> HASH_SHIFT;
+			}
+    }
+  }
+
+  h ^= h >> HASH_SHIFT;
+	h *= HASH_MODIFIER;
+	h ^= h >> HASH_SHIFT;
+	return h;
+  //#endif
+}
