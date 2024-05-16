@@ -41,7 +41,7 @@ typedef struct CubsOwnedInterface {
 
 typedef struct CubsInterfaceRef {
   void* _inner;
-} Cubs;
+} CubsInterfaceRef;
 
 typedef struct CubsConstRef {
   void* _inner;
