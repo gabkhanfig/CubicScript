@@ -234,6 +234,47 @@ bool cubs_string_eql(const CubsString *self, const CubsString *other)
   return simd_compare_equal_string_and_string(buf_start(self), buf_start(other), selfLen);
 }
 
+/// Expects that the length of buffer is equal to `slice.len`.
+static bool simd_compare_equal_string_and_slice(const char* buffer, const CubsStringSlice slice) {
+  //#if __AVX2__
+  assert((((size_t)buffer) % 32 == 0) && "String buffer must be 32 byte aligned");
+
+  const __m256i* thisVec = (const __m256i*)buffer;
+  __m256i otherVec; // initializing the memory is unnecessary
+
+  size_t i = 0;
+  for(; i <= (slice.len - 32); i += 32) {
+		memcpy(&otherVec, slice.str + i, 32);
+    const __m256i result = _mm256_cmpeq_epi8(*thisVec, otherVec);
+    const int mask = _mm256_movemask_epi8(result);
+		if(mask == (int)~0) {
+      thisVec++;
+      continue;
+    }
+    return false;
+  }
+
+  for(; i < slice.len; i++) {
+    if(buffer[i] != slice.str[i]) return false;
+  }
+  return true;
+  //#endif
+}
+
+bool cubs_string_eql_slice(const CubsString *self, CubsStringSlice slice)
+{
+  if(self->_inner == NULL) {
+    return slice.len == 0;
+  }
+
+  const size_t selfLen = cubs_string_len(self);
+  if(selfLen != slice.len) {
+    return false;
+  }
+
+  return simd_compare_equal_string_and_slice(buf_start(self), slice);
+}
+
 size_t cubs_string_hash(const CubsString *self)
 {
   //#if __AVX2__

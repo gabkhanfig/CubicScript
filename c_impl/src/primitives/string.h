@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "script_value.h"
+#include "../util/ordering.h"
 
 typedef enum CubsStringError {
     cubsStringErrorNone = 0,
@@ -42,5 +43,12 @@ CubsStringSlice cubs_string_as_slice(const CubsString* self);
 
 /// Equality comparison of two strings. Uses 32 byte SIMD optimizations (AVX2 on x86) when available.
 bool cubs_string_eql(const CubsString* self, const CubsString* other);
+
+/// Equality comparison of a string and a string slice. Uses 32 byte SIMD optimizations (AVX2 on x86) when available.
+/// If `slice.len == 0`, checks that string is empty.
+///
+/// TECHNICAL NOTE: Only derefences `slice.str` if `slice.len == 0`, so it can point to anything as long as `slice.len == 0`.
+/// [undefined](https://ziglang.org/documentation/master/#undefined) in Zig, which is 0xAA... is safe for this function.
+bool cubs_string_eql_slice(const CubsString* self, CubsStringSlice slice);
 
 size_t cubs_string_hash(const CubsString* self);
