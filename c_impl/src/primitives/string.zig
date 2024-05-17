@@ -44,6 +44,14 @@ pub const String = extern struct {
         return Self{ .inner = c.cubs_string_clone(@ptrCast(self))._inner };
     }
 
+    pub fn eql(self: *const Self, other: Self) bool {
+        return c.cubs_string_eql(@ptrCast(self), @ptrCast(&other));
+    }
+
+    pub fn eqlSlice(self: *const Self, literal: []const u8) bool {
+        return c.cubs_string_eql_slice(@ptrCast(self), literalToCubsSlice(literal));
+    }
+
     pub fn find(self: *const Self, literal: []const u8, startIndex: usize) ?usize {
         const result: usize = c.cubs_string_find(@ptrCast(self), literalToCubsSlice(literal), @intCast(startIndex));
         if (result == c.CUBS_STRING_N_POS) {
@@ -55,26 +63,58 @@ pub const String = extern struct {
     fn literalToCubsSlice(literal: []const u8) c.CubsStringSlice {
         return c.CubsStringSlice{ .str = literal.ptr, .len = literal.len };
     }
-};
 
-test "init" {
-    {
+    test init {
+        // Valid utf8
         var s = try String.init("hello world!");
         defer s.deinit();
-    }
-    { // invalid utf8
+
+        // Invalid utf8
         try std.testing.expectError(String.Error.InvalidUtf8, String.init("erm\xFFFF"));
     }
-    {
+
+    test initUnchecked {
+        // Valid utf8
         var s = String.initUnchecked("hello world!");
         defer s.deinit();
+
+        // Invalid utf8. In debug, will assert. In non-debug, it's undefined behaviour.
+        // _ = String.initUnchecked("erm\xFFFF");
     }
-}
 
-test "clone" {
-    var s = String.initUnchecked("hello world!");
-    defer s.deinit();
+    test clone {
+        var s = String.initUnchecked("hello world!");
+        defer s.deinit();
 
-    var clone = s.clone();
-    defer clone.deinit();
-}
+        var sClone = s.clone();
+        defer sClone.deinit();
+    }
+
+    test eql {
+        { // clones eql
+            var s = String.initUnchecked("hello world!");
+            defer s.deinit();
+
+            var sClone = s.clone();
+            defer sClone.deinit();
+
+            try expect(s.eql(sClone));
+        }
+        { // not clones, but same string
+            var s1 = String.initUnchecked("hello world!");
+            defer s1.deinit();
+            var s2 = String.initUnchecked("hello world!");
+            defer s2.deinit();
+
+            try expect(s1.eql(s2));
+        }
+        { // different strings
+            var s1 = String.initUnchecked("hello world!");
+            defer s1.deinit();
+            var s2 = String.initUnchecked("hello world! ");
+            defer s2.deinit();
+
+            try expect(!s1.eql(s2));
+        }
+    }
+};
