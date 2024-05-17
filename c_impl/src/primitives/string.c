@@ -192,7 +192,7 @@ CubsStringSlice cubs_string_as_slice(const CubsString *self)
 }
 
 static bool simd_compare_equal_string_and_string(const char* buffer, const char* otherBuffer, size_t len) {
-  //#if __AVX2__
+  #if __AVX2__
   assert((((size_t)buffer) % 32 == 0) && "String buffer must be 32 byte aligned");
   assert((((size_t)otherBuffer) % 32 == 0) && "String buffer must be 32 byte aligned");
 
@@ -213,7 +213,7 @@ static bool simd_compare_equal_string_and_string(const char* buffer, const char*
     return false;
   }
   return true;
-  //#endif
+  #endif
 }
 
 bool cubs_string_eql(const CubsString *self, const CubsString *other)

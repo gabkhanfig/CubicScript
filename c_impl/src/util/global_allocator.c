@@ -1,4 +1,4 @@
-#ifndef CUBS_USING_ZIG_ALLOCATOR
+//#ifndef CUBS_USING_ZIG_ALLOCATOR
 
 #include "global_allocator.h"
 
@@ -24,4 +24,4 @@ void cubs_free(void *buf, size_t len, size_t align) {
     #endif
 }
 
-#endif
+//#endif

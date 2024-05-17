@@ -21,3 +21,4 @@ add_library(CubicScript STATIC
 )
 
 target_include_directories(CubicScript PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(CubicScript PRIVATE $<$<BOOL:${MSVC}>:/arch:AVX2>)

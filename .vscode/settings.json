@@ -39,6 +39,7 @@
         "__msvc_cxx_stdatomic.hpp": "c",
         "atomic_ref_count.h": "c",
         "stdbool.h": "c",
-        "global_allocator.h": "c"
+        "global_allocator.h": "c",
+        "script_value.h": "c"
     }
 }

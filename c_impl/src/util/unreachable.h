@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdnoreturn.h>
 
 // https://en.cppreference.com/w/c/program/unreachable

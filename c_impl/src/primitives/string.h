@@ -7,12 +7,12 @@
 #include "../util/ordering.h"
 
 typedef enum CubsStringError {
-    cubsStringErrorNone = 0,
-    cubsStringErrorInvalidUtf8 = 1,
-    cubsStringErrorIndexOutOfBounds = 2,
+  cubsStringErrorNone = 0,
+  cubsStringErrorInvalidUtf8 = 1,
+  cubsStringErrorIndexOutOfBounds = 2,
 
-    // Enforce enum size is at least 32 bits, which is `int` on most platforms
-    _CUBS_STRING_ERROR_MAX_VALUE = 0x7FFFFFFF,
+  // Enforce enum size is at least 32 bits, which is `int` on most platforms
+  _CUBS_STRING_ERROR_MAX_VALUE = 0x7FFFFFFF,
 } CubsStringError;
 
 typedef struct CubsStringSlice {
@@ -50,5 +50,8 @@ bool cubs_string_eql(const CubsString* self, const CubsString* other);
 /// TECHNICAL NOTE: Only derefences `slice.str` if `slice.len == 0`, so it can point to anything as long as `slice.len == 0`.
 /// [undefined](https://ziglang.org/documentation/master/#undefined) in Zig, which is 0xAA... is safe for this function.
 bool cubs_string_eql_slice(const CubsString* self, CubsStringSlice slice);
+
+/// Compares two strings, returning the ordering between them.
+CubsOrdering cubs_string_cmp(const CubsString* self, const CubsString* other);
 
 size_t cubs_string_hash(const CubsString* self);
