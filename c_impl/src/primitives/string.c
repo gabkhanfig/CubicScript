@@ -318,3 +318,41 @@ size_t cubs_string_hash(const CubsString *self)
 	return h;
   #endif
 }
+
+static size_t index_of_pos_linear(CubsStringSlice self, CubsStringSlice slice, size_t startIndex) {
+  size_t i = startIndex;
+  const size_t end = self.len - slice.len;
+  for(; i <= end; i++) {
+    bool foundEqual = true;
+    for(size_t strEqlIter = 0; strEqlIter < slice.len; strEqlIter++) {
+      if(self.str[i + strEqlIter] != slice.str[strEqlIter]) {
+        foundEqual = false;
+        break;
+      }
+    }
+    if(foundEqual) {
+      return i;
+    }
+  }
+  return CUBS_STRING_N_POS;
+}
+
+static size_t index_of_pos_scalar(CubsStringSlice self, CubsStringSlice slice, size_t startIndex) {
+}
+
+size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t startIndex)
+{
+  if(slice.len > cubs_string_len(self)) {
+    return CUBS_STRING_N_POS;
+  }
+
+  // if(slice.len < 2) {
+  //   if(slice.len == 0) { 
+  //     return startIndex;
+  //   }
+  //   return index_of_pos_scalar(cubs_string_as_slice(self), slice, startIndex);
+  // }
+  // else {
+    return index_of_pos_linear(cubs_string_as_slice(self), slice, startIndex);
+  //}
+}
