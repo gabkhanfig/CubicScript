@@ -91,6 +91,14 @@ pub const String = extern struct {
     }
 
     test eql {
+        { // empty strings
+            var s1 = String{};
+            defer s1.deinit();
+            var s2 = String{};
+            defer s2.deinit();
+
+            try expect(s1.eql(s2));
+        }
         { // clones eql
             var s = String.initUnchecked("hello world!");
             defer s.deinit();
