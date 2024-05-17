@@ -236,7 +236,7 @@ bool cubs_string_eql(const CubsString *self, const CubsString *other)
 
 /// Expects that the length of buffer is equal to `slice.len`.
 static bool simd_compare_equal_string_and_slice(const char* buffer, const CubsStringSlice slice) {
-  //#if __AVX2__
+  #if __AVX2__
   assert((((size_t)buffer) % 32 == 0) && "String buffer must be 32 byte aligned");
 
   const __m256i* thisVec = (const __m256i*)buffer;
@@ -258,7 +258,7 @@ static bool simd_compare_equal_string_and_slice(const char* buffer, const CubsSt
     if(buffer[i] != slice.str[i]) return false;
   }
   return true;
-  //#endif
+  #endif
 }
 
 bool cubs_string_eql_slice(const CubsString *self, CubsStringSlice slice)
@@ -277,7 +277,7 @@ bool cubs_string_eql_slice(const CubsString *self, CubsStringSlice slice)
 
 size_t cubs_string_hash(const CubsString *self)
 {
-  //#if __AVX2__
+  #if __AVX2__
   const size_t HASH_MODIFIER = 0xc6a4a7935bd1e995ULL;
 	const size_t HASH_SHIFT = 47;
 
@@ -316,5 +316,5 @@ size_t cubs_string_hash(const CubsString *self)
 	h *= HASH_MODIFIER;
 	h ^= h >> HASH_SHIFT;
 	return h;
-  //#endif
+  #endif
 }
