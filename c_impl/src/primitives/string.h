@@ -26,8 +26,11 @@ static const size_t CUBS_STRING_N_POS = 1ULL << 63;
 /// Will always validate that the string is valid utf8, returning the appropriate error if it's not.
 CubsStringError cubs_string_init(CubsString* stringToInit, CubsStringSlice slice);
 
-/// In debug mode, will validate that a null terminator does not exist before `slice.len`.
-/// Does not check that `slice` is valid utf8.
+/// In `_DEBUG`:
+/// - Asserts that a null terminator does not exist before `slice.len`.
+/// - Asserts that the slice is valid utf8.
+///
+/// If not `_DEBUG`, does not perform those checks.
 CubsString cubs_string_init_unchecked(CubsStringSlice slice);
 
 /// Decrements the ref count, freeing the string if all references have been deinitialized.

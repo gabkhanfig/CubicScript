@@ -137,6 +137,7 @@ CubsString cubs_string_init_unchecked(CubsStringSlice slice)
     return EMPTY_STRING;
   }
 #if _DEBUG
+  assert(is_valid_utf8(slice));
   for (size_t i = 0; i < slice.len; i++) {
     assert((slice.str[i] != '\0') && "String null terminator found before provided len");
   }
