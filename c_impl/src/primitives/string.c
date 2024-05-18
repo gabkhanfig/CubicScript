@@ -403,3 +403,30 @@ size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t st
     return index_of_pos_linear(cubs_string_as_slice(self), slice, startIndex);
   //}
 }
+
+size_t cubs_string_rfind(const CubsString *self, CubsStringSlice slice, size_t startIndex)
+{
+  const CubsStringSlice selfSlice = cubs_string_as_slice(self);
+  if(slice.len > selfSlice.len) {
+    return CUBS_STRING_N_POS;
+  }
+
+  size_t i = selfSlice.len - slice.len;
+  while(true) {
+    bool foundEqual = true;
+    for(size_t strEqlIter = 0; strEqlIter < slice.len; strEqlIter++) {
+      if(selfSlice.str[i + strEqlIter] != slice.str[strEqlIter]) {
+        foundEqual = false;
+        break;
+      }
+    }
+    if(foundEqual) {
+      return i;
+    }
+    
+    if(i == 0) {
+      return CUBS_STRING_N_POS;
+    }
+    i -= 1;
+  }
+}

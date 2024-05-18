@@ -20,10 +20,12 @@ typedef struct CubsStringSlice {
   size_t len;
 } CubsStringSlice;
 
-static const size_t CUBS_STRING_N_POS = 1ULL << 63;
+/// https://cplusplus.com/reference/string/string/npos/
+static const size_t CUBS_STRING_N_POS = -1;
 
 /// In debug mode, will validate that a null terminator does not exist before `slice.len`.
 /// Will always validate that the string is valid utf8, returning the appropriate error if it's not.
+/// @returns `cubsStringErrorInvalidUtf8` if invalid utf8, or `cubsStringErrorNone` if valid.
 CubsStringError cubs_string_init(CubsString* stringToInit, CubsStringSlice slice);
 
 /// In `_DEBUG`:
@@ -61,6 +63,12 @@ CubsOrdering cubs_string_cmp(const CubsString* self, const CubsString* other);
 
 size_t cubs_string_hash(const CubsString* self);
 
+/// Iterates through `self`, searching for the first occurrence of `slice` starting at `startIndex` inclusively.
 /// Returns `CUBS_STRING_N_POS` if the value is not found. Unfortunately C does not have optionals by default.
 /// Otherwise, just returns the index where the substring starts.
 size_t cubs_string_find(const CubsString* self, CubsStringSlice slice, size_t startIndex);
+
+/// Reverse iterates through `self`, searching for the last occurrence of `slice` starting at `startIndex` inclusively.
+/// Returns `CUBS_STRING_N_POS` if the value is not found. Unfortunately C does not have optionals by default.
+/// Otherwise, just returns the index where the substring starts.
+size_t cubs_string_rfind(const CubsString* self, CubsStringSlice slice, size_t startIndex);
