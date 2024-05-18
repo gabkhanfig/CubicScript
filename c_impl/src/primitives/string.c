@@ -403,7 +403,11 @@ static size_t index_of_pos_scalar(CubsStringSlice self, CubsStringSlice slice, s
 
 size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t startIndex)
 {
-  if(slice.len > cubs_string_len(self)) {
+  const CubsStringSlice selfSlice = cubs_string_as_slice(self);
+  if((slice.len > selfSlice.len) || (startIndex + slice.len >= selfSlice.len)) {
+    return CUBS_STRING_N_POS;
+  }
+  if((startIndex > selfSlice.len) || (slice.len == 0)) {
     return CUBS_STRING_N_POS;
   }
 
@@ -421,11 +425,15 @@ size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t st
 size_t cubs_string_rfind(const CubsString *self, CubsStringSlice slice, size_t startIndex)
 {
   const CubsStringSlice selfSlice = cubs_string_as_slice(self);
-  if(slice.len > selfSlice.len) {
+  /// startIndex - slice.len may overflow. This is fine.
+  if((slice.len > selfSlice.len) || (startIndex - slice.len >= selfSlice.len)) {
+    return CUBS_STRING_N_POS;
+  }
+  if((startIndex > selfSlice.len) || (slice.len == 0)) {
     return CUBS_STRING_N_POS;
   }
 
-  size_t i = selfSlice.len - slice.len;
+  size_t i = startIndex - slice.len;
   while(true) {
     bool foundEqual = true;
     for(size_t strEqlIter = 0; strEqlIter < slice.len; strEqlIter++) {

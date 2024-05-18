@@ -66,11 +66,13 @@ size_t cubs_string_hash(const CubsString* self);
 /// Iterates through `self`, searching for the first occurrence of `slice` starting at `startIndex` inclusively.
 /// Returns `CUBS_STRING_N_POS` if the value is not found. Unfortunately C does not have optionals by default.
 /// Otherwise, just returns the index where the substring starts.
+/// The returned valid value (not `CUBS_STRING_N_POS`) is guaranteed to be valid for indexing `cubs_string_as_slice(self)`.
 size_t cubs_string_find(const CubsString* self, CubsStringSlice slice, size_t startIndex);
 
 /// Reverse iterates through `self`, searching for the last occurrence of `slice` starting at `startIndex` inclusively.
 /// Returns `CUBS_STRING_N_POS` if the value is not found. Unfortunately C does not have optionals by default.
 /// Otherwise, just returns the index where the substring starts.
+/// The returned valid value (not `CUBS_STRING_N_POS`) is guaranteed to be valid for indexing `cubs_string_as_slice(self)`.
 size_t cubs_string_rfind(const CubsString* self, CubsStringSlice slice, size_t startIndex);
 
 CubsString cubs_string_concat(const CubsString* self, const CubsString* other);

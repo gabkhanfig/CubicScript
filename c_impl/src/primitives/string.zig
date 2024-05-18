@@ -80,6 +80,10 @@ pub const String = extern struct {
         return c.cubs_string_clone(@ptrCast(self));
     }
 
+    pub fn len(self: *const Self) usize {
+        return c.cubs_string_len(self);
+    }
+
     pub fn eql(self: *const Self, other: Self) bool {
         return c.cubs_string_eql(@ptrCast(self), @ptrCast(&other));
     }
@@ -250,5 +254,41 @@ pub const String = extern struct {
         try expect(helloWorldSpace1.cmp(helloWorld1) == .Greater);
     }
 
-    test find {}
+    test find {
+        var empty = String{};
+        defer empty.deinit();
+
+        try expect(empty.find("", 0) == null);
+        try expect(empty.find("", 1) == null);
+        try expect(empty.find("A", 0) == null);
+        try expect(empty.find("A", 1) == null);
+
+        var helloworld = String.initUnchecked("hello world!");
+        defer helloworld.deinit();
+
+        try expect(helloworld.find("", 0) == null);
+        try expect(helloworld.find("", 1) == null);
+        try expect(helloworld.find("o", 0) == 4);
+        try expect(helloworld.find("o", 5) == 7);
+        try expect(helloworld.find("o", 8) == null);
+    }
+
+    test rfind {
+        var empty = String{};
+        defer empty.deinit();
+
+        try expect(empty.rfind("", 0) == null);
+        try expect(empty.rfind("", 1) == null);
+        try expect(empty.rfind("A", 0) == null);
+        try expect(empty.rfind("A", 1) == null);
+
+        var helloworld = String.initUnchecked("hello world!");
+        defer helloworld.deinit();
+
+        try expect(helloworld.rfind("", 0) == null);
+        try expect(helloworld.rfind("", 1) == null);
+        try expect(helloworld.rfind("o", helloworld.len()) == 7);
+        try expect(helloworld.rfind("o", 5) == 4);
+        try expect(helloworld.rfind("o", 1) == null);
+    }
 };
