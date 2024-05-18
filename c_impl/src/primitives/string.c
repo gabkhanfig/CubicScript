@@ -276,6 +276,52 @@ bool cubs_string_eql_slice(const CubsString *self, CubsStringSlice slice)
   return simd_compare_equal_string_and_slice(buf_start(self), slice);
 }
 
+CubsOrdering cubs_string_cmp(const CubsString *self, const CubsString *other)
+{
+  if(self->_inner == other->_inner) {
+    return cubsOrderingEqual;
+  }
+
+  const CubsStringSlice selfSlice = cubs_string_as_slice(self);
+  const CubsStringSlice otherSlice = cubs_string_as_slice(other);
+
+  if(selfSlice.len == otherSlice.len) {
+    for(size_t i = 0; i < selfSlice.len; i++) {
+      const char selfChar = selfSlice.str[i];
+      const char otherChar = otherSlice.str[i];
+      if (selfChar == otherChar) {
+        continue;
+      } else if (selfChar < otherChar) {
+        return cubsOrderingLess;
+      } else {
+        return cubsOrderingGreater;
+      }
+    }
+  }
+  else {
+    const size_t lengthToCheck = selfSlice.len > otherSlice.len ? selfSlice.len : otherSlice.len;
+    for(size_t i = 0; i < lengthToCheck; i++) {
+      char selfChar = '\0';
+      if(i < selfSlice.len) {
+        selfChar = selfSlice.str[i];
+      }
+
+      char otherChar = '\0';
+      if(i < otherSlice.len) {
+        otherChar = otherSlice.str[i];
+      }
+      if (selfChar == otherChar) {
+        continue;
+      } else if (selfChar < otherChar) {
+        return cubsOrderingLess;
+      } else {
+        return cubsOrderingGreater;
+      }
+    }
+  } 
+  return cubsOrderingEqual;
+}
+
 size_t cubs_string_hash(const CubsString *self)
 {
   #if __AVX2__

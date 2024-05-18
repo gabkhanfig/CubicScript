@@ -52,6 +52,10 @@ pub const String = extern struct {
         return c.cubs_string_eql_slice(@ptrCast(self), literalToCubsSlice(literal));
     }
 
+    pub fn cmp(self: *const Self, other: Self) Ordering {
+        return @enumFromInt(c.cubs_string_cmp(@ptrCast(self), @ptrCast(&other)));
+    }
+
     pub fn find(self: *const Self, literal: []const u8, startIndex: usize) ?usize {
         const result: usize = c.cubs_string_find(@ptrCast(self), literalToCubsSlice(literal), @intCast(startIndex));
         if (result == c.CUBS_STRING_N_POS) {
@@ -124,5 +128,99 @@ pub const String = extern struct {
 
             try expect(!s1.eql(s2));
         }
+    }
+
+    test cmp {
+        var empty1 = String{};
+        defer empty1.deinit();
+        var empty2 = String{};
+        defer empty2.deinit();
+        var emptyClone = empty1.clone();
+        defer emptyClone.deinit();
+
+        var helloWorld1 = String.initUnchecked("hello world!");
+        defer helloWorld1.deinit();
+        var helloWorld2 = String.initUnchecked("hello world!");
+        defer helloWorld2.deinit();
+        var helloWorldClone = helloWorld1.clone();
+        defer helloWorldClone.deinit();
+
+        var helloWorldAlt1 = String.initUnchecked("hallo world!");
+        defer helloWorldAlt1.deinit();
+        var helloWorldAlt2 = String.initUnchecked("hallo world!");
+        defer helloWorldAlt2.deinit();
+        var helloWorldAltClone = helloWorldAlt1.clone();
+        defer helloWorldAltClone.deinit();
+
+        var helloWorldSpace1 = String.initUnchecked("hello world! ");
+        defer helloWorldSpace1.deinit();
+        var helloWorldSpace2 = String.initUnchecked("hello world! ");
+        defer helloWorldSpace2.deinit();
+        var helloWorldSpaceClone = helloWorldSpace1.clone();
+        defer helloWorldSpaceClone.deinit();
+
+        var helloWorldLong1 = String.initUnchecked("hello to this glorious world!");
+        defer helloWorldLong1.deinit();
+        var helloWorldLong2 = String.initUnchecked("hello to this glorious world!");
+        defer helloWorldLong2.deinit();
+        var helloWorldLongClone = helloWorldLong1.clone();
+        defer helloWorldLongClone.deinit();
+
+        var helloWorldLongAlt1 = String.initUnchecked("hallo to this glorious world!");
+        defer helloWorldLongAlt1.deinit();
+        var helloWorldLongAlt2 = String.initUnchecked("hallo to this glorious world!");
+        defer helloWorldLongAlt2.deinit();
+        var helloWorldLongAltClone = helloWorldLongAlt1.clone();
+        defer helloWorldLongAltClone.deinit();
+
+        var helloWorldLongSpace1 = String.initUnchecked("hello to this glorious world! ");
+        defer helloWorldLongSpace1.deinit();
+        var helloWorldLongSpace2 = String.initUnchecked("hello to this glorious world! ");
+        defer helloWorldLongSpace2.deinit();
+        var helloWorldLongSpaceClone = helloWorldLongSpace1.clone();
+        defer helloWorldLongSpaceClone.deinit();
+
+        try expect(empty1.cmp(empty2) == .Equal);
+        try expect(empty1.cmp(emptyClone) == .Equal);
+        try expect(empty2.cmp(emptyClone) == .Equal);
+
+        try expect(helloWorld1.cmp(helloWorld2) == .Equal);
+        try expect(helloWorld1.cmp(helloWorldClone) == .Equal);
+        try expect(helloWorld2.cmp(helloWorldClone) == .Equal);
+
+        try expect(helloWorldAlt1.cmp(helloWorldAlt2) == .Equal);
+        try expect(helloWorldAlt1.cmp(helloWorldAltClone) == .Equal);
+        try expect(helloWorldAlt2.cmp(helloWorldAltClone) == .Equal);
+
+        try expect(helloWorldSpace1.cmp(helloWorldSpace2) == .Equal);
+        try expect(helloWorldSpace1.cmp(helloWorldSpaceClone) == .Equal);
+        try expect(helloWorldSpace2.cmp(helloWorldSpaceClone) == .Equal);
+
+        try expect(helloWorldLong1.cmp(helloWorldLong2) == .Equal);
+        try expect(helloWorldLong1.cmp(helloWorldLongClone) == .Equal);
+        try expect(helloWorldLong2.cmp(helloWorldLongClone) == .Equal);
+
+        try expect(helloWorldLongAlt1.cmp(helloWorldLongAlt2) == .Equal);
+        try expect(helloWorldLongAlt1.cmp(helloWorldLongAltClone) == .Equal);
+        try expect(helloWorldLongAlt2.cmp(helloWorldLongAltClone) == .Equal);
+
+        try expect(helloWorldLongSpace1.cmp(helloWorldLongSpace2) == .Equal);
+        try expect(helloWorldLongSpace1.cmp(helloWorldLongSpaceClone) == .Equal);
+        try expect(helloWorldLongSpace2.cmp(helloWorldLongSpaceClone) == .Equal);
+
+        try expect(helloWorld1.cmp(helloWorldAlt1) == .Greater);
+        try expect(helloWorldAlt1.cmp(helloWorld1) == .Less);
+
+        try expect(helloWorld1.cmp(helloWorldSpace1) == .Less);
+        try expect(helloWorldSpace1.cmp(helloWorld1) == .Greater);
+
+        try expect(helloWorldLong1.cmp(helloWorldLongAlt1) == .Greater);
+        try expect(helloWorldLongAlt1.cmp(helloWorldLong1) == .Less);
+
+        try expect(helloWorldLong1.cmp(helloWorldLongSpace1) == .Less);
+        try expect(helloWorldLongSpace1.cmp(helloWorldLong1) == .Greater);
+
+        try expect(helloWorld1.cmp(helloWorldLong1) == .Greater);
+        try expect(helloWorldLong1.cmp(helloWorld1) == .Less);
     }
 };
