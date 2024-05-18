@@ -1,6 +1,5 @@
 const std = @import("std");
 const Build = std.Build;
-const LazyPath = Build.LazyPath;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -10,7 +9,7 @@ pub fn build(b: *std.Build) void {
     cubic_script.link_libc = true;
 
     cubic_script.addCMacro("CUBS_USING_ZIG_ALLOCATOR", "1");
-    cubic_script.addIncludePath(LazyPath.relative("src"));
+    cubic_script.addIncludePath(b.path("src"));
 
     if (target.result.cpu.arch.isX86()) {
         cubic_script.addCMacro("CUBS_X86_64", "1");
@@ -18,7 +17,7 @@ pub fn build(b: *std.Build) void {
 
     const c_flags = [_][]const u8{};
     for (cubic_script_c_sources) |c_file| {
-        cubic_script.addCSourceFile(.{ .file = LazyPath.relative(c_file), .flags = &c_flags });
+        cubic_script.addCSourceFile(.{ .file = b.path(c_file), .flags = &c_flags });
     }
 
     const lib = b.addSharedLibrary(.{
@@ -38,12 +37,12 @@ pub fn build(b: *std.Build) void {
     });
     // Explicitly DON'T import the cubic script module for the tests, as including the same file twice in two different modules leads to a compilations error
     //lib_unit_tests.root_module.addImport("cubic_script", cubic_script);
-    lib_unit_tests.addIncludePath(LazyPath.relative("src"));
+    lib_unit_tests.addIncludePath(b.path("src"));
     lib_unit_tests.linkLibC();
     lib_unit_tests.defineCMacro("CUBS_USING_ZIG_ALLOCATOR", "1");
 
     for (cubic_script_c_sources) |c_file| {
-        lib_unit_tests.addCSourceFile(.{ .file = LazyPath.relative(c_file), .flags = &c_flags });
+        lib_unit_tests.addCSourceFile(.{ .file = b.path(c_file), .flags = &c_flags });
     }
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
