@@ -66,6 +66,17 @@ static bool is_valid_utf8(CubsStringSlice slice) {
   return true;
 }
 
+#if _DEBUG
+#define VALIDATE_SLICE(stringSlice) do { \
+  assert(is_valid_utf8(stringSlice)); \
+  for (size_t _sliceIter = 0; _sliceIter < stringSlice.len; _sliceIter++) { \
+    assert((stringSlice.str[_sliceIter] != '\0') && "String null terminator found before provided len"); \
+  } \
+} while(false);
+#else
+#define VALIDATE_SLICE(stringSlice)
+#endif
+
 typedef struct Inner {
     AtomicRefCount refCount;
     size_t len;
@@ -73,16 +84,23 @@ typedef struct Inner {
     size_t _padding;
 } Inner;
 
-static Inner* inner_init_slice(CubsStringSlice slice) {
-  const size_t remainder = slice.len % 32;
-  const size_t requiredStringAllocation = slice.len + (32 - remainder); // allocate 32 byte chunks for AVX2
+/// @param requiredLen Does not include null terminator
+static Inner* inner_init_zeroed(size_t requiredLen) {
+  const size_t remainder = requiredLen % 32;
+  const size_t requiredStringAllocation = requiredLen + (32 - remainder); // allocate 32 byte chunks for AVX2
   const size_t allocSize = sizeof(Inner) + requiredStringAllocation;
-  
+
   Inner* self = cubs_malloc(allocSize, STRING_ALIGN);
   memset((void*)self, 0, allocSize);
   atomic_ref_count_init(&self->refCount);
-  self->len = slice.len;
+  self->len = requiredLen;
   self->allocSize = allocSize;
+
+  return self;
+}
+
+static Inner* inner_init_slice(CubsStringSlice slice) {
+  Inner* self = inner_init_zeroed(slice.len);
 
   char* stringBufferStart = ((char*)self) + sizeof(Inner);
   memcpy((void*)stringBufferStart, (void*)slice.str, slice.len);
@@ -136,12 +154,7 @@ CubsString cubs_string_init_unchecked(CubsStringSlice slice)
   if(slice.len == 0) { 
     return EMPTY_STRING;
   }
-#if _DEBUG
-  assert(is_valid_utf8(slice));
-  for (size_t i = 0; i < slice.len; i++) {
-    assert((slice.str[i] != '\0') && "String null terminator found before provided len");
-  }
-#endif
+  VALIDATE_SLICE(slice);
   CubsString s;
   s._inner = (void*)inner_init_slice(slice);
   return s;
@@ -385,6 +398,7 @@ static size_t index_of_pos_linear(CubsStringSlice self, CubsStringSlice slice, s
 }
 
 static size_t index_of_pos_scalar(CubsStringSlice self, CubsStringSlice slice, size_t startIndex) {
+  return CUBS_STRING_N_POS;
 }
 
 size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t startIndex)
@@ -429,4 +443,40 @@ size_t cubs_string_rfind(const CubsString *self, CubsStringSlice slice, size_t s
     }
     i -= 1;
   }
+}
+
+static CubsString concat_valid_slices(CubsStringSlice lhs, CubsStringSlice rhs) {
+  const size_t requiredLen = lhs.len + rhs.len;
+
+  Inner* inner = inner_init_zeroed(requiredLen);
+
+  char* stringBufferStart = ((char*)inner) + sizeof(Inner);
+  memcpy((void*)stringBufferStart, (void*)lhs.str, lhs.len);
+  memcpy((void*)(stringBufferStart + lhs.len), (void*)rhs.str, rhs.len);
+
+  CubsString s;
+  s._inner = (void*)inner;
+  return s;
+}
+
+CubsString cubs_string_concat(const CubsString* self, const CubsString* other)
+{
+  return concat_valid_slices(cubs_string_as_slice(self), cubs_string_as_slice(other));
+}
+
+CubsStringError cubs_string_concat_slice(CubsString *out, const CubsString *self, CubsStringSlice slice)
+{
+  if (is_valid_utf8(slice)) {
+    (*out) = concat_valid_slices(cubs_string_as_slice(self), slice);
+    return cubsStringErrorNone;
+  }
+  else {
+    return cubsStringErrorInvalidUtf8;
+  }
+}
+
+CubsString cubs_string_concat_slice_unchecked(const CubsString *self, CubsStringSlice slice)
+{
+  VALIDATE_SLICE(slice);
+  concat_valid_slices(cubs_string_as_slice(self), slice);
 }

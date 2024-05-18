@@ -37,6 +37,9 @@ const c = struct {
     extern fn cubs_string_hash(self: *const String) callconv(.C) usize;
     extern fn cubs_string_find(self: *const String, slice: Slice, startIndex: usize) callconv(.C) usize;
     extern fn cubs_string_rfind(self: *const String, slice: Slice, startIndex: usize) callconv(.C) usize;
+    extern fn cubs_string_concat(self: *const String, other: *const String) callconv(.C) String;
+    extern fn cubs_string_concat_slice(out: *String, self: *const String, slice: Slice) callconv(.C) c.Err;
+    extern fn cubs_string_concat_slice_unchecked(self: *const String, slice: Slice) callconv(.C) String;
 };
 
 pub const String = extern struct {
@@ -107,6 +110,30 @@ pub const String = extern struct {
             return null;
         }
         return @intCast(result);
+    }
+
+    pub fn concat(self: *const Self, other: Self) Self {
+        return c.cubs_string_concat(self, other);
+    }
+
+    pub fn concatSlice(self: *const Self, slice: []const u8) Error!Self {
+        var new: String = undefined;
+        const result = c.cubs_string_concat_slice(&new, self, c.Slice.fromLiteral(slice));
+        switch (result) {
+            .None => {
+                return new;
+            },
+            .InvalidUtf8 => {
+                return Error.InvalidUtf8;
+            },
+            else => {
+                unreachable;
+            },
+        }
+    }
+
+    pub fn concatSliceUnchecked(self: *const Self, slice: []const u8) Self {
+        return c.cubs_string_concat_slice_unchecked(self, c.Slice.fromLiteral(slice));
     }
 
     test init {
