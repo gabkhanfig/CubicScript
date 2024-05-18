@@ -56,6 +56,10 @@ pub const String = extern struct {
         return @enumFromInt(c.cubs_string_cmp(@ptrCast(self), @ptrCast(&other)));
     }
 
+    pub fn hash(self: *const Self) usize {
+        return @intCast(c.cubs_string_hash(@ptrCast(self)));
+    }
+
     pub fn find(self: *const Self, literal: []const u8, startIndex: usize) ?usize {
         const result: usize = c.cubs_string_find(@ptrCast(self), literalToCubsSlice(literal), @intCast(startIndex));
         if (result == c.CUBS_STRING_N_POS) {
