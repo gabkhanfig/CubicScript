@@ -486,5 +486,5 @@ CubsStringError cubs_string_concat_slice(CubsString *out, const CubsString *self
 CubsString cubs_string_concat_slice_unchecked(const CubsString *self, CubsStringSlice slice)
 {
   VALIDATE_SLICE(slice);
-  concat_valid_slices(cubs_string_as_slice(self), slice);
+  return concat_valid_slices(cubs_string_as_slice(self), slice);
 }
