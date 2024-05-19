@@ -324,4 +324,46 @@ pub const String = extern struct {
             try expect(std.mem.eql(u8, concatenated.asSlice(), "erm... hello world!"));
         }
     }
+
+    test concatSlice {
+        { // empty + something
+            var empty = String{};
+            defer empty.deinit();
+
+            var concatenated = try empty.concatSlice("hello world!");
+            defer concatenated.deinit();
+
+            try expect(std.mem.eql(u8, concatenated.asSlice(), "hello world!"));
+        }
+        { // something + empty
+            var helloworld = String.initUnchecked("hello world!");
+            defer helloworld.deinit();
+
+            var concatenated = try helloworld.concatSlice("");
+            defer concatenated.deinit();
+
+            try expect(std.mem.eql(u8, concatenated.asSlice(), "hello world!"));
+        }
+        { // something + something
+            var erm = String.initUnchecked("erm... ");
+            defer erm.deinit();
+
+            var concatenated = try erm.concatSlice("hello world!");
+            defer concatenated.deinit();
+
+            try expect(std.mem.eql(u8, concatenated.asSlice(), "erm... hello world!"));
+        }
+        { // empty + invalid utf8
+            var empty = String{};
+            defer empty.deinit();
+
+            try std.testing.expectError(String.Error.InvalidUtf8, empty.concatSlice("\xFFFF"));
+        }
+        { // something + invalid utf8
+            var helloworld = String.initUnchecked("hello world!");
+            defer helloworld.deinit();
+
+            try std.testing.expectError(String.Error.InvalidUtf8, helloworld.concatSlice("\xFFFF"));
+        }
+    }
 };
