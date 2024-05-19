@@ -91,3 +91,5 @@ CubsStringError cubs_string_concat_slice(CubsString* out, const CubsString* self
 ///
 /// If not `_DEBUG`, does not perform those checks.
 CubsString cubs_string_concat_slice_unchecked(const CubsString* self, CubsStringSlice slice);
+
+CubsString cubs_string_from_bool(bool b);

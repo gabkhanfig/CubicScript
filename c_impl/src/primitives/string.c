@@ -488,3 +488,34 @@ CubsString cubs_string_concat_slice_unchecked(const CubsString *self, CubsString
   VALIDATE_SLICE(slice);
   return concat_valid_slices(cubs_string_as_slice(self), slice);
 }
+
+typedef struct _PredefinedStringInner {
+  _Alignas(32) Inner inner;
+  _Alignas(32) char buf[32];
+} PredefinedStringInner;
+
+/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
+PredefinedStringInner TRUE_INNER = {
+  .inner = {.refCount = {.count = 1}, .len = 4, .allocSize = 0, ._padding = 0},
+  // Explicitly zero out the memory
+  .buf = {'t', 'r', 'u', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
+const CubsString TRUE_STRING = {._inner = (void*)&TRUE_INNER};
+
+/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
+PredefinedStringInner FALSE_INNER = {
+  .inner = {.refCount = {.count = 1}, .len = 4, .allocSize = 0, ._padding = 0},
+  // Explicitly zero out the memory
+  .buf = {'f', 'a', 'l', 's', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
+const CubsString FALSE_STRING = {._inner = (void*)&FALSE_INNER};
+
+CubsString cubs_string_from_bool(bool b) {
+  if(b) {
+    return cubs_string_clone(&TRUE_STRING);
+  }
+  else {
+    return cubs_string_clone(&FALSE_STRING);
+  }
+}
+

@@ -40,6 +40,7 @@ const c = struct {
     extern fn cubs_string_concat(self: *const String, other: *const String) callconv(.C) String;
     extern fn cubs_string_concat_slice(out: *String, self: *const String, slice: Slice) callconv(.C) c.Err;
     extern fn cubs_string_concat_slice_unchecked(self: *const String, slice: Slice) callconv(.C) String;
+    extern fn cubs_string_from_bool(b: bool) String;
 };
 
 pub const String = extern struct {
@@ -143,6 +144,10 @@ pub const String = extern struct {
 
     pub fn concatSliceUnchecked(self: *const Self, slice: []const u8) Self {
         return c.cubs_string_concat_slice_unchecked(self, c.Slice.fromLiteral(slice));
+    }
+
+    pub fn fromBool(b: bool) Self {
+        return c.cubs_string_from_bool(b);
     }
 
     test init {
@@ -396,5 +401,28 @@ pub const String = extern struct {
             try expect(std.mem.eql(u8, concatenated.asSlice(), "erm... hello world!"));
         }
         // doing invalid utf8 will result in a panic
+    }
+
+    test fromBool {
+        var strTrue = String.fromBool(true);
+        defer strTrue.deinit();
+
+        try expect(std.mem.eql(u8, strTrue.asSlice(), "true"));
+
+        var strFalse = String.fromBool(false);
+        defer strFalse.deinit();
+
+        try expect(std.mem.eql(u8, strFalse.asSlice(), "false"));
+        { // validate equal to normally created
+            var trueTest = String.initUnchecked("true");
+            defer trueTest.deinit();
+
+            try expect(strTrue.eql(trueTest));
+
+            var falseTest = String.initUnchecked("false");
+            defer falseTest.deinit();
+
+            try expect(strFalse.eql(falseTest));
+        }
     }
 };
