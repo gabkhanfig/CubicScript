@@ -86,8 +86,8 @@ typedef struct Inner {
 
 /// @param requiredLen Does not include null terminator
 static Inner* inner_init_zeroed(size_t requiredLen) {
-  const size_t remainder = requiredLen % 32;
-  const size_t requiredStringAllocation = requiredLen + (32 - remainder); // allocate 32 byte chunks for AVX2
+  const size_t remainder = (requiredLen + 1) % 32;
+  const size_t requiredStringAllocation = (requiredLen + 1) + (32 - remainder); // allocate 32 byte chunks for AVX2
   const size_t allocSize = sizeof(Inner) + requiredStringAllocation;
 
   Inner* self = cubs_malloc(allocSize, STRING_ALIGN);
