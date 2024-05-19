@@ -84,6 +84,11 @@ pub const String = extern struct {
         return c.cubs_string_len(self);
     }
 
+    pub fn asSlice(self: *const Self) []const u8 {
+        const slice = c.cubs_string_as_slice(self);
+        return slice.str[0..slice.len];
+    }
+
     pub fn eql(self: *const Self, other: Self) bool {
         return c.cubs_string_eql(@ptrCast(self), @ptrCast(&other));
     }
@@ -117,7 +122,7 @@ pub const String = extern struct {
     }
 
     pub fn concat(self: *const Self, other: Self) Self {
-        return c.cubs_string_concat(self, other);
+        return c.cubs_string_concat(self, &other);
     }
 
     pub fn concatSlice(self: *const Self, slice: []const u8) Error!Self {
@@ -290,5 +295,33 @@ pub const String = extern struct {
         try expect(helloworld.rfind("o", helloworld.len()) == 7);
         try expect(helloworld.rfind("o", 5) == 4);
         try expect(helloworld.rfind("o", 1) == null);
+    }
+
+    test concat {
+        var empty = String{};
+        defer empty.deinit();
+        var helloworld = String.initUnchecked("hello world!");
+        defer helloworld.deinit();
+        var erm = String.initUnchecked("erm... ");
+        defer erm.deinit();
+
+        { // empty + something
+            var concatenated = empty.concat(helloworld);
+            defer concatenated.deinit();
+
+            try expect(std.mem.eql(u8, concatenated.asSlice(), "hello world!"));
+        }
+        { // something + empty
+            var concatenated = helloworld.concat(empty);
+            defer concatenated.deinit();
+
+            try expect(std.mem.eql(u8, concatenated.asSlice(), "hello world!"));
+        }
+        { // something + something
+            var concatenated = erm.concat(helloworld);
+            defer concatenated.deinit();
+
+            try expect(std.mem.eql(u8, concatenated.asSlice(), "erm... hello world!"));
+        }
     }
 };
