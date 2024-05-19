@@ -92,4 +92,12 @@ CubsStringError cubs_string_concat_slice(CubsString* out, const CubsString* self
 /// If not `_DEBUG`, does not perform those checks.
 CubsString cubs_string_concat_slice_unchecked(const CubsString* self, CubsStringSlice slice);
 
+/// Converts a bool to an string. Does not allocate any memory, as the memory `"true"` and `"false"` strings
+/// are already laid out at compile time.
 CubsString cubs_string_from_bool(bool b);
+
+/// Converts a signed 64 bit integer to an string. 
+/// If `num == 0`, or `num == 1`, or `num == -1`, doesn't allocate any memory, as the memory for
+/// `"0"`, `"1"`, and `"-1"` strings are already laid out at compile time.
+/// Otherwise, memory is allocated.
+CubsString cubs_string_from_int(int64_t num);

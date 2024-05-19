@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include "../util/panic.h"
 #include <immintrin.h>
+#include <stdio.h>
+#include "../util/unreachable.h"
 
 #define STRING_ALIGN 32
 
@@ -257,17 +259,19 @@ static bool simd_compare_equal_string_and_slice(const char* buffer, const CubsSt
   __m256i otherVec; // initializing the memory is unnecessary
 
   size_t i = 0;
-  for(; i <= (slice.len - 32); i += 32) {
-		memcpy(&otherVec, slice.str + i, 32);
-    const __m256i result = _mm256_cmpeq_epi8(*thisVec, otherVec);
-    const int mask = _mm256_movemask_epi8(result);
-		if(mask == (int)~0) {
-      thisVec++;
-      continue;
+  if(slice.len >= 32) {
+    for(; i <= (slice.len - 32); i += 32) {
+      memcpy(&otherVec, slice.str + i, 32);
+      const __m256i result = _mm256_cmpeq_epi8(*thisVec, otherVec);
+      const int mask = _mm256_movemask_epi8(result);
+      if(mask == (int)~0) {
+        thisVec++;
+        continue;
+      }
+      return false;
     }
-    return false;
   }
-
+  
   for(; i < slice.len; i++) {
     if(buffer[i] != slice.str[i]) return false;
   }
@@ -504,7 +508,7 @@ const CubsString TRUE_STRING = {._inner = (void*)&TRUE_INNER};
 
 /// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
 PredefinedStringInner FALSE_INNER = {
-  .inner = {.refCount = {.count = 1}, .len = 4, .allocSize = 0, ._padding = 0},
+  .inner = {.refCount = {.count = 1}, .len = 5, .allocSize = 0, ._padding = 0},
   // Explicitly zero out the memory
   .buf = {'f', 'a', 'l', 's', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
@@ -519,3 +523,53 @@ CubsString cubs_string_from_bool(bool b) {
   }
 }
 
+/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
+PredefinedStringInner ZERO_INNER = {
+  .inner = {.refCount = {.count = 1}, .len = 1, .allocSize = 0, ._padding = 0},
+  // Explicitly zero out the memory
+  .buf = {'0', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
+const CubsString ZERO_STRING = {._inner = (void*)&ZERO_INNER};
+
+/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
+PredefinedStringInner ONE_INNER = {
+  .inner = {.refCount = {.count = 1}, .len = 1, .allocSize = 0, ._padding = 0},
+  // Explicitly zero out the memory
+  .buf = {'1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
+const CubsString ONE_STRING = {._inner = (void*)&ONE_INNER};
+
+/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
+PredefinedStringInner NEGATIVE_ONE_INNER = {
+  .inner = {.refCount = {.count = 1}, .len = 2, .allocSize = 0, ._padding = 0},
+  // Explicitly zero out the memory
+  .buf = {'-', '1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+};
+const CubsString NEGATIVE_ONE_STRING = {._inner = (void*)&NEGATIVE_ONE_INNER};
+
+CubsString cubs_string_from_int(int64_t num)
+{
+  // 0 and 1 are reasonably likely values
+  if(num == 0) {
+    return cubs_string_clone(&ZERO_STRING);
+  }
+  if(num == 1) {
+    return cubs_string_clone(&ONE_STRING);
+  }
+  if(num == -1) {
+    return cubs_string_clone(&NEGATIVE_ONE_STRING);
+  }
+    
+  // This is enough to handle all 64 bit integer values
+  #define STRING_INT_BUFFER_SIZE 21
+  char temp[STRING_INT_BUFFER_SIZE];
+  // https://en.cppreference.com/w/c/io/fprintf
+  const int len = sprintf_s((char*)&temp, STRING_INT_BUFFER_SIZE, "%lld", num);
+  #if _DEBUG
+  if(len < 0) {
+    unreachable();
+  }
+  #endif
+  const CubsStringSlice slice = {.str = (const char*)&temp, .len = len};
+  return cubs_string_init_unchecked(slice);
+}

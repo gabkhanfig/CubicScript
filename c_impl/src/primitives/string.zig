@@ -41,6 +41,7 @@ const c = struct {
     extern fn cubs_string_concat_slice(out: *String, self: *const String, slice: Slice) callconv(.C) c.Err;
     extern fn cubs_string_concat_slice_unchecked(self: *const String, slice: Slice) callconv(.C) String;
     extern fn cubs_string_from_bool(b: bool) String;
+    extern fn cubs_string_from_int(b: i64) String;
 };
 
 pub const String = extern struct {
@@ -148,6 +149,10 @@ pub const String = extern struct {
 
     pub fn fromBool(b: bool) Self {
         return c.cubs_string_from_bool(b);
+    }
+
+    pub fn fromInt(num: i64) Self {
+        return c.cubs_string_from_int(num);
     }
 
     test init {
@@ -423,6 +428,63 @@ pub const String = extern struct {
             defer falseTest.deinit();
 
             try expect(strFalse.eql(falseTest));
+        }
+    }
+
+    test fromInt {
+        {
+            var s = String.fromInt(0);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("0"));
+        }
+        {
+            var s = String.fromInt(1);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("1"));
+        }
+        {
+            var s = String.fromInt(-1);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("-1"));
+        }
+        {
+            var s = String.fromInt(5);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("5"));
+        }
+        {
+            var s = String.fromInt(-5);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("-5"));
+        }
+        {
+            var s = String.fromInt(98765);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("98765"));
+        }
+        {
+            var s = String.fromInt(-98765);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("-98765"));
+        }
+        {
+            var s = String.fromInt(std.math.maxInt(i64));
+            defer s.deinit();
+
+            try expect(s.eqlSlice("9223372036854775807"));
+        }
+        {
+            var s = String.fromInt(std.math.minInt(i64));
+            defer s.deinit();
+
+            try expect(s.eqlSlice("-9223372036854775808"));
         }
     }
 };
