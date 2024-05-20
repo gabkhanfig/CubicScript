@@ -472,6 +472,17 @@ pub const String = extern struct {
             try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(helloworld.len() + 1, 1000000));
             try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(helloworld.len() + 1, 0));
         }
+        {
+            var utf8text = try String.init("你好");
+            defer utf8text.deinit();
+
+            try std.testing.expectError(Error.InvalidUtf8, utf8text.substr(1, utf8text.len()));
+
+            var validSub = try utf8text.substr(3, utf8text.len());
+            defer validSub.deinit();
+
+            try expect(validSub.eqlSlice("好"));
+        }
     }
 
     test fromBool {
