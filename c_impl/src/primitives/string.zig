@@ -40,6 +40,7 @@ const c = struct {
     extern fn cubs_string_concat(self: *const String, other: *const String) callconv(.C) String;
     extern fn cubs_string_concat_slice(out: *String, self: *const String, slice: Slice) callconv(.C) c.Err;
     extern fn cubs_string_concat_slice_unchecked(self: *const String, slice: Slice) callconv(.C) String;
+    extern fn cubs_string_substr(out: *String, self: *const String, startInclusive: usize, endExclusive: usize) Err;
     extern fn cubs_string_from_bool(b: bool) String;
     extern fn cubs_string_from_int(b: i64) String;
     extern fn cubs_string_from_float(b: f64) String;
@@ -146,6 +147,25 @@ pub const String = extern struct {
 
     pub fn concatSliceUnchecked(self: *const Self, slice: []const u8) Self {
         return c.cubs_string_concat_slice_unchecked(self, c.Slice.fromLiteral(slice));
+    }
+
+    pub fn substr(self: *const Self, startInclusive: usize, endExclusive: usize) Error!Self {
+        var newStr: String = undefined;
+        const result = c.cubs_string_substr(&newStr, self, startInclusive, endExclusive);
+        switch (result) {
+            .None => {
+                return newStr;
+            },
+            .InvalidUtf8 => {
+                return Error.InvalidUtf8;
+            },
+            .IndexOutOfBounds => {
+                return Error.IndexOutOfBounds;
+            },
+            // else => {
+            //     unreachable;
+            // },
+        }
     }
 
     pub fn fromBool(b: bool) Self {
@@ -411,6 +431,47 @@ pub const String = extern struct {
             try expect(std.mem.eql(u8, concatenated.asSlice(), "erm... hello world!"));
         }
         // doing invalid utf8 will result in a panic
+    }
+
+    test substr {
+        {
+            var empty = String{};
+            defer empty.deinit();
+
+            var emptySub = try empty.substr(0, 0);
+            defer emptySub.deinit();
+
+            try expect(emptySub.len() == 0);
+
+            try std.testing.expectError(Error.IndexOutOfBounds, empty.substr(0, 1));
+            try std.testing.expectError(Error.IndexOutOfBounds, empty.substr(1, 0));
+            try std.testing.expectError(Error.IndexOutOfBounds, empty.substr(1, 2));
+            try std.testing.expectError(Error.IndexOutOfBounds, empty.substr(2, 2));
+        }
+        {
+            var helloworld = String.initUnchecked("hello world!");
+            defer helloworld.deinit();
+
+            var emptySub = try helloworld.substr(0, 0);
+            defer emptySub.deinit();
+
+            try expect(emptySub.len() == 0);
+
+            var helloSub = try helloworld.substr(0, "hello".len);
+            defer helloSub.deinit();
+
+            try expect(helloSub.eqlSlice("hello"));
+
+            var worldSub = try helloworld.substr("hello ".len, helloworld.len());
+            defer worldSub.deinit();
+
+            try expect(worldSub.eqlSlice("world!"));
+
+            try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(0, helloworld.len() + 1));
+            try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(5, 4));
+            try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(helloworld.len() + 1, 1000000));
+            try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(helloworld.len() + 1, 0));
+        }
     }
 
     test fromBool {

@@ -493,6 +493,29 @@ CubsString cubs_string_concat_slice_unchecked(const CubsString *self, CubsString
   return concat_valid_slices(cubs_string_as_slice(self), slice);
 }
 
+CubsStringError cubs_string_substr(CubsString *out, const CubsString *self, size_t startInclusive, size_t endExclusive)
+{
+  if(startInclusive == 0 && endExclusive == 0) {   
+    (*out) = EMPTY_STRING;
+    return cubsStringErrorNone;
+  }
+
+  const CubsStringSlice selfSlice = cubs_string_as_slice(self);
+  if(startInclusive >= selfSlice.len || endExclusive > selfSlice.len || startInclusive > endExclusive) {
+    return cubsStringErrorIndexOutOfBounds;
+  }
+
+  if(startInclusive == endExclusive) {
+    (*out) = EMPTY_STRING;
+    return cubsStringErrorNone;
+  }
+
+  const size_t len = endExclusive - startInclusive;
+  const CubsStringSlice subSlice = {.str = &selfSlice.str[startInclusive], .len = len};
+  // `cubs_string_init()` only returns a none error or invalid utf8, which will be propegated
+  return cubs_string_init(out, subSlice);
+}
+
 typedef struct _PredefinedStringInner {
   _Alignas(32) Inner inner;
   _Alignas(32) char buf[32];

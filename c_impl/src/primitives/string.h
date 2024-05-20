@@ -92,6 +92,17 @@ CubsStringError cubs_string_concat_slice(CubsString* out, const CubsString* self
 /// If not `_DEBUG`, does not perform those checks.z
 CubsString cubs_string_concat_slice_unchecked(const CubsString* self, CubsStringSlice slice);
 
+/// Creates a substring of this string from the range `startInclusive` to `endExclusive`. If they are equal, 
+/// `out` will be assigned to an empty string. 
+/// @param out The outparam of the new substring.
+/// @param startInclusive The byte index that the substring starts at, NOT utf8 codepoint index. The substring will include this character, 
+/// hence "Inclusive". It may not be greater than the length of `self`, or `endExclusive`.
+/// @param endExclusive The byte index that the substring ends at, NOT utf8 codepoint index. The substring terminates right before this character, 
+/// hence "Exclusive". It may not be greater than the length of `self`.
+/// @return `cubsStringErrorNone` if everything is ok, `cubsStringErrorOutOfRange` if either the start or end are out of range,
+/// or `cubsStringErrorInvalidUtf8` if the substring is not valid utf8.
+CubsStringError cubs_string_substr(CubsString* out, const CubsString* self, size_t startInclusive, size_t endExclusive);
+
 /// Converts a bool to an string. Does not allocate any memory, as the memory `"true"` and `"false"` strings
 /// are already laid out at compile time.
 CubsString cubs_string_from_bool(bool b);
