@@ -42,6 +42,7 @@ const c = struct {
     extern fn cubs_string_concat_slice_unchecked(self: *const String, slice: Slice) callconv(.C) String;
     extern fn cubs_string_from_bool(b: bool) String;
     extern fn cubs_string_from_int(b: i64) String;
+    extern fn cubs_string_from_float(b: f64) String;
 };
 
 pub const String = extern struct {
@@ -153,6 +154,10 @@ pub const String = extern struct {
 
     pub fn fromInt(num: i64) Self {
         return c.cubs_string_from_int(num);
+    }
+
+    pub fn fromFloat(num: f64) Self {
+        return c.cubs_string_from_float(num);
     }
 
     test init {
@@ -485,6 +490,48 @@ pub const String = extern struct {
             defer s.deinit();
 
             try expect(s.eqlSlice("-9223372036854775808"));
+        }
+    }
+
+    test fromFloat {
+        {
+            var s = String.fromFloat(0);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("0"));
+        }
+        {
+            var s = String.fromFloat(1);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("1"));
+        }
+        {
+            var s = String.fromFloat(-1);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("-1"));
+        }
+        {
+            var s = String.fromFloat(-1000.55);
+            defer s.deinit();
+
+            try expect(s.eqlSlice("-1000.55"));
+        }
+        // https://stackoverflow.com/questions/3793838/which-is-the-first-integer-that-an-ieee-754-float-is-incapable-of-representing-e
+        {
+            var s32bit = String.fromFloat(16777217);
+            defer s32bit.deinit();
+
+            // Will absolutely work cause CubicScript uses 64 bit floats
+            try expect(s32bit.eqlSlice("16777217"));
+
+            var s64bit = String.fromFloat(9007199254740993);
+            defer s64bit.deinit();
+
+            // Will not work because the value is too big to be represented by a 64 bit float
+            try expect(!s64bit.eqlSlice("9007199254740993"));
+            try expect(s64bit.eqlSlice("9007199254740992"));
         }
     }
 };

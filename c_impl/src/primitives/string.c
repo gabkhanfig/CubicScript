@@ -549,7 +549,7 @@ const CubsString NEGATIVE_ONE_STRING = {._inner = (void*)&NEGATIVE_ONE_INNER};
 
 CubsString cubs_string_from_int(int64_t num)
 {
-  // 0 and 1 are reasonably likely values
+  // 0, 1, and -1 are reasonably likely values
   if(num == 0) {
     return cubs_string_clone(&ZERO_STRING);
   }
@@ -571,5 +571,59 @@ CubsString cubs_string_from_int(int64_t num)
   }
   #endif
   const CubsStringSlice slice = {.str = (const char*)&temp, .len = len};
+  return cubs_string_init_unchecked(slice);
+}
+
+CubsString cubs_string_from_float(double num) {
+  // 0, 1, and -1 are reasonably likely values
+  if(num == 0.0) {
+    return cubs_string_clone(&ZERO_STRING);
+  }
+  if(num == 1.0) {
+    return cubs_string_clone(&ONE_STRING);
+  }
+  if(num == -1.0) {
+    return cubs_string_clone(&NEGATIVE_ONE_STRING);
+  }
+
+  // https://stackoverflow.com/questions/1701055/what-is-the-maximum-length-in-chars-needed-to-represent-any-double-value
+  #define STRING_INT_BUFFER_SIZE 1079
+  char temp[STRING_INT_BUFFER_SIZE];
+  // https://en.cppreference.com/w/c/io/fprintf
+  // Is there a way to automatically remove trailing zeroes?
+  // %g Doesn't seem to remove trailing zeroes 
+  const int len = sprintf_s((char*)&temp, STRING_INT_BUFFER_SIZE, "%f", num);
+  #if _DEBUG
+  if(len < 0) {
+    unreachable();
+  }
+  #endif
+  
+  int decimalIndex = -1;
+  for(int i = 0; i < len; i++) {
+    if(temp[i] == '.') {
+      decimalIndex = i;
+      break;
+    }
+  }
+
+  #if _DEBUG
+  assert(decimalIndex != -1);
+  #endif
+
+  CubsStringSlice slice = {.str = (const char*)&temp, .len = len};
+
+  for(int i = len; i > decimalIndex; i--) {
+    if(temp[i - 1] == '0') {
+      slice.len -= 1;
+    }
+    else if(temp[i - 1] == '.') {
+      slice.len -= 1;
+    }
+    else {
+      break;
+    }
+  }
+
   return cubs_string_init_unchecked(slice);
 }

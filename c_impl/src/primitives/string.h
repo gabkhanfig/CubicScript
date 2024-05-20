@@ -89,7 +89,7 @@ CubsStringError cubs_string_concat_slice(CubsString* out, const CubsString* self
 /// - Asserts that a null terminator does not exist before `slice.len`.
 /// - Asserts that the slice is valid utf8.
 ///
-/// If not `_DEBUG`, does not perform those checks.
+/// If not `_DEBUG`, does not perform those checks.z
 CubsString cubs_string_concat_slice_unchecked(const CubsString* self, CubsStringSlice slice);
 
 /// Converts a bool to an string. Does not allocate any memory, as the memory `"true"` and `"false"` strings
@@ -101,3 +101,7 @@ CubsString cubs_string_from_bool(bool b);
 /// `"0"`, `"1"`, and `"-1"` strings are already laid out at compile time.
 /// Otherwise, memory is allocated.
 CubsString cubs_string_from_int(int64_t num);
+
+/// Converts a 64 bit float to a string in decimal notation in the style `-ddd.ddd`.
+/// Uses the `%f` format specifier, but also removes trailing zeroes.
+CubsString cubs_string_from_float(double num);
