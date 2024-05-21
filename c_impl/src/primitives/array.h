@@ -35,9 +35,24 @@ void cubs_array_push_unchecked(CubsArray* self, CubsRawValue value);
 /// NOTE should this return an error if the tags are mismatched, or just assert?
 void cubs_array_push(CubsArray* self, CubsTaggedValue value);
 
+/// Mutation operations on `self`. may invalidate the returned pointer.
 /// In debug, asserts that `index` is less than the `cubs_array_len(self)`.
 const CubsRawValue* cubs_array_at_unchecked(const CubsArray* self, size_t index);
 
+/// Mutation operations on `self`. may invalidate `out`.
 /// If `index >= cubs_array_len(self)`, returns `cubsArrayErrorOutOfRange`,
 /// otherwise returns `cubsArrayErrorNone`.
+/// `out` must be a pointer to a variable of type `const CubsRawValue*`, as it's used 
+/// to get the actual data.
 CubsArrayError cubs_array_at(const CubsRawValue** out, const CubsArray* self, size_t index);
+
+/// Mutation operations on `self`. may invalidate the returned pointer.
+/// In debug, asserts that `index` is less than the `cubs_array_len(self)`.
+CubsRawValue* cubs_array_at_mut_unchecked(CubsArray* self, size_t index);
+
+/// Mutation operations on `self`. may invalidate `out`.
+/// If `index >= cubs_array_len(self)`, returns `cubsArrayErrorOutOfRange`,
+/// otherwise returns `cubsArrayErrorNone`.
+/// `out` must be a pointer to a variable of type `CubsRawValue*`, as it's used 
+/// to get the actual data.
+CubsArrayError cubs_array_at_mut(CubsRawValue** out, CubsArray* self, size_t index);
