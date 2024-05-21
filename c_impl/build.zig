@@ -74,6 +74,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/util/rwlock.c",
     "src/util/panic.c",
     "src/util/math.c",
+    "src/util/script_thread.c",
 
     "src/primitives/string.c",
     "src/primitives/script_value.c",

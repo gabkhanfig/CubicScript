@@ -16,6 +16,7 @@ add_library(CubicScript STATIC
   "src/util/rwlock.c"
   "src/util/panic.c"
   "src/util/math.c"
+  "src/util/script_thread.c"
   "src/primitives/string.c"
   "src/primitives/script_value.c"
 )
