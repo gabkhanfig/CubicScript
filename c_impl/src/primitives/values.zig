@@ -62,6 +62,6 @@ pub const RawValue = extern union {
 
 /// Compatible with C
 pub const TaggedValue = extern struct {
-    value: RawValue,
     tag: ValueTag,
+    value: RawValue,
 };
