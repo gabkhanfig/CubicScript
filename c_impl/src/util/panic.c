@@ -20,6 +20,6 @@ void cubs_panic(const char *message)
     unreachable();
 }
 
-#endif
+#endif // WIN32
 
 
