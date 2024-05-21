@@ -13,7 +13,7 @@ typedef struct {
     HANDLE thread;
     DWORD identifier;
     /// May be NULL
-    void* owner;
+    bool closeWithScript;
 } CubsThreadWindowsImpl;
 
 static DWORD WINAPI windows_thread_loop(CubsThreadWindowsImpl* self) {
@@ -28,7 +28,7 @@ static void windows_thread_close(CubsThreadWindowsImpl* self) {
 
 /// If `self` has an owner, don't bother freeing the thread on script close.
 static void windows_thread_on_script_close(CubsThreadWindowsImpl* self) {
-    if(self->owner != NULL) {
+    if(self->closeWithScript == false) {
         return;
     }
 
@@ -45,9 +45,7 @@ const CubsThreadVTable windowsVTable = {
     .close = (CubsThreadClose)&windows_thread_close,
 };
 
-
-
-CubsThread cubs_thread_spawn(void* optionalOwner)
+CubsThread cubs_thread_spawn(bool closeWithScript)
 {
     CubsThread thread = {.threadObj = NULL, .vtable = NULL};
 
@@ -69,7 +67,7 @@ CubsThread cubs_thread_spawn(void* optionalOwner)
 
     impl->thread = handle;
     impl->identifier = identifier;
-    impl->owner = optionalOwner;
+    impl->closeWithScript = closeWithScript;
 
     thread.threadObj = (void*)impl;
     thread.vtable = &windowsVTable;
@@ -77,8 +75,6 @@ CubsThread cubs_thread_spawn(void* optionalOwner)
     
     return thread;
 }
-
-
 
 #endif // WIN32
 

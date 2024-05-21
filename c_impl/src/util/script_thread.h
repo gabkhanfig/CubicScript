@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 /// A function pointer for when the script instance has closed and the thread is no longer needed.
 typedef void(*CubsThreadOnScriptClose)(void* threadObj);
 typedef int(*CubsThreadGetId)(const void* threadObj);
@@ -19,7 +21,7 @@ typedef struct CubsThread {
     const CubsThreadVTable* vtable;
 } CubsThread;
 
-CubsThread cubs_thread_spawn(void* optionalOwner);
+CubsThread cubs_thread_spawn(bool closeWithScript);
 
 void cubs_thread_close(CubsThread* thread);
 
