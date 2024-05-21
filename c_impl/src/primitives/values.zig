@@ -1,3 +1,6 @@
+const String = @import("string.zig").String;
+const Array = @import("array.zig").Array;
+
 pub const ValueTag = enum(c_int) {
     None = 0,
     Bool = 1,
@@ -26,4 +29,39 @@ pub const ValueTag = enum(c_int) {
     Vec4f = 24,
     Mat3f = 25,
     Mat4f = 26,
+};
+
+pub const RawValue = extern union {
+    boolean: bool,
+    int: i64,
+    float: f64,
+    string: String,
+    array: Array,
+    // map: Map,
+    // set: Set,
+    // option: Option,
+    // result: Result,
+    // class: Class,
+    // ownedInterface: OwnedInterface,
+    // interfaceRef: *InterfaceRef,
+    // constRef: ValueConstRef,
+    // mutRef: ValueMutRef,
+    // unique: Unique,
+    // shared: Shared,
+    // weak: Weak,
+    // functionPtr: FunctionPtr,
+    // vec2i: Vec2i,
+    // vec3i: Vec3i,
+    // vec4i: Vec4i,
+    // vec2f: Vec2f,
+    // vec3f: Vec3f,
+    // vec4f: Vec4f,
+    // mat3f: Mat3f,
+    // mat4f: Mat4f,
+};
+
+/// Compatible with C
+pub const TaggedValue = extern struct {
+    value: RawValue,
+    tag: ValueTag,
 };
