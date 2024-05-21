@@ -23,7 +23,7 @@ typedef enum CubsValueTag {
     cubsValueTagVec2i = 19,
     cubsValueTagVec3i = 20,
     cubsValueTagVec4i = 21,
-    cubsValueTagVec2f = 21,
+    cubsValueTagVec2f = 22,
     cubsValueTagVec3f = 23,
     cubsValueTagVec4f = 24,
     cubsValueTagMat3f = 25,
