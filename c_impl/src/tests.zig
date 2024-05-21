@@ -6,4 +6,5 @@ comptime {
     _ = @import("util/script_thread.zig").ScriptThread;
 
     _ = @import("primitives/string.zig").String;
+    _ = @import("primitives/array.zig").Array;
 }

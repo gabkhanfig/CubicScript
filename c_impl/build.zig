@@ -76,8 +76,9 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/util/math.c",
     "src/util/script_thread.c",
 
-    "src/primitives/string.c",
     "src/primitives/script_value.c",
+    "src/primitives/string.c",
+    "src/primitives/array.c",
 };
 
 pub const cubic_script_x86_sources = [_][]const u8{};

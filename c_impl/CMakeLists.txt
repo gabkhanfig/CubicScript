@@ -17,8 +17,9 @@ add_library(CubicScript STATIC
   "src/util/panic.c"
   "src/util/math.c"
   "src/util/script_thread.c"
-  "src/primitives/string.c"
   "src/primitives/script_value.c"
+  "src/primitives/string.c"
+  "src/primitives/array.c"
 )
 
 target_include_directories(CubicScript PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
