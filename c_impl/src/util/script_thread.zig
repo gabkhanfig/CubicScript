@@ -4,7 +4,7 @@ const expect = std.testing.expect;
 const c = struct {
     extern fn cubs_thread_spawn(closeWithScript: bool) callconv(.C) ScriptThread;
     extern fn cubs_thread_close(thread: *ScriptThread) callconv(.C) void;
-    extern fn cubs_thread_get_id(thread: *const ScriptThread) callconv(.C) c_int;
+    extern fn cubs_thread_get_id(thread: *const ScriptThread) callconv(.C) u32;
 };
 
 pub const ScriptThread = extern struct {
@@ -24,7 +24,7 @@ pub const ScriptThread = extern struct {
     }
 
     pub fn getId(self: *const Self) u32 {
-        return @intCast(c.cubs_thread_get_id(self));
+        return c.cubs_thread_get_id(self);
     }
 
     pub const VTable = extern struct {

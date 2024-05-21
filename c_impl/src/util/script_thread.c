@@ -2,6 +2,14 @@
 #include "global_allocator.h"
 #include "panic.h"
 #include <stdio.h>
+#include "rwlock.h"
+
+typedef struct {
+    volatile bool isExecuting;
+    volatile bool shouldExecute;
+    volatile bool isPendingKill;
+
+} CubsThreadTaskQueueInfo;
 
 #if defined(_WIN32) || defined(WIN32)
 
@@ -9,11 +17,17 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#if _MSC_VER
+#include <vcruntime_c11_atomic_support.h>
+#endif
+
 typedef struct {
     HANDLE thread;
     DWORD identifier;
     /// May be NULL
     bool closeWithScript;
+
+    
 } CubsThreadWindowsImpl;
 
 static DWORD WINAPI windows_thread_loop(CubsThreadWindowsImpl* self) {
@@ -35,8 +49,8 @@ static void windows_thread_on_script_close(CubsThreadWindowsImpl* self) {
     windows_thread_close(self);
 }
 
-static int windows_thread_get_id(const CubsThreadWindowsImpl* self) {
-    return (int)self->identifier;
+static uint32_t windows_thread_get_id(const CubsThreadWindowsImpl* self) {
+    return (uint32_t)self->identifier;
 }
 
 const CubsThreadVTable windowsVTable = {
@@ -78,7 +92,7 @@ CubsThread cubs_thread_spawn(bool closeWithScript)
 
 #endif // WIN32
 
-int cubs_thread_get_id(const CubsThread *thread)
+uint32_t cubs_thread_get_id(const CubsThread *thread)
 {
     return thread->vtable->getId(thread->threadObj);
 }
