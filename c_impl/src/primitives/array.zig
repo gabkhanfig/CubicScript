@@ -9,6 +9,7 @@ const String = @import("string.zig").String;
 const c = struct {
     const Err = enum(c_int) {
         None = 0,
+        OutOfRange = 1,
     };
 
     const CUBS_ARRAY_N_POS: usize = @bitCast(@as(i64, -1));
@@ -25,6 +26,10 @@ pub const Array = extern struct {
     const Self = @This();
 
     _inner: ?*anyopaque,
+
+    pub const Error = error{
+        OutOfRange,
+    };
 
     pub fn init(inTag: ValueTag) Self {
         return c.cubs_array_init(inTag);
@@ -50,14 +55,14 @@ pub const Array = extern struct {
         c.cubs_array_push(self, value);
     }
 
-    // test init {
-    //     inline for (@typeInfo(ValueTag).Enum.fields) |f| {
-    //         var arr = Array.init(@enumFromInt(f.value));
-    //         defer arr.deinit();
+    test init {
+        inline for (@typeInfo(ValueTag).Enum.fields) |f| {
+            var arr = Array.init(@enumFromInt(f.value));
+            defer arr.deinit();
 
-    //         try expect(arr.tag() == @as(ValueTag, @enumFromInt(f.value)));
-    //     }
-    // }
+            try expect(arr.tag() == @as(ValueTag, @enumFromInt(f.value)));
+        }
+    }
 
     test pushUnchecked {
         {
@@ -78,6 +83,29 @@ pub const Array = extern struct {
             try expect(arr.len() == 1);
 
             arr.pushUnchecked(RawValue{ .string = String.initUnchecked("hi") });
+            try expect(arr.len() == 2);
+        }
+    }
+
+    test push {
+        {
+            var arr = Array.init(.Int);
+            defer arr.deinit();
+
+            arr.push(TaggedValue{ .tag = .Int, .value = RawValue{ .int = 6 } });
+            try expect(arr.len() == 1);
+
+            arr.push(TaggedValue{ .tag = .Int, .value = RawValue{ .int = 7 } });
+            try expect(arr.len() == 2);
+        }
+        {
+            var arr = Array.init(.String);
+            defer arr.deinit();
+
+            arr.push(TaggedValue{ .tag = .String, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            try expect(arr.len() == 1);
+
+            arr.push(TaggedValue{ .tag = .String, .value = RawValue{ .string = String.initUnchecked("hi") } });
             try expect(arr.len() == 2);
         }
     }
