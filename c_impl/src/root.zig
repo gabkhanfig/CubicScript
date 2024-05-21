@@ -20,3 +20,4 @@ comptime {
 }
 
 pub const String = @import("primitives/string.zig");
+pub const Array = @import("primitives/array.zig");
