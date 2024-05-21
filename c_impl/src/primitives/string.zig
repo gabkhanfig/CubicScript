@@ -12,6 +12,9 @@ const c = struct {
         None = 0,
         InvalidUtf8 = 1,
         IndexOutOfBounds = 2,
+        ParseBool = 3,
+        ParseInt = 4,
+        ParseFloat = 5,
     };
 
     const CUBS_STRING_N_POS: usize = @bitCast(@as(i64, -1));
@@ -44,6 +47,7 @@ const c = struct {
     extern fn cubs_string_from_bool(b: bool) String;
     extern fn cubs_string_from_int(b: i64) String;
     extern fn cubs_string_from_float(b: f64) String;
+    extern fn cubs_string_to_bool(out: *bool, self: *const String) Err;
 };
 
 pub const String = extern struct {
@@ -54,6 +58,9 @@ pub const String = extern struct {
     pub const Error = error{
         InvalidUtf8,
         IndexOutOfBounds,
+        ParseBool,
+        ParseInt,
+        ParseFloat,
     };
 
     pub fn init(literal: []const u8) Error!Self {
@@ -162,9 +169,9 @@ pub const String = extern struct {
             .IndexOutOfBounds => {
                 return Error.IndexOutOfBounds;
             },
-            // else => {
-            //     unreachable;
-            // },
+            else => {
+                unreachable;
+            },
         }
     }
 
@@ -178,6 +185,22 @@ pub const String = extern struct {
 
     pub fn fromFloat(num: f64) Self {
         return c.cubs_string_from_float(num);
+    }
+
+    pub fn toBool(self: *const Self) Error!bool {
+        var b: bool = undefined;
+        const result = c.cubs_string_to_bool(&b, self);
+        switch (result) {
+            .None => {
+                return b;
+            },
+            .ParseBool => {
+                return Error.ParseBool;
+            },
+            else => {
+                unreachable;
+            },
+        }
     }
 
     test init {
@@ -604,6 +627,35 @@ pub const String = extern struct {
             // Will not work because the value is too big to be represented by a 64 bit float
             try expect(!s64bit.eqlSlice("9007199254740993"));
             try expect(s64bit.eqlSlice("9007199254740992"));
+        }
+    }
+
+    test toBool {
+        var trueString = String.initUnchecked("true");
+        defer trueString.deinit();
+
+        var falseString = String.initUnchecked("false");
+        defer falseString.deinit();
+
+        var otherString = String.initUnchecked("truee");
+        defer otherString.deinit();
+
+        if (trueString.toBool()) |b| {
+            try expect(b == true);
+        } else |_| {
+            try expect(false);
+        }
+
+        if (falseString.toBool()) |b| {
+            try expect(b == false);
+        } else |_| {
+            try expect(false);
+        }
+
+        if (otherString.toBool()) |_| {
+            try expect(false);
+        } else |err| {
+            try expect(err == Error.ParseBool);
         }
     }
 };

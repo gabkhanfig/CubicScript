@@ -10,6 +10,9 @@ typedef enum CubsStringError {
   cubsStringErrorNone = 0,
   cubsStringErrorInvalidUtf8 = 1,
   cubsStringErrorIndexOutOfBounds = 2,
+  cubsStringErrorParseBool = 3,
+  cubsStringErrorParseInt = 4,
+  cubsStringErrorParseFloat = 5,
 
   // Enforce enum size is at least 32 bits, which is `int` on most platforms
   _CUBS_STRING_ERROR_MAX_VALUE = 0x7FFFFFFF,
@@ -116,3 +119,5 @@ CubsString cubs_string_from_int(int64_t num);
 /// Converts a 64 bit float to a string in decimal notation in the style `-ddd.ddd`.
 /// Uses the `%f` format specifier, but also removes trailing zeroes.
 CubsString cubs_string_from_float(double num);
+
+CubsStringError cubs_string_to_bool(bool* out, const CubsString* self);

@@ -650,3 +650,21 @@ CubsString cubs_string_from_float(double num) {
 
   return cubs_string_init_unchecked(slice);
 }
+
+CubsStringError cubs_string_to_bool(bool *out, const CubsString *self)
+{
+  const size_t TRUE_MASK = (size_t)('t') | ((size_t)('r') << 8) | ((size_t)('u') << 16)| ((size_t)('e') << 24);
+  const size_t FALSE_MASK = (size_t)('f') | ((size_t)('a') << 8) | ((size_t)('l') << 16)| ((size_t)('s') << 24) | ((size_t)('e') << 32);
+  const size_t* start = (const size_t*)buf_start(self);
+  if((*start) == TRUE_MASK) {
+    (*out) = true;
+    return cubsStringErrorNone;
+  }
+  else if((*start) == FALSE_MASK) {
+    (*out) = false;
+    return cubsStringErrorNone;
+  }
+  else {
+    return cubsStringErrorParseBool;
+  }
+}
