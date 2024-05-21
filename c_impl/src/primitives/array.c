@@ -2,6 +2,8 @@
 #include <assert.h>
 #include "../util/global_allocator.h"
 #include <string.h>
+#include "../util/panic.h"
+#include <stdio.h>
 
 const size_t PTR_BITMASK = 0xFFFFFFFFFFFFULL;
 const size_t TAG_BITMASK = ~0xFFFFFFFFFFFFULL;
@@ -149,4 +151,38 @@ void cubs_array_push(CubsArray *self, CubsTaggedValue value)
 {
     assert(value.tag == cubs_array_tag(self));
     cubs_array_push_unchecked(self, value.value);
+}
+
+const CubsRawValue *cubs_array_at_unchecked(const CubsArray *self, size_t index)
+{
+    const Inner* inner = as_inner(self);
+    #if _DEBUG
+    if(inner == NULL) {
+        char buf[256] = {0};
+        (void)sprintf_s(buf, 256, "CubicScript Array index out of range! Tried to access index %ld from array of length 0", index);
+        cubs_panic(buf);
+    } else if(index >= inner->len) {
+        char buf[256] = {0};
+        (void)sprintf_s(buf, 256, "CubicScript Array index out of range! Tried to access index %ld from array of length %ld", index, inner->len);
+        cubs_panic(buf);
+    }
+    #endif
+    return &buf_start(inner)[index];
+
+    
+}
+
+CubsArrayError cubs_array_at(const CubsRawValue** out, const CubsArray *self, size_t index)
+{
+    const Inner* inner = as_inner(self);
+    if(inner == NULL) {
+        return cubsArrayErrorOutOfRange;
+    }
+    else if(index >= inner->len)  {
+        return cubsArrayErrorOutOfRange;
+    }
+    else {
+        *out = &buf_start(inner)[index];
+        return cubsArrayErrorNone;
+    }
 }

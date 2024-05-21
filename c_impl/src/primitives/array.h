@@ -7,7 +7,7 @@
 
 typedef enum CubsArrayError {
   cubsArrayErrorNone = 0,
-  cubsArrayOutOfRange = 1,
+  cubsArrayErrorOutOfRange = 1,
   // Enforce enum size is at least 32 bits, which is `int` on most platforms
   _CUBS_ARRAY_ERROR_MAX_VALUE = 0x7FFFFFFF,
 } CubsArrayError;
@@ -32,4 +32,12 @@ void cubs_array_push_unchecked(CubsArray* self, CubsRawValue value);
 /// Takes ownership of `value`. Accessing the memory of `value` after this 
 /// function is undefined behaviour.
 /// Asserts that `value` is using the correct active union.
+/// NOTE should this return an error if the tags are mismatched, or just assert?
 void cubs_array_push(CubsArray* self, CubsTaggedValue value);
+
+/// In debug, asserts that `index` is less than the `cubs_array_len(self)`.
+const CubsRawValue* cubs_array_at_unchecked(const CubsArray* self, size_t index);
+
+/// If `index >= cubs_array_len(self)`, returns `cubsArrayErrorOutOfRange`,
+/// otherwise returns `cubsArrayErrorNone`.
+CubsArrayError cubs_array_at(const CubsRawValue** out, const CubsArray* self, size_t index);
