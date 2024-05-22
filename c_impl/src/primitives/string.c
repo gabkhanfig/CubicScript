@@ -5,9 +5,12 @@
 #include <string.h>
 #include <stdint.h>
 #include "../util/panic.h"
-#include <immintrin.h>
 #include <stdio.h>
 #include "../util/unreachable.h"
+
+#if __AVX2__
+#include <immintrin.h>
+#endif
 
 #define STRING_ALIGN 32
 
