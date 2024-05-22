@@ -14,7 +14,7 @@ typedef struct Inner {
     size_t capacity;
 } Inner;
 
-Inner* inner_init(size_t capacity) {
+static Inner* inner_init(size_t capacity) {
     Inner* self = (Inner*)cubs_malloc(sizeof(Inner) + (sizeof(CubsRawValue) * capacity), _Alignof(size_t));
     self->len = 0;
     self->capacity = capacity;
@@ -22,24 +22,24 @@ Inner* inner_init(size_t capacity) {
 }
 
 /// May return NULL
-const Inner* as_inner(const CubsArray* self) {
+static const Inner* as_inner(const CubsArray* self) {
     const size_t mask = ((size_t)(self->_inner)) & PTR_BITMASK;
     const Inner* inner = (const Inner*)(const void*)mask;
     return inner;
 }
 
 /// May return NULL
-Inner* as_inner_mut(CubsArray* self) {
+static Inner* as_inner_mut(CubsArray* self) {
     size_t mask = ((size_t)(self->_inner)) & PTR_BITMASK;
     Inner* inner = (Inner*)(void*)mask;
     return inner;
 }
 
-const CubsRawValue* buf_start(const Inner* inner) {
+static const CubsRawValue* buf_start(const Inner* inner) {
     return (const CubsRawValue*)&inner[1];
 }
 
-CubsRawValue* buf_start_mut(Inner* inner) {
+static CubsRawValue* buf_start_mut(Inner* inner) {
     return (CubsRawValue*)&inner[1];
 }
 
