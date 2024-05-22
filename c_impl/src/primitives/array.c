@@ -5,9 +5,9 @@
 #include "../util/panic.h"
 #include <stdio.h>
 
-const size_t PTR_BITMASK = 0xFFFFFFFFFFFFULL;
-const size_t TAG_BITMASK = ~0xFFFFFFFFFFFFULL;
-const size_t TAG_SHIFT = 48;
+static const size_t PTR_BITMASK = 0xFFFFFFFFFFFFULL;
+static const size_t TAG_BITMASK = ~0xFFFFFFFFFFFFULL;
+static const size_t TAG_SHIFT = 48;
 
 typedef struct Inner {
     size_t len;
