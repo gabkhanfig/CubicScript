@@ -102,7 +102,6 @@ typedef struct CubsMat4 {
 #include "value_tag.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "string.h"
 
 typedef union CubsRawValue {
     bool boolean;
