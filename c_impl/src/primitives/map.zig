@@ -50,24 +50,30 @@ pub const Map = extern struct {
         return c.cubs_map_find_unchecked(self, key);
     }
 
-    pub fn find(self: *const Self, key: *const CTaggedValue) ?*const RawValue {
-        return c.cubs_map_find(self, key);
+    pub fn find(self: *const Self, key: *const TaggedValue) ?*const RawValue {
+        const tempC = value_types.zigToCTaggedValueTemp(key.*);
+        return c.cubs_map_find(self, &tempC);
     }
 
     pub fn findMutUnchecked(self: *Self, key: *const RawValue) ?*RawValue {
         return c.cubs_map_find_mut_unchecked(self, key);
     }
 
-    pub fn findMut(self: *Self, key: *const CTaggedValue) ?*RawValue {
-        return c.cubs_map_find_mut(self, key);
+    pub fn findMut(self: *Self, key: *const TaggedValue) ?*RawValue {
+        const tempC = value_types.zigToCTaggedValueTemp(key.*);
+        return c.cubs_map_find_mut(self, &tempC);
     }
 
     pub fn insertUnchecked(self: *Self, key: RawValue, value: RawValue) void {
         c.cubs_map_insert_unchecked(self, key, value);
     }
 
-    pub fn insert(self: *Self, key: CTaggedValue, value: CTaggedValue) void {
-        c.cubs_map_insert(self, key, value);
+    pub fn insert(self: *Self, key: TaggedValue, value: TaggedValue) void {
+        var mutKey = key;
+        var mutValue = value;
+        const cKey = @call(.always_inline, TaggedValue.intoCRepr, .{&mutKey});
+        const cValue = @call(.always_inline, TaggedValue.intoCRepr, .{&mutValue});
+        c.cubs_map_insert(self, cKey, cValue);
     }
 
     test init {
@@ -130,8 +136,8 @@ pub const Map = extern struct {
             defer map.deinit();
 
             map.insert(
-                CTaggedValue{ .tag = .int, .value = RawValue{ .int = 4 } },
-                CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hello world!") } },
+                TaggedValue{ .int = 4 },
+                TaggedValue{ .string = String.initUnchecked("hello world!") },
             );
 
             try expect(map.size() == 1);
@@ -141,8 +147,8 @@ pub const Map = extern struct {
             defer map.deinit();
 
             map.insert(
-                CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("erm") } },
-                CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hello world!") } },
+                TaggedValue{ .string = String.initUnchecked("erm") },
+                TaggedValue{ .string = String.initUnchecked("hello world!") },
             );
 
             try expect(map.size() == 1);
@@ -153,8 +159,8 @@ pub const Map = extern struct {
 
             for (0..100) |i| {
                 map.insert(
-                    CTaggedValue{ .tag = .int, .value = RawValue{ .int = @intCast(i) } },
-                    CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hello world!") } },
+                    TaggedValue{ .int = @intCast(i) },
+                    TaggedValue{ .string = String.initUnchecked("hello world!") },
                 );
             }
 
@@ -166,8 +172,8 @@ pub const Map = extern struct {
 
             for (0..100) |i| {
                 map.insert(
-                    CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.fromInt(@intCast(i)) } },
-                    CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hello world!") } },
+                    TaggedValue{ .string = String.fromInt(@intCast(i)) },
+                    TaggedValue{ .string = String.initUnchecked("hello world!") },
                 );
             }
             try expect(map.size() == 100);

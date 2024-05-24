@@ -56,8 +56,10 @@ pub const Array = extern struct {
         c.cubs_array_push_unchecked(self, value);
     }
 
-    pub fn push(self: *Self, value: CTaggedValue) void {
-        c.cubs_array_push(self, value);
+    pub fn push(self: *Self, value: TaggedValue) void {
+        var mutValue = value;
+        const cValue = @call(.always_inline, TaggedValue.intoCRepr, .{&mutValue});
+        c.cubs_array_push(self, cValue);
     }
 
     pub fn atUnchecked(self: *const Self, index: usize) *const RawValue {
@@ -129,20 +131,20 @@ pub const Array = extern struct {
             var arr = Array.init(.int);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 6 } });
+            arr.push(TaggedValue{ .int = 6 });
             try expect(arr.len() == 1);
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 7 } });
+            arr.push(TaggedValue{ .int = 7 });
             try expect(arr.len() == 2);
         }
         {
             var arr = Array.init(.string);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect(arr.len() == 1);
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect(arr.len() == 2);
         }
     }
@@ -152,10 +154,10 @@ pub const Array = extern struct {
             var arr = Array.init(.int);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 6 } });
+            arr.push(TaggedValue{ .int = 6 });
             try expect(arr.atUnchecked(0).int == 6);
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 7 } });
+            arr.push(TaggedValue{ .int = 7 });
             try expect(arr.atUnchecked(0).int == 6);
             try expect(arr.atUnchecked(1).int == 7);
         }
@@ -163,10 +165,10 @@ pub const Array = extern struct {
             var arr = Array.init(.string);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect(arr.atUnchecked(0).string.eqlSlice("hi"));
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect(arr.atUnchecked(0).string.eqlSlice("hi"));
             try expect(arr.atUnchecked(1).string.eqlSlice("hi"));
         }
@@ -177,11 +179,11 @@ pub const Array = extern struct {
             var arr = Array.init(.int);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 6 } });
+            arr.push(TaggedValue{ .int = 6 });
             try expect((try arr.at(0)).int == 6);
             try std.testing.expectError(Error.OutOfRange, arr.at(1));
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 7 } });
+            arr.push(TaggedValue{ .int = 7 });
             try expect((try arr.at(0)).int == 6);
             try expect((try arr.at(1)).int == 7);
             try std.testing.expectError(Error.OutOfRange, arr.at(2));
@@ -190,11 +192,11 @@ pub const Array = extern struct {
             var arr = Array.init(.string);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect((try arr.at(0)).string.eqlSlice("hi"));
             try std.testing.expectError(Error.OutOfRange, arr.at(1));
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect((try arr.at(0)).string.eqlSlice("hi"));
             try expect((try arr.at(1)).string.eqlSlice("hi"));
             try std.testing.expectError(Error.OutOfRange, arr.at(2));
@@ -206,12 +208,12 @@ pub const Array = extern struct {
             var arr = Array.init(.int);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 6 } });
+            arr.push(TaggedValue{ .int = 6 });
             try expect(arr.atMutUnchecked(0).int == 6);
 
             arr.atMutUnchecked(0).int = 8;
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 7 } });
+            arr.push(TaggedValue{ .int = 7 });
             try expect(arr.atMutUnchecked(0).int == 8);
             try expect(arr.atMutUnchecked(1).int == 7);
         }
@@ -219,13 +221,13 @@ pub const Array = extern struct {
             var arr = Array.init(.string);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect(arr.atMutUnchecked(0).string.eqlSlice("hi"));
 
             arr.atMutUnchecked(0).string.deinit();
             arr.atMutUnchecked(0).string = String.initUnchecked("erm");
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect(arr.atMutUnchecked(0).string.eqlSlice("erm"));
             try expect(arr.atMutUnchecked(1).string.eqlSlice("hi"));
         }
@@ -236,13 +238,13 @@ pub const Array = extern struct {
             var arr = Array.init(.int);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 6 } });
+            arr.push(TaggedValue{ .int = 6 });
             try expect((try arr.atMut(0)).int == 6);
             try std.testing.expectError(Error.OutOfRange, arr.at(1));
 
             (try arr.atMut(0)).int = 8;
 
-            arr.push(CTaggedValue{ .tag = .int, .value = RawValue{ .int = 7 } });
+            arr.push(TaggedValue{ .int = 7 });
             try expect((try arr.atMut(0)).int == 8);
             try expect((try arr.atMut(1)).int == 7);
             try std.testing.expectError(Error.OutOfRange, arr.at(2));
@@ -251,14 +253,14 @@ pub const Array = extern struct {
             var arr = Array.init(.string);
             defer arr.deinit();
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect((try arr.atMut(0)).string.eqlSlice("hi"));
             try std.testing.expectError(Error.OutOfRange, arr.at(1));
 
             (try arr.atMut(0)).string.deinit();
             (try arr.atMut(0)).string = String.initUnchecked("erm");
 
-            arr.push(CTaggedValue{ .tag = .string, .value = RawValue{ .string = String.initUnchecked("hi") } });
+            arr.push(TaggedValue{ .string = String.initUnchecked("hi") });
             try expect((try arr.atMut(0)).string.eqlSlice("erm"));
             try expect((try arr.atMut(1)).string.eqlSlice("hi"));
             try std.testing.expectError(Error.OutOfRange, arr.at(2));
