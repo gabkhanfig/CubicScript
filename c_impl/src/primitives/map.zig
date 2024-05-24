@@ -122,4 +122,54 @@ pub const Map = extern struct {
             try expect(map.size() == 100);
         }
     }
+
+    test insert {
+        {
+            var map = Map.init(.Int, .String);
+            defer map.deinit();
+
+            map.insert(
+                TaggedValue{ .tag = .Int, .value = RawValue{ .int = 4 } },
+                TaggedValue{ .tag = .String, .value = RawValue{ .string = String.initUnchecked("hello world!") } },
+            );
+
+            try expect(map.size() == 1);
+        }
+        {
+            var map = Map.init(.String, .String);
+            defer map.deinit();
+
+            map.insert(
+                TaggedValue{ .tag = .String, .value = RawValue{ .string = String.initUnchecked("erm") } },
+                TaggedValue{ .tag = .String, .value = RawValue{ .string = String.initUnchecked("hello world!") } },
+            );
+
+            try expect(map.size() == 1);
+        }
+        {
+            var map = Map.init(.Int, .String);
+            defer map.deinit();
+
+            for (0..100) |i| {
+                map.insert(
+                    TaggedValue{ .tag = .Int, .value = RawValue{ .int = @intCast(i) } },
+                    TaggedValue{ .tag = .String, .value = RawValue{ .string = String.initUnchecked("hello world!") } },
+                );
+            }
+
+            try expect(map.size() == 100);
+        }
+        {
+            var map = Map.init(.String, .String);
+            defer map.deinit();
+
+            for (0..100) |i| {
+                map.insert(
+                    TaggedValue{ .tag = .String, .value = RawValue{ .string = String.fromInt(@intCast(i)) } },
+                    TaggedValue{ .tag = .String, .value = RawValue{ .string = String.initUnchecked("hello world!") } },
+                );
+            }
+            try expect(map.size() == 100);
+        }
+    }
 };
