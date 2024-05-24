@@ -149,6 +149,9 @@ void cubs_array_push_unchecked(CubsArray* self, CubsRawValue value)
 
 void cubs_array_push(CubsArray *self, CubsTaggedValue value)
 {
+    if(value.tag != cubs_array_tag(self)) {
+        fprintf(stderr, "tag is %d, value is %x", value.tag, value.value.intNum);
+    }
     assert(value.tag == cubs_array_tag(self));
     cubs_array_push_unchecked(self, value.value);
 }
@@ -189,7 +192,7 @@ CubsArrayError cubs_array_at(const CubsRawValue** out, const CubsArray *self, si
 
 CubsRawValue *cubs_array_at_mut_unchecked(CubsArray *self, size_t index)
 {
-    Inner* inner = as_inner(self);
+    Inner* inner = as_inner_mut(self);
     #if _DEBUG
     if(inner == NULL) {
         char buf[256] = {0};

@@ -120,8 +120,8 @@ CubsRawValue cubs_raw_value_clone(const CubsRawValue* self, CubsValueTag tag);
 bool cubs_raw_value_eql(const CubsRawValue* self, const CubsRawValue* other, CubsValueTag tag);
 
 typedef struct CubsTaggedValue {
-    CubsValueTag tag;
     CubsRawValue value;
+    CubsValueTag tag;
 } CubsTaggedValue;
 
 /// It is safe to call this function multiple times on the same object, since all primitives handle double deinitialization.

@@ -8,4 +8,5 @@ comptime {
     _ = @import("primitives/string.zig").String;
     _ = @import("primitives/array.zig").Array;
     _ = @import("primitives/map.zig").Map;
+    _ = @import("primitives/values.zig").TaggedValue;
 }
