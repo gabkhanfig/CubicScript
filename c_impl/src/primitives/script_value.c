@@ -1,6 +1,9 @@
 #include "script_value.h"
 #include "../util/panic.h"
 #include "../util/unreachable.h"
+#include "string.h"
+#include "array.h"
+#include "map.h"
 
 void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)
 {
@@ -15,6 +18,12 @@ void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)
         case cubsValueTagFunctionPtr: break;
         case cubsValueTagString: 
             cubs_string_deinit(&self->string);
+            break;
+        case cubsValueTagArray:
+            cubs_array_deinit(&self->arr);
+            break;
+        case cubsValueTagMap:
+            cubs_map_deinit(&self->map);
             break;
         default:
             unreachable();
@@ -54,6 +63,8 @@ bool cubs_raw_value_eql(const CubsRawValue *self, const CubsRawValue *other, Cub
             return self->intNum == other->intNum;
         case cubsValueTagFloat: 
             return self->floatNum == other->floatNum;
+        case cubsValueTagString:
+            return cubs_string_eql(&self->string, &other->string);
         default:
             unreachable();
     }

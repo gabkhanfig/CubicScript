@@ -11,13 +11,10 @@
 //! This is required to export certain re-implemented functions that take
 //! advantage of some features of Zig, while simultaneously preserving functionality in C.
 
-pub const c = @cImport({
-    @cInclude("primitives/string.h");
-});
-
 comptime {
     _ = @import("util/global_allocator.zig");
 }
 
-pub const String = @import("primitives/string.zig");
-pub const Array = @import("primitives/array.zig");
+pub const String = @import("primitives/string.zig").String;
+pub const Array = @import("primitives/array.zig").Array;
+pub const Map = @import("primitives/map.zig").Map;

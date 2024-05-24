@@ -108,6 +108,8 @@ typedef union CubsRawValue {
     int64_t intNum;
     double floatNum;
     CubsString string;
+    CubsArray arr;
+    CubsMap map;
 } CubsRawValue;
 
 /// It is safe to call this function multiple times on the same object, since all primitives handle double deinitialization.
