@@ -283,4 +283,138 @@ pub const Map = extern struct {
             } else {}
         }
     }
+
+    test findMutUnchecked {
+        var map = Map.init(.string, .string);
+        defer map.deinit();
+
+        var firstFind = RawValue{ .string = String.initUnchecked("erm") };
+        defer firstFind.deinit(.string);
+
+        if (map.findMutUnchecked(&firstFind)) |_| {
+            try expect(false);
+        } else {}
+
+        map.insert(TaggedValue{ .string = String.initUnchecked("erm") }, TaggedValue{ .string = String.initUnchecked("wuh") });
+
+        if (map.findMutUnchecked(&firstFind)) |found| {
+            try expect(found.string.eqlSlice("wuh"));
+            found.deinit(.string);
+            found.string = String.initUnchecked("holy moly");
+        } else {
+            try expect(false);
+        }
+
+        for (0..99) |i| {
+            map.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) }, TaggedValue{ .string = String.initUnchecked("wuh") });
+        }
+
+        try expect(map.size() == 100);
+
+        if (map.findMutUnchecked(&firstFind)) |found| {
+            try expect(found.string.eqlSlice("holy moly"));
+        } else {
+            try expect(false);
+        }
+
+        for (0..99) |i| {
+            var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit(.string);
+
+            if (map.findMutUnchecked(&findVal)) |found| {
+                try expect(found.string.eqlSlice("wuh"));
+                found.deinit(.string);
+                found.string = String.initUnchecked("holy moly");
+            } else {
+                try expect(false);
+            }
+        }
+
+        for (0..99) |i| {
+            var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit(.string);
+
+            if (map.findUnchecked(&findVal)) |found| {
+                try expect(found.string.eqlSlice("holy moly"));
+            } else {
+                try expect(false);
+            }
+        }
+
+        for (100..150) |i| {
+            var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit(.string);
+
+            if (map.findMutUnchecked(&findVal)) |_| {
+                try expect(false);
+            } else {}
+        }
+    }
+
+    test findMut {
+        var map = Map.init(.string, .string);
+        defer map.deinit();
+
+        var firstFind = TaggedValue{ .string = String.initUnchecked("erm") };
+        defer firstFind.deinit();
+
+        if (map.findMut(&firstFind)) |_| {
+            try expect(false);
+        } else {}
+
+        map.insert(TaggedValue{ .string = String.initUnchecked("erm") }, TaggedValue{ .string = String.initUnchecked("wuh") });
+
+        if (map.findMut(&firstFind)) |found| {
+            try expect(found.string.eqlSlice("wuh"));
+            found.deinit(.string);
+            found.string = String.initUnchecked("holy moly");
+        } else {
+            try expect(false);
+        }
+
+        for (0..99) |i| {
+            map.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) }, TaggedValue{ .string = String.initUnchecked("wuh") });
+        }
+
+        try expect(map.size() == 100);
+
+        if (map.findMut(&firstFind)) |found| {
+            try expect(found.string.eqlSlice("holy moly"));
+        } else {
+            try expect(false);
+        }
+
+        for (0..99) |i| {
+            var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit();
+
+            if (map.findMut(&findVal)) |found| {
+                try expect(found.string.eqlSlice("wuh"));
+                found.deinit(.string);
+                found.string = String.initUnchecked("holy moly");
+            } else {
+                try expect(false);
+            }
+        }
+
+        for (0..99) |i| {
+            var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit();
+
+            if (map.find(&findVal)) |found| {
+                try expect(found.string.eqlSlice("holy moly"));
+            } else {
+                try expect(false);
+            }
+        }
+
+        for (100..150) |i| {
+            var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit();
+
+            if (map.findMut(&findVal)) |_| {
+                try expect(false);
+            } else {}
+        }
+    }
 };
