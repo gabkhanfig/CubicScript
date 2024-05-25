@@ -243,7 +243,7 @@ bool cubs_string_eql(const CubsString *self, const CubsString *other)
 
   if(self->_inner == NULL) {
     return cubs_string_len(other) == 0;
-  } 
+  }
 
   const size_t selfLen = cubs_string_len(self);
   if (other->_inner == NULL) {
@@ -344,46 +344,54 @@ CubsOrdering cubs_string_cmp(const CubsString *self, const CubsString *other)
 
 size_t cubs_string_hash(const CubsString *self)
 {
-  #if __AVX2__
-  const size_t HASH_MODIFIER = 0xc6a4a7935bd1e995ULL;
-	const size_t HASH_SHIFT = 47;
+  // TODO better hash function
+  // #if __AVX2__
+  // const size_t HASH_MODIFIER = 0xc6a4a7935bd1e995ULL;
+	// const size_t HASH_SHIFT = 47;
 
-  size_t h = 0;
-  const size_t len = cubs_string_len(self);
-  const size_t iterationsToDo = ((len) % 32 == 0 ? len : len + (32 - (len % 32))) / 32;
+  // size_t h = 0;
+  // const size_t len = cubs_string_len(self);
+  // const size_t iterationsToDo = ((len) % 32 == 0 ? len : len + (32 - (len % 32))) / 32;
 
-  if(iterationsToDo > 0) {
-    const __m256i* thisVec = (const __m256i*)buf_start(self);
+  // if(iterationsToDo > 0) {
+  //   const __m256i* thisVec = (const __m256i*)buf_start(self);
    
-    const __m256i seed = _mm256_set1_epi64x(0);
-    const __m256i indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+  //   const __m256i seed = _mm256_set1_epi64x(0);
+  //   const __m256i indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
       
-    for(size_t i = 0; i < iterationsToDo; i++) {
-      const char num = i != (iterationsToDo - 1) ? (char)(32) : (char)((iterationsToDo * i) - len);
+  //   for(size_t i = 0; i < iterationsToDo; i++) {
+  //     const char num = i != (iterationsToDo - 1) ? (char)(32) : (char)((iterationsToDo * i) - len);
 
-      // in the case of SSO, will ignore the 
-      const __m256i numVec = _mm256_set1_epi8(num);
+  //     // in the case of SSO, will ignore the 
+  //     const __m256i numVec = _mm256_set1_epi8(num);
 
-      // Checks if num is greater than each value of indices.
-      // Mask is 0xFF if greater than, and 0x00 otherwise. 
-      const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
-      const __m256i partial = _mm256_and_si256(thisVec[i], mask);
-      const __m256i hashIter = _mm256_add_epi8(partial, numVec);
+  //     // Checks if num is greater than each value of indices.
+  //     // Mask is 0xFF if greater than, and 0x00 otherwise. 
+  //     const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
+  //     const __m256i partial = _mm256_and_si256(thisVec[i], mask);
+  //     const __m256i hashIter = _mm256_add_epi8(partial, numVec);
 
-      const size_t* hashPtr = (const size_t*)(&hashIter);
-			for (size_t j = 0; j < 4; j++) {
-			  h ^= hashPtr[i];
-				h *= HASH_MODIFIER;
-				h ^= h >> HASH_SHIFT;
-			}
-    }
+  //     const size_t* hashPtr = (const size_t*)(&hashIter);
+	// 		for (size_t j = 0; j < 4; j++) {
+	// 		  h ^= hashPtr[i];
+	// 			h *= HASH_MODIFIER;
+	// 			h ^= h >> HASH_SHIFT;
+	// 		}
+  //   }
+  // }
+
+  // h ^= h >> HASH_SHIFT;
+	// h *= HASH_MODIFIER;
+	// h ^= h >> HASH_SHIFT;
+	// return h;
+  // #endif
+  const CubsStringSlice slice = cubs_string_as_slice(self);
+  if(slice.len == 0) {
+    return 0;
   }
-
-  h ^= h >> HASH_SHIFT;
-	h *= HASH_MODIFIER;
-	h ^= h >> HASH_SHIFT;
-	return h;
-  #endif
+  else {
+    return *((const size_t*)slice.str);
+  }
 }
 
 static size_t index_of_pos_linear(CubsStringSlice self, CubsStringSlice slice, size_t startIndex) {
