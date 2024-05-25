@@ -151,12 +151,11 @@ static size_t group_find(const Group* self, const CubsRawValue* key, CubsValueTa
                 break;
             }
             #endif // WIN32
-            resultMask = (resultMask & ~(1 << index));
             const size_t actualIndex = index + i;
             const HashPair* pair = group_pair_at(self, actualIndex);
             if(!cubs_raw_value_eql(&pair->key, key, keyTag)) {
-                i += 32;
-                break;
+                resultMask = (resultMask & ~(1U << index));
+                continue;
             }
             return actualIndex;
         }       
@@ -368,6 +367,8 @@ const CubsRawValue *cubs_map_find_unchecked(const CubsMap *self, const CubsRawVa
     if(inner == NULL) {
         return NULL;
     }
+
+    
     
     const CubsValueTag keyTag = cubs_map_key_tag(self);
     const size_t hashCode = cubs_compute_hash(key, keyTag);
