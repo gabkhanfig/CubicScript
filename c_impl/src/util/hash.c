@@ -34,4 +34,5 @@ size_t cubs_compute_hash(const CubsRawValue *value, CubsValueTag tag)
             cubs_panic("Hash type not yet implemented");
         } break;
     }
+    return h;
 }
