@@ -1,5 +1,15 @@
 const std = @import("std");
 
+const c = struct {
+    extern fn cubs_raw_value_deinit(self: *RawValue, tag: ValueTag) void;
+    extern fn cubs_raw_value_clone(self: *const RawValue, tag: ValueTag) RawValue;
+    extern fn cubs_raw_value_eql(self: *const RawValue, other: *const RawValue, tag: ValueTag) bool;
+
+    extern fn cubs_tagged_value_deinit(self: *CTaggedValue) void;
+    extern fn cubs_tagged_value_clone(self: *const RawValue) CTaggedValue;
+    extern fn cubs_tagged_value_eql(self: *const CTaggedValue, other: *const CTaggedValue) bool;
+};
+
 const String = @import("string.zig").String;
 const Array = @import("array.zig").Array;
 const Map = @import("map.zig").Map;
@@ -61,12 +71,36 @@ pub const RawValue = extern union {
     // vec4f: Vec4f,
     // mat3f: Mat3f,
     // mat4f: Mat4f,
+
+    pub fn deinit(self: *RawValue, tag: ValueTag) void {
+        c.cubs_raw_value_deinit(self, tag);
+    }
+
+    pub fn clone(self: *const RawValue, tag: ValueTag) RawValue {
+        return c.cubs_raw_value_clone(self, tag);
+    }
+
+    pub fn eql(self: *const RawValue, other: *const RawValue, tag: ValueTag) bool {
+        return c.cubs_raw_value_eql(self, other, tag);
+    }
 };
 
 /// Compatible with C. Corresponds to `CubsTaggedValue`.
 pub const CTaggedValue = extern struct {
     value: RawValue,
     tag: ValueTag,
+
+    pub fn deinit(self: *CTaggedValue) void {
+        c.cubs_tagged_value_deinit(self);
+    }
+
+    pub fn clone(self: *const CTaggedValue) CTaggedValue {
+        return c.cubs_tagged_value_clone(self);
+    }
+
+    pub fn eql(self: *const CTaggedValue, other: *const CTaggedValue) bool {
+        return c.cubs_tagged_value_eql(self, other);
+    }
 };
 
 /// Zig version of `CTaggedValue` using language specific tagged unions.
