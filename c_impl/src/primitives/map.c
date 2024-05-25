@@ -6,6 +6,7 @@
 #include "../util/unreachable.h"
 #include <stdio.h>
 #include "../util/hash.h"
+#include "../util/bitwise.h"
 
 //#if __AVX2__
 #include <immintrin.h>
@@ -136,6 +137,7 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
 
 /// Returns -1 if not found
 static size_t group_find(const Group* self, const CubsRawValue* key, CubsValueTag keyTag, CubsHashPairBitmask pairMask) {
+    #if __AVX2__
     const __m256i maskVec = _mm256_set1_epi8(pairMask.value);
     
     size_t i = 0;
@@ -144,13 +146,11 @@ static size_t group_find(const Group* self, const CubsRawValue* key, CubsValueTa
         const __m256i result = _mm256_cmpeq_epi8(maskVec, hashMasks);
         int resultMask = _mm256_movemask_epi8(result);
         while(true) { // Go through each bit
-            unsigned long index;
-            #if defined(_WIN32) || defined(WIN32)
-            if(!_BitScanForward(&index, resultMask)) {
+            uint32_t index;
+            if(!countTrailingZeroes32(&index, resultMask)) {
                 i += 32;
                 break;
             }
-            #endif // WIN32
             const size_t actualIndex = index + i;
             const HashPair* pair = group_pair_at(self, actualIndex);
             if(!cubs_raw_value_eql(&pair->key, key, keyTag)) {
@@ -160,6 +160,7 @@ static size_t group_find(const Group* self, const CubsRawValue* key, CubsValueTa
             return actualIndex;
         }       
     }
+    #endif
     return -1;
 }
 
@@ -178,6 +179,7 @@ static void group_insert(Group* self, CubsRawValue key, CubsRawValue value, Cubs
 
     group_ensure_total_capacity(self, self->pairCount + 1);
 
+    #if __AVX2__
     // SIMD find first zero
     const __m256i zeroVec = _mm256_set1_epi8(0);
     size_t i = 0;
@@ -186,13 +188,11 @@ static void group_insert(Group* self, CubsRawValue key, CubsRawValue value, Cubs
         const __m256i result = _mm256_cmpeq_epi8(zeroVec, hashMasks);
         int resultMask = _mm256_movemask_epi8(result);
         
-        unsigned long index;
-        #if defined(_WIN32) || defined(WIN32)
-        if(!_BitScanForward(&index, resultMask)) {
+        uint32_t index;
+        if(!countTrailingZeroes32(&index, resultMask)) {
             i += 32;
             continue;
         }
-        #endif // WIN32
 
         const size_t actualIndex = index + i;
         const HashPair _newPairData = {.key = key, .value = value, .hash = hashCode};
@@ -205,6 +205,7 @@ static void group_insert(Group* self, CubsRawValue key, CubsRawValue value, Cubs
         self->pairCount += 1;
         return;
     }
+    #endif
     unreachable();
 }
 
