@@ -179,4 +179,56 @@ pub const Map = extern struct {
             try expect(map.size() == 100);
         }
     }
+
+    test findUnchecked {
+        var map = Map.init(.string, .string);
+        defer map.deinit();
+
+        var firstFind = RawValue{ .string = String.initUnchecked("erm") };
+        defer firstFind.deinit(.string);
+
+        if (map.findUnchecked(&firstFind)) |_| {
+            try expect(false);
+        } else {}
+
+        map.insert(TaggedValue{ .string = String.initUnchecked("erm") }, TaggedValue{ .string = String.initUnchecked("wuh") });
+
+        if (map.findUnchecked(&firstFind)) |found| {
+            try expect(found.string.eqlSlice("wuh"));
+        } else {
+            try expect(false);
+        }
+
+        for (0..99) |i| {
+            map.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) }, TaggedValue{ .string = String.initUnchecked("wuh") });
+        }
+
+        try expect(map.size() == 100);
+
+        if (map.findUnchecked(&firstFind)) |found| {
+            try expect(found.string.eqlSlice("wuh"));
+        } else {
+            try expect(false);
+        }
+
+        for (0..99) |i| {
+            var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit(.string);
+
+            if (map.findUnchecked(&findVal)) |found| {
+                try expect(found.string.eqlSlice("wuh"));
+            } else {
+                try expect(false);
+            }
+        }
+
+        for (100..150) |i| {
+            var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit(.string);
+
+            if (map.findUnchecked(&findVal)) |_| {
+                try expect(false);
+            } else {}
+        }
+    }
 };
