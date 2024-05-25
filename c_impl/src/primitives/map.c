@@ -441,3 +441,29 @@ void cubs_map_insert(CubsMap *self, CubsTaggedValue key, CubsTaggedValue value)
     assert(value.tag == cubs_map_value_tag(self));
     cubs_map_insert_unchecked(self, key.value, value.value);
 }
+
+bool cubs_map_erase_unchecked(CubsMap *self, const CubsRawValue *key)
+{
+    const size_t currentSize = cubs_map_size(self);
+    if(currentSize == 0) {
+        return false;
+    }
+
+    Inner* inner = as_inner_mut(self); // guaranteed to be non-null because of the above check
+
+    const CubsValueTag keyTag = cubs_map_key_tag(self);
+    const CubsValueTag valueTag = cubs_map_value_tag(self);
+    const size_t hashCode = cubs_compute_hash(key, keyTag);
+    const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
+    const size_t groupIndex = groupBitmask.value % inner->groupCount;
+
+    const bool result = group_erase(&inner->groupsArray[groupIndex], key, keyTag, valueTag, cubs_hash_pair_bitmask_init(hashCode));
+    inner->entryCount -= (size_t)result;  
+    return result;
+}
+
+bool cubs_map_erase(CubsMap *self, const CubsTaggedValue *key)
+{
+    assert(key->tag == cubs_map_key_tag(self));
+    return cubs_map_erase_unchecked(self, &key->value);
+}

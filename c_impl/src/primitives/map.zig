@@ -7,6 +7,8 @@ const CTaggedValue = value_types.CTaggedValue;
 const TaggedValue = value_types.TaggedValue;
 const String = @import("string.zig").String;
 
+// Maybe its possible to combine the groups allocation with the metadata?
+
 const c = struct {
     extern fn cubs_map_init(keyTag: ValueTag, valueTag: ValueTag) callconv(.C) Map;
     extern fn cubs_map_deinit(self: *Map) callconv(.C) void;
@@ -19,6 +21,8 @@ const c = struct {
     extern fn cubs_map_find_mut(self: *Map, key: *const CTaggedValue) callconv(.C) ?*RawValue;
     extern fn cubs_map_insert_unchecked(self: *Map, key: RawValue, value: RawValue) callconv(.C) void;
     extern fn cubs_map_insert(self: *Map, key: CTaggedValue, value: CTaggedValue) callconv(.C) void;
+    extern fn cubs_map_erase_unchecked(self: *const Map, key: *const RawValue) callconv(.C) bool;
+    extern fn cubs_map_erase(self: *const Map, key: *const CTaggedValue) callconv(.C) bool;
 };
 
 pub const Map = extern struct {
@@ -74,6 +78,15 @@ pub const Map = extern struct {
         const cKey = @call(.always_inline, TaggedValue.intoCRepr, .{&mutKey});
         const cValue = @call(.always_inline, TaggedValue.intoCRepr, .{&mutValue});
         c.cubs_map_insert(self, cKey, cValue);
+    }
+
+    pub fn eraseUnchecked(self: *Self, key: *const RawValue) bool {
+        return c.cubs_map_erase_unchecked(self, key);
+    }
+
+    pub fn erase(self: *Self, key: *const TaggedValue) bool {
+        const tempC = value_types.zigToCTaggedValueTemp(key.*);
+        return c.cubs_map_erase(self, &tempC);
     }
 
     test init {
@@ -415,6 +428,110 @@ pub const Map = extern struct {
             if (map.findMut(&findVal)) |_| {
                 try expect(false);
             } else {}
+        }
+    }
+
+    test eraseUnchecked {
+        {
+            var map = Map.init(.string, .string);
+            defer map.deinit();
+
+            var eraseVal = RawValue{ .string = String.initUnchecked("erm") };
+            defer eraseVal.deinit(.string);
+
+            try expect(map.eraseUnchecked(&eraseVal) == false);
+
+            map.insert(TaggedValue{ .string = String.initUnchecked("erm") }, TaggedValue{ .string = String.initUnchecked("wuh") });
+            try expect(map.size() == 1);
+
+            try expect(map.eraseUnchecked(&eraseVal) == true);
+            try expect(map.size() == 0);
+        }
+        {
+            var map = Map.init(.string, .string);
+            defer map.deinit();
+
+            for (0..100) |i| {
+                map.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) }, TaggedValue{ .string = String.initUnchecked("wuh") });
+            }
+
+            try expect(map.size() == 100);
+
+            for (0..50) |i| {
+                var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit(.string);
+
+                try expect(map.eraseUnchecked(&eraseVal) == true);
+            }
+
+            try expect(map.size() == 50);
+
+            for (0..50) |i| {
+                var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit(.string);
+
+                try expect(map.eraseUnchecked(&eraseVal) == false);
+            }
+            try expect(map.size() == 50);
+
+            for (50..100) |i| {
+                var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit(.string);
+
+                try expect(map.eraseUnchecked(&eraseVal) == true);
+            }
+        }
+    }
+
+    test erase {
+        {
+            var map = Map.init(.string, .string);
+            defer map.deinit();
+
+            var eraseVal = TaggedValue{ .string = String.initUnchecked("erm") };
+            defer eraseVal.deinit();
+
+            try expect(map.erase(&eraseVal) == false);
+
+            map.insert(TaggedValue{ .string = String.initUnchecked("erm") }, TaggedValue{ .string = String.initUnchecked("wuh") });
+            try expect(map.size() == 1);
+
+            try expect(map.erase(&eraseVal) == true);
+            try expect(map.size() == 0);
+        }
+        {
+            var map = Map.init(.string, .string);
+            defer map.deinit();
+
+            for (0..100) |i| {
+                map.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) }, TaggedValue{ .string = String.initUnchecked("wuh") });
+            }
+
+            try expect(map.size() == 100);
+
+            for (0..50) |i| {
+                var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit();
+
+                try expect(map.erase(&eraseVal) == true);
+            }
+
+            try expect(map.size() == 50);
+
+            for (0..50) |i| {
+                var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit();
+
+                try expect(map.erase(&eraseVal) == false);
+            }
+            try expect(map.size() == 50);
+
+            for (50..100) |i| {
+                var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit();
+
+                try expect(map.erase(&eraseVal) == true);
+            }
         }
     }
 };

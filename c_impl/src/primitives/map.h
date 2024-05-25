@@ -48,3 +48,11 @@ CubsRawValue* cubs_map_find_mut(CubsMap* self, const CubsTaggedValue* key);
 void cubs_map_insert_unchecked(CubsMap* self, CubsRawValue key, CubsRawValue value);
 
 void cubs_map_insert(CubsMap* self, CubsTaggedValue key, CubsTaggedValue value);
+
+/// Returns true if the entry `key` exists, and thus was successfully deleted and cleaned up,
+/// and returns false if the entry doesn't exist.
+bool cubs_map_erase_unchecked(CubsMap* self, const CubsRawValue* key);
+
+/// Returns true if the entry `key` exists, and thus was successfully deleted and cleaned up,
+/// and returns false if the entry doesn't exist.
+bool cubs_map_erase(CubsMap* self, const CubsTaggedValue* key);
