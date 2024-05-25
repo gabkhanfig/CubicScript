@@ -5,12 +5,6 @@
 #include <stdint.h>
 #include "script_value.h"
 
-typedef enum CubsMapError {
-  cubsMapErrorNone = 0,
-  // Enforce enum size is at least 32 bits, which is `int` on most platforms
-  _CUBS_MAP_ERROR_MAX_VALUE = 0x7FFFFFFF,
-} CubsMapError;
-
 CubsMap cubs_map_init(CubsValueTag keyTag, CubsValueTag valueTag);
 
 void cubs_map_deinit(CubsMap* self);
