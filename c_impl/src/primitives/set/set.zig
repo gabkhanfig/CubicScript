@@ -14,8 +14,8 @@ const c = struct {
     extern fn cubs_set_size(self: *const Set) callconv(.C) usize;
     extern fn cubs_set_contains_unchecked(self: *const Set, key: *const RawValue) callconv(.C) bool;
     extern fn cubs_set_contains(self: *const Set, key: *const CTaggedValue) callconv(.C) bool;
-    extern fn cubs_set_insert_unchecked(self: *Set, key: RawValue, value: RawValue) callconv(.C) void;
-    extern fn cubs_set_insert(self: *Set, key: CTaggedValue, value: CTaggedValue) callconv(.C) void;
+    extern fn cubs_set_insert_unchecked(self: *Set, key: RawValue) callconv(.C) void;
+    extern fn cubs_set_insert(self: *Set, key: CTaggedValue) callconv(.C) void;
     extern fn cubs_set_erase_unchecked(self: *const Set, key: *const RawValue) callconv(.C) bool;
     extern fn cubs_set_erase(self: *const Set, key: *const CTaggedValue) callconv(.C) bool;
 };
@@ -77,6 +77,82 @@ pub const Set = extern struct {
 
             try expect(set.tag() == keyEnum);
             try expect(set.size() == 0);
+        }
+    }
+
+    test insertUnchecked {
+        {
+            var set = Set.init(.int);
+            defer set.deinit();
+
+            set.insertUnchecked(RawValue{ .int = 4 });
+
+            try expect(set.size() == 1);
+        }
+        {
+            var set = Set.init(.string);
+            defer set.deinit();
+
+            set.insertUnchecked(RawValue{ .string = String.initUnchecked("erm") });
+
+            try expect(set.size() == 1);
+        }
+        {
+            var set = Set.init(.int);
+            defer set.deinit();
+
+            for (0..100) |i| {
+                set.insertUnchecked(RawValue{ .int = @intCast(i) });
+            }
+
+            try expect(set.size() == 100);
+        }
+        {
+            var set = Set.init(.string);
+            defer set.deinit();
+
+            for (0..100) |i| {
+                set.insertUnchecked(RawValue{ .string = String.fromInt(@intCast(i)) });
+            }
+            try expect(set.size() == 100);
+        }
+    }
+
+    test insert {
+        {
+            var set = Set.init(.int);
+            defer set.deinit();
+
+            set.insert(TaggedValue{ .int = 4 });
+
+            try expect(set.size() == 1);
+        }
+        {
+            var set = Set.init(.string);
+            defer set.deinit();
+
+            set.insert(TaggedValue{ .string = String.initUnchecked("erm") });
+
+            try expect(set.size() == 1);
+        }
+        {
+            var set = Set.init(.int);
+            defer set.deinit();
+
+            for (0..100) |i| {
+                set.insert(TaggedValue{ .int = @intCast(i) });
+            }
+
+            try expect(set.size() == 100);
+        }
+        {
+            var set = Set.init(.string);
+            defer set.deinit();
+
+            for (0..100) |i| {
+                set.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) });
+            }
+            try expect(set.size() == 100);
         }
     }
 };
