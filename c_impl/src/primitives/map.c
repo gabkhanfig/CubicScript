@@ -12,14 +12,6 @@
 #include <immintrin.h>
 //#endif
 
-#if defined(_WIN32) || defined(WIN32)
-
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
-#endif // WIN32 def
-
 static const size_t PTR_BITMASK = 0xFFFFFFFFFFFFULL;
 static const size_t KEY_TAG_SHIFT = 48;
 static const size_t KEY_TAG_BITMASK = 0xFFULL << 48;
