@@ -288,6 +288,17 @@ pub const TaggedValue = union(ValueTag) {
         var tagMap = Self{ .map = Map.init(.int, .float) };
         defer tagMap.deinit();
         try OffsetContainer.appendTagged(&tagMap, &offsets);
+
+        var offsetsSet = std.AutoHashMap(usize, void).init(std.testing.allocator);
+        defer offsetsSet.deinit();
+
+        for (offsets.items) |offset| {
+            try offsetsSet.put(offset.offset, {});
+            if (offsetsSet.count() > 1) {
+                std.debug.print("Found inconsistent tagged union value offset for tag {s}\n", .{@tagName(offset.tag)});
+                try std.testing.expect(false);
+            }
+        }
     }
 
     test value {
