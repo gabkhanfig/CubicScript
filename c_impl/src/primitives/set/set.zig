@@ -227,4 +227,108 @@ pub const Set = extern struct {
             try expect(set.contains(&findVal) == false);
         }
     }
+
+    test eraseUnchecked {
+        {
+            var set = Set.init(.string);
+            defer set.deinit();
+
+            var eraseVal = RawValue{ .string = String.initUnchecked("erm") };
+            defer eraseVal.deinit(.string);
+
+            try expect(set.eraseUnchecked(&eraseVal) == false);
+
+            set.insert(TaggedValue{ .string = String.initUnchecked("erm") });
+            try expect(set.size() == 1);
+
+            try expect(set.eraseUnchecked(&eraseVal) == true);
+            try expect(set.size() == 0);
+        }
+        {
+            var set = Set.init(.string);
+            defer set.deinit();
+
+            for (0..100) |i| {
+                set.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) });
+            }
+
+            try expect(set.size() == 100);
+
+            for (0..50) |i| {
+                var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit(.string);
+
+                try expect(set.eraseUnchecked(&eraseVal) == true);
+            }
+
+            try expect(set.size() == 50);
+
+            for (0..50) |i| {
+                var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit(.string);
+
+                try expect(set.eraseUnchecked(&eraseVal) == false);
+            }
+            try expect(set.size() == 50);
+
+            for (50..100) |i| {
+                var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit(.string);
+
+                try expect(set.eraseUnchecked(&eraseVal) == true);
+            }
+        }
+    }
+
+    test erase {
+        {
+            var set = Set.init(.string);
+            defer set.deinit();
+
+            var eraseVal = TaggedValue{ .string = String.initUnchecked("erm") };
+            defer eraseVal.deinit();
+
+            try expect(set.erase(&eraseVal) == false);
+
+            set.insert(TaggedValue{ .string = String.initUnchecked("erm") });
+            try expect(set.size() == 1);
+
+            try expect(set.erase(&eraseVal) == true);
+            try expect(set.size() == 0);
+        }
+        {
+            var set = Set.init(.string);
+            defer set.deinit();
+
+            for (0..100) |i| {
+                set.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) });
+            }
+
+            try expect(set.size() == 100);
+
+            for (0..50) |i| {
+                var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit();
+
+                try expect(set.erase(&eraseVal) == true);
+            }
+
+            try expect(set.size() == 50);
+
+            for (0..50) |i| {
+                var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit();
+
+                try expect(set.erase(&eraseVal) == false);
+            }
+            try expect(set.size() == 50);
+
+            for (50..100) |i| {
+                var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+                defer eraseVal.deinit();
+
+                try expect(set.erase(&eraseVal) == true);
+            }
+        }
+    }
 };
