@@ -2,7 +2,7 @@
 #include "unreachable.h"
 #include "panic.h"
 #include <stdint.h>
-#include "../primitives/string.h"
+#include "../primitives/string/string.h"
 
 const size_t TEST_SEED_VALUE = 0x4857372859619FAULL;
 

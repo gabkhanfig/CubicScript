@@ -1,9 +1,9 @@
 #include "script_value.h"
 #include "../util/panic.h"
 #include "../util/unreachable.h"
-#include "string.h"
-#include "array.h"
-#include "map.h"
+#include "string/string.h"
+#include "array/array.h"
+#include "map/map.h"
 #include "set/set.h"
 
 void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)

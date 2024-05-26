@@ -1,6 +1,6 @@
 const std = @import("std");
 const expect = std.testing.expect;
-const script_value = @import("script_value.zig");
+const script_value = @import("../script_value.zig");
 const ValueTag = script_value.ValueTag;
 const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;

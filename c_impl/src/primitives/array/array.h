@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "script_value.h"
+#include "../script_value.h"
 
 typedef enum CubsArrayError {
   cubsArrayErrorNone = 0,

@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "script_value.h"
+#include "../script_value.h"
 
 CubsMap cubs_map_init(CubsValueTag keyTag, CubsValueTag valueTag);
 

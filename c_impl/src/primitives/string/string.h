@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "script_value.h"
-#include "../util/ordering.h"
+#include "../script_value.h"
+#include "../../util/ordering.h"
 
 typedef enum CubsStringError {
   cubsStringErrorNone = 0,

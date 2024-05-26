@@ -5,9 +5,9 @@ comptime {
     // Many tests are within the structs themselves, so importing .ScriptThread for example is necessary.
     _ = @import("util/script_thread.zig").ScriptThread;
 
-    _ = @import("primitives/string.zig").String;
-    _ = @import("primitives/array.zig").Array;
+    _ = @import("primitives/string/string.zig").String;
+    _ = @import("primitives/array/array.zig").Array;
     _ = @import("primitives/set/set.zig").Set;
-    _ = @import("primitives/map.zig").Map;
+    _ = @import("primitives/map/map.zig").Map;
     _ = @import("primitives/script_value.zig").TaggedValue;
 }

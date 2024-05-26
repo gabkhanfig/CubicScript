@@ -10,10 +10,10 @@ const c = struct {
     extern fn cubs_tagged_value_eql(self: *const CTaggedValue, other: *const CTaggedValue) bool;
 };
 
-pub const String = @import("string.zig").String;
-pub const Array = @import("array.zig").Array;
+pub const String = @import("string/string.zig").String;
+pub const Array = @import("array/array.zig").Array;
 pub const Set = @import("set/set.zig").Set;
-pub const Map = @import("map.zig").Map;
+pub const Map = @import("map/map.zig").Map;
 
 pub const ValueTag = enum(c_int) {
     none = 0,

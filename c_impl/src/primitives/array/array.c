@@ -1,8 +1,8 @@
 #include "array.h"
 #include <assert.h>
-#include "../util/global_allocator.h"
+#include "../../util/global_allocator.h"
 #include <string.h>
-#include "../util/panic.h"
+#include "../../util/panic.h"
 #include <stdio.h>
 
 static const size_t PTR_BITMASK = 0xFFFFFFFFFFFFULL;

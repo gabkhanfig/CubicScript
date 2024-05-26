@@ -1,6 +1,6 @@
 const std = @import("std");
 const expect = std.testing.expect;
-const Ordering = @import("../util/ordering.zig").Ordering;
+const Ordering = @import("../../util/ordering.zig").Ordering;
 
 // const c = @cImport({
 //     @cInclude("primitives/string.h");
