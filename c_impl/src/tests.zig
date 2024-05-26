@@ -9,5 +9,5 @@ comptime {
     _ = @import("primitives/array.zig").Array;
     _ = @import("primitives/set/set.zig").Set;
     _ = @import("primitives/map.zig").Map;
-    _ = @import("primitives/values.zig").TaggedValue;
+    _ = @import("primitives/script_value.zig").TaggedValue;
 }

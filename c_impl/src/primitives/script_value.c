@@ -4,6 +4,7 @@
 #include "string.h"
 #include "array.h"
 #include "map.h"
+#include "set/set.h"
 
 void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)
 {
@@ -21,6 +22,9 @@ void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)
             break;
         case cubsValueTagArray:
             cubs_array_deinit(&self->arr);
+            break;
+        case cubsValueTagSet:
+            cubs_set_deinit(&self->set);
             break;
         case cubsValueTagMap:
             cubs_map_deinit(&self->map);

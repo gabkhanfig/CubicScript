@@ -109,6 +109,7 @@ typedef union CubsRawValue {
     double floatNum;
     CubsString string;
     CubsArray arr;
+    CubsSet set;
     CubsMap map;
 } CubsRawValue;
 

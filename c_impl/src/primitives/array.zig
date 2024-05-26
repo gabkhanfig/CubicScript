@@ -1,11 +1,11 @@
 const std = @import("std");
 const expect = std.testing.expect;
-const value_types = @import("values.zig");
-const ValueTag = value_types.ValueTag;
-const RawValue = value_types.RawValue;
-const CTaggedValue = value_types.CTaggedValue;
-const TaggedValue = value_types.TaggedValue;
-const String = @import("string.zig").String;
+const script_value = @import("script_value.zig");
+const ValueTag = script_value.ValueTag;
+const RawValue = script_value.RawValue;
+const CTaggedValue = script_value.CTaggedValue;
+const TaggedValue = script_value.TaggedValue;
+const String = script_value.String;
 
 const c = struct {
     const Err = enum(c_int) {

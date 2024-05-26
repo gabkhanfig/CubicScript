@@ -10,9 +10,10 @@ const c = struct {
     extern fn cubs_tagged_value_eql(self: *const CTaggedValue, other: *const CTaggedValue) bool;
 };
 
-const String = @import("string.zig").String;
-const Array = @import("array.zig").Array;
-const Map = @import("map.zig").Map;
+pub const String = @import("string.zig").String;
+pub const Array = @import("array.zig").Array;
+pub const Set = @import("set/set.zig").Set;
+pub const Map = @import("map.zig").Map;
 
 pub const ValueTag = enum(c_int) {
     none = 0,
@@ -50,8 +51,8 @@ pub const RawValue = extern union {
     float: f64,
     string: String,
     array: Array,
+    set: Set,
     map: Map,
-    // set: Set,
     // option: Option,
     // result: Result,
     // class: Class,
@@ -123,7 +124,7 @@ pub const TaggedValue = union(ValueTag) {
     float: f64,
     string: String,
     array: Array,
-    set: void,
+    set: Set,
     map: Map,
     option: void,
     result: void,

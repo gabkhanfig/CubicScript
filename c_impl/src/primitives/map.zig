@@ -1,11 +1,11 @@
 const std = @import("std");
 const expect = std.testing.expect;
-const value_types = @import("values.zig");
-const ValueTag = value_types.ValueTag;
-const RawValue = value_types.RawValue;
-const CTaggedValue = value_types.CTaggedValue;
-const TaggedValue = value_types.TaggedValue;
-const String = @import("string.zig").String;
+const script_value = @import("script_value.zig");
+const ValueTag = script_value.ValueTag;
+const RawValue = script_value.RawValue;
+const CTaggedValue = script_value.CTaggedValue;
+const TaggedValue = script_value.TaggedValue;
+const String = script_value.String;
 
 // Maybe its possible to combine the groups allocation with the metadata?
 
@@ -55,7 +55,7 @@ pub const Map = extern struct {
     }
 
     pub fn find(self: *const Self, key: *const TaggedValue) ?*const RawValue {
-        const tempC = value_types.zigToCTaggedValueTemp(key.*);
+        const tempC = script_value.zigToCTaggedValueTemp(key.*);
         return c.cubs_map_find(self, &tempC);
     }
 
@@ -64,7 +64,7 @@ pub const Map = extern struct {
     }
 
     pub fn findMut(self: *Self, key: *const TaggedValue) ?*RawValue {
-        const tempC = value_types.zigToCTaggedValueTemp(key.*);
+        const tempC = script_value.zigToCTaggedValueTemp(key.*);
         return c.cubs_map_find_mut(self, &tempC);
     }
 
@@ -85,7 +85,7 @@ pub const Map = extern struct {
     }
 
     pub fn erase(self: *Self, key: *const TaggedValue) bool {
-        const tempC = value_types.zigToCTaggedValueTemp(key.*);
+        const tempC = script_value.zigToCTaggedValueTemp(key.*);
         return c.cubs_map_erase(self, &tempC);
     }
 
