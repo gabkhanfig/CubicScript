@@ -17,4 +17,5 @@ comptime {
 
 pub const String = @import("primitives/string.zig").String;
 pub const Array = @import("primitives/array.zig").Array;
+pub const Set = @import("primitives/set/set.zig").Set;
 pub const Map = @import("primitives/map.zig").Map;

@@ -81,6 +81,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/primitives/string.c",
     "src/primitives/array.c",
     "src/primitives/map.c",
+    "src/primitives/set/set.c",
 };
 
 pub const cubic_script_x86_sources = [_][]const u8{};
