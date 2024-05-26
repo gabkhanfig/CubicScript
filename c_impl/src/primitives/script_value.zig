@@ -158,6 +158,9 @@ pub const TaggedValue = union(ValueTag) {
             .array => |*a| {
                 a.deinit();
             },
+            .set => |*s| {
+                s.deinit();
+            },
             .map => |*m| {
                 m.deinit();
             },
@@ -187,6 +190,9 @@ pub const TaggedValue = union(ValueTag) {
             },
             .array => {
                 return Self{ .array = raw.array };
+            },
+            .set => {
+                return Self{ .set = raw.set };
             },
             .map => {
                 return Self{ .map = raw.map };
@@ -224,6 +230,12 @@ pub const TaggedValue = union(ValueTag) {
             },
             ValueTag.string => |*s| {
                 return @ptrCast(@alignCast(s));
+            },
+            ValueTag.set => |*s| {
+                return @ptrCast(@alignCast(s));
+            },
+            ValueTag.map => |*m| {
+                return @ptrCast(@alignCast(m));
             },
             else => {
                 unreachable;
@@ -268,6 +280,14 @@ pub const TaggedValue = union(ValueTag) {
         var tagString = Self{ .string = String.initUnchecked("suh") };
         defer tagString.deinit();
         try OffsetContainer.appendTagged(&tagString, &offsets);
+
+        var tagSet = Self{ .set = Set.init(.int) };
+        defer tagSet.deinit();
+        try OffsetContainer.appendTagged(&tagSet, &offsets);
+
+        var tagMap = Self{ .map = Map.init(.int, .float) };
+        defer tagMap.deinit();
+        try OffsetContainer.appendTagged(&tagMap, &offsets);
     }
 
     test value {
