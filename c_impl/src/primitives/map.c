@@ -360,8 +360,6 @@ const CubsRawValue *cubs_map_find_unchecked(const CubsMap *self, const CubsRawVa
     if(inner == NULL) {
         return NULL;
     }
-
-    
     
     const CubsValueTag keyTag = cubs_map_key_tag(self);
     const size_t hashCode = cubs_compute_hash(key, keyTag);
