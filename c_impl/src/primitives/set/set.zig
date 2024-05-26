@@ -155,4 +155,76 @@ pub const Set = extern struct {
             try expect(set.size() == 100);
         }
     }
+
+    test containsUnchecked {
+        var set = Set.init(.string);
+        defer set.deinit();
+
+        var firstFind = RawValue{ .string = String.initUnchecked("erm") };
+        defer firstFind.deinit(.string);
+
+        try expect(set.containsUnchecked(&firstFind) == false);
+
+        set.insert(TaggedValue{ .string = String.initUnchecked("erm") });
+
+        try expect(set.containsUnchecked(&firstFind));
+
+        for (0..99) |i| {
+            set.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) });
+        }
+
+        try expect(set.size() == 100);
+
+        try expect(set.containsUnchecked(&firstFind));
+
+        for (0..99) |i| {
+            var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit(.string);
+
+            try expect(set.containsUnchecked(&firstFind));
+        }
+
+        for (100..150) |i| {
+            var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit(.string);
+
+            try expect(set.containsUnchecked(&findVal) == false);
+        }
+    }
+
+    test contains {
+        var set = Set.init(.string);
+        defer set.deinit();
+
+        var firstFind = TaggedValue{ .string = String.initUnchecked("erm") };
+        defer firstFind.deinit();
+
+        try expect(set.contains(&firstFind) == false);
+
+        set.insert(TaggedValue{ .string = String.initUnchecked("erm") });
+
+        try expect(set.contains(&firstFind));
+
+        for (0..99) |i| {
+            set.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) });
+        }
+
+        try expect(set.size() == 100);
+
+        try expect(set.contains(&firstFind));
+
+        for (0..99) |i| {
+            var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit();
+
+            try expect(set.contains(&firstFind));
+        }
+
+        for (100..150) |i| {
+            var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+            defer findVal.deinit();
+
+            try expect(set.contains(&findVal) == false);
+        }
+    }
 };
