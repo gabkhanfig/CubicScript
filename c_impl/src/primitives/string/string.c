@@ -8,14 +8,15 @@
 #include <stdio.h>
 #include "../../util/unreachable.h"
 
-#if __AVX2__
+//#if __AVX2__
 #include <immintrin.h>
-#endif
+//#endif
 
-#define STRING_ALIGN 32
-
-const size_t FLAG_BIT = 1ULL << 63;
-const CubsString EMPTY_STRING = {0};
+static const char HEAP_FLAG_BIT = (char)0b10000000;
+static const size_t MAX_SSO_LEN = 23;
+static const size_t HEAP_BUF_ALIGNMENT = 32;
+static const size_t HEAP_REP_FLAG_BITMASK = 1ULL << 63;
+static const CubsString EMPTY_STRING = {0};
 
 static bool is_valid_utf8(CubsStringSlice slice) {
   const uint8_t asciiZeroBit = 0b10000000;
@@ -82,132 +83,59 @@ static bool is_valid_utf8(CubsStringSlice slice) {
 #define VALIDATE_SLICE(stringSlice)
 #endif
 
-typedef struct Inner {
-    AtomicRefCount refCount;
-    size_t len;
-    size_t allocSize;
-    size_t _padding;
-} Inner;
+typedef struct {
+    char sso[24];
+} SsoRep;
 
-/// @param requiredLen Does not include null terminator
-static Inner* inner_init_zeroed(size_t requiredLen) {
-  const size_t remainder = (requiredLen + 1) % 32;
-  const size_t requiredStringAllocation = (requiredLen + 1) + (32 - remainder); // allocate 32 byte chunks for AVX2
-  const size_t allocSize = sizeof(Inner) + requiredStringAllocation;
+typedef struct {
+    const char* buf;
+    AtomicRefCount* refCount;
+    size_t allocSizeAndFlag;
+} HeapRep;
 
-  Inner* self = cubs_malloc(allocSize, STRING_ALIGN);
-  memset((void*)self, 0, allocSize);
-  atomic_ref_count_init(&self->refCount);
-  self->len = requiredLen;
-  self->allocSize = allocSize;
-
-  return self;
+static bool is_sso(const CubsString* self) {
+    const char* metadata = (const char*)(&self->_metadata);
+    // If the element at index 23 (the last sso char) has the high bit set, its using the heap representation
+    return (metadata[23] & HEAP_FLAG_BIT) == 0;
 }
 
-static Inner* inner_init_slice(CubsStringSlice slice) {
-  Inner* self = inner_init_zeroed(slice.len);
-
-  char* stringBufferStart = ((char*)self) + sizeof(Inner);
-  memcpy((void*)stringBufferStart, (void*)slice.str, slice.len);
-  return self;
+static void set_sso(CubsString* self) {
+    char* metadata = (char*)(&self->_metadata);
+    metadata[23] |= HEAP_FLAG_BIT;
+    #if _DEBUG
+    const SsoRep* ssoRep = (const SsoRep*)(&self->_metadata);
+    assert((ssoRep->sso[23] & HEAP_FLAG_BIT) != 0);
+    const HeapRep* heapRep = (const HeapRep*)(&self->_metadata);
+    assert((heapRep->allocSizeAndFlag & HEAP_REP_FLAG_BITMASK) != 0);
+    #endif
 }
 
-static void inner_increment_ref_count(Inner* self) {
-  atomic_ref_count_add_ref(&self->refCount);
+static const SsoRep* sso_rep(const CubsString* self) {
+    assert(is_sso(self));
+    return (const SsoRep*)(&self->_metadata);
 }
 
-static void inner_decrement_ref_count(Inner* self) {
-  if (!atomic_ref_count_remove_ref(&self->refCount)) {
-    return;
-  }
-  cubs_free(self, self->allocSize, STRING_ALIGN);
+static SsoRep* sso_rep_mut(CubsString* self) {
+    assert(is_sso(self));
+    return (SsoRep*)(&self->_metadata);
 }
 
-static const Inner* as_inner(const CubsString* self) {
-  assert(self->_inner != NULL);
-  return (const Inner*)self->_inner;
+static const HeapRep* heap_rep(const CubsString* self) {
+    assert(!is_sso(self));
+    return (const HeapRep*)(&self->_metadata);
 }
 
-static Inner* as_inner_mut(CubsString* self) {
-  assert(self->_inner != NULL);
-  return (Inner*)self->_inner;
+static HeapRep* heap_rep_mut(CubsString* self) {
+    assert(!is_sso(self));
+    return (HeapRep*)(&self->_metadata);
 }
 
-static const char* buf_start(const CubsString* self) {
-  assert(self->_inner != NULL);
-  return (const char*)(as_inner(self) + 1); // buffer starts at the memory immediately after inner
-}
-
-static char* buf_start_mut(CubsString* self) {
-  assert(self->_inner != NULL);
-  return (char*)(as_inner_mut(self) + 1); // buffer starts at the memory immediately after inner
-}
-
-CubsStringError cubs_string_init(CubsString* stringToInit, CubsStringSlice slice)
-{
-  if (is_valid_utf8(slice)) {
-    (*stringToInit) = cubs_string_init_unchecked(slice);
-    return cubsStringErrorNone;
-  }
-  else {
-    return cubsStringErrorInvalidUtf8;
-  }
-}
-
-CubsString cubs_string_init_unchecked(CubsStringSlice slice)
-{
-  if(slice.len == 0) { 
-    return EMPTY_STRING;
-  }
-  VALIDATE_SLICE(slice);
-  CubsString s;
-  s._inner = (void*)inner_init_slice(slice);
-  return s;
-}
-
-void cubs_string_deinit(CubsString* self)
-{
-  if (self->_inner == NULL) {
-    return;
-  }
-  Inner* inner = (Inner*)self->_inner;
-  self->_inner = NULL;
-  inner_decrement_ref_count(inner);
-}
-
-CubsString cubs_string_clone(const CubsString* self)
-{
-  if (self->_inner == NULL) {
-    return EMPTY_STRING;
-  }
-  CubsString tempCopy = (*self);
-  Inner* inner = as_inner_mut(&tempCopy);
-  inner_increment_ref_count(inner);
-  return tempCopy;
-}
-
-size_t cubs_string_len(const CubsString* self)
-{
-  if (self->_inner == NULL) {
-    return 0;
-  }
-  else {
-    const Inner* inner = as_inner(self);
-    return inner->len;
-  }
-}
-
-CubsStringSlice cubs_string_as_slice(const CubsString *self)
-{
-  CubsStringSlice slice;
-  if(self->_inner == NULL) {
-    slice.str = NULL;
-    slice.len = 0;
-  } else {
-    slice.str = buf_start(self);
-    slice.len = as_inner(self)->len;
-  }
-  return slice;
+static void heap_rep_deinit(HeapRep* self) {
+    if(!atomic_ref_count_remove_ref(self->refCount)) {
+        return;
+    }
+    cubs_free((void*)self->refCount, sizeof(AtomicRefCount), _Alignof(AtomicRefCount));
+    cubs_free((void*)self->buf, self->allocSizeAndFlag & ~HEAP_REP_FLAG_BITMASK, HEAP_BUF_ALIGNMENT);
 }
 
 static bool simd_compare_equal_string_and_string(const char* buffer, const char* otherBuffer, size_t len) {
@@ -233,24 +161,6 @@ static bool simd_compare_equal_string_and_string(const char* buffer, const char*
   }
   return true;
   #endif
-}
-
-bool cubs_string_eql(const CubsString *self, const CubsString *other)
-{
-  if(self->_inner == other->_inner) {
-    return true;
-  }
-
-  if(self->_inner == NULL) {
-    return cubs_string_len(other) == 0;
-  }
-
-  const size_t selfLen = cubs_string_len(self);
-  if (other->_inner == NULL) {
-    return selfLen == 0;
-  }
-
-  return simd_compare_equal_string_and_string(buf_start(self), buf_start(other), selfLen);
 }
 
 /// Expects that the length of buffer is equal to `slice.len`.
@@ -282,116 +192,17 @@ static bool simd_compare_equal_string_and_slice(const char* buffer, const CubsSt
   #endif
 }
 
-bool cubs_string_eql_slice(const CubsString *self, CubsStringSlice slice)
-{
-  if(self->_inner == NULL) {
-    return slice.len == 0;
-  }
+static __m256i string_hash_iteration(const __m256i* vec, char num) {
+	// in the case of SSO, will ignore the 
+	const __m256i seed = _mm256_set1_epi64x(0);
+	const __m256i indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+	const __m256i numVec = _mm256_set1_epi8(num);
 
-  const size_t selfLen = cubs_string_len(self);
-  if(selfLen != slice.len) {
-    return false;
-  }
-
-  return simd_compare_equal_string_and_slice(buf_start(self), slice);
-}
-
-CubsOrdering cubs_string_cmp(const CubsString *self, const CubsString *other)
-{
-  if(self->_inner == other->_inner) {
-    return cubsOrderingEqual;
-  }
-
-  const CubsStringSlice selfSlice = cubs_string_as_slice(self);
-  const CubsStringSlice otherSlice = cubs_string_as_slice(other);
-
-  if(selfSlice.len == otherSlice.len) {
-    for(size_t i = 0; i < selfSlice.len; i++) {
-      const char selfChar = selfSlice.str[i];
-      const char otherChar = otherSlice.str[i];
-      if (selfChar == otherChar) {
-        continue;
-      } else if (selfChar < otherChar) {
-        return cubsOrderingLess;
-      } else {
-        return cubsOrderingGreater;
-      }
-    }
-  }
-  else {
-    const size_t lengthToCheck = selfSlice.len > otherSlice.len ? selfSlice.len : otherSlice.len;
-    for(size_t i = 0; i < lengthToCheck; i++) {
-      char selfChar = '\0';
-      if(i < selfSlice.len) {
-        selfChar = selfSlice.str[i];
-      }
-
-      char otherChar = '\0';
-      if(i < otherSlice.len) {
-        otherChar = otherSlice.str[i];
-      }
-      if (selfChar == otherChar) {
-        continue;
-      } else if (selfChar < otherChar) {
-        return cubsOrderingLess;
-      } else {
-        return cubsOrderingGreater;
-      }
-    }
-  } 
-  return cubsOrderingEqual;
-}
-
-size_t cubs_string_hash(const CubsString *self)
-{
-  // TODO better hash function
-  // #if __AVX2__
-  // const size_t HASH_MODIFIER = 0xc6a4a7935bd1e995ULL;
-	// const size_t HASH_SHIFT = 47;
-
-  // size_t h = 0;
-  // const size_t len = cubs_string_len(self);
-  // const size_t iterationsToDo = ((len) % 32 == 0 ? len : len + (32 - (len % 32))) / 32;
-
-  // if(iterationsToDo > 0) {
-  //   const __m256i* thisVec = (const __m256i*)buf_start(self);
-   
-  //   const __m256i seed = _mm256_set1_epi64x(0);
-  //   const __m256i indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-      
-  //   for(size_t i = 0; i < iterationsToDo; i++) {
-  //     const char num = i != (iterationsToDo - 1) ? (char)(32) : (char)((iterationsToDo * i) - len);
-
-  //     // in the case of SSO, will ignore the 
-  //     const __m256i numVec = _mm256_set1_epi8(num);
-
-  //     // Checks if num is greater than each value of indices.
-  //     // Mask is 0xFF if greater than, and 0x00 otherwise. 
-  //     const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
-  //     const __m256i partial = _mm256_and_si256(thisVec[i], mask);
-  //     const __m256i hashIter = _mm256_add_epi8(partial, numVec);
-
-  //     const size_t* hashPtr = (const size_t*)(&hashIter);
-	// 		for (size_t j = 0; j < 4; j++) {
-	// 		  h ^= hashPtr[i];
-	// 			h *= HASH_MODIFIER;
-	// 			h ^= h >> HASH_SHIFT;
-	// 		}
-  //   }
-  // }
-
-  // h ^= h >> HASH_SHIFT;
-	// h *= HASH_MODIFIER;
-	// h ^= h >> HASH_SHIFT;
-	// return h;
-  // #endif
-  const CubsStringSlice slice = cubs_string_as_slice(self);
-  if(slice.len == 0) {
-    return 0;
-  }
-  else {
-    return *((const size_t*)slice.str);
-  }
+	// Checks if num is greater than each value of indices.
+	// Mask is 0xFF if greater than, and 0x00 otherwise. 
+	const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
+	const __m256i partial = _mm256_and_si256(*vec, mask);
+	return _mm256_add_epi8(partial, numVec);
 }
 
 static size_t index_of_pos_linear(CubsStringSlice self, CubsStringSlice slice, size_t startIndex) {
@@ -412,8 +223,217 @@ static size_t index_of_pos_linear(CubsStringSlice self, CubsStringSlice slice, s
   return CUBS_STRING_N_POS;
 }
 
-static size_t index_of_pos_scalar(CubsStringSlice self, CubsStringSlice slice, size_t startIndex) {
-  return CUBS_STRING_N_POS;
+static CubsString concat_valid_slices(CubsStringSlice lhs, CubsStringSlice rhs) {
+  const size_t totalLen = lhs.len + rhs.len;
+
+  CubsString temp = {0};
+  temp.len = totalLen;
+  if(totalLen <= MAX_SSO_LEN) {
+    memcpy((void*)sso_rep_mut(&temp)->sso, lhs.str, lhs.len);
+    memcpy((void*)&sso_rep_mut(&temp)->sso[lhs.len], rhs.str, rhs.len);
+    return temp;
+  }
+
+  AtomicRefCount* refCount = cubs_malloc(sizeof(AtomicRefCount), _Alignof(AtomicRefCount));
+  atomic_ref_count_init(refCount);
+
+  const size_t remainder = (totalLen + 1) % 32;
+  const size_t requiredStringAllocation = (totalLen + 1) + (32 - remainder); // allocate 32 byte chunks for AVX2
+  char* buf = cubs_malloc(requiredStringAllocation, HEAP_BUF_ALIGNMENT);
+  memset((void*)buf, 0, requiredStringAllocation);
+  memcpy((void*)buf, lhs.str, lhs.len);
+  memcpy((void*)&buf[lhs.len], rhs.str, rhs.len);
+
+  set_sso(&temp);
+  HeapRep* heapRep = heap_rep_mut(&temp);
+  heapRep->buf = buf;
+  heapRep->refCount = refCount;
+  heapRep->allocSizeAndFlag = requiredStringAllocation | HEAP_REP_FLAG_BITMASK;
+
+  return temp;
+}
+
+CubsString cubs_string_init_unchecked(CubsStringSlice slice)
+{
+    VALIDATE_SLICE(slice);
+
+    CubsString temp = {0};
+    temp.len = slice.len;
+
+    if(slice.len <= MAX_SSO_LEN) {
+        temp.len = slice.len;
+        memcpy((void*)sso_rep_mut(&temp), slice.str, slice.len);
+        return temp;
+    }
+
+    AtomicRefCount* refCount = cubs_malloc(sizeof(AtomicRefCount), _Alignof(AtomicRefCount));
+    atomic_ref_count_init(refCount);
+
+    const size_t remainder = (slice.len + 1) % 32;
+    const size_t requiredStringAllocation = (slice.len + 1) + (32 - remainder); // allocate 32 byte chunks for AVX2
+    char* buf = cubs_malloc(requiredStringAllocation, HEAP_BUF_ALIGNMENT);
+    memset((void*)buf, 0, requiredStringAllocation);
+    memcpy((void*)buf, slice.str, slice.len);
+
+    set_sso(&temp);
+    HeapRep* heapRep = heap_rep_mut(&temp);
+    heapRep->buf = buf;
+    heapRep->refCount = refCount;
+    heapRep->allocSizeAndFlag = requiredStringAllocation | HEAP_REP_FLAG_BITMASK;
+
+    return temp;
+}
+
+NewStringError cubs_string_init(CubsString *out, CubsStringSlice slice)
+{
+  if (is_valid_utf8(slice)) {
+    (*out) = cubs_string_init_unchecked(slice);
+    return newStringErrorNone;
+  }
+  else {
+    return newStringErrorInvalidUtf8;
+  }
+}
+
+void cubs_string_deinit(CubsString *self)
+{
+    if(is_sso(self)) {
+        return;
+    }
+    heap_rep_deinit(heap_rep_mut(self));
+    memset((void*)self, 0, sizeof(CubsString)); // ensure no use after free
+}
+
+CubsString cubs_string_clone(const CubsString *self)
+{
+    CubsString temp;
+    memcpy((void*)&temp, (const void*)self, sizeof(CubsString)); // Even works for heap strings :D
+    if(is_sso(self)) {
+        return temp;
+    }
+
+    const HeapRep* heapRep = heap_rep(self);
+    AtomicRefCount* refCount = (AtomicRefCount*)heapRep->refCount; // Explicitly const-cast
+    atomic_ref_count_add_ref(refCount);
+
+    return temp;
+}
+
+CubsStringSlice cubs_string_as_slice(const CubsString *self)
+{
+    if(is_sso(self)) {
+        const CubsStringSlice slice = {.str = sso_rep(self)->sso, .len = self->len};
+        return slice;
+    } else {
+        const CubsStringSlice slice = {.str = heap_rep(self)->buf, .len = self->len};
+        return slice;
+    }
+}
+
+bool cubs_string_eql(const CubsString *self, const CubsString *other)
+{
+    if(is_sso(self)) {
+        const size_t* selfStart = (const size_t*)self;
+        const size_t* otherStart = (const size_t*)other;
+        // Due to the memory layout, this is guaranteed to be a valid equality check.
+        return (selfStart[0] == otherStart[0])
+			&& (selfStart[1] == otherStart[1])
+			&& (selfStart[2] == otherStart[2])
+			&& (selfStart[3] == otherStart[3]);
+    }
+    if(self->len != other->len) {
+        return false;
+    }
+    // At this point, the length of `self` and `other` are the same, and `self` is not SSO,
+    // therefore both must be using the heap representation.
+    const HeapRep* selfHeap = heap_rep(self);
+    const HeapRep* otherHeap = heap_rep(other);
+
+    if(selfHeap->buf == otherHeap->buf) {
+        return true;
+    }
+
+    return simd_compare_equal_string_and_string(selfHeap->buf, otherHeap->buf, self->len);
+}
+
+bool cubs_string_eql_slice(const CubsString* self, CubsStringSlice slice) {
+  if(self->len != slice.len) {
+    return false;
+  }
+
+  if(is_sso(self)) {
+    const size_t* selfChars = (const size_t*)(sso_rep(self)->sso);
+
+    size_t buf[3] = {0};
+    memcpy((void*)buf, (const void*)slice.str, slice.len);
+    return (selfChars[0] == buf[0])
+			&& (selfChars[1] == buf[1])
+			&& (selfChars[2] == buf[2]);
+  }
+
+  return simd_compare_equal_string_and_slice(heap_rep(self)->buf, slice);
+}
+
+CubsOrdering cubs_string_cmp(const CubsString *self, const CubsString *rhs)
+{
+  const CubsStringSlice selfSlice = cubs_string_as_slice(self);
+  const CubsStringSlice otherSlice = cubs_string_as_slice(rhs);
+  const int result = strcmp(selfSlice.str, otherSlice.str);
+  if(result == 0) {
+    return cubsOrderingEqual;
+  }
+  else if(result > 0) {
+    return cubsOrderingGreater;
+  }
+  else {
+    return cubsOrderingLess;
+  }
+}
+
+size_t cubs_string_hash(const CubsString *self)
+{
+  const size_t HASH_MODIFIER = 0xc6a4a7935bd1e995ULL;
+  const size_t HASH_SHIFT = 47;
+
+  size_t h = 0;
+  h = 0 ^ (self->len * HASH_MODIFIER);
+
+	if (is_sso(self)) {
+		__m256i thisVec = {0};
+    memcpy((void*)&thisVec, (const void*)sso_rep(self)->sso, self->len);
+		const __m256i hashIter = string_hash_iteration(&thisVec, (char)self->len);
+    const uint64_t* m256i_u64 = (const uint64_t*)&hashIter;
+
+		for (size_t i = 0; i < 4; i++) {
+			h ^= m256i_u64[i];
+			h *= HASH_MODIFIER;
+			h ^= h >> HASH_SHIFT;
+		}
+	}
+	else {
+		const size_t iterationsToDo = ((self->len) % 32 == 0 ?
+			self->len :
+			self->len + (32 - (self->len % 32)))
+			/ 32;
+
+		for (size_t i = 0; i < iterationsToDo; i++) {
+			const __m256i* thisVec = (const __m256i*)(heap_rep(self)->buf);
+			const char num = i != (iterationsToDo - 1) ? (char)(32) : (char)((iterationsToDo * i) - self->len);
+			const __m256i hashIter = string_hash_iteration(thisVec + i, num);
+      const uint64_t* m256i_u64 = (const uint64_t*)&hashIter;
+
+			for (size_t j = 0; j < 4; j++) {
+				h ^= m256i_u64[j];
+				h *= HASH_MODIFIER;
+				h ^= h >> HASH_SHIFT;
+			}
+		}
+	}
+
+	h ^= h >> HASH_SHIFT;
+	h *= HASH_MODIFIER;
+	h ^= h >> HASH_SHIFT;
+	return h;
 }
 
 size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t startIndex)
@@ -425,16 +445,8 @@ size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t st
   if((startIndex > selfSlice.len) || (slice.len == 0)) {
     return CUBS_STRING_N_POS;
   }
-
-  // if(slice.len < 2) {
-  //   if(slice.len == 0) { 
-  //     return startIndex;
-  //   }
-  //   return index_of_pos_scalar(cubs_string_as_slice(self), slice, startIndex);
-  // }
-  // else {
-    return index_of_pos_linear(cubs_string_as_slice(self), slice, startIndex);
-  //}
+  // TODO simd
+  return index_of_pos_linear(cubs_string_as_slice(self), slice, startIndex);
 }
 
 size_t cubs_string_rfind(const CubsString *self, CubsStringSlice slice, size_t startIndex)
@@ -468,34 +480,9 @@ size_t cubs_string_rfind(const CubsString *self, CubsStringSlice slice, size_t s
   }
 }
 
-static CubsString concat_valid_slices(CubsStringSlice lhs, CubsStringSlice rhs) {
-  const size_t requiredLen = lhs.len + rhs.len;
-
-  Inner* inner = inner_init_zeroed(requiredLen);
-
-  char* stringBufferStart = ((char*)inner) + sizeof(Inner);
-  memcpy((void*)stringBufferStart, (void*)lhs.str, lhs.len);
-  memcpy((void*)(stringBufferStart + lhs.len), (void*)rhs.str, rhs.len);
-
-  CubsString s;
-  s._inner = (void*)inner;
-  return s;
-}
-
-CubsString cubs_string_concat(const CubsString* self, const CubsString* other)
+CubsString cubs_string_concat(const CubsString *self, const CubsString *other)
 {
   return concat_valid_slices(cubs_string_as_slice(self), cubs_string_as_slice(other));
-}
-
-CubsStringError cubs_string_concat_slice(CubsString *out, const CubsString *self, CubsStringSlice slice)
-{
-  if (is_valid_utf8(slice)) {
-    (*out) = concat_valid_slices(cubs_string_as_slice(self), slice);
-    return cubsStringErrorNone;
-  }
-  else {
-    return cubsStringErrorInvalidUtf8;
-  }
 }
 
 CubsString cubs_string_concat_slice_unchecked(const CubsString *self, CubsStringSlice slice)
@@ -504,21 +491,32 @@ CubsString cubs_string_concat_slice_unchecked(const CubsString *self, CubsString
   return concat_valid_slices(cubs_string_as_slice(self), slice);
 }
 
-CubsStringError cubs_string_substr(CubsString *out, const CubsString *self, size_t startInclusive, size_t endExclusive)
+NewStringError cubs_string_concat_slice(CubsString *out, const CubsString *self, CubsStringSlice slice)
+{
+  if (is_valid_utf8(slice)) {
+    (*out) = concat_valid_slices(cubs_string_as_slice(self), slice);
+    return newStringErrorNone;
+  }
+  else {
+    return newStringErrorInvalidUtf8;
+  }
+}
+
+NewStringError cubs_string_substr(CubsString *out, const CubsString *self, size_t startInclusive, size_t endExclusive)
 {
   if(startInclusive == 0 && endExclusive == 0) {   
     (*out) = EMPTY_STRING;
-    return cubsStringErrorNone;
+    return newStringErrorNone;
   }
 
   const CubsStringSlice selfSlice = cubs_string_as_slice(self);
   if(startInclusive >= selfSlice.len || endExclusive > selfSlice.len || startInclusive > endExclusive) {
-    return cubsStringErrorIndexOutOfBounds;
+    return newStringErrorIndexOutOfBounds;
   }
 
   if(startInclusive == endExclusive) {
     (*out) = EMPTY_STRING;
-    return cubsStringErrorNone;
+    return newStringErrorNone;
   }
 
   const size_t len = endExclusive - startInclusive;
@@ -527,97 +525,80 @@ CubsStringError cubs_string_substr(CubsString *out, const CubsString *self, size
   return cubs_string_init(out, subSlice);
 }
 
-typedef struct _PredefinedStringInner {
-  _Alignas(32) Inner inner;
-  _Alignas(32) char buf[32];
-} PredefinedStringInner;
+/// Has the same layout as `CubsString` so can be reinterpret casted
+typedef struct {
+  size_t len;
+  char sso[24];
+} PredefinedSsoString;
 
-/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
-PredefinedStringInner TRUE_INNER = {
-  .inner = {.refCount = {.count = 1}, .len = 4, .allocSize = 0, ._padding = 0},
-  // Explicitly zero out the memory
-  .buf = {'t', 'r', 'u', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+static const PredefinedSsoString TRUE_STRING = {
+  .len = 4,
+  .sso = {'t', 'r', 'u', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
-const CubsString TRUE_STRING = {._inner = (void*)&TRUE_INNER};
 
-/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
-PredefinedStringInner FALSE_INNER = {
-  .inner = {.refCount = {.count = 1}, .len = 5, .allocSize = 0, ._padding = 0},
-  // Explicitly zero out the memory
-  .buf = {'f', 'a', 'l', 's', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+static const PredefinedSsoString FALSE_STRING = {
+  .len = 5,
+  .sso = {'f', 'a', 'l', 's', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
-const CubsString FALSE_STRING = {._inner = (void*)&FALSE_INNER};
 
-CubsString cubs_string_from_bool(bool b) {
+static const PredefinedSsoString ZERO_STRING = {
+  .len = 1,
+  .sso = {'0', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
+static const PredefinedSsoString ONE_STRING = {
+  .len = 1,
+  .sso = {'1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
+static const PredefinedSsoString NEGATIVE_ONE_STRING = {
+  .len = 2,
+  .sso = {'-', '1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
+CubsString cubs_string_from_bool(bool b)
+{
   if(b) {
-    return cubs_string_clone(&TRUE_STRING);
-  }
-  else {
-    return cubs_string_clone(&FALSE_STRING);
-  }
+    return *(const CubsString*)&TRUE_STRING;
+  } 
+  return *(const CubsString*)&FALSE_STRING;
 }
-
-/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
-PredefinedStringInner ZERO_INNER = {
-  .inner = {.refCount = {.count = 1}, .len = 1, .allocSize = 0, ._padding = 0},
-  // Explicitly zero out the memory
-  .buf = {'0', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-};
-const CubsString ZERO_STRING = {._inner = (void*)&ZERO_INNER};
-
-/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
-PredefinedStringInner ONE_INNER = {
-  .inner = {.refCount = {.count = 1}, .len = 1, .allocSize = 0, ._padding = 0},
-  // Explicitly zero out the memory
-  .buf = {'1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-};
-const CubsString ONE_STRING = {._inner = (void*)&ONE_INNER};
-
-/// NOTE DO NOT MAKE THIS CONST because it will cause segmentation faults
-PredefinedStringInner NEGATIVE_ONE_INNER = {
-  .inner = {.refCount = {.count = 1}, .len = 2, .allocSize = 0, ._padding = 0},
-  // Explicitly zero out the memory
-  .buf = {'-', '1', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-};
-const CubsString NEGATIVE_ONE_STRING = {._inner = (void*)&NEGATIVE_ONE_INNER};
 
 CubsString cubs_string_from_int(int64_t num)
 {
-  // 0, 1, and -1 are reasonably likely values
+  // signed 64 bit integers will always take less characters than the max SSO buffer,
+  // therefore its safe to create it inline
   if(num == 0) {
-    return cubs_string_clone(&ZERO_STRING);
+    return *(const CubsString*)&ZERO_STRING;
   }
-  if(num == 1) {
-    return cubs_string_clone(&ONE_STRING);
+  else if(num == 1) {
+    return *(const CubsString*)&ONE_STRING;
   }
-  if(num == -1) {
-    return cubs_string_clone(&NEGATIVE_ONE_STRING);
+  else if(num == -1) {
+    return *(const CubsString*)&NEGATIVE_ONE_STRING;
   }
-    
-  // This is enough to handle all 64 bit integer values
-  #define STRING_INT_BUFFER_SIZE 21
-  char temp[STRING_INT_BUFFER_SIZE];
-  // https://en.cppreference.com/w/c/io/fprintf
-  const int len = sprintf_s((char*)&temp, STRING_INT_BUFFER_SIZE, "%lld", num);
+
+  CubsString temp = {0};
+  const int len = sprintf_s(sso_rep_mut(&temp)->sso, sizeof(SsoRep), "%lld", num);
   #if _DEBUG
   if(len < 0) {
     unreachable();
   }
   #endif
-  const CubsStringSlice slice = {.str = (const char*)&temp, .len = len};
-  return cubs_string_init_unchecked(slice);
+  temp.len = (size_t)len;
+  return temp;
 }
 
-CubsString cubs_string_from_float(double num) {
-  // 0, 1, and -1 are reasonably likely values
+CubsString cubs_string_from_float(double num)
+{
   if(num == 0.0) {
-    return cubs_string_clone(&ZERO_STRING);
+    return *(const CubsString*)&ZERO_STRING;
   }
-  if(num == 1.0) {
-    return cubs_string_clone(&ONE_STRING);
+  else if(num == 1.0) {
+    return *(const CubsString*)&ONE_STRING;
   }
-  if(num == -1.0) {
-    return cubs_string_clone(&NEGATIVE_ONE_STRING);
+  else if(num == -1.0) {
+    return *(const CubsString*)&NEGATIVE_ONE_STRING;
   }
 
   // https://stackoverflow.com/questions/1701055/what-is-the-maximum-length-in-chars-needed-to-represent-any-double-value
@@ -632,7 +613,7 @@ CubsString cubs_string_from_float(double num) {
     unreachable();
   }
   #endif
-  
+
   int decimalIndex = -1;
   for(int i = 0; i < len; i++) {
     if(temp[i] == '.') {
@@ -662,20 +643,21 @@ CubsString cubs_string_from_float(double num) {
   return cubs_string_init_unchecked(slice);
 }
 
-CubsStringError cubs_string_to_bool(bool *out, const CubsString *self)
+NewStringError cubs_string_to_bool(bool *out, const CubsString *self)
 {
   const size_t TRUE_MASK = (size_t)('t') | ((size_t)('r') << 8) | ((size_t)('u') << 16)| ((size_t)('e') << 24);
   const size_t FALSE_MASK = (size_t)('f') | ((size_t)('a') << 8) | ((size_t)('l') << 16)| ((size_t)('s') << 24) | ((size_t)('e') << 32);
-  const size_t* start = (const size_t*)buf_start(self);
-  if((*start) == TRUE_MASK) {
+  /// Start of slice is guaranteed to be 8 byte aligned, and valid for 24 bytes
+  const size_t* start = (const size_t*)cubs_string_as_slice(self).str;
+    if((*start) == TRUE_MASK) {
     (*out) = true;
-    return cubsStringErrorNone;
+    return newStringErrorNone;
   }
   else if((*start) == FALSE_MASK) {
     (*out) = false;
-    return cubsStringErrorNone;
+    return newStringErrorNone;
   }
   else {
-    return cubsStringErrorParseBool;
+    return newStringErrorParseBool;
   }
 }

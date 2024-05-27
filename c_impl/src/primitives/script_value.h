@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h>
+
 /*
 It's kinda weird to define the structs here and their implementions in other files, but it makes it convenient for passing around
 raw values due to silly C shenanigans.
@@ -7,7 +9,10 @@ raw values due to silly C shenanigans.
 
 /// 0 / null intialization makes it an empty string.
 typedef struct CubsString {
-  void* _inner;
+    /// Reading this is safe. Writing is unsafe.
+    size_t len;
+    /// Accessing this is unsafe
+    void* _metadata[3];
 } CubsString;
 
 typedef struct CubsArray {

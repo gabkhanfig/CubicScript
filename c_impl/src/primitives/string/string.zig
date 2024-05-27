@@ -2,10 +2,6 @@ const std = @import("std");
 const expect = std.testing.expect;
 const Ordering = @import("../../util/ordering.zig").Ordering;
 
-// const c = @cImport({
-//     @cInclude("primitives/string.h");
-// });
-
 // Importing the header directly really messes with the language server, so this is simpler
 const c = struct {
     const Err = enum(c_int) {
@@ -32,7 +28,6 @@ const c = struct {
     extern fn cubs_string_init_unchecked(slice: Slice) callconv(.C) String;
     extern fn cubs_string_deinit(self: *String) callconv(.C) void;
     extern fn cubs_string_clone(self: *const String) callconv(.C) String;
-    extern fn cubs_string_len(self: *const String) callconv(.C) usize;
     extern fn cubs_string_as_slice(self: *const String) callconv(.C) Slice;
     extern fn cubs_string_eql(self: *const String, other: *const String) callconv(.C) bool;
     extern fn cubs_string_eql_slice(self: *const String, slice: Slice) callconv(.C) bool;
@@ -53,17 +48,12 @@ const c = struct {
 pub const String = extern struct {
     const Self = @This();
 
-    inner: ?*anyopaque = null,
+    /// Safe to read, unsafe to write
+    len: usize = 0,
+    /// Do not access
+    _metadata: [3]?*anyopaque = std.mem.zeroes([3]?*anyopaque),
 
-    pub const Error = error{
-        InvalidUtf8,
-        IndexOutOfBounds,
-        ParseBool,
-        ParseInt,
-        ParseFloat,
-    };
-
-    pub fn init(literal: []const u8) Error!Self {
+    pub fn init(literal: []const u8) error{InvalidUtf8}!Self {
         var self: String = undefined;
         const result = c.cubs_string_init(&self, c.Slice.fromLiteral(literal));
         switch (result) {
@@ -71,7 +61,7 @@ pub const String = extern struct {
                 return self;
             },
             .InvalidUtf8 => {
-                return Error.InvalidUtf8;
+                return error.InvalidUtf8;
             },
             else => {
                 unreachable;
@@ -89,10 +79,6 @@ pub const String = extern struct {
 
     pub fn clone(self: *const Self) Self {
         return c.cubs_string_clone(@ptrCast(self));
-    }
-
-    pub fn len(self: *const Self) usize {
-        return c.cubs_string_len(self);
     }
 
     pub fn asSlice(self: *const Self) []const u8 {
@@ -136,7 +122,7 @@ pub const String = extern struct {
         return c.cubs_string_concat(self, &other);
     }
 
-    pub fn concatSlice(self: *const Self, slice: []const u8) Error!Self {
+    pub fn concatSlice(self: *const Self, slice: []const u8) error{InvalidUtf8}!Self {
         var new: String = undefined;
         const result = c.cubs_string_concat_slice(&new, self, c.Slice.fromLiteral(slice));
         switch (result) {
@@ -144,7 +130,7 @@ pub const String = extern struct {
                 return new;
             },
             .InvalidUtf8 => {
-                return Error.InvalidUtf8;
+                return error.InvalidUtf8;
             },
             else => {
                 unreachable;
@@ -156,7 +142,7 @@ pub const String = extern struct {
         return c.cubs_string_concat_slice_unchecked(self, c.Slice.fromLiteral(slice));
     }
 
-    pub fn substr(self: *const Self, startInclusive: usize, endExclusive: usize) Error!Self {
+    pub fn substr(self: *const Self, startInclusive: usize, endExclusive: usize) error{ InvalidUtf8, IndexOutOfBounds }!Self {
         var newStr: String = undefined;
         const result = c.cubs_string_substr(&newStr, self, startInclusive, endExclusive);
         switch (result) {
@@ -164,10 +150,10 @@ pub const String = extern struct {
                 return newStr;
             },
             .InvalidUtf8 => {
-                return Error.InvalidUtf8;
+                return error.InvalidUtf8;
             },
             .IndexOutOfBounds => {
-                return Error.IndexOutOfBounds;
+                return error.IndexOutOfBounds;
             },
             else => {
                 unreachable;
@@ -187,7 +173,7 @@ pub const String = extern struct {
         return c.cubs_string_from_float(num);
     }
 
-    pub fn toBool(self: *const Self) Error!bool {
+    pub fn toBool(self: *const Self) error{ParseBool}!bool {
         var b: bool = undefined;
         const result = c.cubs_string_to_bool(&b, self);
         switch (result) {
@@ -195,7 +181,7 @@ pub const String = extern struct {
                 return b;
             },
             .ParseBool => {
-                return Error.ParseBool;
+                return error.ParseBool;
             },
             else => {
                 unreachable;
@@ -204,29 +190,49 @@ pub const String = extern struct {
     }
 
     test init {
-        // Valid utf8
-        var s = try String.init("hello world!");
-        defer s.deinit();
-
-        // Invalid utf8
-        try std.testing.expectError(String.Error.InvalidUtf8, String.init("erm\xFFFF"));
+        { // sso
+            var s = try String.init("hello world!");
+            defer s.deinit();
+        }
+        { // heap
+            var s = try String.init("hello world! haiuwdshpaisudhpaisuhdpasd");
+            defer s.deinit();
+        }
+        { // Invalid utf8
+            try std.testing.expectError(error.InvalidUtf8, String.init("erm\xFFFF"));
+        }
     }
 
     test initUnchecked {
-        // Valid utf8
-        var s = String.initUnchecked("hello world!");
-        defer s.deinit();
+        { // sso
+
+            var s = String.initUnchecked("hello world!");
+            defer s.deinit();
+        }
+        { // heap
+            var s = String.initUnchecked("hello world! haiuwdshpaisudhpaisuhdpasd");
+            defer s.deinit();
+        }
 
         // Invalid utf8. In debug, will assert. In non-debug, it's undefined behaviour.
         // _ = String.initUnchecked("erm\xFFFF");
     }
 
     test clone {
-        var s = String.initUnchecked("hello world!");
-        defer s.deinit();
+        { // sso
+            var s = String.initUnchecked("hello world!");
+            defer s.deinit();
 
-        var sClone = s.clone();
-        defer sClone.deinit();
+            var sClone = s.clone();
+            defer sClone.deinit();
+        }
+        { // heap
+            var s = String.initUnchecked("hello to the absolutely glorious and magnificent world!");
+            defer s.deinit();
+
+            var sClone = s.clone();
+            defer sClone.deinit();
+        }
     }
 
     test eql {
@@ -259,6 +265,42 @@ pub const String = extern struct {
             var s1 = String.initUnchecked("hello world!");
             defer s1.deinit();
             var s2 = String.initUnchecked("hello world! ");
+            defer s2.deinit();
+
+            try expect(!s1.eql(s2));
+        }
+        { // heap clones
+            var s = String.initUnchecked("hello world! how are you doing today??? good i hope!");
+            defer s.deinit();
+
+            var sClone = s.clone();
+            defer sClone.deinit();
+
+            try expect(s.eql(sClone));
+        }
+        { // heap not clones but same
+            var s1 = String.initUnchecked("hello world! how are you doing today??? good i hope!");
+            defer s1.deinit();
+
+            var s2 = String.initUnchecked("hello world! how are you doing today??? good i hope!");
+            defer s2.deinit();
+
+            try expect(s1.eql(s2));
+        }
+        { // heap different
+            var s1 = String.initUnchecked("hello world! how are you doing today??? good i hope!");
+            defer s1.deinit();
+
+            var s2 = String.initUnchecked("hyllo world! how are you doing today??? good i hope!");
+            defer s2.deinit();
+
+            try expect(!s1.eql(s2));
+        }
+        { // heap different sanity
+            var s1 = String.initUnchecked("hello world! how are you doing today??? good i hope!");
+            defer s1.deinit();
+
+            var s2 = String.initUnchecked("hello world! how are you doing today??? good k hope!");
             defer s2.deinit();
 
             try expect(!s1.eql(s2));
@@ -350,7 +392,7 @@ pub const String = extern struct {
 
         try expect(helloworld.rfind("", 0) == null);
         try expect(helloworld.rfind("", 1) == null);
-        try expect(helloworld.rfind("o", helloworld.len()) == 7);
+        try expect(helloworld.rfind("o", helloworld.len) == 7);
         try expect(helloworld.rfind("o", 5) == 4);
         try expect(helloworld.rfind("o", 1) == null);
     }
@@ -415,13 +457,13 @@ pub const String = extern struct {
             var empty = String{};
             defer empty.deinit();
 
-            try std.testing.expectError(String.Error.InvalidUtf8, empty.concatSlice("\xFFFF"));
+            try std.testing.expectError(error.InvalidUtf8, empty.concatSlice("\xFFFF"));
         }
         { // something + invalid utf8
             var helloworld = String.initUnchecked("hello world!");
             defer helloworld.deinit();
 
-            try std.testing.expectError(String.Error.InvalidUtf8, helloworld.concatSlice("\xFFFF"));
+            try std.testing.expectError(error.InvalidUtf8, helloworld.concatSlice("\xFFFF"));
         }
     }
 
@@ -464,12 +506,12 @@ pub const String = extern struct {
             var emptySub = try empty.substr(0, 0);
             defer emptySub.deinit();
 
-            try expect(emptySub.len() == 0);
+            try expect(emptySub.len == 0);
 
-            try std.testing.expectError(Error.IndexOutOfBounds, empty.substr(0, 1));
-            try std.testing.expectError(Error.IndexOutOfBounds, empty.substr(1, 0));
-            try std.testing.expectError(Error.IndexOutOfBounds, empty.substr(1, 2));
-            try std.testing.expectError(Error.IndexOutOfBounds, empty.substr(2, 2));
+            try std.testing.expectError(error.IndexOutOfBounds, empty.substr(0, 1));
+            try std.testing.expectError(error.IndexOutOfBounds, empty.substr(1, 0));
+            try std.testing.expectError(error.IndexOutOfBounds, empty.substr(1, 2));
+            try std.testing.expectError(error.IndexOutOfBounds, empty.substr(2, 2));
         }
         {
             var helloworld = String.initUnchecked("hello world!");
@@ -478,30 +520,30 @@ pub const String = extern struct {
             var emptySub = try helloworld.substr(0, 0);
             defer emptySub.deinit();
 
-            try expect(emptySub.len() == 0);
+            try expect(emptySub.len == 0);
 
             var helloSub = try helloworld.substr(0, "hello".len);
             defer helloSub.deinit();
 
             try expect(helloSub.eqlSlice("hello"));
 
-            var worldSub = try helloworld.substr("hello ".len, helloworld.len());
+            var worldSub = try helloworld.substr("hello ".len, helloworld.len);
             defer worldSub.deinit();
 
             try expect(worldSub.eqlSlice("world!"));
 
-            try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(0, helloworld.len() + 1));
-            try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(5, 4));
-            try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(helloworld.len() + 1, 1000000));
-            try std.testing.expectError(Error.IndexOutOfBounds, helloworld.substr(helloworld.len() + 1, 0));
+            try std.testing.expectError(error.IndexOutOfBounds, helloworld.substr(0, helloworld.len + 1));
+            try std.testing.expectError(error.IndexOutOfBounds, helloworld.substr(5, 4));
+            try std.testing.expectError(error.IndexOutOfBounds, helloworld.substr(helloworld.len + 1, 1000000));
+            try std.testing.expectError(error.IndexOutOfBounds, helloworld.substr(helloworld.len + 1, 0));
         }
         {
             var utf8text = try String.init("你好");
             defer utf8text.deinit();
 
-            try std.testing.expectError(Error.InvalidUtf8, utf8text.substr(1, utf8text.len()));
+            try std.testing.expectError(error.InvalidUtf8, utf8text.substr(1, utf8text.len));
 
-            var validSub = try utf8text.substr(3, utf8text.len());
+            var validSub = try utf8text.substr(3, utf8text.len);
             defer validSub.deinit();
 
             try expect(validSub.eqlSlice("好"));
@@ -655,7 +697,7 @@ pub const String = extern struct {
         if (otherString.toBool()) |_| {
             try expect(false);
         } else |err| {
-            try expect(err == Error.ParseBool);
+            try expect(err == error.ParseBool);
         }
     }
 };
