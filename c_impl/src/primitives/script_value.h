@@ -1,6 +1,9 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include "value_tag.h"
 
 /*
 It's kinda weird to define the structs here and their implementions in other files, but it makes it convenient for passing around
@@ -103,10 +106,6 @@ typedef struct CubsMat3 {
 typedef struct CubsMat4 {
   void* _inner;
 } CubsMat4;
-
-#include "value_tag.h"
-#include <stdbool.h>
-#include <stdint.h>
 
 typedef union CubsRawValue {
     bool boolean;
