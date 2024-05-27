@@ -168,6 +168,14 @@ pub const TaggedValue = union(ValueTag) {
         }
     }
 
+    pub fn clone(self: *const TaggedValue) CTaggedValue {
+        return c.cubs_raw_value_clone(self.value(), self.tag());
+    }
+
+    pub fn eql(self: *const TaggedValue, other: *const TaggedValue) bool {
+        return c.cubs_raw_value_eql(self.value(), other.value(), self.tag());
+    }
+
     pub fn fromCRepr(consumeValue: *CTaggedValue) Self {
         const valueTag = consumeValue.tag;
         const raw = consumeValue.value;
