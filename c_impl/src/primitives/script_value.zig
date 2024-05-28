@@ -321,3 +321,26 @@ pub const TaggedValue = union(ValueTag) {
 pub fn zigToCTaggedValueTemp(val: TaggedValue) CTaggedValue {
     return CTaggedValue{ .value = val.value().*, .tag = val.tag() };
 }
+
+pub fn validateTypeMatchesTag(comptime T: type, tag: ValueTag) void {
+    const assert = std.debug.assert;
+    if (std.debug.runtime_safety) {
+        if (T == bool) {
+            assert(tag == .bool);
+        } else if (T == i64) {
+            assert(tag == .int);
+        } else if (T == f64) {
+            assert(tag == .float);
+        } else if (T == String) {
+            assert(tag == .string);
+        } else if (T == Array) {
+            assert(tag == .array);
+        } else if (T == Set) {
+            assert(tag == .set);
+        } else if (T == Map) {
+            assert(tag == .map);
+        } else {
+            @compileError("Incompatible Script type");
+        }
+    }
+}

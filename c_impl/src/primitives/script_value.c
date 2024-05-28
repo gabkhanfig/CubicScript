@@ -34,6 +34,34 @@ void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)
     }
 }
 
+void cubs_void_value_deinit(void *value, CubsValueTag tag)
+{
+    switch(tag) {
+        case cubsValueTagNone: break;
+        case cubsValueTagBool: break;
+        case cubsValueTagInt: break;
+        case cubsValueTagFloat: break;
+        case cubsValueTagConstRef: break;
+        case cubsValueTagMutRef: break;
+        case cubsValueTagInterfaceRef: break;
+        case cubsValueTagFunctionPtr: break;
+        case cubsValueTagString: 
+            cubs_string_deinit((CubsString*)value);
+            break;
+        case cubsValueTagArray:
+            cubs_array_deinit((CubsArray*)value);
+            break;
+        case cubsValueTagSet:
+            cubs_set_deinit((CubsSet*)value);
+            break;
+        case cubsValueTagMap:
+            cubs_map_deinit((CubsMap*)value);
+            break;
+        default:
+            unreachable();
+    }
+}
+
 CubsRawValue cubs_raw_value_clone(const CubsRawValue *self, CubsValueTag tag)
 {
     CubsRawValue temp;
@@ -94,4 +122,30 @@ bool cubs_tagged_value_eql(const CubsTaggedValue *self, const CubsTaggedValue *o
         return false;
     }
     return cubs_raw_value_eql(&self->value, &other->value, self->tag);
+}
+
+size_t cubs_size_of_tagged_type(CubsValueTag tag)
+{
+    switch(tag) {
+        case cubsValueTagNone: return 0;
+        case cubsValueTagBool: return sizeof(bool);
+        case cubsValueTagInt: return sizeof(int64_t);
+        case cubsValueTagFloat: return sizeof(double);
+        case cubsValueTagString: return sizeof(CubsString);
+        case cubsValueTagArray: return sizeof(CubsArray);
+        case cubsValueTagSet: return sizeof(CubsSet);
+        case cubsValueTagMap: return sizeof(CubsMap);
+        case cubsValueTagOption: return sizeof(CubsOption);
+        case cubsValueTagResult: return sizeof(CubsResult);
+        //case cubsValueTag: return sizeof();
+        //case cubsValueTag: return sizeof();
+        default: {
+            #if _DEBUG
+            cubs_panic("what the heck");
+            #else
+            unreachable();
+            #endif
+        }
+    }
+
 }

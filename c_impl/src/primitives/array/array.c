@@ -5,93 +5,15 @@
 #include "../../util/panic.h"
 #include <stdio.h>
 
-static const size_t PTR_BITMASK = 0xFFFFFFFFFFFFULL;
-static const size_t TAG_BITMASK = ~0xFFFFFFFFFFFFULL;
+static const size_t CAPACITY_BITMASK = 0xFFFFFFFFFFFFULL;
 static const size_t TAG_SHIFT = 48;
+static const size_t TAG_BITMASK = 0xFFULL << 48;
+static const size_t TYPE_SIZE_SHIFT = 56;
+static const size_t TYPE_SIZE_BITMASK = 0xFFULL << 56;
+static const size_t NON_CAPACITY_BITMASK = ~(0xFFFFFFFFFFFFULL);
 
-typedef struct Inner {
-    size_t len;
-    size_t capacity;
-} Inner;
-
-static Inner* inner_init(size_t capacity) {
-    Inner* self = (Inner*)cubs_malloc(sizeof(Inner) + (sizeof(CubsRawValue) * capacity), _Alignof(size_t));
-    self->len = 0;
-    self->capacity = capacity;
-    return self;
-}
-
-/// May return NULL
-static const Inner* as_inner(const CubsArray* self) {
-    const size_t mask = ((size_t)(self->_inner)) & PTR_BITMASK;
-    const Inner* inner = (const Inner*)(const void*)mask;
-    return inner;
-}
-
-/// May return NULL
-static Inner* as_inner_mut(CubsArray* self) {
-    size_t mask = ((size_t)(self->_inner)) & PTR_BITMASK;
-    Inner* inner = (Inner*)(void*)mask;
-    return inner;
-}
-
-static const CubsRawValue* buf_start(const Inner* inner) {
-    return (const CubsRawValue*)&inner[1];
-}
-
-static CubsRawValue* buf_start_mut(Inner* inner) {
-    return (CubsRawValue*)&inner[1];
-}
-
-CubsArray cubs_array_init(CubsValueTag tag)
-{   
-    const size_t tagAsSizeT = (size_t)tag;
-    const CubsArray arr = {._inner = (void*)(tagAsSizeT << TAG_SHIFT)};
-    return arr;
-}
-
-void cubs_array_deinit(CubsArray *self)
-{
-    Inner* inner = as_inner_mut(self);
-    if(inner == NULL) {
-        return;
-    }
-
-    const CubsValueTag tag = cubs_array_tag(self);
-    CubsRawValue* buf = buf_start_mut(inner);
-    switch(tag) {
-        case cubsValueTagNone: break;
-        case cubsValueTagBool: break;
-        case cubsValueTagInt: break;
-        case cubsValueTagFloat: break;
-        case cubsValueTagConstRef: break;
-        case cubsValueTagMutRef: break;
-        case cubsValueTagInterfaceRef: break;
-        case cubsValueTagFunctionPtr: break;
-        default: {
-            for(size_t i = 0; i < inner->len; i++) {
-                cubs_raw_value_deinit(&buf[i], tag);
-            }
-        } break;
-    }
-    
-    cubs_free((void*)inner, sizeof(Inner) + (sizeof(CubsRawValue) * inner->capacity), _Alignof(size_t));
-    self->_inner = NULL;
-}
-
-CubsValueTag cubs_array_tag(const CubsArray *self)
-{
-    const size_t mask = ((size_t)(self->_inner)) & TAG_BITMASK;
-    return mask >> TAG_SHIFT;
-}
-
-size_t cubs_array_len(const CubsArray *self)
-{
-    const Inner* inner = as_inner(self);
-    if(inner == NULL) {
-        return 0;
-    }
-    return inner->len;
+static size_t array_capacity(const CubsArray* self) {
+    return self->_metadata & CAPACITY_BITMASK;
 }
 
 static size_t growCapacity(size_t current, size_t minimum) {
@@ -104,122 +26,132 @@ static size_t growCapacity(size_t current, size_t minimum) {
 }
 
 static void ensure_total_capacity(CubsArray* self, size_t minCapacity) {
-    Inner* inner = as_inner_mut(self);
-    if(inner == NULL) {
-        Inner* newInner = inner_init(minCapacity);
-        // If inner is null, only the tag is present.
-        const size_t selfMask = (size_t)(self->_inner);
-        assert((selfMask & PTR_BITMASK) == 0);
-        self->_inner = (void*)(selfMask | (size_t)newInner);
-        return;
+    assert(minCapacity <= 0xFFFFFFFFFFFFULL);
+    const size_t sizeOfType = cubs_array_size_of_type(self);
+    if(self->_buf == NULL) {
+        void* mem = cubs_malloc(minCapacity * sizeOfType, _Alignof(size_t));    
+        self->_buf = mem;
+        self->_metadata = (self->_metadata & NON_CAPACITY_BITMASK) | minCapacity;
     }
+    else {
+        const size_t currentCapacity = array_capacity(self);
+        if(currentCapacity >= minCapacity) {
+            return;
+        }
 
-    if(inner->capacity >= minCapacity) {
-        return;
+        const size_t grownCapacity = growCapacity(currentCapacity, minCapacity);
+
+        void* newBuffer = cubs_malloc(grownCapacity * sizeOfType, _Alignof(size_t));
+        memcpy(newBuffer, self->_buf, currentCapacity * sizeOfType);
+        cubs_free(self->_buf, currentCapacity * sizeOfType, _Alignof(size_t));
+
+        self->_buf = newBuffer;
+        self->_metadata = (self->_metadata & NON_CAPACITY_BITMASK) | grownCapacity;
     }
-
-    const size_t grownCapacity = growCapacity(inner->capacity, minCapacity);
-    
-    Inner* newInner = inner_init(grownCapacity);
-    newInner->len = inner->len;
-
-    CubsRawValue* newBuffer = buf_start_mut(newInner);
-    const CubsRawValue* oldBuffer = buf_start_mut(inner);
-
-    memcpy((void*)newBuffer, (const void*)oldBuffer, inner->len * sizeof(CubsRawValue));
-
-    cubs_free((void*)inner, sizeof(Inner) + (sizeof(CubsRawValue) * inner->capacity), _Alignof(size_t));
-
-    const size_t selfTagMask = ((size_t)(self->_inner)) & TAG_BITMASK;
-    self->_inner = (void*)(selfTagMask | (size_t)newInner);
 }
 
-void cubs_array_push_unchecked(CubsArray* self, CubsRawValue value)
-{
-    const size_t currentLen = cubs_array_len(self);
-    
-    ensure_total_capacity(self, currentLen + 1);
-    Inner* inner = as_inner_mut(self); // must be after the capcity change
-    
-    CubsRawValue* buf = buf_start_mut(inner);
+CubsArray cubs_array_init(CubsValueTag tag)
+{   
+    const size_t tagAsSizeT = (size_t)tag;
+    const size_t dataSize = cubs_size_of_tagged_type(tag);
+    assert(dataSize <= 0xFF);
+    const CubsArray arr = {.len = 0, ._buf = NULL, ._metadata = (tagAsSizeT << TAG_SHIFT) | (dataSize << TYPE_SIZE_SHIFT)};
+    return arr;
+}
 
-    inner->len = currentLen + 1;
-    buf[currentLen] = value;
+void cubs_array_deinit(CubsArray *self)
+{
+    if(self->_buf == NULL) {
+        return;
+    }
+
+    const CubsValueTag tag = cubs_array_tag(self);
+    const size_t sizeOfType = cubs_array_size_of_type(self);
+    switch(tag) {
+        case cubsValueTagNone: break;
+        case cubsValueTagBool: break;
+        case cubsValueTagInt: break;
+        case cubsValueTagFloat: break;
+        case cubsValueTagConstRef: break;
+        case cubsValueTagMutRef: break;
+        case cubsValueTagInterfaceRef: break;
+        case cubsValueTagFunctionPtr: break;
+        default: {
+            for(size_t i = 0; i < self->len; i++) {
+                const size_t actualIndex = i * sizeOfType;
+                char* byteStart = (char*)self->_buf;
+                cubs_void_value_deinit((void*)&byteStart[actualIndex], tag);
+            }
+        } break;
+    }
+    
+    cubs_free(self->_buf, sizeOfType * array_capacity(self), _Alignof(size_t));
+    self->_buf = NULL;
+    self->len = 0;
+}
+
+CubsValueTag cubs_array_tag(const CubsArray *self)
+{
+    return (self->_metadata & TAG_BITMASK) >> TAG_SHIFT;
+}
+
+size_t cubs_array_size_of_type(const CubsArray *self)
+{
+    return (self->_metadata & TYPE_SIZE_BITMASK) >> TYPE_SIZE_SHIFT;
+}
+
+void cubs_array_push_unchecked(CubsArray *self, const void *value)
+{
+    ensure_total_capacity(self, self->len + 1);
+    const size_t sizeOfType = cubs_array_size_of_type(self);
+    memcpy((void*)&((char*)self->_buf)[self->len * sizeOfType], value, sizeOfType);
+    self->len += 1;
+}
+
+void cubs_array_push_raw_unchecked(CubsArray *self, CubsRawValue value)
+{  
+    cubs_array_push_unchecked(self, (const void*)&value);
 }
 
 void cubs_array_push(CubsArray *self, CubsTaggedValue value)
 {
-    if(value.tag != cubs_array_tag(self)) {
-        fprintf(stderr, "tag is %d, value is %x", value.tag, value.value.intNum);
-    }
+    // if(value.tag != cubs_array_tag(self)) {
+    //   fprintf(stderr, "tag is %d, value is %x", value.tag, value.value.intNum);
+    // }
     assert(value.tag == cubs_array_tag(self));
-    cubs_array_push_unchecked(self, value.value);
+    cubs_array_push_unchecked(self, &value.value);
 }
 
-const CubsRawValue *cubs_array_at_unchecked(const CubsArray *self, size_t index)
+const void* cubs_array_at_unchecked(const CubsArray *self, size_t index)
 {
-    const Inner* inner = as_inner(self);
-    #if _DEBUG
-    if(inner == NULL) {
-        char buf[256] = {0};
-        (void)sprintf_s(buf, 256, "CubicScript Array index out of range! Tried to access index %ld from array of length 0", index);
-        cubs_panic(buf);
-    } else if(index >= inner->len) {
-        char buf[256] = {0};
-        (void)sprintf_s(buf, 256, "CubicScript Array index out of range! Tried to access index %ld from array of length %ld", index, inner->len);
-        cubs_panic(buf);
-    }
-    #endif
-    return &buf_start(inner)[index];
-
-    
+    assert(index < self->len);
+    const size_t sizeOfType = cubs_array_size_of_type(self);
+    return (const void*)&((const char*)self->_buf)[index * sizeOfType];
 }
 
-CubsArrayError cubs_array_at(const CubsRawValue** out, const CubsArray *self, size_t index)
+CubsArrayError cubs_array_at(const void** out, const CubsArray *self, size_t index)
 {
-    const Inner* inner = as_inner(self);
-    if(inner == NULL) {
+    if(index >= self->len) {
         return cubsArrayErrorOutOfRange;
     }
-    else if(index >= inner->len)  {
-        return cubsArrayErrorOutOfRange;
-    }
-    else {
-        *out = &buf_start(inner)[index];
-        return cubsArrayErrorNone;
-    }
+    const void* temp = cubs_array_at_unchecked(self, index);
+    *out = temp;
+    return cubsArrayErrorNone;
 }
 
-CubsRawValue *cubs_array_at_mut_unchecked(CubsArray *self, size_t index)
+void* cubs_array_at_mut_unchecked(CubsArray *self, size_t index)
 {
-    Inner* inner = as_inner_mut(self);
-    #if _DEBUG
-    if(inner == NULL) {
-        char buf[256] = {0};
-        (void)sprintf_s(buf, 256, "CubicScript Array index out of range! Tried to access index %ld from array of length 0", index);
-        cubs_panic(buf);
-    } else if(index >= inner->len) {
-        char buf[256] = {0};
-        (void)sprintf_s(buf, 256, "CubicScript Array index out of range! Tried to access index %ld from array of length %ld", index, inner->len);
-        cubs_panic(buf);
-    }
-    #endif
-    return &buf_start_mut(inner)[index];
-
-    
+    assert(index < self->len);
+    const size_t sizeOfType = cubs_array_size_of_type(self);
+    return (void*)&((char*)self->_buf)[index * sizeOfType];
 }
 
-CubsArrayError cubs_array_at_mut(CubsRawValue** out, CubsArray *self, size_t index)
+CubsArrayError cubs_array_at_mut(void** out, CubsArray *self, size_t index)
 {
-    const Inner* inner = as_inner(self);
-    if(inner == NULL) {
+    if(index >= self->len) {
         return cubsArrayErrorOutOfRange;
     }
-    else if(index >= inner->len)  {
-        return cubsArrayErrorOutOfRange;
-    }
-    else {
-        *out = &buf_start_mut(inner)[index];
-        return cubsArrayErrorNone;
-    }
+    void* temp = cubs_array_at_mut_unchecked(self, index);
+    *out = temp;
+    return cubsArrayErrorNone;
 }

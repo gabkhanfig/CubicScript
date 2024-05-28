@@ -22,12 +22,17 @@ void cubs_array_deinit(CubsArray* self);
 
 CubsValueTag cubs_array_tag(const CubsArray* self);
 
-size_t cubs_array_len(const CubsArray* self);
+size_t cubs_array_size_of_type(const CubsArray* self);
 
-/// Takes ownership of `value`. Accessing the memory of `value` after this 
-/// function is undefined behaviour.
-/// Does not validate that `value` has the correct active union.
-void cubs_array_push_unchecked(CubsArray* self, CubsRawValue value);
+/// Takes ownership of the memory at `value`, copying the memory at that location into the array.
+/// Accessing the memory at `value` after this call is undefined behaviour.
+/// Does not validate that `value` has the correct active union, nor that its valid script value memory.
+void cubs_array_push_unchecked(CubsArray* self, const void* value);
+
+/// Takes ownership of the memory at `value`, copying the memory at that location into the array.
+/// Accessing the memory at `value` after this call is undefined behaviour.
+/// Does not validate that `value` has the correct active union, nor that its valid script value memory.
+void cubs_array_push_raw_unchecked(CubsArray* self, CubsRawValue value);
 
 /// Takes ownership of `value`. Accessing the memory of `value` after this 
 /// function is undefined behaviour.
@@ -37,22 +42,22 @@ void cubs_array_push(CubsArray* self, CubsTaggedValue value);
 
 /// Mutation operations on `self`. may invalidate the returned pointer.
 /// In debug, asserts that `index` is less than the `cubs_array_len(self)`.
-const CubsRawValue* cubs_array_at_unchecked(const CubsArray* self, size_t index);
+const void* cubs_array_at_unchecked(const CubsArray* self, size_t index);
 
 /// Mutation operations on `self`. may invalidate `out`.
 /// If `index >= cubs_array_len(self)`, returns `cubsArrayErrorOutOfRange`,
 /// otherwise returns `cubsArrayErrorNone`.
 /// `out` must be a pointer to a variable of type `const CubsRawValue*`, as it's used 
 /// to get the actual data.
-CubsArrayError cubs_array_at(const CubsRawValue** out, const CubsArray* self, size_t index);
+CubsArrayError cubs_array_at(const void** out, const CubsArray* self, size_t index);
 
 /// Mutation operations on `self`. may invalidate the returned pointer.
 /// In debug, asserts that `index` is less than the `cubs_array_len(self)`.
-CubsRawValue* cubs_array_at_mut_unchecked(CubsArray* self, size_t index);
+void* cubs_array_at_mut_unchecked(CubsArray* self, size_t index);
 
 /// Mutation operations on `self`. may invalidate `out`.
 /// If `index >= cubs_array_len(self)`, returns `cubsArrayErrorOutOfRange`,
 /// otherwise returns `cubsArrayErrorNone`.
 /// `out` must be a pointer to a variable of type `CubsRawValue*`, as it's used 
 /// to get the actual data.
-CubsArrayError cubs_array_at_mut(CubsRawValue** out, CubsArray* self, size_t index);
+CubsArrayError cubs_array_at_mut(void** out, CubsArray* self, size_t index);

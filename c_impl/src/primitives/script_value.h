@@ -19,7 +19,13 @@ typedef struct CubsString {
 } CubsString;
 
 typedef struct CubsArray {
-  void* _inner;
+  /// Reading this is safe. Writing is unsafe.
+  size_t len;
+  /// This *can* be read or written to, but it must be cast to the correct type depending on the array's tag.
+  /// It guaranteed to be valid for `((T*)_buf)[len - 1]` where T is the type of `cubs_array_tag(...)`.
+  void* _buf;
+  /// Accessing this is unsafe
+  size_t _metadata;
 } CubsArray;
 
 typedef struct CubsSet {
@@ -120,6 +126,8 @@ typedef union CubsRawValue {
 /// It is safe to call this function multiple times on the same object, since all primitives handle double deinitialization.
 void cubs_raw_value_deinit(CubsRawValue* self, CubsValueTag tag);
 
+void cubs_void_value_deinit(void* value, CubsValueTag tag);
+
 CubsRawValue cubs_raw_value_clone(const CubsRawValue* self, CubsValueTag tag);
 
 bool cubs_raw_value_eql(const CubsRawValue* self, const CubsRawValue* other, CubsValueTag tag);
@@ -135,4 +143,6 @@ void cubs_tagged_value_deinit(CubsTaggedValue* self);
 CubsTaggedValue cubs_tagged_value_clone(const CubsTaggedValue* self);
 
 bool cubs_tagged_value_eql(const CubsTaggedValue* self, const CubsTaggedValue* other);
+
+size_t cubs_size_of_tagged_type(CubsValueTag tag);
 
