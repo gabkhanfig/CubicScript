@@ -19,13 +19,13 @@ typedef struct CubsString {
 } CubsString;
 
 typedef struct CubsArray {
-  /// Reading this is safe. Writing is unsafe.
-  size_t len;
-  /// This *can* be read or written to, but it must be cast to the correct type depending on the array's tag.
-  /// It guaranteed to be valid for `((T*)_buf)[len - 1]` where T is the type of `cubs_array_tag(...)`.
-  void* _buf;
-  /// Accessing this is unsafe
-  size_t _metadata;
+    /// Reading this is safe. Writing is unsafe.
+    size_t len;
+    /// This *can* be read or written to, but it must be cast to the correct type depending on the array's tag.
+    /// It guaranteed to be valid for `((T*)_buf)[len - 1]` where T is the type of `cubs_array_tag(...)`.
+    void* _buf;
+    /// Accessing this is unsafe
+    size_t _metadata;
 } CubsArray;
 
 typedef struct CubsSet {
@@ -33,7 +33,10 @@ typedef struct CubsSet {
 } CubsSet;
 
 typedef struct CubsMap {
-  void* _inner;
+    /// The number of key/value pairs in the hashmap.
+    size_t count;
+    /// Accessing this is unsafe
+    void* _metadata[3];
 } CubsMap;
 
 /// 0 / null intialization makes it a none option.

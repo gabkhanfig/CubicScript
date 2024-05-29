@@ -12,20 +12,14 @@
 #include <immintrin.h>
 //#endif
 
-static const size_t PTR_BITMASK = 0xFFFFFFFFFFFFULL;
-static const size_t KEY_TAG_SHIFT = 48;
-static const size_t KEY_TAG_BITMASK = 0xFFULL << 48;
-static const size_t VALUE_TAG_SHIFT = 56;
-static const size_t VALUE_TAG_BITMASK = 0xFFULL << 56;
-static const size_t BOTH_TAGS_BITMASK = ~(0xFFFFFFFFFFFFULL);
 static const size_t GROUP_ALLOC_SIZE = 32;
 static const size_t ALIGNMENT = 32;
-
-typedef struct {
-    CubsRawValue key;
-    CubsRawValue value;
-    size_t hash;
-} HashPair;
+static const size_t DATA_BITMASK = 0xFFFFFFFFFFFFULL;
+static const size_t TAG_SHIFT = 48;
+static const size_t TAG_BITMASK = 0xFFULL << 48;
+static const size_t TYPE_SIZE_SHIFT = 56;
+static const size_t TYPE_SIZE_BITMASK = 0xFFULL << 56;
+static const size_t NON_DATA_BITMASK = ~(0xFFFFFFFFFFFFULL);
 
 typedef struct {
     /// The actual pairs start at `&hashMasks[capacity]`
@@ -37,24 +31,25 @@ typedef struct {
     // uint16_t is not viable here because of forced alignment and padding.
 } Group;
 
+typedef struct {
+    Group* groupsArray;
+    size_t groupCountAndKeyInfo;
+    size_t availableAndValueInfo;
+} Metadata;
+
 static size_t group_allocation_size(size_t requiredCapacity) {
     assert(requiredCapacity % 32 == 0);
 
-    return requiredCapacity + (sizeof(HashPair*) * requiredCapacity);
+    return requiredCapacity + (sizeof(void*) * requiredCapacity);
 }
 
-static const HashPair* group_pair_at(const Group* group, size_t index) {
-    const HashPair** bufStart = (const HashPair**)&group->hashMasks[group->capacity];
-    return bufStart[index];
+static const void** group_pair_buf_start(const Group* group) {
+    const void** bufStart = (const void**)&group->hashMasks[group->capacity];
+    return bufStart;
 }
 
-static HashPair* group_pair_at_mut(Group* group, size_t index) {
-    HashPair** bufStart = (HashPair**)&group->hashMasks[group->capacity];
-    return bufStart[index];
-}
-
-static HashPair** group_pair_buf_start(Group* group) {
-    HashPair** bufStart = (HashPair**)&group->hashMasks[group->capacity];
+static void** group_pair_buf_start_mut(Group* group) {
+    void** bufStart = (void**)&group->hashMasks[group->capacity];
     return bufStart;
 }
 
@@ -78,17 +73,18 @@ static void group_free(Group* self) {
 }
 
 /// Deinitialize the pairs, and free the group
-static void group_deinit(Group* self, CubsValueTag keyTag, CubsValueTag valueTag) {
+static void group_deinit(Group* self, CubsValueTag keyTag, CubsValueTag valueTag, size_t sizeOfKey, size_t sizeOfValue) {
     if(self->pairCount != 0) {
         for(uint32_t i = 0; i < self->capacity; i++) {
             if(self->hashMasks[i] == 0) {
                 continue;
             }
             
-            HashPair* pair = group_pair_at_mut(self, i);
-            cubs_raw_value_deinit(&pair->key, keyTag);
-            cubs_raw_value_deinit(&pair->value, valueTag);
-            cubs_free((void*)pair, sizeof(HashPair), _Alignof(HashPair));
+            char* pair = (char*)group_pair_buf_start_mut(self)[i];
+            cubs_void_value_deinit((void*)&(pair[sizeof(size_t)]), keyTag);
+            cubs_void_value_deinit((void*)&(pair[sizeof(size_t) + sizeOfKey]), valueTag);
+            // cache'd hash code + key + value
+            cubs_free((void*)pair, sizeof(size_t) + sizeOfKey + sizeOfValue, _Alignof(size_t));
         }
     }
 
@@ -108,7 +104,7 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
     memset(mem, 0, mallocCapacity);
 
     uint8_t* newHashMaskStart = (uint8_t*)mem;
-    HashPair** newPairStart = (HashPair**)&((uint8_t*)mem)[pairAllocCapacity];
+    void** newPairStart = (void**)&((uint8_t*)mem)[pairAllocCapacity];
     size_t moveIter = 0;
     for(uint32_t i = 0; i < self->capacity; i++) {
         if(self->hashMasks[i] == 0) {
@@ -116,7 +112,8 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
         }
 
         newHashMaskStart[moveIter] = self->hashMasks[i];
-        newPairStart[moveIter] = group_pair_at_mut(self, i);
+        // Copy over the pointer to the pair info, transferring ownership
+        newPairStart[moveIter] = group_pair_buf_start_mut(self)[i]; 
         moveIter += 1;
     }
 

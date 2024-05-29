@@ -13,7 +13,7 @@ CubsValueTag cubs_map_key_tag(const CubsMap* self);
 
 CubsValueTag cubs_map_value_tag(const CubsMap* self);
 
-size_t cubs_map_size(const CubsMap* self);
+
 
 /// Find `key` within the map `self`. If it doesn't exist, returns `NULL`, otherwise
 /// returns an immutable reference to the value in the key/value pair.
