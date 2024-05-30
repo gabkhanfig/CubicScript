@@ -190,7 +190,7 @@ static void group_insert(Group* self, void* key, void* value, CubsValueTag keyTa
 
     group_ensure_total_capacity(self, self->pairCount + 1);
 
-    //#if __AVX2__
+    #if __AVX2__
     // SIMD find first zero
     const __m256i zeroVec = _mm256_set1_epi8(0);
     size_t i = 0;
@@ -217,7 +217,7 @@ static void group_insert(Group* self, void* key, void* value, CubsValueTag keyTa
         self->pairCount += 1;
         return;
     }
-    //#endif
+    #endif
     unreachable();
 }
 
