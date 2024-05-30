@@ -27,7 +27,7 @@ size_t cubs_array_size_of_type(const CubsArray* self);
 /// Takes ownership of the memory at `value`, copying the memory at that location into the array.
 /// Accessing the memory at `value` after this call is undefined behaviour.
 /// Does not validate that `value` has the correct active union, nor that its valid script value memory.
-void cubs_array_push_unchecked(CubsArray* self, const void* value);
+void cubs_array_push_unchecked(CubsArray* self, void* value);
 
 /// Takes ownership of the memory at `value`, copying the memory at that location into the array.
 /// Accessing the memory at `value` after this call is undefined behaviour.

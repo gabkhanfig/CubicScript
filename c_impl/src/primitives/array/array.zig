@@ -20,16 +20,16 @@ const c = struct {
     extern fn cubs_array_deinit(self: *Array(anyopaque)) callconv(.C) void;
     extern fn cubs_array_tag(self: *const Array(anyopaque)) callconv(.C) ValueTag;
     extern fn cubs_array_len(self: *const Array(anyopaque)) callconv(.C) usize;
-    extern fn cubs_array_push_unchecked(self: *Array(anyopaque), value: *const anyopaque) callconv(.C) void;
+    extern fn cubs_array_push_unchecked(self: *Array(anyopaque), value: *anyopaque) callconv(.C) void;
     extern fn cubs_array_push_raw_unchecked(self: *Array(anyopaque), value: RawValue) callconv(.C) void;
     extern fn cubs_array_push(self: *Array(anyopaque), value: CTaggedValue) callconv(.C) void;
-    extern fn cubs_array_at_unchecked(self: *const Array(anyopaque), index: usize) callconv(.C) *const RawValue;
+    extern fn cubs_array_at_unchecked(self: *const Array(anyopaque), index: usize) callconv(.C) *const anyopaque;
     extern fn cubs_array_at(out: **const anyopaque, self: *const Array(anyopaque), index: usize) callconv(.C) Err;
-    extern fn cubs_array_at_mut_unchecked(self: *Array(anyopaque), index: usize) callconv(.C) *RawValue;
+    extern fn cubs_array_at_mut_unchecked(self: *Array(anyopaque), index: usize) callconv(.C) *anyopaque;
     extern fn cubs_array_at_mut(out: **anyopaque, self: *Array(anyopaque), index: usize) callconv(.C) Err;
 };
 
-/// If T == anyopaque, the array is considered to be identical to `CubsArray` in C.
+/// If `T == anyopaque`, the array is considered to be identical to `CubsArray` in C.
 /// Casting to the correct T can be achieved through `Array(...).cast(...)`, `Array(...).castMut(...)`, and `Array(...).into(...)`.
 pub fn Array(comptime T: type) type {
     return extern struct {
@@ -103,14 +103,6 @@ pub fn Array(comptime T: type) type {
         /// Does not assert that `value` has the correct active union.
         pub fn pushRawUnchecked(self: *Self, value: RawValue) void {
             c.cubs_array_push_raw_unchecked(self.castMut(anyopaque), value);
-        }
-
-        /// Copy the memory at `value`, pushing the copy onto the end of the array, taking ownership
-        /// of the memory at `value`. Does not validate that the memory at `value` is the same as the tag of `self`.
-        /// It is up to the programmer to ensure this is the case. In most situations simply calling `self.push(...)`
-        /// is preferred.
-        pub fn pushMemUnchecked(self: *Self, value: *const anyopaque) void {
-            c.cubs_array_push_unchecked(self.castMut(anyopaque), value);
         }
 
         pub fn atUnchecked(self: *const Self, index: usize) *const T {
@@ -219,34 +211,6 @@ pub fn Array(comptime T: type) type {
                 try expect(arr.len == 1);
 
                 arr.pushRawUnchecked(RawValue{ .string = String.initUnchecked("hi") });
-                try expect(arr.len == 2);
-            }
-        }
-
-        test pushMemUnchecked {
-            {
-                var arr = Array(i64).init();
-                defer arr.deinit();
-
-                var v: i64 = 6;
-                arr.pushMemUnchecked(@ptrCast(&v));
-                try expect(arr.len == 1);
-
-                v = 7;
-                arr.pushMemUnchecked(@ptrCast(&v));
-                try expect(arr.len == 2);
-            }
-            {
-                var arr = Array(String).init();
-                defer arr.deinit();
-
-                const s1 = String.initUnchecked("ajshdpiaushdpiuahspdiuahsdpiuahspdiuahspdiuahspd");
-                // DO NOT deinit the push values because their ownership is moved
-                arr.pushMemUnchecked(@ptrCast(&s1));
-                try expect(arr.len == 1);
-
-                const s2 = String.initUnchecked("ajshdpiaushdpiuahspdiuahsdpiuahspdiuahspdiuahspd");
-                arr.pushMemUnchecked(@ptrCast(&s2));
                 try expect(arr.len == 2);
             }
         }
