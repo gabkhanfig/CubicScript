@@ -41,5 +41,6 @@
         "stdbool.h": "c",
         "global_allocator.h": "c",
         "script_value.h": "c"
-    }
+    },
+    "cmake.configureOnOpen": false
 }
