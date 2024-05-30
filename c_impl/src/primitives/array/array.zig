@@ -45,8 +45,8 @@ pub fn Array(comptime T: type) type {
 
         pub fn init() Self {
             const valueTag = script_value.scriptTypeToTag(T);
-            const temp = c.cubs_array_init(valueTag);
-            return temp.cast(T).*;
+            var temp = c.cubs_array_init(valueTag);
+            return temp.into(T);
         }
 
         pub fn deinit(self: *Self) void {
@@ -85,7 +85,8 @@ pub fn Array(comptime T: type) type {
         /// Asserts that the type of `value` matches the tag of `self`.
         pub fn push(self: *Self, value: T) void {
             script_value.validateTypeMatchesTag(T, self.tag());
-            c.cubs_array_push_unchecked(self.castMut(anyopaque), @ptrCast(&value));
+            var mutValue = value;
+            c.cubs_array_push_unchecked(self.castMut(anyopaque), @ptrCast(&mutValue));
         }
 
         /// Pushes a tagged value onto the end of the array, taking ownership of `value`.
