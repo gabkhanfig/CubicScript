@@ -36,7 +36,7 @@ pub fn Array(comptime T: type) type {
         const Self = @This();
         /// Helper to generically determine the script value type of `Self`, for example, since this is an `Array`,
         /// it returns `.array`. This is implemented for all script value that are generic.
-        pub const SELF_TAG: ValueTag = .array;
+        pub const SCRIPT_SELF_TAG: ValueTag = .array;
 
         len: usize,
         _buf: ?*anyopaque,

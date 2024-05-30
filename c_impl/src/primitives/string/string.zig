@@ -48,7 +48,7 @@ const c = struct {
 
 pub const String = extern struct {
     const Self = @This();
-    pub const SELF_TAG: script_value.ValueTag = .string;
+    pub const SCRIPT_SELF_TAG: script_value.ValueTag = .string;
 
     /// Safe to read, unsafe to write
     len: usize = 0,

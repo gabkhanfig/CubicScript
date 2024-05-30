@@ -26,7 +26,7 @@ const c = struct {
 pub fn Set(comptime K: type) type {
     return extern struct {
         const Self = @This();
-        pub const SELF_TAG: ValueTag = .set;
+        pub const SCRIPT_SELF_TAG: ValueTag = .set;
 
         count: usize,
         _metadata: [3]*anyopaque,

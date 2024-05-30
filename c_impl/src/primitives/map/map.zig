@@ -33,7 +33,7 @@ const c = struct {
 pub fn Map(comptime K: type, comptime V: type) type {
     return extern struct {
         const Self = @This();
-        pub const SELF_TAG: ValueTag = .map;
+        pub const SCRIPT_SELF_TAG: ValueTag = .map;
 
         count: usize,
         _metadata: [3]*anyopaque,

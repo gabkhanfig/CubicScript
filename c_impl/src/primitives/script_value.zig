@@ -334,7 +334,7 @@ pub fn validateTypeMatchesTag(comptime T: type, tag: ValueTag) void {
         } else if (T == f64) {
             assert(tag == .float);
         } else {
-            assert(tag == T.SELF_TAG);
+            assert(tag == T.SCRIPT_SELF_TAG);
         }
     }
 }
@@ -347,6 +347,6 @@ pub fn scriptTypeToTag(comptime T: type) ValueTag {
     } else if (T == f64) {
         return .float;
     } else {
-        return T.SELF_TAG;
+        return T.SCRIPT_SELF_TAG;
     }
 }
