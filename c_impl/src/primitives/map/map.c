@@ -9,9 +9,9 @@
 #include "../../util/bitwise.h"
 #include "../string/string.h"
 
-//#if __AVX2__
+#if __AVX2__
 #include <immintrin.h>
-//#endif
+#endif
 
 static const size_t GROUP_ALLOC_SIZE = 32;
 static const size_t ALIGNMENT = 32;
