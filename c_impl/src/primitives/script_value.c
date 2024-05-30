@@ -12,7 +12,6 @@ _Static_assert(sizeof(void*) == 8, "CubicScript is not compatible with non-64 bi
 void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)
 {
     switch(tag) {
-        case cubsValueTagNone: break;
         case cubsValueTagBool: break;
         case cubsValueTagInt: break;
         case cubsValueTagFloat: break;
@@ -40,7 +39,6 @@ void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)
 void cubs_void_value_deinit(void *value, CubsValueTag tag)
 {
     switch(tag) {
-        case cubsValueTagNone: break;
         case cubsValueTagBool: break;
         case cubsValueTagInt: break;
         case cubsValueTagFloat: break;
@@ -130,7 +128,6 @@ bool cubs_tagged_value_eql(const CubsTaggedValue *self, const CubsTaggedValue *o
 size_t cubs_size_of_tagged_type(CubsValueTag tag)
 {
     switch(tag) {
-        case cubsValueTagNone: return 0;
         case cubsValueTagBool: return sizeof(bool);
         case cubsValueTagInt: return sizeof(int64_t);
         case cubsValueTagFloat: return sizeof(double);

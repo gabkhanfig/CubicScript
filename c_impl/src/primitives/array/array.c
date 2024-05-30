@@ -68,7 +68,6 @@ void cubs_array_deinit(CubsArray *self)
     const CubsValueTag tag = cubs_array_tag(self);
     const size_t sizeOfType = cubs_array_size_of_type(self);
     switch(tag) {
-        case cubsValueTagNone: break;
         case cubsValueTagBool: break;
         case cubsValueTagInt: break;
         case cubsValueTagFloat: break;

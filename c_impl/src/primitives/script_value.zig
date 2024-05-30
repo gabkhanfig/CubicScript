@@ -16,7 +16,6 @@ pub const Set = @import("set/set.zig").Set;
 pub const Map = @import("map/map.zig").Map;
 
 pub const ValueTag = enum(c_int) {
-    none = 0,
     bool = 1,
     int = 2,
     float = 3,
@@ -118,7 +117,6 @@ pub const TaggedValue = union(ValueTag) {
         }
     }
 
-    none: void,
     bool: bool,
     int: i64,
     float: f64,
@@ -148,7 +146,6 @@ pub const TaggedValue = union(ValueTag) {
 
     pub fn deinit(self: *Self) void {
         switch (self.*) {
-            .none => |_| {},
             .int => |_| {},
             .bool => |_| {},
             .float => |_| {},
@@ -224,9 +221,6 @@ pub const TaggedValue = union(ValueTag) {
 
     pub fn value(self: *const Self) *const RawValue {
         switch (self.*) {
-            ValueTag.none => |*vv| {
-                return @ptrCast(@alignCast(vv));
-            },
             ValueTag.bool => |*bv| {
                 return @ptrCast(@alignCast(bv));
             },
@@ -268,10 +262,6 @@ pub const TaggedValue = union(ValueTag) {
         };
         var offsets = std.ArrayList(OffsetContainer).init(std.testing.allocator);
         defer offsets.deinit();
-
-        var tagNone = Self{ .none = {} };
-        defer tagNone.deinit();
-        try OffsetContainer.appendTagged(&tagNone, &offsets);
 
         var tagBool = Self{ .bool = true };
         defer tagBool.deinit();
