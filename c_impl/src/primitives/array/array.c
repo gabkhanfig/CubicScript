@@ -100,7 +100,7 @@ size_t cubs_array_size_of_type(const CubsArray *self)
     return (self->_metadata & TYPE_SIZE_BITMASK) >> TYPE_SIZE_SHIFT;
 }
 
-void cubs_array_push_unchecked(CubsArray *self, const void *value)
+void cubs_array_push_unchecked(CubsArray *self, void *value)
 {
     ensure_total_capacity(self, self->len + 1);
     const size_t sizeOfType = cubs_array_size_of_type(self);
