@@ -424,6 +424,11 @@ bool cubs_set_erase_unchecked(CubsSet *self, const void *key)
     return result;
 }
 
+bool cubs_set_erase_raw_unchecked(CubsSet *self, const CubsRawValue *key)
+{
+    return cubs_set_erase_unchecked(self, (const void*)&key);
+}
+
 bool cubs_set_erase(CubsSet *self, const CubsTaggedValue *key)
 {
     assert(key->tag == cubs_set_tag(self));
