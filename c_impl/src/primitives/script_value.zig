@@ -51,7 +51,7 @@ pub const RawValue = extern union {
     float: f64,
     string: String,
     array: Array(anyopaque),
-    set: Set,
+    set: Set(anyopaque),
     map: Map(anyopaque, anyopaque),
     // option: Option,
     // result: Result,
@@ -124,7 +124,7 @@ pub const TaggedValue = union(ValueTag) {
     float: f64,
     string: String,
     array: Array(anyopaque),
-    set: Set,
+    set: Set(anyopaque),
     map: Map(anyopaque, anyopaque),
     option: void,
     result: void,
@@ -289,7 +289,8 @@ pub const TaggedValue = union(ValueTag) {
         defer tagString.deinit();
         try OffsetContainer.appendTagged(&tagString, &offsets);
 
-        var tagSet = Self{ .set = Set.init(.int) };
+        var _tempSet = Set(i64).init();
+        var tagSet = Self{ .set = _tempSet.into(anyopaque) };
         defer tagSet.deinit();
         try OffsetContainer.appendTagged(&tagSet, &offsets);
 

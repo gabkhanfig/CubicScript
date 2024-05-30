@@ -10,16 +10,14 @@
 #include <immintrin.h>
 //#endif
 
-static const size_t PTR_BITMASK = 0xFFFFFFFFFFFFULL;
-static const size_t KEY_TAG_SHIFT = 48;
-static const size_t KEY_TAG_BITMASK = ~0xFFFFFFFFFFFFULL;
 static const size_t GROUP_ALLOC_SIZE = 32;
 static const size_t ALIGNMENT = 32;
-
-typedef struct {
-    CubsRawValue key;
-    size_t hash;
-} HashEntry;
+static const size_t DATA_BITMASK = 0xFFFFFFFFFFFFULL;
+static const size_t TAG_SHIFT = 48;
+static const size_t TAG_BITMASK = 0xFFULL << 48;
+static const size_t TYPE_SIZE_SHIFT = 56;
+static const size_t TYPE_SIZE_BITMASK = 0xFFULL << 56;
+static const size_t NON_DATA_BITMASK = ~(0xFFFFFFFFFFFFULL);
 
 typedef struct {
     /// The actual pairs start at `&hashMasks[capacity]`
@@ -34,17 +32,29 @@ typedef struct {
 static size_t group_allocation_size(size_t requiredCapacity) {
     assert(requiredCapacity % 32 == 0);
 
-    return requiredCapacity + (sizeof(HashEntry*) * requiredCapacity);
+    return requiredCapacity + (sizeof(void*) * requiredCapacity);
 }
 
-static const HashEntry** group_pair_buf_start(const Group* group) {
-    const HashEntry** bufStart = (const HashEntry**)&group->hashMasks[group->capacity];
+static const void** group_pair_buf_start(const Group* group) {
+    const void** bufStart = (const void**)&group->hashMasks[group->capacity];
     return bufStart;
 }
 
-static HashEntry** group_pair_buf_start_mut(Group* group) {
-    HashEntry** bufStart = (HashEntry**)&group->hashMasks[group->capacity];
+static void** group_pair_buf_start_mut(Group* group) {
+    void** bufStart = (void**)&group->hashMasks[group->capacity];
     return bufStart;
+}
+
+/// Get the memory of the key of `pair`.
+static const void** pair_key(const void* pair) {
+    const char* start = (const char*)pair;
+    return (const void*)&(start[sizeof(size_t)]);
+}
+
+/// Get the memory of the key of `pair`.
+static void** pair_key_mut(void* pair) {
+    char* start = (char*)pair;
+    return (void*)&(start[sizeof(size_t)]);
 }
 
 static Group group_init() {
@@ -67,16 +77,17 @@ static void group_free(Group* self) {
 }
 
 /// Deinitialize the pairs, and free the group
-static void group_deinit(Group* self, CubsValueTag keyTag) {
+static void group_deinit(Group* self, CubsValueTag keyTag, size_t sizeOfKey) {
     if(self->pairCount != 0) {
         for(uint32_t i = 0; i < self->capacity; i++) {
             if(self->hashMasks[i] == 0) {
                 continue;
             }
             
-            HashEntry* pair = group_pair_buf_start_mut(self)[i];
-            cubs_raw_value_deinit(&pair->key, keyTag);
-            cubs_free((void*)pair, sizeof(HashEntry), _Alignof(HashEntry));
+            void* pair = group_pair_buf_start_mut(self)[i];
+            cubs_void_value_deinit(pair_key_mut(pair), keyTag);
+            // cache'd hash code + key + value
+            cubs_free((void*)pair, sizeof(size_t) + sizeOfKey, _Alignof(size_t));
         }
     }
 
@@ -96,7 +107,7 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
     memset(mem, 0, mallocCapacity);
 
     uint8_t* newHashMaskStart = (uint8_t*)mem;
-    HashEntry** newPairStart = (HashEntry**)&((uint8_t*)mem)[pairAllocCapacity];
+    void** newPairStart = (void**)&((uint8_t*)mem)[pairAllocCapacity];
     size_t moveIter = 0;
     for(uint32_t i = 0; i < self->capacity; i++) {
         if(self->hashMasks[i] == 0) {
@@ -104,7 +115,8 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
         }
 
         newHashMaskStart[moveIter] = self->hashMasks[i];
-        newPairStart[moveIter] = group_pair_buf_start_mut(self)[i];
+        // Copy over the pointer to the pair info, transferring ownership
+        newPairStart[moveIter] = group_pair_buf_start_mut(self)[i]; 
         moveIter += 1;
     }
 
@@ -116,8 +128,8 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
 }
 
 /// Returns -1 if not found
-static size_t group_find(const Group* self, const CubsRawValue* key, CubsValueTag keyTag, CubsHashPairBitmask pairMask) {
-    //#if __AVX2__
+static size_t group_find(const Group* self, const void* key, CubsValueTag keyTag, CubsHashPairBitmask pairMask) {
+    #if __AVX2__
     const __m256i maskVec = _mm256_set1_epi8(pairMask.value);
     
     size_t i = 0;
@@ -132,30 +144,32 @@ static size_t group_find(const Group* self, const CubsRawValue* key, CubsValueTa
                 break;
             }
             const size_t actualIndex = index + i;
-            const HashEntry* pair = group_pair_buf_start(self)[actualIndex];
-            if(!cubs_raw_value_eql(&pair->key, key, keyTag)) {
+            const void* pair = group_pair_buf_start(self)[actualIndex];
+            const void* pairKey = pair_key(pair);
+            /// Because of C union alignment, and the sizes and alignments of the union members, this is valid.
+            if(!cubs_raw_value_eql((const CubsRawValue*)pairKey, (const CubsRawValue*)key, keyTag)) {
                 resultMask = (resultMask & ~(1U << index));
                 continue;
             }
             return actualIndex;
         }       
     }
-    //#endif
+    #endif
     return -1;
 }
 
 /// If the entry already exists, overrides the existing value.
-static void group_insert(Group* self, CubsRawValue key, CubsValueTag keyTag, size_t hashCode) {
+static void group_insert(Group* self, void* key, CubsValueTag keyTag, size_t sizeOfKey, size_t hashCode) {
     const CubsHashPairBitmask pairMask = cubs_hash_pair_bitmask_init(hashCode);
     const size_t existingIndex = group_find(self, &key, keyTag, pairMask);
     if(existingIndex != -1) {
-        cubs_raw_value_deinit(&key, keyTag); // don't need duplicate keys
+        cubs_void_value_deinit(key, keyTag); // don't need duplicate keys
         return;
     }
 
     group_ensure_total_capacity(self, self->pairCount + 1);
 
-    //#if __AVX2__
+    #if __AVX2__
     // SIMD find first zero
     const __m256i zeroVec = _mm256_set1_epi8(0);
     size_t i = 0;
@@ -171,238 +185,242 @@ static void group_insert(Group* self, CubsRawValue key, CubsValueTag keyTag, siz
         }
 
         const size_t actualIndex = index + i;
-        const HashEntry _newPairData = {.key = key, .hash = hashCode};
-        HashEntry* newPair = (HashEntry*)cubs_malloc(sizeof(HashEntry), _Alignof(HashEntry));
-        *newPair = _newPairData;
-
+        void* newPair = cubs_malloc(sizeof(size_t) + sizeOfKey, _Alignof(size_t));
+        *(size_t*)newPair = hashCode;
+        memcpy(pair_key_mut(newPair), key, sizeOfKey);
+    
         self->hashMasks[actualIndex] = pairMask.value;
-        group_pair_buf_start(self)[actualIndex] = newPair;
+        group_pair_buf_start_mut(self)[actualIndex] = newPair;
 
         self->pairCount += 1;
         return;
     }
-    //#else
+    #endif
     unreachable();
-    //#endif
 }
 
-static bool group_erase(Group* self, const CubsRawValue* key, CubsValueTag keyTag, CubsHashPairBitmask pairMask) {
+static bool group_erase(Group* self, const void* key, CubsValueTag keyTag, size_t sizeOfKey, CubsHashPairBitmask pairMask) {
     const size_t found = group_find(self, key, keyTag, pairMask);
     if(found == -1) {
         return false;
     }
 
     self->hashMasks[found] = 0;
-    HashEntry* pair = group_pair_buf_start_mut(self)[found];
-    cubs_raw_value_deinit(&pair->key, keyTag);
-    cubs_free(pair, sizeof(HashEntry), _Alignof(HashEntry));
+    void* pair = group_pair_buf_start_mut(self)[found];
+    cubs_void_value_deinit(pair_key_mut(pair), keyTag);
+    cubs_free(pair, sizeof(size_t) + sizeOfKey, _Alignof(size_t));
     self->pairCount -= 1;
 
     return true;
 }
 
 typedef struct {
-    size_t entryCount;
-    size_t groupCount;
+    Group* groupsArray;
+    size_t groupCountAndKeyInfo;
+    size_t available;
 } Metadata;
-_Static_assert(_Alignof(Group) == _Alignof(Metadata), "Group must have same alignment as metadata");
 
-/// Can return NULL if there are no groups
-static Metadata* metadata_ptr(CubsSet* self) {
-    const size_t mask = ((size_t)(self->_inner)) & PTR_BITMASK;
-    return (Metadata*)mask;
+static const Metadata* as_metadata(const CubsSet* self) {
+    return (const Metadata*)self->_metadata;
 }
 
-static Metadata set_metadata(const CubsSet* self) {
-    const size_t mask = ((size_t)(self->_inner)) & PTR_BITMASK;
-    if(mask == 0) {
-        const Metadata empty = {.entryCount = 0, .groupCount = 0};
-        return empty;
-    }
-    return *(const Metadata*)(mask);
+static Metadata* as_metadata_mut(CubsSet* self) {  
+    return (Metadata*)self->_metadata;
 }
 
-/// @return The array of groups
-static const Group* set_groups(const CubsSet* self) {
-    const size_t mask = ((size_t)(self->_inner)) & PTR_BITMASK;
-    const Metadata* metadataPtr = (const Metadata*)(mask);
-    return (const Group*)(&metadataPtr[1]);
+static size_t current_group_count(const CubsSet* self) {
+    const Metadata* metadata = as_metadata(self);
+    return (metadata->groupCountAndKeyInfo) & DATA_BITMASK;
 }
 
-/// @return The array of groups
-static Group* set_groups_mut( CubsSet* self) {
-    const size_t mask = ((size_t)(self->_inner)) & PTR_BITMASK;
-    Metadata* metadataPtr = (Metadata*)(mask);
-    return (Group*)(&metadataPtr[1]);
+static void set_group_count(CubsSet* self, size_t newGroupCount) {
+    Metadata* metadata = as_metadata_mut(self);
+    metadata->groupCountAndKeyInfo = (metadata->groupCountAndKeyInfo & NON_DATA_BITMASK) | newGroupCount;
 }
 
 static void set_ensure_total_capacity(CubsSet* self, size_t minCapacity) {
-    const Metadata oldMetadata = set_metadata(self);
-
-    bool shouldReallocate = false;
-    {
-        if(oldMetadata.entryCount == 0) {
-            shouldReallocate = true;
-        }
-        if((minCapacity / GROUP_ALLOC_SIZE) > oldMetadata.groupCount) {
-            shouldReallocate = true;
-        }
-    }
-    if(!shouldReallocate) {
+    Metadata* metadata = as_metadata_mut(self);
+    if(metadata->available != 0) {
         return;
     }
 
-    size_t newGroupCount = 1;
-    if(minCapacity > GROUP_ALLOC_SIZE) {
-        newGroupCount = minCapacity / (GROUP_ALLOC_SIZE / 4);
+    const size_t currentGroupCount = current_group_count(self);
+    size_t newGroupCount;
+    if(currentGroupCount == 0) {
+        newGroupCount = 1;
+    }
+    else {
+        newGroupCount = current_group_count(self) * 2;
     }
 
-    void* newMem = cubs_malloc(sizeof(Metadata) + (sizeof(Group) * newGroupCount), _Alignof(Group));
-    const Metadata _newMetadataData = {.entryCount = oldMetadata.entryCount, .groupCount = newGroupCount};
-    Metadata* newMetadata = (Metadata*)newMem;
-    *newMetadata = _newMetadataData;
-
-    Group* newGroups = (Group*)&newMetadata[1];
+    Group* newGroups = (Group*)cubs_malloc(sizeof(Group) * newGroupCount, _Alignof(Group));
     for(size_t i = 0; i < newGroupCount; i++) {
         newGroups[i] = group_init();
     }
-    if(oldMetadata.groupCount == 0) {
-        self->_inner = (void*)((((size_t)self->_inner) & KEY_TAG_BITMASK) | (size_t)newMem);
-        return;
+
+    if(currentGroupCount == 0) {
+        const size_t DEFAULT_AVAILABLE = (size_t)(((float)GROUP_ALLOC_SIZE) * 0.8f);
+        metadata->groupsArray = newGroups;
+        metadata->available = DEFAULT_AVAILABLE;
+        set_group_count(self, newGroupCount);
     }
+    else {
+        const size_t availableEntries = GROUP_ALLOC_SIZE * newGroupCount;
+        const size_t newAvailable = (availableEntries * 4) / 5; // * 0.8 for load factor
 
-    Group* oldGroups = set_groups_mut(self);
-    for(size_t oldGroupCount = 0; oldGroupCount < oldMetadata.groupCount; oldGroupCount++) {
-        Group* oldGroup = &oldGroups[oldGroupCount];
-        if(oldGroup->pairCount != 0) {
-            for(uint32_t hashMaskIter = 0; hashMaskIter < oldGroup->capacity; hashMaskIter++) {
-                if(oldGroup->hashMasks[hashMaskIter] == 0) {
-                    continue;
-                }
+        for(size_t oldGroupCount = 0; oldGroupCount < currentGroupCount; oldGroupCount++) {
+            Group* oldGroup = &metadata->groupsArray[oldGroupCount];
+            if(oldGroup->pairCount != 0) {
+                for(uint32_t hashMaskIter = 0; hashMaskIter < oldGroup->capacity; hashMaskIter++) {
+                    if(oldGroup->hashMasks[hashMaskIter] == 0) {
+                        continue;
+                    }
 
-                HashEntry* pair = group_pair_buf_start_mut(oldGroup)[hashMaskIter];
-                const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(pair->hash);
-                const size_t groupIndex = groupBitmask.value % newGroupCount;
+                    void* pair = group_pair_buf_start_mut(oldGroup)[hashMaskIter];
+                    const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(*(const size_t*)pair);
+                    const size_t groupIndex = groupBitmask.value % newGroupCount;
 
-                Group* newGroup = &newGroups[groupIndex];
-                group_ensure_total_capacity(newGroup, newGroup->pairCount + 1);
+                    Group* newGroup = &newGroups[groupIndex];
+                    group_ensure_total_capacity(newGroup, newGroup->pairCount + 1);
                     
-                newGroup->hashMasks[newGroup->pairCount] = oldGroup->hashMasks[hashMaskIter];
-                group_pair_buf_start(newGroup)[newGroup->pairCount] = pair;
-                newGroup->pairCount += 1;
+                    newGroup->hashMasks[newGroup->pairCount] = oldGroup->hashMasks[hashMaskIter];
+                    group_pair_buf_start_mut(newGroup)[newGroup->pairCount] = pair;
+                    newGroup->pairCount += 1;
+                }
             }
-        }
             
-        const size_t oldGroupAllocationSize = group_allocation_size(oldGroup->capacity);
-        cubs_free((void*)oldGroup->hashMasks, oldGroupAllocationSize, ALIGNMENT);
-    }
+            const size_t oldGroupAllocationSize = group_allocation_size(oldGroup->capacity);
+            cubs_free((void*)oldGroup->hashMasks, oldGroupAllocationSize, ALIGNMENT);
+        }
 
-    if(oldMetadata.groupCount > 0) {      
-        void* memToFree = (void*)(((size_t)(self->_inner)) & PTR_BITMASK);
-        cubs_free(memToFree, sizeof(Metadata) + (sizeof(Group) * oldMetadata.groupCount), _Alignof(Group));
+        if(currentGroupCount > 0) {
+            cubs_free((void*)metadata->groupsArray, sizeof(Group) * currentGroupCount, _Alignof(Group));
+        }
+
+        metadata->groupsArray = newGroups;
+        metadata->available = newAvailable;
+        set_group_count(self, newGroupCount);
     }
-    
-    self->_inner = (void*)((((size_t)self->_inner) & KEY_TAG_BITMASK) | (size_t)newMem);
 }
 
-CubsSet cubs_set_init(CubsValueTag keyTag)
+CubsSet cubs_set_init(CubsValueTag tag)
 {
-    const size_t keyTagInt = (size_t)keyTag;
-    const CubsSet set = {._inner = (void*)(keyTagInt << KEY_TAG_SHIFT)};
-    return set;
+    const size_t keyTagInt = (size_t)tag;
+    const size_t sizeOfKey = cubs_size_of_tagged_type(tag);
+    CubsSet map = {0};
+    Metadata* metadata = as_metadata_mut(&map);
+    metadata->groupCountAndKeyInfo = (keyTagInt << TAG_SHIFT) | (sizeOfKey << TYPE_SIZE_SHIFT);
+    return map;
 }
 
 void cubs_set_deinit(CubsSet *self)
 {
-    const Metadata metadata = set_metadata(self);
-    if(metadata.groupCount == 0) {
+    Metadata* metadata = as_metadata_mut(self);
+    if(metadata->groupsArray == NULL) {
         return;
     }
 
     const CubsValueTag keyTag = cubs_set_tag(self);
-    Group* groups = set_groups_mut(self);
-    for(size_t i = 0; i < metadata.groupCount; i++) {
-        Group* group = &groups[i];
-        group_deinit(group, keyTag);
+    const size_t sizeOfKey = cubs_set_size_of_key(self);
+    const size_t groupCount = current_group_count(self);
+
+    for(size_t i = 0; i < groupCount; i++) {
+        group_deinit(&metadata->groupsArray[i], keyTag, sizeOfKey);
     }
-  
-    void* memToFree = (void*)(((size_t)(self->_inner)) & PTR_BITMASK);
-    cubs_free(memToFree, sizeof(Metadata) + (sizeof(Group) * metadata.groupCount), _Alignof(Group));
-    self->_inner = NULL;
+
+    cubs_free((void*)metadata->groupsArray, sizeof(Group) * groupCount, _Alignof(Group));
+    metadata->groupsArray = NULL;
 }
 
 CubsValueTag cubs_set_tag(const CubsSet *self)
 {
-    const size_t masked = ((size_t)(self->_inner)) & KEY_TAG_BITMASK;
-    return masked >> KEY_TAG_SHIFT;
+    const Metadata* metadata = as_metadata(self);
+    const size_t masked = ((size_t)(metadata->groupCountAndKeyInfo)) & TAG_BITMASK;
+    assert(masked != 0);
+    return masked >> TAG_SHIFT;
 }
 
-size_t cubs_set_size(const CubsSet *self)
+size_t cubs_set_size_of_key(const CubsSet *self)
 {
-    return set_metadata(self).entryCount;
+    const Metadata* metadata = as_metadata(self);
+    const size_t masked = ((size_t)(metadata->groupCountAndKeyInfo)) & TYPE_SIZE_BITMASK;
+    assert(masked != 0);
+    return masked >> TYPE_SIZE_SHIFT;
 }
 
-bool cubs_set_contains_unchecked(const CubsSet *self, const CubsRawValue *key)
+bool cubs_set_contains_unchecked(const CubsSet *self, const void *key)
 {
-    const Metadata metadata = set_metadata(self);
-    if(metadata.entryCount == 0) {
-        return false;
+    if(self->count == 0) {
+        return NULL;
     }
-    
+    const Metadata* metadata = as_metadata(self);
+
     const CubsValueTag keyTag = cubs_set_tag(self);
-    const size_t hashCode = cubs_compute_hash(key, keyTag);
+    const size_t hashCode = cubs_compute_hash((const CubsRawValue*)key, keyTag);
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
-    const size_t groupIndex = groupBitmask.value % metadata.groupCount;
-    const Group* group = &(set_groups(self)[groupIndex]);
+    const size_t groupIndex = groupBitmask.value % current_group_count(self);
+    const Group* group = &metadata->groupsArray[groupIndex];
 
     const size_t found = group_find(group, key, keyTag, cubs_hash_pair_bitmask_init(hashCode));
     return found != -1;
 }
 
+bool cubs_set_contains_raw_unchecked(const CubsSet *self, const CubsRawValue *key)
+{
+    return cubs_set_contains_unchecked(self, (const void*)key);
+}
+
 bool cubs_set_contains(const CubsSet *self, const CubsTaggedValue *key)
 {
     assert(key->tag == cubs_set_tag(self));
-    return cubs_set_contains_unchecked(self, &key->value);
+    return cubs_set_contains_unchecked(self, (const void*)&key->value);
 }
 
-void cubs_set_insert_unchecked(CubsSet *self, CubsRawValue key)
+void cubs_set_insert_unchecked(CubsSet *self, void* key)
 {
-    const size_t currentSize = cubs_set_size(self);
-    set_ensure_total_capacity(self, currentSize + 1);
-
-    Metadata* metadata = metadata_ptr(self); // guaranteed to be non-null here.
+    set_ensure_total_capacity(self, self->count + 1);
+    
+    Metadata* metadata = as_metadata_mut(self);
     
     const CubsValueTag keyTag = cubs_set_tag(self);
-    const size_t hashCode = cubs_compute_hash(&key, keyTag);
+    const size_t hashCode = cubs_compute_hash((const CubsRawValue*)key, keyTag);
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
-    const size_t groupIndex = groupBitmask.value % metadata->groupCount;
+    const size_t groupIndex = groupBitmask.value % current_group_count(self);
 
-    group_insert(&(set_groups_mut(self)[groupIndex]), key, keyTag, hashCode);
-    metadata->entryCount += 1;
+    group_insert(&metadata->groupsArray[groupIndex], key, keyTag, cubs_set_size_of_key(self), hashCode);
+    self->count += 1;
+    metadata->available -= 1;
+}
+
+void cubs_set_insert_raw_unchecked(CubsSet *self, CubsRawValue key)
+{
+    cubs_set_insert_unchecked(self, (void*)&key);
 }
 
 void cubs_set_insert(CubsSet *self, CubsTaggedValue key)
 {
     assert(key.tag == cubs_set_tag(self));
-    cubs_set_insert_unchecked(self, key.value);
+    cubs_set_insert_unchecked(self, (void*)&key.value);
 }
 
-bool cubs_set_erase_unchecked(CubsSet *self, const CubsRawValue *key)
+bool cubs_set_erase_unchecked(CubsSet *self, const void *key)
 {
-    const size_t currentSize = cubs_set_size(self);
-    if(currentSize == 0) {
+    if(self->count == 0) {
         return false;
     }
 
-    Metadata* metadata = metadata_ptr(self);  // guaranteed to be non-null because of the above check
+    Metadata* metadata = as_metadata_mut(self);
 
     const CubsValueTag keyTag = cubs_set_tag(self);
-    const size_t hashCode = cubs_compute_hash(key, keyTag);
+    const size_t hashCode = cubs_compute_hash((const CubsRawValue*)key, keyTag);
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
-    const size_t groupIndex = groupBitmask.value % metadata->groupCount;
+    const size_t groupIndex = groupBitmask.value % current_group_count(self);
 
-    const bool result = group_erase(&(set_groups_mut(self)[groupIndex]), key, keyTag, cubs_hash_pair_bitmask_init(hashCode));
-    metadata->entryCount -= (size_t)result;  
+    const bool result = group_erase(&metadata->groupsArray[groupIndex], key, keyTag, cubs_set_size_of_key(self), cubs_hash_pair_bitmask_init(hashCode));
+    if(result) {
+        self->count -= 1;      
+        metadata->available += 1;
+    }
     return result;
 }
 

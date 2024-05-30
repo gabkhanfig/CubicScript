@@ -29,7 +29,10 @@ typedef struct CubsArray {
 } CubsArray;
 
 typedef struct CubsSet {
-  void* _inner;
+    /// The number of key/value pairs in the hashset.
+    size_t count;
+    /// Accessing this is unsafe
+    void* _metadata[3];
 } CubsSet;
 
 typedef struct CubsMap {
