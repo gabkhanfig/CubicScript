@@ -57,6 +57,12 @@ pub fn Array(comptime T: type) type {
             return c.cubs_array_tag(self.cast(anyopaque));
         }
 
+        /// Helper to generically determine the script value type of `Self`, for example, since this is an `Array`,
+        /// it returns `.array`. This is implemented for all script value that are generic.
+        pub fn _compatSelfTag() ValueTag {
+            return .array;
+        }
+
         pub fn cast(self: *const Self, comptime OtherT: type) *const Array(OtherT) {
             if (OtherT != anyopaque) {
                 script_value.validateTypeMatchesTag(OtherT, self.tag());
@@ -146,6 +152,15 @@ pub fn Array(comptime T: type) type {
         //         try expect(arr.tag() == @as(ValueTag, @enumFromInt(f.value)));
         //     }
         // }
+
+        test "nested array" {
+            var arr1 = Array(Array(i64)).init();
+            defer arr1.deinit();
+
+            var arr2 = Array(i64).init();
+            arr2.push(1);
+            arr1.push(arr2);
+        }
 
         test push {
             {

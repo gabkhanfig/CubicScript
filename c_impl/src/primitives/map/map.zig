@@ -56,6 +56,10 @@ pub fn Map(comptime K: type, comptime V: type) type {
             return c.cubs_map_value_tag(self);
         }
 
+        pub fn _compatSelfTag() ValueTag {
+            return .map;
+        }
+
         pub fn cast(self: *const Self, comptime OtherK: type, comptime OtherV: type) *const Map(OtherK, OtherV) {
             if (OtherK != anyopaque) {
                 script_value.validateTypeMatchesTag(OtherK, self.keyTag());

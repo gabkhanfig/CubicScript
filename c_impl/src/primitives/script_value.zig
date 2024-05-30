@@ -334,14 +334,8 @@ pub fn validateTypeMatchesTag(comptime T: type, tag: ValueTag) void {
             assert(tag == .float);
         } else if (T == String) {
             assert(tag == .string);
-        } else if (T == Array) {
-            assert(tag == .array);
-        } else if (T == Set) {
-            assert(tag == .set);
-            //} else if (T == Map) {
-            //assert(tag == .map);
         } else {
-            @compileError("Incompatible Script type");
+            assert(tag == T._compatSelfTag());
         }
     }
 }
@@ -355,13 +349,7 @@ pub fn scriptTypeToTag(comptime T: type) ValueTag {
         return .float;
     } else if (T == String) {
         return .string;
-    } else if (T == Array) {
-        return .array;
-    } else if (T == Map) {
-        return .map;
     } else {
-        var buf: [256]u8 = undefined;
-        const message = std.fmt.bufPrint(&buf, "Incompatible script type {s}", .{@typeName(T)});
-        @compileError(message);
+        return T._compatSelfTag();
     }
 }
