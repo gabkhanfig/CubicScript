@@ -333,10 +333,8 @@ pub fn validateTypeMatchesTag(comptime T: type, tag: ValueTag) void {
             assert(tag == .int);
         } else if (T == f64) {
             assert(tag == .float);
-        } else if (T == String) {
-            assert(tag == .string);
         } else {
-            assert(tag == T._compatSelfTag());
+            assert(tag == T.SELF_TAG);
         }
     }
 }
@@ -348,9 +346,7 @@ pub fn scriptTypeToTag(comptime T: type) ValueTag {
         return .int;
     } else if (T == f64) {
         return .float;
-    } else if (T == String) {
-        return .string;
     } else {
-        return T._compatSelfTag();
+        return T.SELF_TAG;
     }
 }

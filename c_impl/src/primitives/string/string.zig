@@ -1,6 +1,7 @@
 const std = @import("std");
 const expect = std.testing.expect;
 const Ordering = @import("../../util/ordering.zig").Ordering;
+const script_value = @import("../script_value.zig");
 
 // Importing the header directly really messes with the language server, so this is simpler
 const c = struct {
@@ -47,6 +48,7 @@ const c = struct {
 
 pub const String = extern struct {
     const Self = @This();
+    pub const SELF_TAG: script_value.ValueTag = .string;
 
     /// Safe to read, unsafe to write
     len: usize = 0,

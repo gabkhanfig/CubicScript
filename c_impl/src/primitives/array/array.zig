@@ -34,6 +34,9 @@ const c = struct {
 pub fn Array(comptime T: type) type {
     return extern struct {
         const Self = @This();
+        /// Helper to generically determine the script value type of `Self`, for example, since this is an `Array`,
+        /// it returns `.array`. This is implemented for all script value that are generic.
+        pub const SELF_TAG: ValueTag = .array;
 
         len: usize,
         _buf: ?*anyopaque,
@@ -55,12 +58,6 @@ pub fn Array(comptime T: type) type {
 
         pub fn tag(self: *const Self) ValueTag {
             return c.cubs_array_tag(self.cast(anyopaque));
-        }
-
-        /// Helper to generically determine the script value type of `Self`, for example, since this is an `Array`,
-        /// it returns `.array`. This is implemented for all script value that are generic.
-        pub fn _compatSelfTag() ValueTag {
-            return .array;
         }
 
         pub fn cast(self: *const Self, comptime OtherT: type) *const Array(OtherT) {

@@ -26,6 +26,7 @@ const c = struct {
 pub fn Set(comptime K: type) type {
     return extern struct {
         const Self = @This();
+        pub const SELF_TAG: ValueTag = .set;
 
         count: usize,
         _metadata: [3]*anyopaque,
@@ -43,11 +44,6 @@ pub fn Set(comptime K: type) type {
         pub fn tag(self: *const Self) ValueTag {
             return c.cubs_set_tag(self.cast(anyopaque));
         }
-
-        pub fn _compatSelfTag() ValueTag {
-            return .set;
-        }
-
         pub fn cast(self: *const Self, comptime OtherK: type) *const Set(OtherK) {
             if (OtherK != anyopaque) {
                 script_value.validateTypeMatchesTag(OtherK, self.tag());

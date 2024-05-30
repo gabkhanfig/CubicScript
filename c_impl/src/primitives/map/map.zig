@@ -33,6 +33,7 @@ const c = struct {
 pub fn Map(comptime K: type, comptime V: type) type {
     return extern struct {
         const Self = @This();
+        pub const SELF_TAG: ValueTag = .map;
 
         count: usize,
         _metadata: [3]*anyopaque,
@@ -54,10 +55,6 @@ pub fn Map(comptime K: type, comptime V: type) type {
 
         pub fn valueTag(self: *const Self) ValueTag {
             return c.cubs_map_value_tag(self);
-        }
-
-        pub fn _compatSelfTag() ValueTag {
-            return .map;
         }
 
         pub fn cast(self: *const Self, comptime OtherK: type, comptime OtherV: type) *const Map(OtherK, OtherV) {
