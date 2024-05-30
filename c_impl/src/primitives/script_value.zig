@@ -50,9 +50,9 @@ pub const RawValue = extern union {
     int: i64,
     float: f64,
     string: String,
-    array: Array,
+    array: Array(anyopaque),
     set: Set,
-    map: Map,
+    map: Map(anyopaque, anyopaque),
     // option: Option,
     // result: Result,
     // class: Class,
@@ -123,9 +123,9 @@ pub const TaggedValue = union(ValueTag) {
     int: i64,
     float: f64,
     string: String,
-    array: Array,
+    array: Array(anyopaque),
     set: Set,
-    map: Map,
+    map: Map(anyopaque, anyopaque),
     option: void,
     result: void,
     class: void,
@@ -293,7 +293,8 @@ pub const TaggedValue = union(ValueTag) {
         defer tagSet.deinit();
         try OffsetContainer.appendTagged(&tagSet, &offsets);
 
-        var tagMap = Self{ .map = Map.init(.int, .float) };
+        var _tempMap = Map(i64, f64).init();
+        var tagMap = Self{ .map = _tempMap.into(anyopaque, anyopaque) };
         defer tagMap.deinit();
         try OffsetContainer.appendTagged(&tagMap, &offsets);
 
@@ -337,10 +338,30 @@ pub fn validateTypeMatchesTag(comptime T: type, tag: ValueTag) void {
             assert(tag == .array);
         } else if (T == Set) {
             assert(tag == .set);
-        } else if (T == Map) {
-            assert(tag == .map);
+            //} else if (T == Map) {
+            //assert(tag == .map);
         } else {
             @compileError("Incompatible Script type");
         }
+    }
+}
+
+pub fn scriptTypeToTag(comptime T: type) ValueTag {
+    if (T == bool) {
+        return .bool;
+    } else if (T == i64) {
+        return .int;
+    } else if (T == f64) {
+        return .float;
+    } else if (T == String) {
+        return .string;
+    } else if (T == Array) {
+        return .array;
+    } else if (T == Map) {
+        return .map;
+    } else {
+        var buf: [256]u8 = undefined;
+        const message = std.fmt.bufPrint(&buf, "Incompatible script type {s}", .{@typeName(T)});
+        @compileError(message);
     }
 }
