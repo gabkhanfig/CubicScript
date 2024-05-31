@@ -38,6 +38,7 @@ typedef enum CubsValueTag {
     cubsValueTagConstMapPairIterator = 31,
     cubsValueTagMutMapPairIterator = 32,
     cubsValueTagFuture = 33,
+    cubsValueTagError = 34,
     // Enforce enum size is at least 32 bits, which is `int` on most platforms
     _CUBS_VALUE_TAG_MAX_VALUE = 0x7FFFFFFF,
 } CubsValueTag;
