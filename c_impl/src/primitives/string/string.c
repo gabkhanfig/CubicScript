@@ -579,7 +579,7 @@ CubsString cubs_string_from_int(int64_t num)
   }
 
   CubsString temp = {0};
-  const int len = sprintf_s(sso_rep_mut(&temp)->sso, sizeof(SsoRep), "%lld", num);
+  const int len = sprintf(sso_rep_mut(&temp)->sso, "%lld", num);
   #if _DEBUG
   if(len < 0) {
     unreachable();
@@ -607,7 +607,7 @@ CubsString cubs_string_from_float(double num)
   // https://en.cppreference.com/w/c/io/fprintf
   // Is there a way to automatically remove trailing zeroes?
   // %g Doesn't seem to remove trailing zeroes 
-  const int len = sprintf_s((char*)&temp, STRING_INT_BUFFER_SIZE, "%f", num);
+  const int len = sprintf((char*)&temp, "%f", num);
   #if _DEBUG
   if(len < 0) {
     unreachable();
