@@ -30,7 +30,7 @@ target_include_directories(CubicScript PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 
 # TODO improve this
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=avx2")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx2")
     target_compile_options(CubicScript PRIVATE $<$<BOOL:${MSVC}>:/arch:AVX2>)
 else ()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")

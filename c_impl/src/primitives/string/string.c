@@ -579,7 +579,11 @@ CubsString cubs_string_from_int(int64_t num)
   }
 
   CubsString temp = {0};
-  const int len = sprintf(sso_rep_mut(&temp)->sso, "%lld", num);
+  #if defined(_WIN32) || defined(WIN32)
+  const int len = sprintf_s(sso_rep_mut(&temp)->sso, sizeof(SsoRep), "%lld", num);
+  #else
+    const int len = sprintf(sso_rep_mut(&temp)->sso, "%ld", num);
+  #endif
   #if _DEBUG
   if(len < 0) {
     unreachable();

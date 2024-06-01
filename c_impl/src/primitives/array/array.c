@@ -109,7 +109,7 @@ void cubs_array_push_unchecked(CubsArray *self, void *value)
 
 void cubs_array_push_raw_unchecked(CubsArray *self, CubsRawValue value)
 {  
-    cubs_array_push_unchecked(self, (const void*)&value);
+    cubs_array_push_unchecked(self, &value);
 }
 
 void cubs_array_push(CubsArray *self, CubsTaggedValue value)
