@@ -26,8 +26,6 @@ typedef struct {
     DWORD identifier;
     /// May be NULL
     bool closeWithScript;
-
-    
 } CubsThreadWindowsImpl;
 
 static DWORD WINAPI windows_thread_loop(CubsThreadWindowsImpl* self) {
@@ -91,6 +89,60 @@ CubsThread cubs_thread_spawn(bool closeWithScript)
 }
 
 #endif // WIN32
+
+#if __unix__
+
+#include <pthread.h>
+
+typedef struct {
+    pthread_t thread;
+    /// May be NULL
+    bool closeWithScript; 
+} CubsThreadPThreadImpl;
+
+static void* pthread_thread_loop(void* self) {
+    return NULL;
+}
+
+static void pthread_thread_close(CubsThreadPThreadImpl* self) {
+    pthread_join(self->thread, NULL);
+    cubs_free((void*)self, sizeof(CubsThreadPThreadImpl), _Alignof(CubsThreadPThreadImpl));
+}
+
+/// If `self` has an owner, don't bother freeing the thread on script close.
+static void pthread_thread_on_script_close(CubsThreadPThreadImpl* self) {
+    if(self->closeWithScript == false) {
+        return;
+    }
+
+    pthread_thread_close(self);
+}
+
+static uint32_t pthread_thread_get_id(const CubsThreadPThreadImpl* self) {
+    return (uint32_t)self->thread;
+}
+
+const CubsThreadVTable windowsVTable = {
+    .onScriptClose = (CubsThreadOnScriptClose)&pthread_thread_on_script_close, 
+    .getId = (CubsThreadGetId)&pthread_thread_get_id,
+    .close = (CubsThreadClose)&pthread_thread_close,
+};
+
+CubsThread cubs_thread_spawn(bool closeWithScript) {
+    CubsThread thread = {.threadObj = NULL, .vtable = NULL};
+
+    CubsThreadPThreadImpl* impl = cubs_malloc(sizeof(CubsThreadPThreadImpl), _Alignof(CubsThreadPThreadImpl));
+    
+    pthread_create(&impl->thread, NULL, pthread_thread_loop, NULL);
+    impl->closeWithScript = closeWithScript;
+    
+    thread.threadObj = (void*)impl;
+    thread.vtable = &windowsVTable;
+
+    return thread;
+}
+
+#endif
 
 uint32_t cubs_thread_get_id(const CubsThread *thread)
 {
