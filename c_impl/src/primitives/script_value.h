@@ -44,7 +44,14 @@ typedef struct CubsMap {
 
 /// 0 / null intialization makes it a none option.
 typedef struct CubsOption {
-  void* _inner;
+    /// Reading this is safe. Writing is unsafe.
+    CubsValueTag tag;
+    /// Reading this is safe. Writing is unsafe.
+    bool isSome;
+    /// Reading this is safe. Writing is unsafe.
+    uint8_t sizeOfType;
+    /// Accessing this is unsafe
+    void* metadata[4];
 } CubsOption;
 
 typedef struct CubsResult {
@@ -127,6 +134,7 @@ typedef union CubsRawValue {
     CubsArray arr;
     CubsSet set;
     CubsMap map;
+    CubsOption option;
 } CubsRawValue;
 
 /// It is safe to call this function multiple times on the same object, since all primitives handle double deinitialization.

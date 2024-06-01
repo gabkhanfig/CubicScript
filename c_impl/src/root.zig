@@ -15,9 +15,10 @@ comptime {
     _ = @import("util/global_allocator.zig");
 }
 
-const script_value = @import("primitives/script_value.zig");
-
 pub const String = script_value.String;
 pub const Array = script_value.Array;
 pub const Set = script_value.Set;
 pub const Map = script_value.Map;
+pub const Option = script_value.Option;
+
+const script_value = @import("primitives/script_value.zig");
