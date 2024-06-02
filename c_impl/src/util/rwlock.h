@@ -2,11 +2,23 @@
 
 #include <stdbool.h>
 
-typedef struct CubsRwLock {
+
 #if defined(_WIN32) || defined WIN32
+
+typedef union CubsRwLock {
 	void* srwlock;
-#endif
 } CubsRwLock;
+
+#elif __GNUC__
+
+#include <bits/pthreadtypes-arch.h>
+
+typedef union CubsRwLock {
+    char __size[__SIZEOF_PTHREAD_RWLOCK_T]; // copied directly from pthread_rwlock_t
+    long int __align;
+} CubsRwLock;
+
+#endif
 
 void cubs_rwlock_init(CubsRwLock* rwlockToInit);
 
