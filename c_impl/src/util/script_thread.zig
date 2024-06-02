@@ -23,7 +23,7 @@ pub const ScriptThread = extern struct {
         c.cubs_thread_close(self);
     }
 
-    pub fn getId(self: *const Self) u32 {
+    pub fn getId(self: *const Self) u64 {
         return c.cubs_thread_get_id(self);
     }
 
@@ -42,6 +42,6 @@ pub const ScriptThread = extern struct {
         var thread = Self.spawn();
         defer thread.close();
 
-        try expect(@as(u32, @intCast(std.Thread.getCurrentId())) != thread.getId());
+        try expect(@as(u64, @intCast(std.Thread.getCurrentId())) != thread.getId());
     }
 };
