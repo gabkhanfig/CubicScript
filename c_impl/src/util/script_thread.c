@@ -133,7 +133,6 @@ CubsThread cubs_thread_spawn(bool closeWithScript) {
     thread.vtable = &pthreadVTable;
 
     return thread;
-
 }
 
 #endif
