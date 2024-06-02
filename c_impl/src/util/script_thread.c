@@ -4,13 +4,6 @@
 #include <stdio.h>
 #include "rwlock.h"
 
-typedef struct {
-    volatile bool isExecuting;
-    volatile bool shouldExecute;
-    volatile bool isPendingKill;
-
-} CubsThreadTaskQueueInfo;
-
 #if defined(_WIN32) || defined(WIN32)
 
 #define NOMINMAX
@@ -47,8 +40,8 @@ static void windows_thread_on_script_close(CubsThreadWindowsImpl* self) {
     windows_thread_close(self);
 }
 
-static uint32_t windows_thread_get_id(const CubsThreadWindowsImpl* self) {
-    return (uint32_t)self->identifier;
+static uint64_t windows_thread_get_id(const CubsThreadWindowsImpl* self) {
+    return (uint64_t)self->identifier;
 }
 
 const CubsThreadVTable windowsVTable = {
@@ -118,11 +111,11 @@ static void pthread_thread_on_script_close(CubsThreadPThreadImpl* self) {
     pthread_thread_close(self);
 }
 
-static uint32_t pthread_thread_get_id(const CubsThreadPThreadImpl* self) {
-    return (uint32_t)self->thread;
+static uint64_t pthread_thread_get_id(const CubsThreadPThreadImpl* self) {
+    return (uint64_t)self->thread;
 }
 
-const CubsThreadVTable windowsVTable = {
+const CubsThreadVTable pthreadVTable = {
     .onScriptClose = (CubsThreadOnScriptClose)&pthread_thread_on_script_close, 
     .getId = (CubsThreadGetId)&pthread_thread_get_id,
     .close = (CubsThreadClose)&pthread_thread_close,
@@ -133,18 +126,19 @@ CubsThread cubs_thread_spawn(bool closeWithScript) {
 
     CubsThreadPThreadImpl* impl = cubs_malloc(sizeof(CubsThreadPThreadImpl), _Alignof(CubsThreadPThreadImpl));
     
-    pthread_create(&impl->thread, NULL, pthread_thread_loop, NULL);
+    pthread_create(&impl->thread, NULL, pthread_thread_loop, (void*)impl);
     impl->closeWithScript = closeWithScript;
     
     thread.threadObj = (void*)impl;
-    thread.vtable = &windowsVTable;
+    thread.vtable = &pthreadVTable;
 
     return thread;
+
 }
 
 #endif
 
-uint32_t cubs_thread_get_id(const CubsThread *thread)
+uint64_t cubs_thread_get_id(const CubsThread *thread)
 {
     return thread->vtable->getId(thread->threadObj);
 }
