@@ -51,6 +51,14 @@ pub const Error = extern struct {
         return c.cubs_error_metadata(self);
     }
 
+    pub fn takeMetadata(self: *Self) ?TaggedValue {
+        var temp: CTaggedValue = undefined;
+        if (c.cubs_error_take_metadata(&temp, self)) {
+            return TaggedValue.fromCRepr(&temp);
+        }
+        return null;
+    }
+
     test init {
         {
             var err = Self.init(String.initUnchecked("yuh"), null);
@@ -68,6 +76,29 @@ pub const Error = extern struct {
             if (err.metadata()) |foundMetadata| {
                 try expect(foundMetadata.tag == .int);
                 try expect(foundMetadata.value.int == 8);
+            } else {
+                try expect(false);
+            }
+        }
+    }
+
+    test takeMetadata {
+        {
+            var err = Self.init(String.initUnchecked("example"), null);
+            defer err.deinit();
+
+            if (err.takeMetadata()) |_| {
+                try expect(false);
+            }
+        }
+        {
+            var err = Self.init(String.initUnchecked("example"), TaggedValue{ .string = String.initUnchecked("hello world! some metadata for this error idk") });
+            defer err.deinit();
+
+            if (err.takeMetadata()) |taken| {
+                var mutTake = taken;
+                defer mutTake.deinit();
+                try expect(taken.string.eqlSlice("hello world! some metadata for this error idk"));
             } else {
                 try expect(false);
             }
