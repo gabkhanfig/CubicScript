@@ -196,10 +196,9 @@ pub const TaggedValue = union(ValueTag) {
         return c.cubs_raw_value_eql(self.value(), other.value(), self.tag());
     }
 
-    pub fn fromCRepr(consumeValue: *CTaggedValue) Self {
+    pub fn fromCRepr(consumeValue: CTaggedValue) Self {
         const valueTag = consumeValue.tag;
         const raw = consumeValue.value;
-        consumeValue.* = undefined;
         switch (valueTag) {
             .none => {
                 return Self{ .none = {} };

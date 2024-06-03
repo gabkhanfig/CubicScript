@@ -54,7 +54,7 @@ pub const Error = extern struct {
     pub fn takeMetadata(self: *Self) ?TaggedValue {
         var temp: CTaggedValue = undefined;
         if (c.cubs_error_take_metadata(&temp, self)) {
-            return TaggedValue.fromCRepr(&temp);
+            return TaggedValue.fromCRepr(temp);
         }
         return null;
     }
