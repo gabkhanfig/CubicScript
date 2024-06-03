@@ -11,4 +11,6 @@ comptime {
     _ = @import("primitives/map/map.zig").Map;
     _ = @import("primitives/script_value.zig").TaggedValue;
     _ = @import("primitives/option/option.zig").Option;
+    _ = @import("primitives/result/result.zig").Error;
+    //_ = @import("primitives/result/result.zig").Result;
 }

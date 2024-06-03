@@ -17,6 +17,7 @@ pub const Map = @import("map/map.zig").Map;
 pub const Option = @import("option/option.zig").Option;
 
 pub const ValueTag = enum(c_int) {
+    none = 0,
     bool = 1,
     int = 2,
     float = 3,
@@ -128,6 +129,7 @@ pub const TaggedValue = union(ValueTag) {
         }
     }
 
+    none: void,
     bool: bool,
     int: i64,
     float: f64,

@@ -1,8 +1,7 @@
 #pragma once
 
 typedef enum CubsValueTag {
-    // 0 is reserved for internal use
-
+    cubsValueTagNone = 0,
     cubsValueTagBool = 1,
     cubsValueTagInt = 2,
     cubsValueTagFloat = 3,

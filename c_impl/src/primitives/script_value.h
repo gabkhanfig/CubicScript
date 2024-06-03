@@ -54,8 +54,16 @@ typedef struct CubsOption {
     void* metadata[4];
 } CubsOption;
 
+typedef struct CubsError {
+    /// Accessing this is unsafe.
+    void* metadata;
+    /// Reading and writing to this is safe.
+    CubsString name;
+} CubsError;
+
 typedef struct CubsResult {
-  void* _inner;
+    /// Accessing this is unsafe.
+    void* metadata[5];
 } CubsResult;
 
 typedef struct CubsClass {

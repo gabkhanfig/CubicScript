@@ -24,6 +24,7 @@ add_library(CubicScript STATIC
   "src/primitives/map/map.c"
   "src/primitives/set/set.c"
   "src/primitives/option/option.c"
+  "src/primitives/result/result.c"
 )
 
 target_include_directories(CubicScript PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
