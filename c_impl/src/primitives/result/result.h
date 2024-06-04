@@ -29,11 +29,13 @@ typedef enum CubsResultError {
     cubsResultErrorNone = 0,
     cubsResultErrorIsOk = 1,
     cubsResultErrorIsErr = 2,
+    // Enforce enum size is at least 32 bits
+    _CUBS_RESULT_ERROR_MAX_VALUE = 0x7FFFFFFF,
 } CubsResultError;
 
 CubsResult cubs_result_init_ok_unchecked(CubsValueTag okTag, void* okValue);
 
-CubsResult cubs_result_init_ok_raw_unchecked(CubsValueTag okTag, CubsRawValue* okValue);
+CubsResult cubs_result_init_ok_raw_unchecked(CubsValueTag okTag, CubsRawValue okValue);
 
 CubsResult cubs_result_init_ok(CubsTaggedValue okValue);
 

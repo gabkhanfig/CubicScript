@@ -15,6 +15,8 @@ pub const Array = @import("array/array.zig").Array;
 pub const Set = @import("set/set.zig").Set;
 pub const Map = @import("map/map.zig").Map;
 pub const Option = @import("option/option.zig").Option;
+pub const Error = @import("result/result.zig").Error;
+pub const Result = @import("result/result.zig").Result;
 
 pub const ValueTag = enum(c_int) {
     none = 0,
@@ -65,7 +67,8 @@ pub const RawValue = extern union {
     set: Set(anyopaque),
     map: Map(anyopaque, anyopaque),
     option: Option(anyopaque),
-    // result: Result,
+    err: Error,
+    result: Result(anyopaque),
     // class: Class,
     // ownedInterface: OwnedInterface,
     // interfaceRef: *InterfaceRef,
@@ -145,8 +148,8 @@ pub const TaggedValue = union(ValueTag) {
     mapConstIter: void,
     mapMutIter: void,
     option: Option(anyopaque),
-    err: void,
-    result: void,
+    err: Error,
+    result: Result(anyopaque),
     taggedUnion: void,
     class: void,
     ownedInterface: void,

@@ -20,5 +20,7 @@ pub const Array = script_value.Array;
 pub const Set = script_value.Set;
 pub const Map = script_value.Map;
 pub const Option = script_value.Option;
+pub const Error = script_value.Error;
+pub const Result = script_value.Result;
 
 const script_value = @import("primitives/script_value.zig");

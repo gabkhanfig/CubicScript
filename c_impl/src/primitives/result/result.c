@@ -96,9 +96,9 @@ CubsResult cubs_result_init_ok_unchecked(CubsValueTag okTag, void *okValue)
     }
 }
 
-CubsResult cubs_result_init_ok_raw_unchecked(CubsValueTag okTag, CubsRawValue *okValue)
+CubsResult cubs_result_init_ok_raw_unchecked(CubsValueTag okTag, CubsRawValue okValue)
 {
-    return cubs_result_init_ok_unchecked(okTag, (void*)okValue);
+    return cubs_result_init_ok_unchecked(okTag, (void*)&okValue);
 }
 
 CubsResult cubs_result_init_ok(CubsTaggedValue okValue)
@@ -117,7 +117,18 @@ CubsResult cubs_result_init_err(CubsValueTag okTag, CubsError err)
 void cubs_result_deinit(CubsResult *self)
 {
     if(cubs_result_is_ok(self)) {
-
+        const CubsValueTag tag = cubs_result_ok_tag(self);
+        const size_t sizeOfOk = cubs_size_of_tagged_type(tag);
+        if(sizeOfOk > sizeof(void*[4])) {
+            void* mem = self->metadata[1];
+            if(mem == NULL) {
+                return;
+            }
+            cubs_void_value_deinit(mem, tag);
+            cubs_free(mem, sizeOfOk, _Alignof(size_t));
+        } else {
+            cubs_void_value_deinit((void*)&self->metadata[1], tag);
+        }
     } else {
         CubsError err = cubs_result_err_unchecked(self);
         cubs_error_deinit(&err);
@@ -158,7 +169,7 @@ void cubs_result_ok_unchecked(void *outOk, CubsResult *self)
 
 CubsResultError cubs_result_ok(void *outOk, CubsResult *self)
 {
-    if(cubs_result_is_ok(self)) {
+    if(!cubs_result_is_ok(self)) {
         return cubsResultErrorIsErr;
     }
     cubs_result_ok_unchecked(outOk, self);
