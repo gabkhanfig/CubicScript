@@ -64,14 +64,14 @@ pub fn Option(comptime T: type) type {
 
         pub fn cast(self: *const Self, comptime OtherT: type) *const Option(OtherT) {
             if (OtherT != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherT, self.tag());
+                script_value.validateTypeMatchesTag(OtherT, self.tag);
             }
             return @ptrCast(self);
         }
 
         pub fn castMut(self: *Self, comptime OtherT: type) *Option(OtherT) {
             if (OtherT != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherT, self.tag());
+                script_value.validateTypeMatchesTag(OtherT, self.tag);
             }
             return @ptrCast(self);
         }
