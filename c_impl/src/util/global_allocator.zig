@@ -25,7 +25,8 @@ pub fn setAllocator(a: Allocator) void {
 }
 
 export fn cubs_malloc(len: c_ulonglong, ptrAlign: c_ulonglong) callconv(.C) *anyopaque {
-    const mem = globalAllocator.rawAlloc(@intCast(len), @intCast(ptrAlign), @returnAddress());
+    const logAlign: u6 = @intCast(std.math.log2(ptrAlign)); // This is required because of how the allocator alignment is `1 << log2(align)`.
+    const mem = globalAllocator.rawAlloc(@intCast(len), logAlign, @returnAddress());
     if (mem == null) {
         @panic("CubicScript failed to allocate memory");
     }
@@ -33,6 +34,7 @@ export fn cubs_malloc(len: c_ulonglong, ptrAlign: c_ulonglong) callconv(.C) *any
 }
 
 export fn cubs_free(buf: *anyopaque, len: c_ulonglong, ptrAlign: c_ulonglong) callconv(.C) void {
+    const logAlign: u6 = @intCast(std.math.log2(ptrAlign)); // This is required because of how the allocator alignment is `1 << log2(align)`.
     const mem: [*]u8 = @ptrCast(buf);
-    globalAllocator.rawFree(mem[0..len], @intCast(ptrAlign), @returnAddress());
+    globalAllocator.rawFree(mem[0..len], logAlign, @returnAddress());
 }
