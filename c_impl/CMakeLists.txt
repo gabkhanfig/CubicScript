@@ -11,12 +11,13 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
 add_library(CubicScript STATIC 
-  "src/util/atomic_ref_count.c"
+  "src/sync/atomic_ref_count.c"
+  "src/sync/mutex.c"
+  "src/sync/rwlock.c"
+  "src/sync/script_thread.c"
   "src/util/global_allocator.c"
-  "src/util/rwlock.c"
   "src/util/panic.c"
   "src/util/math.c"
-  "src/util/script_thread.c"
   "src/util/hash.c"
   "src/primitives/script_value.c"
   "src/primitives/string/string.c"

@@ -69,12 +69,13 @@ pub fn build(b: *std.Build) void {
 }
 
 pub const cubic_script_c_sources = [_][]const u8{
-    "src/util/atomic_ref_count.c",
+    "src/sync/atomic_ref_count.c",
+    "src/sync/mutex.c",
+    "src/sync/rwlock.c",
+    "src/sync/script_thread.c",
     //"src/util/global_allocator.c",
-    "src/util/rwlock.c",
     "src/util/panic.c",
     "src/util/math.c",
-    "src/util/script_thread.c",
     "src/util/hash.c",
 
     "src/primitives/script_value.c",

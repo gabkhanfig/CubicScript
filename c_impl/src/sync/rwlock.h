@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 
-
 #if defined(_WIN32) || defined WIN32
 
 typedef union CubsRwLock {

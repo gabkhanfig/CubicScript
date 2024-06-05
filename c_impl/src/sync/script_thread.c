@@ -1,6 +1,6 @@
 #include "script_thread.h"
-#include "global_allocator.h"
-#include "panic.h"
+#include "../util/global_allocator.h"
+#include "../util/panic.h"
 #include <stdio.h>
 #include "rwlock.h"
 
