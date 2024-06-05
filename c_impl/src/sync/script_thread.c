@@ -97,7 +97,7 @@ static void* pthread_thread_loop(void* self) {
     return NULL;
 }
 
-static void pthread_thread_close(CubsThreadPThreadImpl* self) {
+static void pthread_thread_join(CubsThreadPThreadImpl* self) {
     pthread_join(self->thread, NULL);
     cubs_free((void*)self, sizeof(CubsThreadPThreadImpl), _Alignof(CubsThreadPThreadImpl));
 }
@@ -118,7 +118,7 @@ static uint64_t pthread_thread_get_id(const CubsThreadPThreadImpl* self) {
 const CubsThreadVTable pthreadVTable = {
     .onScriptClose = (CubsThreadOnScriptClose)&pthread_thread_on_script_close, 
     .getId = (CubsThreadGetId)&pthread_thread_get_id,
-    .close = (CubsThreadClose)&pthread_thread_close,
+    .join = (CubsThreadJoin)&pthread_thread_join,
 };
 
 CubsThread cubs_thread_spawn(bool closeWithScript) {
