@@ -69,6 +69,7 @@ pub fn build(b: *std.Build) void {
 }
 
 pub const cubic_script_c_sources = [_][]const u8{
+    "src/program/program.c",
     "src/sync/atomic_ref_count.c",
     "src/sync/mutex.c",
     "src/sync/rwlock.c",

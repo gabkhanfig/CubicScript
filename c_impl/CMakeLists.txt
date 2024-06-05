@@ -11,6 +11,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
 add_library(CubicScript STATIC 
+    "src/program/program.c",
   "src/sync/atomic_ref_count.c"
   "src/sync/mutex.c"
   "src/sync/rwlock.c"
