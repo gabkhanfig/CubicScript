@@ -46,13 +46,13 @@ static void** group_pair_buf_start_mut(Group* group) {
 }
 
 /// Get the memory of the key of `pair`.
-static const void** pair_key(const void* pair) {
+static const void* pair_key(const void* pair) {
     const char* start = (const char*)pair;
     return (const void*)&(start[sizeof(size_t)]);
 }
 
 /// Get the memory of the key of `pair`.
-static void** pair_key_mut(void* pair) {
+static void* pair_key_mut(void* pair) {
     char* start = (char*)pair;
     return (void*)&(start[sizeof(size_t)]);
 }

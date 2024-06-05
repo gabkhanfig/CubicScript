@@ -108,7 +108,7 @@ static void pthread_thread_on_script_close(CubsThreadPThreadImpl* self) {
         return;
     }
 
-    pthread_thread_close(self);
+    pthread_thread_join(self);
 }
 
 static uint64_t pthread_thread_get_id(const CubsThreadPThreadImpl* self) {
