@@ -47,7 +47,7 @@ static uint64_t windows_thread_get_id(const CubsThreadWindowsImpl* self) {
 const CubsThreadVTable windowsVTable = {
     .onScriptClose = (CubsThreadOnScriptClose)&windows_thread_on_script_close, 
     .getId = (CubsThreadGetId)&windows_thread_get_id,
-    .close = (CubsThreadClose)&windows_thread_close,
+    .join = (CubsThreadJoin)&windows_thread_close,
 };
 
 CubsThread cubs_thread_spawn(bool closeWithScript)
@@ -144,8 +144,8 @@ uint64_t cubs_thread_get_id(const CubsThread *thread)
 
 void cubs_thread_close(CubsThread *thread)
 {
-    if(thread->vtable->close == NULL) {
+    if(thread->vtable->join == NULL) {
         return;
     }
-    thread->vtable->close(thread->threadObj);
+    thread->vtable->join(thread->threadObj);
 }

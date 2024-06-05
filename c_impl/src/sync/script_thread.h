@@ -6,7 +6,7 @@
 /// A function pointer for when the script instance has closed and the thread is no longer needed.
 typedef void(*CubsThreadOnScriptClose)(void* threadObj);
 typedef uint64_t(*CubsThreadGetId)(const void* threadObj);
-typedef void(*CubsThreadClose)(void* threadObj);
+typedef void(*CubsThreadJoin)(void* threadObj);
 
 typedef struct CubsThreadVTable {
     /// Can be `NULL`.
@@ -14,7 +14,7 @@ typedef struct CubsThreadVTable {
     /// Must not be `NULL`.
     CubsThreadGetId getId;
     /// Can be `NULL`. Will explicitly close the thread if not `NULL`.
-    CubsThreadClose close;
+    CubsThreadJoin join;
 } CubsThreadVTable;
 
 typedef struct CubsThread {
