@@ -3,6 +3,8 @@
 #include <string.h>
 #include "../util/panic.h"
 
+// TODO thread local allocation?
+
 extern void* _cubs_os_aligned_malloc(size_t len, size_t align);
 extern void* _cubs_os_aligned_free(void *buf, size_t len, size_t align);
 
