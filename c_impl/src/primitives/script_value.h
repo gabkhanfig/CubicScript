@@ -103,27 +103,39 @@ typedef struct CubsFunctionPtr {
 } CubsFunctionPtr;
 
 typedef struct CubsVec2i {
-  void* _inner;
+  int64_t x;
+  int64_t y;
 } CubsVec2i;
 
 typedef struct CubsVec3i {
-  void* _inner;
+  int64_t x;
+  int64_t y;
+  int64_t z;
 } CubsVec3i;
 
 typedef struct CubsVec4i {
-  void* _inner;
+  int64_t x;
+  int64_t y;
+  int64_t z;
+  int64_t w;
 } CubsVec4i;
 
 typedef struct CubsVec2f {
-  void* _inner;
+  double x;
+  double y;
 } CubsVec2f;
 
 typedef struct CubsVec3f {
-  void* _inner;
+  double x;
+  double y;
+  double z;
 } CubsVec3f;
 
 typedef struct CubsVec4f {
-  void* _inner;
+  double x;
+  double y;
+  double z;
+  double w;
 } CubsVec4f;
 
 typedef struct CubsMat3 {
