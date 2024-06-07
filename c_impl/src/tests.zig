@@ -8,6 +8,7 @@ comptime {
     _ = @import("sync/script_thread.zig").ScriptThread;
     _ = @import("sync/locks.zig").Mutex;
     _ = @import("sync/locks.zig").RwLock;
+    _ = @import("sync/sync_queue.zig");
 
     _ = @import("primitives/string/string.zig").String;
     _ = @import("primitives/array/array.zig").Array;

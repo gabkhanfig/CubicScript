@@ -23,4 +23,6 @@ pub const Option = script_value.Option;
 pub const Error = script_value.Error;
 pub const Result = script_value.Result;
 
+pub const sync_queue = @import("sync/sync_queue.zig");
+
 const script_value = @import("primitives/script_value.zig");

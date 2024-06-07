@@ -73,11 +73,13 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/sync/atomic_ref_count.c",
     "src/sync/mutex.c",
     "src/sync/rwlock.c",
+    "src/sync/sync_queue.c",
     "src/sync/script_thread.c",
     //"src/util/global_allocator.c",
     "src/util/panic.c",
     "src/util/math.c",
     "src/util/hash.c",
+    "src/util/os.c",
 
     "src/primitives/script_value.c",
     "src/primitives/string/string.c",
