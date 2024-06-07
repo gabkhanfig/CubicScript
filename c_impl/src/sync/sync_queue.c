@@ -203,7 +203,7 @@ void cubs_sync_queue_unlock()
     }
     #endif
     const size_t releaseIndex = threadLocalQueues.current - 1;  
-    release(&threadLocalQueues.queues[threadLocalQueues.current]);
+    release(&threadLocalQueues.queues[releaseIndex]);
     threadLocalQueues.current = releaseIndex;
 }
 

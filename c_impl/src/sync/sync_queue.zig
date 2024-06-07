@@ -146,11 +146,30 @@ const SCRIPT_MUTEX_VTABLE: *const SyncObject.VTable = &.{
 };
 
 test lock {
-    {
+    { // lock one
         var m = Mutex{};
         addStdMutex(&m);
         lock();
-        defer unlock();
+        unlock();
+    }
+    { // lock multiple
+        var lock1 = Mutex{};
+        var lock2 = RwLock{};
+        var lock3 = RwLock{};
+        { // order 1
+            addStdMutex(&lock1);
+            addStdRwLockExclusive(&lock2);
+            addStdRwLockShared(&lock3);
+            lock();
+            defer unlock();
+        }
+        { // order 2
+            addStdRwLockShared(&lock2);
+            addStdMutex(&lock1);
+            addStdRwLockExclusive(&lock3);
+            lock();
+            defer unlock();
+        }
     }
 }
 
