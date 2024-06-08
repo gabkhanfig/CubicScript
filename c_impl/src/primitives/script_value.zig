@@ -17,6 +17,7 @@ pub const Map = @import("map/map.zig").Map;
 pub const Option = @import("option/option.zig").Option;
 pub const Error = @import("result/result.zig").Error;
 pub const Result = @import("result/result.zig").Result;
+pub const Vec2i = @import("vector/vector.zig").Vec2i;
 
 pub const ValueTag = enum(c_int) {
     none = 0,
@@ -78,7 +79,7 @@ pub const RawValue = extern union {
     // shared: Shared,
     // weak: Weak,
     // functionPtr: FunctionPtr,
-    // vec2i: Vec2i,
+    vec2i: Vec2i,
     // vec3i: Vec3i,
     // vec4i: Vec4i,
     // vec2f: Vec2f,
@@ -161,7 +162,7 @@ pub const TaggedValue = union(ValueTag) {
     weak: void,
     functionPtr: void,
     future: void,
-    vec2i: void,
+    vec2i: Vec2i,
     vec3i: void,
     vec4i: void,
     vec2f: void,

@@ -22,6 +22,7 @@ pub const Map = script_value.Map;
 pub const Option = script_value.Option;
 pub const Error = script_value.Error;
 pub const Result = script_value.Result;
+pub const Vec2i = script_value.Vec2i;
 
 pub const sync_queue = @import("sync/sync_queue.zig");
 
