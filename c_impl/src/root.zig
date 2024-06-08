@@ -23,6 +23,8 @@ pub const Option = script_value.Option;
 pub const Error = script_value.Error;
 pub const Result = script_value.Result;
 pub const Vec2i = script_value.Vec2i;
+pub const Vec3i = script_value.Vec3i;
+pub const Vec4i = script_value.Vec4i;
 
 pub const sync_queue = @import("sync/sync_queue.zig");
 
