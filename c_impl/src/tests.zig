@@ -19,4 +19,5 @@ comptime {
     _ = @import("primitives/result/result.zig").Error;
     _ = @import("primitives/result/result.zig").Result;
     _ = @import("primitives/vector/vector.zig").Vec2i;
+    _ = @import("primitives/vector/vector.zig").Vec3i;
 }
