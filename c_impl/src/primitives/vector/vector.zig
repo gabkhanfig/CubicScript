@@ -1,5 +1,7 @@
 const std = @import("std");
 const expect = std.testing.expect;
+const approxEqAbs = std.math.approxEqAbs;
+const floatEpsilon = std.math.floatEps(f64);
 
 pub const Vec2i = extern struct {
     const Self = @This();
@@ -394,5 +396,135 @@ pub const Vec4i = extern struct {
         try expect(v2.y == -1);
         try expect(v2.z == -4);
         try expect(v2.w == 4);
+    }
+};
+
+pub const Vec2f = extern struct {
+    const Self = @This();
+
+    x: f64 = 0,
+    y: f64 = 0,
+
+    pub fn add(self: Self, vec: Self) Self {
+        const c = struct {
+            extern fn cubs_vec2f_add(s: *const Self, v: *const Self) callconv(.C) Self;
+        };
+        return c.cubs_vec2f_add(&self, &vec);
+    }
+
+    pub fn addScalar(self: Self, scalar: f64) Self {
+        const c = struct {
+            extern fn cubs_vec2f_add_scalar(s: *const Self, l: f64) callconv(.C) Self;
+        };
+        return c.cubs_vec2f_add_scalar(&self, scalar);
+    }
+
+    pub fn sub(self: Self, vec: Self) Self {
+        const c = struct {
+            extern fn cubs_vec2f_sub(s: *const Self, v: *const Self) callconv(.C) Self;
+        };
+        return c.cubs_vec2f_sub(&self, &vec);
+    }
+
+    pub fn subScalar(self: Self, scalar: f64) Self {
+        const c = struct {
+            extern fn cubs_vec2f_sub_scalar(s: *const Self, l: f64) callconv(.C) Self;
+        };
+        return c.cubs_vec2f_sub_scalar(&self, scalar);
+    }
+
+    pub fn mul(self: Self, vec: Self) Self {
+        const c = struct {
+            extern fn cubs_vec2f_mul(s: *const Self, v: *const Self) callconv(.C) Self;
+        };
+        return c.cubs_vec2f_mul(&self, &vec);
+    }
+
+    pub fn mulScalar(self: Self, scalar: f64) Self {
+        const c = struct {
+            extern fn cubs_vec2f_mul_scalar(s: *const Self, l: f64) callconv(.C) Self;
+        };
+        return c.cubs_vec2f_mul_scalar(&self, scalar);
+    }
+
+    pub fn div(self: Self, vec: Self) Self {
+        const c = struct {
+            extern fn cubs_vec2f_div(s: *const Self, v: *const Self) callconv(.C) Self;
+        };
+        return c.cubs_vec2f_div(&self, &vec);
+    }
+
+    pub fn divScalar(self: Self, scalar: f64) Self {
+        const c = struct {
+            extern fn cubs_vec2f_div_scalar(s: *const Self, l: f64) callconv(.C) Self;
+        };
+        return c.cubs_vec2f_div_scalar(&self, scalar);
+    }
+
+    pub fn dot(self: Self, vec: Self) f64 {
+        const c = struct {
+            extern fn cubs_vec2f_dot(s: *const Self, v: *const Self) callconv(.C) f64;
+        };
+        return c.cubs_vec2f_dot(&self, &vec);
+    }
+
+    test add {
+        const v1 = Self{ .x = 10, .y = -10 };
+        const v2 = Self{ .x = -10, .y = 10 };
+        const v3 = v1.add(v2);
+        try expect(approxEqAbs(f64, v3.x, 0, floatEpsilon));
+        try expect(approxEqAbs(f64, v3.y, 0, floatEpsilon));
+    }
+
+    test addScalar {
+        const v1 = Self{ .x = 15, .y = -7 };
+        const v2 = v1.addScalar(4);
+        try expect(approxEqAbs(f64, v2.x, 19, floatEpsilon));
+        try expect(approxEqAbs(f64, v2.y, -3, floatEpsilon));
+    }
+
+    test sub {
+        const v1 = Self{ .x = 10, .y = -10 };
+        const v2 = Self{ .x = -10, .y = 10 };
+        const v3 = v1.sub(v2);
+        try expect(approxEqAbs(f64, v3.x, 20, floatEpsilon));
+        try expect(approxEqAbs(f64, v3.y, -20, floatEpsilon));
+    }
+
+    test subScalar {
+        const v1 = Self{ .x = 15, .y = -7 };
+        const v2 = v1.subScalar(4);
+        try expect(approxEqAbs(f64, v2.x, 11, floatEpsilon));
+        try expect(approxEqAbs(f64, v2.y, -11, floatEpsilon));
+    }
+
+    test mul {
+        const v1 = Self{ .x = 100, .y = -10 };
+        const v2 = Self{ .x = -10, .y = 10 };
+        const v3 = v1.mul(v2);
+        try expect(approxEqAbs(f64, v3.x, -1000, floatEpsilon));
+        try expect(approxEqAbs(f64, v3.y, -100, floatEpsilon));
+    }
+
+    test mulScalar {
+        const v1 = Self{ .x = 15, .y = -7 };
+        const v2 = v1.mulScalar(4);
+        try expect(approxEqAbs(f64, v2.x, 60, floatEpsilon));
+        try expect(approxEqAbs(f64, v2.y, -28, floatEpsilon));
+    }
+
+    test div {
+        const v1 = Self{ .x = 10, .y = -10 };
+        const v2 = Self{ .x = -3, .y = 10 };
+        const v3 = v1.div(v2);
+        try expect(approxEqAbs(f64, v3.x, -3.3333333333333333333333, floatEpsilon));
+        try expect(approxEqAbs(f64, v3.y, -1, floatEpsilon));
+    }
+
+    test divScalar {
+        const v1 = Self{ .x = 15, .y = -7 };
+        const v2 = v1.divScalar(4);
+        try expect(approxEqAbs(f64, v2.x, 3.75, floatEpsilon));
+        try expect(approxEqAbs(f64, v2.y, -1.75, floatEpsilon));
     }
 };

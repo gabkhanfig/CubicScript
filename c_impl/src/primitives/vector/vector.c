@@ -145,3 +145,59 @@ CubsVec4i cubs_vec4i_div_scalar(const CubsVec4i *self, int64_t scalar)
     const CubsVec4i out = {.x = self->x / scalar, .y = self->y / scalar, .z = self->z / scalar, .w = self->w / scalar};
     return out;
 }
+
+CubsVec2f cubs_vec2f_add(const CubsVec2f *self, const CubsVec2f *vec)
+{
+    const CubsVec2f out = {.x = self->x + vec->x, .y = self->y + vec->y};
+    return out;
+}
+
+CubsVec2f cubs_vec2f_add_scalar(const CubsVec2f *self, double scalar)
+{
+    const CubsVec2f out = {.x = self->x + scalar, .y = self->y + scalar};
+    return out;
+}
+
+CubsVec2f cubs_vec2f_sub(const CubsVec2f *self, const CubsVec2f *vec)
+{
+    const CubsVec2f out = {.x = self->x - vec->x, .y = self->y - vec->y};
+    return out;
+}
+
+CubsVec2f cubs_vec2f_sub_scalar(const CubsVec2f *self, double scalar)
+{
+    const CubsVec2f out = {.x = self->x - scalar, .y = self->y - scalar};
+    return out;
+}
+
+CubsVec2f cubs_vec2f_mul(const CubsVec2f *self, const CubsVec2f *vec)
+{
+    const CubsVec2f out = {.x = self->x * vec->x, .y = self->y * vec->y};
+    return out;
+}
+
+CubsVec2f cubs_vec2f_mul_scalar(const CubsVec2f *self, double scalar)
+{
+    const CubsVec2f out = {.x = self->x * scalar, .y = self->y * scalar};
+    return out;
+}
+
+CubsVec2f cubs_vec2f_div(const CubsVec2f *self, const CubsVec2f *vec)
+{
+    const CubsVec2f out = {.x = self->x / vec->x, .y = self->y / vec->y};
+    return out;
+}
+
+CubsVec2f cubs_vec2f_div_scalar(const CubsVec2f *self, double scalar)
+{
+    const CubsVec2f out = {.x = self->x / scalar, .y = self->y / scalar};
+    return out;
+}
+
+double cubs_vec2f_dot(const CubsVec2f *self, const CubsVec2f *vec)
+{
+    double result = 0.0;
+    result += self->x * vec->x;
+    result += self->y * vec->y;
+    return result;
+}

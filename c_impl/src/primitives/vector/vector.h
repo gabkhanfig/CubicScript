@@ -54,3 +54,22 @@ CubsVec4i cubs_vec4i_mul_scalar(const CubsVec4i* self, int64_t scalar);
 CubsVec4i cubs_vec4i_div(const CubsVec4i* self, const CubsVec4i* vec);
 
 CubsVec4i cubs_vec4i_div_scalar(const CubsVec4i* self, int64_t scalar);
+
+
+CubsVec2f cubs_vec2f_add(const CubsVec2f* self, const CubsVec2f* vec);
+
+CubsVec2f cubs_vec2f_add_scalar(const CubsVec2f* self, double scalar);
+
+CubsVec2f cubs_vec2f_sub(const CubsVec2f* self, const CubsVec2f* vec);
+
+CubsVec2f cubs_vec2f_sub_scalar(const CubsVec2f* self, double scalar);
+
+CubsVec2f cubs_vec2f_mul(const CubsVec2f* self, const CubsVec2f* vec);
+
+CubsVec2f cubs_vec2f_mul_scalar(const CubsVec2f* self, double scalar);
+
+CubsVec2f cubs_vec2f_div(const CubsVec2f* self, const CubsVec2f* vec);
+
+CubsVec2f cubs_vec2f_div_scalar(const CubsVec2f* self, double scalar);
+
+double cubs_vec2f_dot(const CubsVec2f* self, const CubsVec2f* vec);
