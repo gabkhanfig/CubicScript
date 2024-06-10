@@ -201,3 +201,70 @@ double cubs_vec2f_dot(const CubsVec2f *self, const CubsVec2f *vec)
     result += self->y * vec->y;
     return result;
 }
+
+CubsVec3f cubs_vec3f_add(const CubsVec3f *self, const CubsVec3f *vec)
+{
+    const CubsVec3f out = {.x = self->x + vec->x, .y = self->y + vec->y, .z = self->z + vec->z};
+    return out;
+}
+
+CubsVec3f cubs_vec3f_add_scalar(const CubsVec3f *self, double scalar)
+{
+    const CubsVec3f out = {.x = self->x + scalar, .y = self->y + scalar, .z = self->z + scalar};
+    return out;
+}
+
+CubsVec3f cubs_vec3f_sub(const CubsVec3f *self, const CubsVec3f *vec)
+{
+    const CubsVec3f out = {.x = self->x - vec->x, .y = self->y - vec->y, .z = self->z - vec->z};
+    return out;
+}
+
+CubsVec3f cubs_vec3f_sub_scalar(const CubsVec3f *self, double scalar)
+{
+    const CubsVec3f out = {.x = self->x - scalar, .y = self->y - scalar, .z = self->z - scalar};
+    return out;
+}
+
+CubsVec3f cubs_vec3f_mul(const CubsVec3f *self, const CubsVec3f *vec)
+{
+    const CubsVec3f out = {.x = self->x * vec->x, .y = self->y * vec->y, .z = self->z * vec->z};
+    return out;
+}
+
+CubsVec3f cubs_vec3f_mul_scalar(const CubsVec3f *self, double scalar)
+{
+    const CubsVec3f out = {.x = self->x * scalar, .y = self->y * scalar, .z = self->z * scalar};
+    return out;
+}
+
+CubsVec3f cubs_vec3f_div(const CubsVec3f *self, const CubsVec3f *vec)
+{
+    const CubsVec3f out = {.x = self->x / vec->x, .y = self->y / vec->y, .z = self->z / vec->z};
+    return out;
+}
+
+CubsVec3f cubs_vec3f_div_scalar(const CubsVec3f *self, double scalar)
+{
+    const CubsVec3f out = {.x = self->x / scalar, .y = self->y / scalar, .z = self->z / scalar};
+    return out;
+}
+
+double cubs_vec3f_dot(const CubsVec3f *self, const CubsVec3f *vec)
+{
+    double result = 0.0;
+    result += self->x * vec->x;
+    result += self->y * vec->y;
+    result += self->z * vec->z;
+    return result;
+}
+
+CubsVec3f cubs_vec3f_cross(const CubsVec3f *self, const CubsVec3f *vec)
+{
+    const CubsVec3f out = {
+        .x = (self->y * vec->z) - (self->z * vec->y),
+        .y = (self->z * vec->x) - (self->x * vec->z),
+        .z = (self->x * vec->y) - (self->y * vec->x)
+    };   
+    return out;
+}
