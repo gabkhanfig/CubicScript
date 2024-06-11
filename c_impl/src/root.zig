@@ -26,6 +26,7 @@ pub const Vec2i = script_value.Vec2i;
 pub const Vec3i = script_value.Vec3i;
 pub const Vec4i = script_value.Vec4i;
 pub const Vec2f = script_value.Vec2f;
+pub const Vec3f = script_value.Vec3f;
 
 pub const sync_queue = @import("sync/sync_queue.zig");
 
