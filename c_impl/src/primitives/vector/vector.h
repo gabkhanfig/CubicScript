@@ -94,3 +94,22 @@ CubsVec3f cubs_vec3f_div_scalar(const CubsVec3f* self, double scalar);
 double cubs_vec3f_dot(const CubsVec3f* self, const CubsVec3f* vec);
 
 CubsVec3f cubs_vec3f_cross(const CubsVec3f* self, const CubsVec3f* vec);
+
+
+CubsVec4f cubs_vec4f_add(const CubsVec4f* self, const CubsVec4f* vec);
+
+CubsVec4f cubs_vec4f_add_scalar(const CubsVec4f* self, double scalar);
+
+CubsVec4f cubs_vec4f_sub(const CubsVec4f* self, const CubsVec4f* vec);
+
+CubsVec4f cubs_vec4f_sub_scalar(const CubsVec4f* self, double scalar);
+
+CubsVec4f cubs_vec4f_mul(const CubsVec4f* self, const CubsVec4f* vec);
+
+CubsVec4f cubs_vec4f_mul_scalar(const CubsVec4f* self, double scalar);
+
+CubsVec4f cubs_vec4f_div(const CubsVec4f* self, const CubsVec4f* vec);
+
+CubsVec4f cubs_vec4f_div_scalar(const CubsVec4f* self, double scalar);
+
+double cubs_vec4f_dot(const CubsVec4f* self, const CubsVec4f* vec);

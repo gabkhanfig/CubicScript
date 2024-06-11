@@ -22,6 +22,7 @@ pub const Vec3i = @import("vector/vector.zig").Vec3i;
 pub const Vec4i = @import("vector/vector.zig").Vec4i;
 pub const Vec2f = @import("vector/vector.zig").Vec2f;
 pub const Vec3f = @import("vector/vector.zig").Vec3f;
+pub const Vec4f = @import("vector/vector.zig").Vec4f;
 
 pub const ValueTag = enum(c_int) {
     none = 0,
@@ -88,7 +89,7 @@ pub const RawValue = extern union {
     vec4i: Vec4i,
     vec2f: Vec2f,
     vec3f: Vec3f,
-    // vec4f: Vec4f,
+    vec4f: Vec4f,
     // mat3f: Mat3f,
     // mat4f: Mat4f,
 
@@ -171,7 +172,7 @@ pub const TaggedValue = union(ValueTag) {
     vec4i: Vec4i,
     vec2f: Vec2f,
     vec3f: Vec3f,
-    vec4f: void,
+    vec4f: Vec4f,
     mat3f: void,
     mat4f: void,
 

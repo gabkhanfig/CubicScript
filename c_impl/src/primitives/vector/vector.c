@@ -268,3 +268,61 @@ CubsVec3f cubs_vec3f_cross(const CubsVec3f *self, const CubsVec3f *vec)
     };   
     return out;
 }
+
+CubsVec4f cubs_vec4f_add(const CubsVec4f *self, const CubsVec4f *vec)
+{
+    const CubsVec4f out = {.x = self->x + vec->x, .y = self->y + vec->y, .z = self->z + vec->z, .w = self->w + vec->w};
+    return out;
+}
+
+CubsVec4f cubs_vec4f_add_scalar(const CubsVec4f *self, double scalar)
+{
+    const CubsVec4f out = {.x = self->x + scalar, .y = self->y + scalar, .z = self->z + scalar, .w = self->w + scalar};
+    return out;
+}
+
+CubsVec4f cubs_vec4f_sub(const CubsVec4f *self, const CubsVec4f *vec)
+{
+    const CubsVec4f out = {.x = self->x - vec->x, .y = self->y - vec->y, .z = self->z - vec->z, .w = self->w - vec->w};
+    return out;
+}
+
+CubsVec4f cubs_vec4f_sub_scalar(const CubsVec4f *self, double scalar)
+{
+    const CubsVec4f out = {.x = self->x - scalar, .y = self->y - scalar, .z = self->z - scalar, .w = self->w - scalar};
+    return out;
+}
+
+CubsVec4f cubs_vec4f_mul(const CubsVec4f *self, const CubsVec4f *vec)
+{
+    const CubsVec4f out = {.x = self->x * vec->x, .y = self->y * vec->y, .z = self->z * vec->z, .w = self->w * vec->w};
+    return out;
+}
+
+CubsVec4f cubs_vec4f_mul_scalar(const CubsVec4f *self, double scalar)
+{
+    const CubsVec4f out = {.x = self->x * scalar, .y = self->y * scalar, .z = self->z * scalar, .w = self->w * scalar};
+    return out;
+}
+
+CubsVec4f cubs_vec4f_div(const CubsVec4f *self, const CubsVec4f *vec)
+{
+    const CubsVec4f out = {.x = self->x / vec->x, .y = self->y / vec->y, .z = self->z / vec->z, .w = self->w / vec->w};
+    return out;
+}
+
+CubsVec4f cubs_vec4f_div_scalar(const CubsVec4f *self, double scalar)
+{
+    const CubsVec4f out = {.x = self->x / scalar, .y = self->y / scalar, .z = self->z / scalar, .w = self->w / scalar};
+    return out;
+}
+
+double cubs_vec4f_dot(const CubsVec4f *self, const CubsVec4f *vec)
+{
+    double result = 0.0;
+    result += self->x * vec->x;
+    result += self->y * vec->y;
+    result += self->z * vec->z;
+    result += self->w * vec->w;
+    return result;
+}
