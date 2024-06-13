@@ -117,3 +117,31 @@ void cubs_interpreter_push_frame_in_stack_return(size_t frameLength, const uint3
 {  
     cubs_interpreter_push_frame_impl(frameLength, oldInstructionPointer, false, returnValueOffset, returnTagOffset);
 }
+
+void cubs_interpreter_pop_frame()
+{
+    assert(threadLocalStack.nextBaseOffset != 0 && "No more frames to pop!");
+
+    const size_t offset = threadLocalStack.frame.frameLength + RESERVED_SLOTS;
+
+    threadLocalStack.nextBaseOffset -= offset;
+    if(threadLocalStack.nextBaseOffset == 0) {
+        return;
+    }
+
+    size_t* basePointer = ((size_t*)threadLocalStack.stack)[threadLocalStack.frame.basePointerOffset];
+    const size_t oldInstructionPointer = basePointer[OLD_INSTRUCTION_POINTER];
+    const size_t oldFrameLength = basePointer[OLD_FRAME_LENGTH];
+    const size_t oldReturnIsPtr = basePointer[OLD_RETURN_IS_PTR];
+    const size_t oldReturnValueDst = basePointer[OLD_RETURN_VALUE_DST];
+    const size_t oldReturnTagDst = basePointer[OLD_RETURN_TAG_DST];
+
+    const InterpreterStackFrame newFrame = {
+        .basePointerOffset = threadLocalStack.nextBaseOffset,
+        .frameLength = oldFrameLength,
+        .returnToPtr = oldReturnIsPtr,
+        .returnValueDst = oldReturnValueDst,
+        .returnTagDst = oldReturnTagDst
+    };   
+    threadLocalStack.frame = newFrame;
+}
