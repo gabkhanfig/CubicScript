@@ -2,6 +2,7 @@
 #include "../program/program.h"
 #include <stdint.h>
 #include <assert.h>
+#include "bytecode.h"
 
 extern void* _cubs_os_aligned_malloc(size_t len, size_t align);
 extern void* _cubs_os_aligned_free(void *buf, size_t len, size_t align);
@@ -73,7 +74,7 @@ static void reallocate_stack(const size_t newCapacity) {
     threadLocalStack.tags = newStackTagsMem;
 }
 
-static void cubs_interpreter_push_frame_impl(size_t frameLength, const uint32_t* oldInstructionPointer, bool returnToPtr, size_t returnValueDst, size_t returnTagDst) {
+static void cubs_interpreter_push_frame_impl(size_t frameLength, const Bytecode* oldInstructionPointer, bool returnToPtr, size_t returnValueDst, size_t returnTagDst) {
     size_t reallocateSlots;
     const bool shouldReallocate = should_reallocate(&reallocateSlots, frameLength);
     if(shouldReallocate) {
@@ -108,12 +109,12 @@ static void cubs_interpreter_push_frame_impl(size_t frameLength, const uint32_t*
     threadLocalStack.nextBaseOffset += frameLength + RESERVED_SLOTS;  
 }
 
-void cubs_interpreter_push_frame_non_stack_return(size_t frameLength, const uint32_t* oldInstructionPointer, void *returnValueDst, uint8_t *returnTagDst)
+void cubs_interpreter_push_frame_non_stack_return(size_t frameLength, const Bytecode* oldInstructionPointer, void *returnValueDst, uint8_t *returnTagDst)
 {
     cubs_interpreter_push_frame_impl(frameLength, oldInstructionPointer, true, (size_t)returnValueDst, (size_t)returnTagDst);
 }
 
-void cubs_interpreter_push_frame_in_stack_return(size_t frameLength, const uint32_t *oldInstructionPointer, size_t returnValueOffset, size_t returnTagOffset)
+void cubs_interpreter_push_frame_in_stack_return(size_t frameLength, const Bytecode *oldInstructionPointer, size_t returnValueOffset, size_t returnTagOffset)
 {  
     cubs_interpreter_push_frame_impl(frameLength, oldInstructionPointer, false, returnValueOffset, returnTagOffset);
 }

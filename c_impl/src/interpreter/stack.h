@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 typedef struct InterpreterStackState;
+struct Bytecode;
 
 typedef struct {
     size_t basePointerOffset;
@@ -18,12 +19,12 @@ typedef struct {
 /// Operates on the calling thread's interpreter stack
 /// Pushes a stack frame where the optional return destination has a known address.
 /// Potentially reallocates the entire stack, but speculative preallocation is done.
-void cubs_interpreter_push_frame_non_stack_return(size_t frameLength, const uint32_t* oldInstructionPointer, void* returnValueDst, uint8_t* returnTagDst);
+void cubs_interpreter_push_frame_non_stack_return(size_t frameLength, const struct Bytecode* oldInstructionPointer, void* returnValueDst, uint8_t* returnTagDst);
 
 /// Operates on the calling thread's interpreter stack
 /// Pushes a stack frame where the optional return destination is an offset within the stack.
 /// Potentially reallocates the entire stack, but speculative preallocation is done.
-void cubs_interpreter_push_frame_in_stack_return(size_t frameLength, const uint32_t* oldInstructionPointer, size_t returnValueOffset, size_t returnTagOffset);
+void cubs_interpreter_push_frame_in_stack_return(size_t frameLength, const struct Bytecode* oldInstructionPointer, size_t returnValueOffset, size_t returnTagOffset);
 
 /// Operates on the calling thread's interpreter stack. Never reallocates.
 void cubs_interpreter_pop_frame();
