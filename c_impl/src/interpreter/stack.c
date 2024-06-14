@@ -1,8 +1,8 @@
 #include "stack.h"
 #include "../program/program.h"
-#include <stdint.h>
 #include <assert.h>
 #include "bytecode.h"
+#include <string.h>
 
 extern void* _cubs_os_aligned_malloc(size_t len, size_t align);
 extern void* _cubs_os_aligned_free(void *buf, size_t len, size_t align);
@@ -15,7 +15,7 @@ static const size_t OLD_RETURN_VALUE_DST = 3;
 static const size_t OLD_RETURN_TAG_DST = 4;
 static const size_t RESERVED_SLOTS = 5;
 
-typedef struct {
+typedef struct InterpreterStackState {
     /// Is always a power of 2.
     /// For `tags`, the memory is valid for `stackSlots * 1`.
     _Alignas(64) size_t stackSlots;
@@ -82,7 +82,7 @@ static void cubs_interpreter_push_frame_impl(size_t frameLength, const Bytecode*
     }
 
     { // store previous instruction pointer, frame length, return dst, and return tag dst
-        size_t* basePointer = ((size_t*)threadLocalStack.stack)[threadLocalStack.nextBaseOffset];
+        size_t* basePointer = &((size_t*)threadLocalStack.stack)[threadLocalStack.nextBaseOffset];
         if(threadLocalStack.nextBaseOffset == 0) {
             basePointer[OLD_INSTRUCTION_POINTER]    = 0;
             basePointer[OLD_FRAME_LENGTH]           = 0;
@@ -130,7 +130,7 @@ void cubs_interpreter_pop_frame()
         return;
     }
 
-    size_t* basePointer = ((size_t*)threadLocalStack.stack)[threadLocalStack.frame.basePointerOffset];
+    size_t* basePointer = &((size_t*)threadLocalStack.stack)[threadLocalStack.frame.basePointerOffset];
     const size_t oldInstructionPointer = basePointer[OLD_INSTRUCTION_POINTER];
     const size_t oldFrameLength = basePointer[OLD_FRAME_LENGTH];
     const size_t oldReturnIsPtr = basePointer[OLD_RETURN_IS_PTR];

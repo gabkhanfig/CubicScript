@@ -1,11 +1,12 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 #include "../primitives/value_tag.h"
 #include <stdbool.h>
 
-typedef struct InterpreterStackState;
-struct Bytecode;
+typedef struct InterpreterStackState InterpreterStackState;
+typedef struct Bytecode Bytecode;
 
 typedef struct {
     size_t basePointerOffset;
