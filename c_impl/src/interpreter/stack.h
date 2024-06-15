@@ -29,4 +29,6 @@ void cubs_interpreter_push_frame_in_stack_return(size_t frameLength, const struc
 
 /// Operates on the calling thread's interpreter stack. Never reallocates.
 void cubs_interpreter_pop_frame();
+
+InterpreterStackFrame cubs_interpreter_current_stack_frame();
  

@@ -146,3 +146,8 @@ void cubs_interpreter_pop_frame()
     };   
     threadLocalStack.frame = newFrame;
 }
+
+InterpreterStackFrame cubs_interpreter_current_stack_frame()
+{
+    return threadLocalStack.frame;
+}
