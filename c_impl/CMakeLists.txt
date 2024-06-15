@@ -14,6 +14,7 @@ add_library(CubicScript STATIC
     "src/program/program.c"
     "src/interpreter/stack.c"
     "src/interpreter/bytecode.c"
+    "src/interpreter/interpreter.c"
     "src/sync/atomic_ref_count.c"
     "src/sync/mutex.c"
     "src/sync/rwlock.c"
