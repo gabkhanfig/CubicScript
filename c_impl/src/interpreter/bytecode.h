@@ -1,59 +1,48 @@
 #pragma once
 
+//! ALL Operands have a size and alignment of 4 bytes, but must have the opcode occupy the first
+//! `OPCODE_USED_BITS`, so it can be reinterpret casted as the correct operands
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "../util/unreachable.h"
 #include "../util/panic.h"
+#include "interpreter.h"
+
+// ARM style load/store
+// https://azeria-labs.com/memory-instructions-load-and-store-part-4/
 
 typedef enum {
+    OpCodeNop = 0,
+    OpCodeLoad,
+    OpCodeStore,
     OPCODE_USED_BITS = 8,
     OPCODE_USED_BITMASK = 0b11111111,
 } OpCode;
 
+/// To decode a bytecode into an operands `T`, simply cast the bytecode to it.
+/// For example:
+/// ```
+/// const Bytecode b = ...;
+/// SomeOperands operands = *(const SomeOperands*)&b;
+/// ```
 typedef struct Bytecode {
     uint32_t value;
 } Bytecode;
 
 OpCode cubs_bytecode_get_opcode(Bytecode b);
 
-#define _encode_impl(out, opcode, operands) \
-if(sizeof(operands) == 1) { \
-    const uint32_t _operandsAsNum = *(const uint8_t*)&operands; \
-    *out = (uint32_t)opcode | (_operandsAsNum << OPCODE_USED_BITS); \
-} else if(sizeof(operands) == 2) { \
-    const uint8_t* _operandsBytes = (const uint8_t)&operands; \
-    const uint32_t _operandsAsNum = (uint32_t)_operandsBytes[0] | (((uint32_t)_operandsBytes[1]) << 8) \
-    *out = (uint32_t)opcode | (_operandsAsNum << OPCODE_USED_BITS); \
-} else if(sizeof(operands) == 3) { \
-    const uint8_t* _operandsBytes = (const uint8_t)&operands; \
-    const uint32_t _operandsAsNum = (uint32_t)_operandsBytes[0] | (((uint32_t)_operandsBytes[1]) << 8) | (((uint32_t)_operandsBytes[2]) << 16) \
-    *out = (uint32_t)opcode | (_operandsAsNum << OPCODE_USED_BITS); \
-} else { \
-    unreachable(); \
-}
+Bytecode cubs_bytecode_encode(OpCode opcode, const void* operands);
 
-#if _DEBUG
-#define encode(out, opcode, operands) \
-do { \
-    if(sizeof(operands) == 3) { \
-        const uint8_t* _operandsBytes = (const uint8_t)&operands; \
-        const uint32_t _operandsAsNum = (uint32_t)_operandsBytes[0] | (((uint32_t)_operandsBytes[1]) << 8) | (((uint32_t)_operandsBytes[2]) << 16) \
-        if((_operandsAsNum & (uint32_t)0x00FFFFFF) != 0) { \
-            cubs_panic("operands uses too many bits"); \
-        } \
-    } \
-    _encode_impl(out, opcode, operands)\
-} while(false)
-#else
-#define encode(out opcode, operands) \ 
-do { \
-    _encode_impl(out, opcode, operands) \
-} while(false)
-#endif
+Bytecode cubs_bytecode_encode_data_as_bytecode(size_t sizeOfT, const void* data);
 
-// because no OperandsT can have an alignment greater than 4, this works
-#define decode(out, bytecode, OperandsT) \
-do { \
-   const uint32_t _operandsMask = bytecode.value >> OPCODE_USED_BITS; \
-   *out = *(const OperandsT*)&_operandsMask; \
-} while(false) \
+/// @param dualBytecodeStart Must be a pointer to two bytecodes, where `num` is copied into
+void cubs_bytecode_encode_immediate_long_int(Bytecode* dualBytecodeStart, int64_t num);
+
+/// @param dualBytecodeStart Must be a pointer to two bytecodes, where `num` is copied into
+void cubs_bytecode_encode_immediate_long_float(Bytecode* dualBytecodeStart, double num);
+
+/// @param dualBytecodeStart Must be a pointer to two bytecodes, where `num` is copied into
+void cubs_bytecode_encode_immediate_long_ptr(Bytecode* dualBytecodeStart, const void* ptr);
+
+
