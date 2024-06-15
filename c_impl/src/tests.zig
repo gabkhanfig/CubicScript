@@ -4,6 +4,7 @@ comptime {
 
     _ = @import("program/program.zig").Program;
     _ = @import("interpreter/stack.zig");
+    _ = @import("interpreter/interpreter.zig");
 
     // Many tests are within the structs themselves, so importing .ScriptThread for example is necessary.
     _ = @import("sync/script_thread.zig").ScriptThread;
