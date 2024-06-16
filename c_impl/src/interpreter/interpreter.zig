@@ -8,7 +8,7 @@ const c = @cImport({
 });
 
 test "nop" {
-    c.cubs_interpreter_push_frame_non_stack_return(1, null, null, null);
+    c.cubs_interpreter_push_frame(1, null, null, null);
 
     const bytecode = [_]c.Bytecode{
         c.cubs_bytecode_encode(c.OpCodeNop, null),

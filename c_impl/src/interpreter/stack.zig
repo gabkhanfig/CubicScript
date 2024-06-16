@@ -6,7 +6,7 @@ const c = @cImport({
 });
 
 test "push frame no return" {
-    c.cubs_interpreter_push_frame_non_stack_return(1, null, null, null);
+    c.cubs_interpreter_push_frame(1, null, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     const frame = c.cubs_interpreter_current_stack_frame();
@@ -15,7 +15,7 @@ test "push frame no return" {
 }
 
 test "nested push frame" {
-    c.cubs_interpreter_push_frame_non_stack_return(100, null, null, null);
+    c.cubs_interpreter_push_frame(100, null, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     {
@@ -24,12 +24,12 @@ test "nested push frame" {
         try expect(frame.basePointerOffset == 0);
     }
 
-    c.cubs_interpreter_push_frame_non_stack_return(100, null, null, null);
+    c.cubs_interpreter_push_frame(100, null, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     {
         const frame = c.cubs_interpreter_current_stack_frame();
         try expect(frame.frameLength == 100);
-        try expect(frame.basePointerOffset == (100 + 5));
+        try expect(frame.basePointerOffset == (100 + 4));
     }
 }
