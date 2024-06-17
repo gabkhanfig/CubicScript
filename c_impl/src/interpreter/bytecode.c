@@ -46,3 +46,10 @@ void cubs_bytecode_encode_immediate_long_ptr(Bytecode *dualBytecodeStart, const 
     dualBytecodeStart[0].value = *(const uint32_t*)&ptrAsNum;
     dualBytecodeStart[1].value = ((const uint32_t*)&ptrAsNum)[1];
 }
+
+Bytecode operands_make_load_immediate(int immediateType, uint32_t dst, int32_t immediate)
+{
+    assert(dst < REGISTER_COUNT);
+    const OperandsLoadImmediate operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_IMMEDIATE, .immediateType = immediateType, .dst = dst, .immediate = immediate};
+    return *(const Bytecode*)&operands;
+}
