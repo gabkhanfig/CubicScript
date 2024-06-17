@@ -105,3 +105,32 @@ test "load immediate float" {
         try expect(c.cubs_interpreter_register_value_at(0).floatNum == -10);
     }
 }
+
+test "load immediate long" {
+    { // int
+        var bytecode = [3]c.Bytecode{ undefined, undefined, undefined };
+        c.operands_make_load_immediate_long(@ptrCast(&bytecode), c.cubsValueTagInt, 0, @bitCast(@as(i64, -1234567890)));
+
+        c.cubs_interpreter_push_frame(1, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_register_value_tag_at(0) == c.cubsValueTagInt);
+        try expect(c.cubs_interpreter_register_value_at(0).intNum == -1234567890);
+    }
+    { // float
+        var bytecode = [3]c.Bytecode{ undefined, undefined, undefined };
+        c.operands_make_load_immediate_long(@ptrCast(&bytecode), c.cubsValueTagFloat, 0, @bitCast(@as(f64, -0.123456789)));
+
+        c.cubs_interpreter_push_frame(1, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_register_value_tag_at(0) == c.cubsValueTagFloat);
+        try expect(c.cubs_interpreter_register_value_at(0).floatNum == -0.123456789);
+    }
+}

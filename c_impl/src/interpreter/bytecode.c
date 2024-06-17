@@ -53,3 +53,12 @@ Bytecode operands_make_load_immediate(int immediateType, uint32_t dst, int32_t i
     const OperandsLoadImmediate operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_IMMEDIATE, .immediateType = immediateType, .dst = dst, .immediate = immediate};
     return *(const Bytecode*)&operands;
 }
+
+void operands_make_load_immediate_long(Bytecode *tripleBytecode, CubsValueTag tag, uint32_t dst, size_t immediate)
+{
+    assert(dst < REGISTER_COUNT);
+    const OperandsLoadImmediateLong operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_IMMEDIATE_LONG, .immediateValueTag = tag, .dst = dst};
+    tripleBytecode[0] = *(const Bytecode*)&operands;
+    tripleBytecode[1].value = ((const uint32_t*)&immediate)[0];
+    tripleBytecode[2].value = ((const uint32_t*)&immediate)[1];
+}

@@ -84,6 +84,8 @@ typedef struct {
     uint32_t dst: REGISTER_BITS_REQUIRED;
 } OperandsLoadImmediateLong;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadImmediateLong);
+/// @param tripleBytecode must be a pointer to at least 3 bytecodes
+void operands_make_load_immediate_long(Bytecode* tripleBytecode, CubsValueTag tag, uint32_t dst, size_t immediate);
 
 typedef struct {
     uint32_t reserveOpcode: OPCODE_USED_BITS;
