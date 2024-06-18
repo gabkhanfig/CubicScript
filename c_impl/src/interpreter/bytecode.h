@@ -7,8 +7,8 @@
 #include <stdbool.h>
 #include "../util/unreachable.h"
 #include "../util/panic.h"
-#include "interpreter.h"
 #include <assert.h>
+#include "interpreter.h"
 
 // ARM style load/store
 // https://azeria-labs.com/memory-instructions-load-and-store-part-4/
@@ -29,7 +29,7 @@ typedef enum {
 /// SomeOperands operands = *(const SomeOperands*)&b;
 /// ```
 typedef struct Bytecode {
-    uint32_t value;
+    uint64_t value;
 } Bytecode;
 
 
@@ -45,52 +45,39 @@ Bytecode cubs_bytecode_encode(OpCode opcode, const void* operands);
 
 Bytecode cubs_bytecode_encode_data_as_bytecode(size_t sizeOfT, const void* data);
 
-/// @param dualBytecodeStart Must be a pointer to two bytecodes, where `num` is copied into
-void cubs_bytecode_encode_immediate_long_int(Bytecode* dualBytecodeStart, int64_t num);
+Bytecode cubs_bytecode_encode_immediate_long_int(int64_t num);
 
-/// @param dualBytecodeStart Must be a pointer to two bytecodes, where `num` is copied into
-void cubs_bytecode_encode_immediate_long_float(Bytecode* dualBytecodeStart, double num);
+Bytecode cubs_bytecode_encode_immediate_long_float(double num);
 
-/// @param dualBytecodeStart Must be a pointer to two bytecodes, where `num` is copied into
-void cubs_bytecode_encode_immediate_long_ptr(Bytecode* dualBytecodeStart, const void* ptr);
+Bytecode cubs_bytecode_encode_immediate_long_ptr(void *ptr);
 
 #define LOAD_TYPE_IMMEDIATE 0
 #define LOAD_TYPE_IMMEDIATE_LONG 1
-#define LOAD_TYPE_FROM_STACK 2
 typedef struct {
-    uint32_t reserveOpcode: OPCODE_USED_BITS;
-    uint32_t loadType: 2;
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t loadType: 1;
 } OperandsLoadUnknown;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadUnknown);
 
 #define LOAD_IMMEDIATE_BOOL 0
 #define LOAD_IMMEDIATE_INT 1
-#define LOAD_IMMEDIATE_FLOAT 2
 typedef struct {
-    uint32_t reserveOpcode: OPCODE_USED_BITS;
-    uint32_t reserveLoadType: 2;
-    uint32_t immediateType: 2;
-    uint32_t dst: REGISTER_BITS_REQUIRED;
-    int32_t immediate: 15;
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t reserveLoadType: 1;
+    uint64_t immediateType: 1;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    int64_t immediate: 40;
 } OperandsLoadImmediate;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadImmediate);
 /// For a floating point immediate, must be a whole number
-Bytecode operands_make_load_immediate(int immediateType, uint32_t dst, int32_t immediate);
+Bytecode operands_make_load_immediate(int immediateType, uint16_t dst, int64_t immediate);
 
 typedef struct {
-    uint32_t reserveOpcode: OPCODE_USED_BITS;
-    uint32_t reserveLoadType: 2;
-    uint32_t immediateValueTag: 6; // CubsValueTag
-    uint32_t dst: REGISTER_BITS_REQUIRED;
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t reserveLoadType: 1;
+    uint64_t immediateValueTag: 6; // CubsValueTag
+    uint64_t dst: BITS_PER_STACK_OPERAND;
 } OperandsLoadImmediateLong;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadImmediateLong);
-/// @param tripleBytecode must be a pointer to at least 3 bytecodes
-void operands_make_load_immediate_long(Bytecode* tripleBytecode, CubsValueTag tag, uint32_t dst, size_t immediate);
-
-typedef struct {
-    uint32_t reserveOpcode: OPCODE_USED_BITS;
-    uint32_t reserveLoadType: 2;
-    uint32_t dst: REGISTER_BITS_REQUIRED;
-    uint32_t offsetFromFrameStart: 17; 
-} OperandsLoadFromStack;
-VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadFromStack);
+/// @param doubleBytecode must be a pointer to at least 2 bytecodes
+void operands_make_load_immediate_long(Bytecode* doubleBytecode, CubsValueTag tag, uint16_t dst, size_t immediate);

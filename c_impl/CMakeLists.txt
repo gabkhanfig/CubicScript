@@ -12,7 +12,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
 add_library(CubicScript STATIC 
     "src/program/program.c"
-    "src/interpreter/stack.c"
     "src/interpreter/bytecode.c"
     "src/interpreter/interpreter.c"
     "src/sync/atomic_ref_count.c"

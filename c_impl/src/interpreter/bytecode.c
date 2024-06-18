@@ -28,37 +28,39 @@ Bytecode cubs_bytecode_encode_data_as_bytecode(size_t sizeOfT, const void *data)
     return b;
 }
 
-void cubs_bytecode_encode_immediate_long_int(Bytecode* dualBytecodeStart, int64_t num)
+Bytecode cubs_bytecode_encode_immediate_long_int(int64_t num)
 {
-    dualBytecodeStart[0].value = *(const uint32_t*)&num;
-    dualBytecodeStart[1].value = ((const uint32_t*)&num)[1];
+    Bytecode out;
+    out.value = *(const uint64_t*)&num;
+    return out;
 }
 
-void cubs_bytecode_encode_immediate_long_float(Bytecode* dualBytecodeStart, double num)
+Bytecode cubs_bytecode_encode_immediate_long_float(double num)
 {    
-    dualBytecodeStart[0].value = *(const uint32_t*)&num;
-    dualBytecodeStart[1].value = ((const uint32_t*)&num)[1];
+    Bytecode out;
+    out.value = *(const uint64_t*)&num;
+    return out;
 }
 
-void cubs_bytecode_encode_immediate_long_ptr(Bytecode *dualBytecodeStart, const void *ptr)
+Bytecode cubs_bytecode_encode_immediate_long_ptr(void *ptr)
 {
-    const size_t ptrAsNum = (size_t)ptr;
-    dualBytecodeStart[0].value = *(const uint32_t*)&ptrAsNum;
-    dualBytecodeStart[1].value = ((const uint32_t*)&ptrAsNum)[1];
+    Bytecode out;
+    out.value = *(const uint64_t*)&ptr;
+    return out;
 }
 
-Bytecode operands_make_load_immediate(int immediateType, uint32_t dst, int32_t immediate)
+Bytecode operands_make_load_immediate(int immediateType, uint16_t dst, int64_t immediate)
 {
-    assert(dst < REGISTER_COUNT);
-    const OperandsLoadImmediate operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_IMMEDIATE, .immediateType = immediateType, .dst = dst, .immediate = immediate};
-    return *(const Bytecode*)&operands;
+    assert(dst <= MAX_FRAME_LENGTH);
+    _Alignas(_Alignof(Bytecode)) const OperandsLoadImmediate operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_IMMEDIATE, .immediateType = immediateType, .dst = dst, .immediate = immediate};
+    const Bytecode b = *(const Bytecode*)&operands;
+    return b;
 }
 
-void operands_make_load_immediate_long(Bytecode *tripleBytecode, CubsValueTag tag, uint32_t dst, size_t immediate)
+void operands_make_load_immediate_long(Bytecode* doubleBytecode, CubsValueTag tag, uint16_t dst, size_t immediate)
 {
-    assert(dst < REGISTER_COUNT);
-    const OperandsLoadImmediateLong operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_IMMEDIATE_LONG, .immediateValueTag = tag, .dst = dst};
-    tripleBytecode[0] = *(const Bytecode*)&operands;
-    tripleBytecode[1].value = ((const uint32_t*)&immediate)[0];
-    tripleBytecode[2].value = ((const uint32_t*)&immediate)[1];
+    assert(dst <= MAX_FRAME_LENGTH);
+    _Alignas(_Alignof(Bytecode)) const OperandsLoadImmediateLong operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_IMMEDIATE_LONG, .immediateValueTag = tag, .dst = dst};
+    doubleBytecode[0] = *(const Bytecode*)&operands;
+    doubleBytecode[1].value = (size_t)immediate;
 }

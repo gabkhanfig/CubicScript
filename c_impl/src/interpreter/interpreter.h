@@ -8,26 +8,36 @@
 typedef struct Bytecode Bytecode;
 typedef struct CubsProgram CubsProgram;
 
-typedef union InterpreterRegister {
-    size_t actualValue;
-    bool boolean;
-    int64_t intNum;
-    double floatNum;
-    void* ptr;
-} InterpreterRegister;
+#ifndef CUBS_STACK_SLOTS
+/// 1 MB default (slots * 8 bytes per slot)
+#define CUBS_STACK_SLOTS (1 << 17)
+#endif
 
-static const size_t REGISTER_IS_PTR_FLAG = (1ULL << 63);
-static const size_t REGISTER_PTR_OR_OFFSET_MASK = 0x0000FFFFFFFFFFFFULL;
-#define REGISTER_COUNT 32
-#define REGISTER_BITS_REQUIRED 5
+#define BITS_PER_STACK_OPERAND 13
+#define MAX_FRAME_LENGTH ((size_t)0b1111111111111)
 
 typedef struct {
-    const Bytecode* instructionPointer;
-    InterpreterRegister registers[REGISTER_COUNT];
-    /// Since registers are limited to 8 bytes, the tag will store EITHER if bool, int, or float, 
-    /// OR what value type is the ptr pointing to.
-    uint8_t registerValueTags[REGISTER_COUNT];
-} InterpreterRegisters;
+    size_t basePointerOffset;
+    size_t frameLength;
+    /// Determines if `returnValueDst` and `returnTagDst` are pointers, or stack offsets
+    void* returnValueDst;
+    uint8_t* returnTagDst;
+} InterpreterStackFrame;
+
+void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldInstructionPointer, void* returnValueDst, uint8_t* returnTagDst);
+
+/// Operates on the calling thread's interpreter stack.
+void cubs_interpreter_pop_frame();
+
+InterpreterStackFrame cubs_interpreter_current_stack_frame();
+ 
+/// `offset` is an offset from the start of the current stack frame (excluding reserved slots) from as intervals of 8 bytes
+void* cubs_interpreter_stack_value_at(size_t offset);
+
+/// `offset` is an offset from the start of the current stack frame (excluding reserved slots) from as intervals of 8 bytes
+CubsValueTag cubs_interpreter_stack_tag_at(size_t offset);
+
+void cubs_interpreter_stack_set_tag_at(size_t offset, CubsValueTag tag);
 
 typedef enum CubsFatalScriptError {
     cubsFatalScriptErrorNone = 0,
@@ -39,7 +49,3 @@ void cubs_interpreter_set_instruction_pointer(const struct Bytecode* newIp);
 
 /// Executes the operation at this thread's instruction pointer
 CubsFatalScriptError cubs_interpreter_execute_operation(const struct CubsProgram* program);
-
-InterpreterRegister cubs_interpreter_register_value_at(size_t registerIndex);
-
-CubsValueTag cubs_interpreter_register_value_tag_at(size_t registerIndex);
