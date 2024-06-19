@@ -64,3 +64,11 @@ void operands_make_load_immediate_long(Bytecode* doubleBytecode, CubsValueTag ta
     doubleBytecode[0] = *(const Bytecode*)&operands;
     doubleBytecode[1].value = (size_t)immediate;
 }
+
+Bytecode operands_make_load_default(CubsValueTag tag, CubsValueTag optKeyTag, CubsValueTag optValueTag, uint16_t dst)
+{
+    assert(dst <= MAX_FRAME_LENGTH);
+    _Alignas(_Alignof(Bytecode)) const OperandsLoadDefault operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_DEFAULT, .dst = dst, .tag = tag, .keyTag = optKeyTag, .valueTag = optValueTag};
+    const Bytecode b = *(const Bytecode*)&operands;
+    return b;
+}

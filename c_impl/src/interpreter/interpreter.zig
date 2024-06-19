@@ -4,6 +4,10 @@ const expect = std.testing.expect;
 const c = @cImport({
     @cInclude("interpreter/interpreter.h");
     @cInclude("interpreter/bytecode.h");
+    @cInclude("primitives/string/string.h");
+    @cInclude("primitives/array/array.h");
+    @cInclude("primitives/set/set.h");
+    @cInclude("primitives/map/map.h");
 });
 
 test "push frame no return" {
@@ -131,5 +135,48 @@ test "load immediate long" {
 
         try expect(c.cubs_interpreter_stack_tag_at(0) == c.cubsValueTagFloat);
         try expect(@as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == -0.123456789);
+    }
+}
+
+test "load default" {
+    c.cubs_interpreter_push_frame(10, null, null, null);
+    defer c.cubs_interpreter_pop_frame();
+    { // bool
+        const bytecode = c.operands_make_load_default(c.cubsValueTagBool, c.cubsValueTagNone, c.cubsValueTagNone, 0);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_tag_at(0) == c.cubsValueTagBool);
+        try expect(@as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == false);
+    }
+    { // int
+        const bytecode = c.operands_make_load_default(c.cubsValueTagInt, c.cubsValueTagNone, c.cubsValueTagNone, 0);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_tag_at(0) == c.cubsValueTagInt);
+        try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 0);
+    }
+    { // float
+        const bytecode = c.operands_make_load_default(c.cubsValueTagFloat, c.cubsValueTagNone, c.cubsValueTagNone, 0);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_tag_at(0) == c.cubsValueTagFloat);
+        try expect(@as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 0.0);
+    }
+    { // string
+        const bytecode = c.operands_make_load_default(c.cubsValueTagString, c.cubsValueTagNone, c.cubsValueTagNone, 0);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_tag_at(0) == c.cubsValueTagString);
+        const string: *c.CubsString = @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)));
+        try expect(string.len == 0);
+        try expect(c.cubs_string_eql_slice(string, c.CubsStringSlice{ .str = "".ptr, .len = "".len }));
     }
 }

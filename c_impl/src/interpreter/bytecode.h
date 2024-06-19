@@ -1,8 +1,5 @@
 #pragma once
 
-//! ALL Operands have a size and alignment of 4 bytes, but must have the opcode occupy the first
-//! `OPCODE_USED_BITS`, so it can be reinterpret casted as the correct operands
-
 #include <stdint.h>
 #include <stdbool.h>
 #include "../util/unreachable.h"
@@ -16,7 +13,6 @@
 typedef enum {
     OpCodeNop = 0,
     OpCodeLoad = 1,
-    OpCodeStore = 2,
 
     OPCODE_USED_BITS = 8,
     OPCODE_USED_BITMASK = 0b11111111,
@@ -53,9 +49,11 @@ Bytecode cubs_bytecode_encode_immediate_long_ptr(void *ptr);
 
 #define LOAD_TYPE_IMMEDIATE 0
 #define LOAD_TYPE_IMMEDIATE_LONG 1
+#define LOAD_TYPE_DEFAULT 2
+#define LOAD_TYPE_CLONE_FROM_PTR 3
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t loadType: 1;
+    uint64_t loadType: 2;
 } OperandsLoadUnknown;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadUnknown);
 
@@ -63,7 +61,7 @@ VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadUnknown);
 #define LOAD_IMMEDIATE_INT 1
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t reserveLoadType: 1;
+    uint64_t reserveLoadType: 2;
     uint64_t immediateType: 1;
     uint64_t dst: BITS_PER_STACK_OPERAND;
     int64_t immediate: 40;
@@ -74,10 +72,21 @@ Bytecode operands_make_load_immediate(int immediateType, uint16_t dst, int64_t i
 
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t reserveLoadType: 1;
+    uint64_t reserveLoadType: 2;
     uint64_t immediateValueTag: 6; // CubsValueTag
     uint64_t dst: BITS_PER_STACK_OPERAND;
 } OperandsLoadImmediateLong;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadImmediateLong);
 /// @param doubleBytecode must be a pointer to at least 2 bytecodes
 void operands_make_load_immediate_long(Bytecode* doubleBytecode, CubsValueTag tag, uint16_t dst, size_t immediate);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t reserveLoadType: 2;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t tag: 6;
+    uint64_t keyTag: 6;
+    uint64_t valueTag: 6;
+} OperandsLoadDefault;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadDefault);
+Bytecode operands_make_load_default(CubsValueTag tag, CubsValueTag optKeyTag, CubsValueTag optValueTag, uint16_t dst);
