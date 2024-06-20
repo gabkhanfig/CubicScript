@@ -146,6 +146,16 @@ typedef struct CubsMat4 {
   void* _inner;
 } CubsMat4;
 
+typedef void (*CubsStructOnDeinit)(void* self);
+typedef struct CubsStructRtti {
+    /// In bytes. Will be rounded up to 8 for the interpreter where appropriate
+    size_t sizeOfStruct;
+    CubsStructOnDeinit onDeinit;
+    CubsString name;
+    CubsString fullyQualifiedName;
+} CubsStructRtti;
+
+
 typedef union CubsRawValue {
     bool boolean;
     int64_t intNum;
