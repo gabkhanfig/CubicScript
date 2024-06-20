@@ -1,4 +1,5 @@
 const std = @import("std");
+const expect = std.testing.expect;
 
 const c = struct {
     extern fn cubs_raw_value_deinit(self: *RawValue, tag: ValueTag) void;
@@ -70,8 +71,58 @@ pub const StructRtti = extern struct {
     sizeOfType: usize,
     tag: ValueTag,
     onDeinit: ?*const fn (*anyopaque) void = null,
-    name: String,
-    fullyQualifiedName: String,
+    name: [*c]const u8,
+    nameLength: usize,
+    fullyQualifiedName: [*c]const u8,
+    fullyQualifiedNameLength: usize,
+
+    /// Automatically generate a struct rtti for script use
+    pub fn auto(comptime T: type) *const StructRtti {
+        const rtti = comptime generate(T);
+        return &rtti;
+    }
+
+    fn generate(comptime T: type) StructRtti {
+        var rtti: StructRtti = undefined;
+        rtti.sizeOfType = @sizeOf(T);
+        rtti.tag = .userStruct;
+
+        rtti.onDeinit = null;
+        if (std.meta.hasFn(T, "deinit")) {
+            rtti.onDeinit = @ptrCast(&T.deinit);
+        }
+
+        const names = typeNames(T);
+        rtti.name = names.unqualified.ptr;
+        rtti.nameLength = names.unqualified.len;
+        rtti.fullyQualifiedName = names.qualified.ptr;
+        rtti.fullyQualifiedNameLength = names.qualified.len;
+
+        return rtti;
+    }
+
+    fn typeNames(comptime T: type) struct { unqualified: []const u8, qualified: []const u8 } {
+        const fullyQualifiedName = @typeName(T);
+
+        var unqualifiedName: []const u8 = fullyQualifiedName;
+        if (std.mem.lastIndexOf(u8, fullyQualifiedName, ".")) |i| {
+            unqualifiedName = fullyQualifiedName[(i + 1)..];
+        }
+        return .{ .unqualified = unqualifiedName, .qualified = fullyQualifiedName };
+    }
+
+    test auto {
+        { // plain struct
+            const Example = extern struct {
+                num: i64,
+            };
+            const rtti = auto(Example);
+            try expect(rtti.sizeOfType == @sizeOf(Example));
+            try expect(rtti.tag == .userStruct);
+            try expect(rtti.onDeinit == null);
+            try expect(std.mem.eql(u8, rtti.name[0..rtti.nameLength], "Example"));
+        }
+    }
 };
 
 pub const RawValue = extern union {
