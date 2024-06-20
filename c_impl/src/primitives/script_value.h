@@ -5,10 +5,20 @@
 #include <stdint.h>
 #include "value_tag.h"
 
-/*
-It's kinda weird to define the structs here and their implementions in other files, but it makes it convenient for passing around
-raw values due to silly C shenanigans.
-*/
+typedef void (*CubsStructOnDeinit)(void* self);
+/// Is both RTTI, and a VTable for certain *optional* functionality, such as on-deinitialization,
+/// comparison operations, hashing, etc.
+typedef struct CubsStructRtti {
+    /// In bytes. Will be rounded up to 8 for the interpreter where appropriate
+    size_t sizeOfType;
+    /// For user defined structs, use `cubsValueTagUserStruct`
+    CubsValueTag tag;
+    CubsStructOnDeinit onDeinit;
+    const char* name;
+    size_t nameLength;
+    const char* fullyQualifiedName;
+    size_t fullyQualifiedNameLength;
+} CubsStructRtti;
 
 /// 0 / null intialization makes it an empty string.
 typedef struct CubsString {
@@ -23,9 +33,10 @@ typedef struct CubsArray {
     size_t len;
     /// This *can* be read or written to, but it must be cast to the correct type depending on the array's tag.
     /// It guaranteed to be valid for `((T*)_buf)[len - 1]` where T is the type of `cubs_array_tag(...)`.
-    void* _buf;
+    void* buf;
     /// Accessing this is unsafe
-    size_t _metadata;
+    size_t capacity;
+    const CubsStructRtti* rtti;
 } CubsArray;
 
 typedef struct CubsSet {
@@ -145,16 +156,6 @@ typedef struct CubsMat3 {
 typedef struct CubsMat4 {
   void* _inner;
 } CubsMat4;
-
-typedef void (*CubsStructOnDeinit)(void* self);
-typedef struct CubsStructRtti {
-    /// In bytes. Will be rounded up to 8 for the interpreter where appropriate
-    size_t sizeOfStruct;
-    CubsStructOnDeinit onDeinit;
-    CubsString name;
-    CubsString fullyQualifiedName;
-} CubsStructRtti;
-
 
 typedef union CubsRawValue {
     bool boolean;

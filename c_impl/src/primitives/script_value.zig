@@ -62,6 +62,16 @@ pub const ValueTag = enum(c_int) {
     vec4f = 34,
     mat3f = 35,
     mat4f = 36,
+    userStruct = 37,
+    structRtti = 38,
+};
+
+pub const StructRtti = extern struct {
+    sizeOfType: usize,
+    tag: ValueTag,
+    onDeinit: ?*const fn (*anyopaque) void = null,
+    name: String,
+    fullyQualifiedName: String,
 };
 
 pub const RawValue = extern union {
@@ -175,6 +185,8 @@ pub const TaggedValue = union(ValueTag) {
     vec4f: Vec4f,
     mat3f: void,
     mat4f: void,
+    userStruct: void,
+    structRtti: void,
 
     pub fn deinit(self: *Self) void {
         switch (self.*) {
@@ -367,7 +379,11 @@ pub fn scriptTypeToTag(comptime T: type) ValueTag {
         return .int;
     } else if (T == f64) {
         return .float;
-    } else {
+    } else if (T == String) {
+        return .string;
+    } else if (@hasDecl(T, "SCRIPT_SELF_TAG")) {
         return T.SCRIPT_SELF_TAG;
+    } else {
+        return .userStruct;
     }
 }

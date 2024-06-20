@@ -177,11 +177,12 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                 } break;
                 case cubsValueTagArray: {
                     assert(operands.keyTag != cubsValueTagNone);
-                    *(CubsArray*)dst = cubs_array_init(operands.keyTag);
-                    _Static_assert(sizeof(CubsArray) == (3 * sizeof(size_t)), "");
+                    *(CubsArray*)dst = cubs_array_init_primitive(operands.keyTag);
+                    _Static_assert(sizeof(CubsArray) == (4 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
                     cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
                     cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
                 } break;
                 case cubsValueTagSet: {
                     assert(operands.keyTag != cubsValueTagNone);

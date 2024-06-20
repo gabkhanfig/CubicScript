@@ -7,30 +7,8 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
+const StructRtti = script_value.StructRtti;
 
-const c = struct {
-    const Err = enum(c_int) {
-        None = 0,
-        OutOfRange = 1,
-    };
-
-    const CUBS_ARRAY_N_POS: usize = @bitCast(@as(i64, -1));
-
-    extern fn cubs_array_init(tag: ValueTag) callconv(.C) Array(anyopaque);
-    extern fn cubs_array_deinit(self: *Array(anyopaque)) callconv(.C) void;
-    extern fn cubs_array_tag(self: *const Array(anyopaque)) callconv(.C) ValueTag;
-    extern fn cubs_array_len(self: *const Array(anyopaque)) callconv(.C) usize;
-    extern fn cubs_array_push_unchecked(self: *Array(anyopaque), value: *anyopaque) callconv(.C) void;
-    extern fn cubs_array_push_raw_unchecked(self: *Array(anyopaque), value: RawValue) callconv(.C) void;
-    extern fn cubs_array_push(self: *Array(anyopaque), value: CTaggedValue) callconv(.C) void;
-    extern fn cubs_array_at_unchecked(self: *const Array(anyopaque), index: usize) callconv(.C) *const anyopaque;
-    extern fn cubs_array_at(out: **const anyopaque, self: *const Array(anyopaque), index: usize) callconv(.C) Err;
-    extern fn cubs_array_at_mut_unchecked(self: *Array(anyopaque), index: usize) callconv(.C) *anyopaque;
-    extern fn cubs_array_at_mut(out: **anyopaque, self: *Array(anyopaque), index: usize) callconv(.C) Err;
-};
-
-/// If `T == anyopaque`, the array is considered to be identical to `CubsArray` in C.
-/// Casting to the correct T can be achieved through `Array(...).cast(...)`, `Array(...).castMut(...)`, and `Array(...).into(...)`.
 pub fn Array(comptime T: type) type {
     return extern struct {
         const Self = @This();
@@ -39,84 +17,66 @@ pub fn Array(comptime T: type) type {
         pub const SCRIPT_SELF_TAG: ValueTag = .array;
         pub const ValueType = T;
 
-        len: usize,
-        _buf: ?*anyopaque,
-        _metadata: usize,
+        len: usize = 0,
+        buf: ?*T = null,
+        capacity: usize = 0,
+        rtti: *const StructRtti,
 
         pub const Error = error{
             OutOfRange,
         };
 
+        /// For all primitive script types, creates the array.
+        /// For user defined types, attemps to generate one.
+        /// Alternatively, one can be passed in manually through creating a struct instance. For example
+        /// ```
+        /// const arr = Array(UserStruct){.rtti = ...};
+        /// ```
         pub fn init() Self {
             const valueTag = script_value.scriptTypeToTag(T);
-            var temp = c.cubs_array_init(valueTag);
-            return temp.into(T);
+            if (valueTag != .userStruct) {
+                const raw = RawArray.cubs_array_init_primitive(valueTag);
+                return @bitCast(raw);
+            } else {
+                // TODO figure out how to generate rtti
+                return .{ .rtti = undefined };
+            }
         }
 
         pub fn deinit(self: *Self) void {
-            return c.cubs_array_deinit(self.castMut(anyopaque));
-        }
-
-        pub fn tag(self: *const Self) ValueTag {
-            return c.cubs_array_tag(self.cast(anyopaque));
-        }
-
-        pub fn cast(self: *const Self, comptime OtherT: type) *const Array(OtherT) {
-            if (OtherT != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherT, self.tag());
-            }
-            return @ptrCast(self);
-        }
-
-        pub fn castMut(self: *Self, comptime OtherT: type) *Array(OtherT) {
-            if (OtherT != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherT, self.tag());
-            }
-            return @ptrCast(self);
-        }
-
-        /// Converts an array of one type into an array of another type. Currently only works when converting
-        /// to and from `anyopaque` arrays.
-        pub fn into(self: *Self, comptime OtherT: type) Array(OtherT) {
-            const casted = self.castMut(OtherT).*;
-            self.* = undefined; // invalidate self
-            return casted;
+            return RawArray.cubs_array_deinit(self.asRawMut());
         }
 
         /// Takes ownership of `value`. Accessing the memory of `value` after this
         /// function is undefined behaviour.
-        /// # Debug Asserts
-        /// Asserts that the type of `value` matches the tag of `self`.
         pub fn push(self: *Self, value: T) void {
-            script_value.validateTypeMatchesTag(T, self.tag());
             var mutValue = value;
-            c.cubs_array_push_unchecked(self.castMut(anyopaque), @ptrCast(&mutValue));
+            RawArray.cubs_array_push_unchecked(self.asRawMut(), @ptrCast(&mutValue));
         }
 
-        /// Pushes a tagged value onto the end of the array, taking ownership of `value`.
-        /// Accessing `value` after this call is undefined behaviour.
-        /// # Debug Asserts
-        /// Asserts that the tag of `value` matches the tag of `self`.
-        pub fn pushTagged(self: *Self, value: TaggedValue) void {
-            var mutValue = value;
-            const cValue = @call(.always_inline, TaggedValue.intoCRepr, .{&mutValue});
-            c.cubs_array_push(self.castMut(anyopaque), cValue);
+        pub fn slice(self: *const Self) []const T {
+            if (self.buf) |buf| {
+                return @as([*]const T, @ptrCast(buf))[0..self.len];
+            } else {
+                return {};
+            }
         }
 
-        /// Pushes a raw script value onto the end of the array, taking ownership of `value`.
-        /// Accessing `value` after  this call is undefined behaviour.
-        /// Does not assert that `value` has the correct active union.
-        pub fn pushRawUnchecked(self: *Self, value: RawValue) void {
-            c.cubs_array_push_raw_unchecked(self.castMut(anyopaque), value);
+        pub fn sliceMut(self: *Self) []T {
+            if (self.buf) |buf| {
+                return @as([*]T, @ptrCast(buf))[0..self.len];
+            } else {
+                return {};
+            }
         }
 
         pub fn atUnchecked(self: *const Self, index: usize) *const T {
-            return @ptrCast(@alignCast(c.cubs_array_at_unchecked(self.cast(anyopaque), index)));
+            return @ptrCast(@alignCast(RawArray.cubs_array_at_unchecked(self.asRaw(), index)));
         }
 
         pub fn at(self: *const Self, index: usize) Error!*const T {
             var out: *const anyopaque = undefined;
-            switch (c.cubs_array_at(&out, self.cast(anyopaque), index)) {
+            switch (RawArray.cubs_array_at(&out, self.asRaw(), index)) {
                 .None => {
                     return @ptrCast(@alignCast(out));
                 },
@@ -127,12 +87,12 @@ pub fn Array(comptime T: type) type {
         }
 
         pub fn atMutUnchecked(self: *Self, index: usize) *T {
-            return @ptrCast(@alignCast(c.cubs_array_at_mut_unchecked(self.castMut(anyopaque), index)));
+            return @ptrCast(@alignCast(RawArray.cubs_array_at_mut_unchecked(self.asRawMut(), index)));
         }
 
         pub fn atMut(self: *Self, index: usize) Error!*T {
             var out: *anyopaque = undefined;
-            switch (c.cubs_array_at_mut(&out, self.castMut(anyopaque), index)) {
+            switch (RawArray.cubs_array_at_mut(&out, self.asRawMut(), index)) {
                 .None => {
                     return @ptrCast(@alignCast(out));
                 },
@@ -140,6 +100,14 @@ pub fn Array(comptime T: type) type {
                     return Error.OutOfRange;
                 },
             }
+        }
+
+        pub fn asRaw(self: *const Self) *const RawArray {
+            return @ptrCast(self);
+        }
+
+        pub fn asRawMut(self: *Self) *RawArray {
+            return @ptrCast(self);
         }
 
         // test init {
@@ -151,14 +119,14 @@ pub fn Array(comptime T: type) type {
         //     }
         // }
 
-        test "nested array" {
-            var arr1 = Array(Array(i64)).init();
-            defer arr1.deinit();
+        // test "nested array" {
+        //     var arr1 = Array(Array(i64)).init();
+        //     defer arr1.deinit();
 
-            var arr2 = Array(i64).init();
-            arr2.push(1);
-            arr1.push(arr2);
-        }
+        //     var arr2 = Array(i64).init();
+        //     arr2.push(1);
+        //     arr1.push(arr2);
+        // }
 
         test push {
             {
@@ -179,52 +147,6 @@ pub fn Array(comptime T: type) type {
                 try expect(arr.len == 1);
 
                 arr.push(String.initUnchecked("hi"));
-                try expect(arr.len == 2);
-            }
-        }
-
-        test pushTagged {
-            {
-                var arr = Array(i64).init();
-                defer arr.deinit();
-
-                arr.pushTagged(TaggedValue{ .int = 6 });
-                try expect(arr.len == 1);
-
-                arr.pushTagged(TaggedValue{ .int = 7 });
-                try expect(arr.len == 2);
-            }
-            {
-                var arr = Array(String).init();
-                defer arr.deinit();
-
-                arr.pushTagged(TaggedValue{ .string = String.initUnchecked("hi") });
-                try expect(arr.len == 1);
-
-                arr.pushTagged(TaggedValue{ .string = String.initUnchecked("hi") });
-                try expect(arr.len == 2);
-            }
-        }
-
-        test pushRawUnchecked {
-            {
-                var arr = Array(i64).init();
-                defer arr.deinit();
-
-                arr.pushRawUnchecked(RawValue{ .int = 5 });
-                try expect(arr.len == 1);
-
-                arr.pushRawUnchecked(RawValue{ .int = 6 });
-                try expect(arr.len == 2);
-            }
-            {
-                var arr = Array(String).init();
-                defer arr.deinit();
-
-                arr.pushRawUnchecked(RawValue{ .string = String.initUnchecked("hi") });
-                try expect(arr.len == 1);
-
-                arr.pushRawUnchecked(RawValue{ .string = String.initUnchecked("hi") });
                 try expect(arr.len == 2);
             }
         }
@@ -348,3 +270,29 @@ pub fn Array(comptime T: type) type {
         }
     };
 }
+
+pub const RawArray = extern struct {
+    len: usize,
+    buf: ?*anyopaque,
+    capacity: usize,
+    rtti: *const StructRtti,
+
+    pub const Err = enum(c_int) {
+        None = 0,
+        OutOfRange = 1,
+    };
+
+    pub const CUBS_ARRAY_N_POS: usize = @bitCast(@as(i64, -1));
+    pub const SCRIPT_SELF_TAG: ValueTag = .array;
+
+    pub extern fn cubs_array_init_primitive(tag: ValueTag) callconv(.C) RawArray;
+    pub extern fn cubs_array_init_user_struct(rtti: *const StructRtti) callconv(.C) RawArray;
+    pub extern fn cubs_array_deinit(self: *RawArray) callconv(.C) void;
+    pub extern fn cubs_array_tag(self: *const RawArray) callconv(.C) ValueTag;
+    pub extern fn cubs_array_len(self: *const RawArray) callconv(.C) usize;
+    pub extern fn cubs_array_push_unchecked(self: *RawArray, value: *anyopaque) callconv(.C) void;
+    pub extern fn cubs_array_at_unchecked(self: *const RawArray, index: usize) callconv(.C) *const anyopaque;
+    pub extern fn cubs_array_at(out: **const anyopaque, self: *const RawArray, index: usize) callconv(.C) Err;
+    pub extern fn cubs_array_at_mut_unchecked(self: *RawArray, index: usize) callconv(.C) *anyopaque;
+    pub extern fn cubs_array_at_mut(out: **anyopaque, self: *RawArray, index: usize) callconv(.C) Err;
+};

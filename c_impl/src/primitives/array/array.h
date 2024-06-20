@@ -16,29 +16,27 @@ typedef enum CubsArrayError {
 static const size_t CUBS_ARRAY_N_POS = -1;
 
 /// Does not allocate any memory, just sets the correct bitmasks.
-CubsArray cubs_array_init(CubsValueTag tag);
+CubsArray cubs_array_init_primitive(CubsValueTag tag);
+
+CubsArray cubs_array_init_user_struct(const CubsStructRtti* rtti);
 
 void cubs_array_deinit(CubsArray* self);
-
-CubsValueTag cubs_array_tag(const CubsArray* self);
-
-size_t cubs_array_size_of_type(const CubsArray* self);
 
 /// Takes ownership of the memory at `value`, copying the memory at that location into the array.
 /// Accessing the memory at `value` after this call is undefined behaviour.
 /// Does not validate that `value` has the correct active union, nor that its valid script value memory.
 void cubs_array_push_unchecked(CubsArray* self, void* value);
 
-/// Takes ownership of the memory at `value`, copying the memory at that location into the array.
-/// Accessing the memory at `value` after this call is undefined behaviour.
-/// Does not validate that `value` has the correct active union, nor that its valid script value memory.
-void cubs_array_push_raw_unchecked(CubsArray* self, CubsRawValue value);
+// /// Takes ownership of the memory at `value`, copying the memory at that location into the array.
+// /// Accessing the memory at `value` after this call is undefined behaviour.
+// /// Does not validate that `value` has the correct active union, nor that its valid script value memory.
+// void cubs_array_push_raw_unchecked(CubsArray* self, CubsRawValue value);
 
-/// Takes ownership of `value`. Accessing the memory of `value` after this 
-/// function is undefined behaviour.
-/// Asserts that `value` is using the correct active union.
-/// NOTE should this return an error if the tags are mismatched, or just assert?
-void cubs_array_push(CubsArray* self, CubsTaggedValue value);
+// /// Takes ownership of `value`. Accessing the memory of `value` after this 
+// /// function is undefined behaviour.
+// /// Asserts that `value` is using the correct active union.
+// /// NOTE should this return an error if the tags are mismatched, or just assert?
+// void cubs_array_push(CubsArray* self, CubsTaggedValue value);
 
 /// Mutation operations on `self`. may invalidate the returned pointer.
 /// In debug, asserts that `index` is less than the `cubs_array_len(self)`.
