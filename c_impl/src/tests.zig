@@ -11,7 +11,7 @@ comptime {
     _ = @import("sync/locks.zig").RwLock;
     _ = @import("sync/sync_queue.zig");
 
-    _ = @import("primitives/script_value.zig").StructRtti;
+    _ = @import("primitives/script_value.zig").StructContext;
 
     _ = @import("primitives/string/string.zig").String;
     _ = @import("primitives/array/array.zig").Array;

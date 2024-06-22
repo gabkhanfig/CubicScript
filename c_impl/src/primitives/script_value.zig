@@ -67,7 +67,7 @@ pub const ValueTag = enum(c_int) {
     structRtti = 38,
 };
 
-pub const StructRtti = extern struct {
+pub const StructContext = extern struct {
     sizeOfType: usize,
     tag: ValueTag,
     onDeinit: ?*const fn (*anyopaque) void = null,
@@ -77,13 +77,13 @@ pub const StructRtti = extern struct {
     fullyQualifiedNameLength: usize,
 
     /// Automatically generate a struct rtti for script use
-    pub fn auto(comptime T: type) *const StructRtti {
+    pub fn auto(comptime T: type) *const StructContext {
         const rtti = comptime generate(T);
         return &rtti;
     }
 
-    fn generate(comptime T: type) StructRtti {
-        var rtti: StructRtti = undefined;
+    fn generate(comptime T: type) StructContext {
+        var rtti: StructContext = undefined;
         rtti.sizeOfType = @sizeOf(T);
         rtti.tag = .userStruct;
 

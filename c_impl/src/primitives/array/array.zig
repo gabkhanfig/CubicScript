@@ -7,7 +7,7 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
-const StructRtti = script_value.StructRtti;
+const StructContext = script_value.StructContext;
 
 pub fn Array(comptime T: type) type {
     return extern struct {
@@ -20,7 +20,7 @@ pub fn Array(comptime T: type) type {
         len: usize = 0,
         buf: ?*T = null,
         capacity: usize = 0,
-        rtti: *const StructRtti,
+        context: *const StructContext,
 
         pub const Error = error{
             OutOfRange,
@@ -39,7 +39,7 @@ pub fn Array(comptime T: type) type {
                 return @bitCast(raw);
             } else {
                 // TODO figure out how to generate rtti
-                return .{ .rtti = undefined };
+                return .{ .context = undefined };
             }
         }
 
@@ -119,14 +119,14 @@ pub fn Array(comptime T: type) type {
         //     }
         // }
 
-        // test "nested array" {
-        //     var arr1 = Array(Array(i64)).init();
-        //     defer arr1.deinit();
+        test "nested array" {
+            var arr1 = Array(Array(i64)).init();
+            defer arr1.deinit();
 
-        //     var arr2 = Array(i64).init();
-        //     arr2.push(1);
-        //     arr1.push(arr2);
-        // }
+            var arr2 = Array(i64).init();
+            arr2.push(1);
+            arr1.push(arr2);
+        }
 
         test push {
             {
@@ -275,7 +275,7 @@ pub const RawArray = extern struct {
     len: usize,
     buf: ?*anyopaque,
     capacity: usize,
-    rtti: *const StructRtti,
+    context: *const StructContext,
 
     pub const Err = enum(c_int) {
         None = 0,
@@ -286,7 +286,7 @@ pub const RawArray = extern struct {
     pub const SCRIPT_SELF_TAG: ValueTag = .array;
 
     pub extern fn cubs_array_init_primitive(tag: ValueTag) callconv(.C) RawArray;
-    pub extern fn cubs_array_init_user_struct(rtti: *const StructRtti) callconv(.C) RawArray;
+    pub extern fn cubs_array_init_user_struct(rtti: *const StructContext) callconv(.C) RawArray;
     pub extern fn cubs_array_deinit(self: *RawArray) callconv(.C) void;
     pub extern fn cubs_array_tag(self: *const RawArray) callconv(.C) ValueTag;
     pub extern fn cubs_array_len(self: *const RawArray) callconv(.C) usize;

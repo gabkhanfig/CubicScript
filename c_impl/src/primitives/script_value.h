@@ -8,7 +8,7 @@
 typedef void (*CubsStructOnDeinit)(void* self);
 /// Is both RTTI, and a VTable for certain *optional* functionality, such as on-deinitialization,
 /// comparison operations, hashing, etc.
-typedef struct CubsStructRtti {
+typedef struct CubsStructContext {
     /// In bytes. Will be rounded up to 8 for the interpreter where appropriate
     size_t sizeOfType;
     /// For user defined structs, use `cubsValueTagUserStruct`
@@ -18,7 +18,7 @@ typedef struct CubsStructRtti {
     size_t nameLength;
     const char* fullyQualifiedName;
     size_t fullyQualifiedNameLength;
-} CubsStructRtti;
+} CubsStructContext;
 
 /// 0 / null intialization makes it an empty string.
 typedef struct CubsString {
@@ -36,7 +36,7 @@ typedef struct CubsArray {
     void* buf;
     /// Accessing this is unsafe
     size_t capacity;
-    const CubsStructRtti* rtti;
+    const CubsStructContext* context;
 } CubsArray;
 
 typedef struct CubsSet {

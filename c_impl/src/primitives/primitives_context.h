@@ -2,8 +2,9 @@
 
 #include "script_value.h"
 #include "../primitives/string/string.h"
+#include "../primitives/array/array.h"
 
-static const CubsStructRtti BOOL_RTTI = {
+static const CubsStructContext BOOL_CONTEXT = {
     .sizeOfType = sizeof(bool),
     .tag = cubsValueTagBool,
     .onDeinit = NULL,
@@ -13,7 +14,7 @@ static const CubsStructRtti BOOL_RTTI = {
     .fullyQualifiedNameLength = 4,
 };
 
-static const CubsStructRtti INT_RTTI = {
+static const CubsStructContext INT_CONTEXT = {
     .sizeOfType = sizeof(int64_t),
     .tag = cubsValueTagInt,
     .onDeinit = NULL, 
@@ -23,7 +24,7 @@ static const CubsStructRtti INT_RTTI = {
     .fullyQualifiedNameLength = 3,
 };
 
-static const CubsStructRtti FLOAT_RTTI = {
+static const CubsStructContext FLOAT_CONTEXT = {
     .sizeOfType = sizeof(double),
     .tag = cubsValueTagFloat,
     .onDeinit = NULL, 
@@ -33,7 +34,7 @@ static const CubsStructRtti FLOAT_RTTI = {
     .fullyQualifiedNameLength = 5,
 };
 
-static const CubsStructRtti STRING_RTTI = {
+static const CubsStructContext STRING_CONTEXT = {
     .sizeOfType = sizeof(CubsString),
     .tag = cubsValueTagString,
     .onDeinit = (CubsStructOnDeinit)cubs_string_deinit,
@@ -41,4 +42,14 @@ static const CubsStructRtti STRING_RTTI = {
     .nameLength = 6,
     .fullyQualifiedName = "string",
     .fullyQualifiedNameLength = 6,
+};
+
+static const CubsStructContext ARRAY_CONTEXT = {
+    .sizeOfType = sizeof(CubsArray),
+    .tag = cubsValueTagArray,
+    .onDeinit = (CubsStructOnDeinit)cubs_array_deinit,
+    .name = "array",
+    .nameLength = 5,
+    .fullyQualifiedName = "array",
+    .fullyQualifiedNameLength = 5,
 };

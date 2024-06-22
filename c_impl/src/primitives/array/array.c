@@ -4,7 +4,7 @@
 #include <string.h>
 #include "../../util/panic.h"
 #include <stdio.h>
-#include "../primitives_rtti.h"
+#include "../primitives_context.h"
 
 static const size_t CAPACITY_BITMASK = 0xFFFFFFFFFFFFULL;
 static const size_t TAG_SHIFT = 48;
@@ -24,7 +24,7 @@ static size_t growCapacity(size_t current, size_t minimum) {
 
 static void ensure_total_capacity(CubsArray* self, size_t minCapacity) {
     assert(minCapacity <= 0xFFFFFFFFFFFFULL);
-    const size_t sizeOfType = self->rtti->sizeOfType;
+    const size_t sizeOfType = self->context->sizeOfType;
     if(self->buf == NULL) {
         void* mem = cubs_malloc(minCapacity * sizeOfType, _Alignof(size_t));    
         self->buf = mem;
@@ -50,33 +50,36 @@ static void ensure_total_capacity(CubsArray* self, size_t minCapacity) {
 CubsArray cubs_array_init_primitive(CubsValueTag tag)
 {   
     const size_t tagAsSizeT = (size_t)tag;
-    const CubsStructRtti* rtti = NULL;
+    const CubsStructContext* rtti = NULL;
     switch(tag) {
         case cubsValueTagBool: {
-            rtti = &BOOL_RTTI;
+            rtti = &BOOL_CONTEXT;
         } break;
         case cubsValueTagInt: {
-            rtti = &INT_RTTI;
+            rtti = &INT_CONTEXT;
         } break;
         case cubsValueTagFloat: {
-            rtti = &FLOAT_RTTI;
+            rtti = &FLOAT_CONTEXT;
         } break;
         case cubsValueTagString: {
-            rtti = &STRING_RTTI;
+            rtti = &STRING_CONTEXT;
+        } break;
+        case cubsValueTagArray: {
+            rtti = &ARRAY_CONTEXT;
         } break;
         default: {
             cubs_panic("unsupported array type");
         } break;
     }
 
-    const CubsArray arr = {.len = 0, .buf = NULL, .capacity = 0, .rtti = rtti};
+    const CubsArray arr = {.len = 0, .buf = NULL, .capacity = 0, .context = rtti};
     return arr;
 }
 
-CubsArray cubs_array_init_user_struct(const CubsStructRtti *rtti)
+CubsArray cubs_array_init_user_struct(const CubsStructContext *rtti)
 {
     assert(rtti != NULL);
-    const CubsArray arr = {.len = 0, .buf = NULL, .capacity = 0, .rtti = rtti};
+    const CubsArray arr = {.len = 0, .buf = NULL, .capacity = 0, .context = rtti};
     return arr;
 }
 
@@ -86,12 +89,12 @@ void cubs_array_deinit(CubsArray *self)
         return;
     }
 
-    const size_t sizeOfType = self->rtti->sizeOfType;
-    if(self->rtti->onDeinit != NULL) {       
+    const size_t sizeOfType = self->context->sizeOfType;
+    if(self->context->onDeinit != NULL) {       
         char* byteStart = (char*)self->buf;
         for(size_t i = 0; i < self->len; i++) {
             const size_t actualIndex = i * sizeOfType;
-            self->rtti->onDeinit((void*)&byteStart[actualIndex]);
+            self->context->onDeinit((void*)&byteStart[actualIndex]);
         }      
     }
     
@@ -103,7 +106,7 @@ void cubs_array_deinit(CubsArray *self)
 void cubs_array_push_unchecked(CubsArray *self, void *value)
 {
     ensure_total_capacity(self, self->len + 1);
-    const size_t sizeOfType = self->rtti->sizeOfType;
+    const size_t sizeOfType = self->context->sizeOfType;
     memcpy((void*)&((char*)self->buf)[self->len * sizeOfType], value, sizeOfType);
     self->len += 1;
 }
@@ -122,7 +125,7 @@ void cubs_array_push_unchecked(CubsArray *self, void *value)
 const void* cubs_array_at_unchecked(const CubsArray *self, size_t index)
 {
     assert(index < self->len);
-    const size_t sizeOfType = self->rtti->sizeOfType;
+    const size_t sizeOfType = self->context->sizeOfType;
     return (const void*)&((const char*)self->buf)[index * sizeOfType];
 }
 
@@ -139,7 +142,7 @@ CubsArrayError cubs_array_at(const void** out, const CubsArray *self, size_t ind
 void* cubs_array_at_mut_unchecked(CubsArray *self, size_t index)
 {
     assert(index < self->len);
-    const size_t sizeOfType = self->rtti->sizeOfType;
+    const size_t sizeOfType = self->context->sizeOfType;
     return (void*)&((char*)self->buf)[index * sizeOfType];
 }
 
