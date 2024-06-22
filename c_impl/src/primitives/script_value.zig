@@ -76,7 +76,7 @@ pub const StructContext = extern struct {
     fullyQualifiedName: [*c]const u8,
     fullyQualifiedNameLength: usize,
 
-    /// Automatically generate a struct rtti for script use
+    /// Automatically generate a struct context for script use
     pub fn auto(comptime T: type) *const StructContext {
         const rtti = comptime generate(T);
         return &rtti;
