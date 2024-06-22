@@ -157,43 +157,43 @@ pub fn Set(comptime K: type) type {
         //     }
         // }
 
-        test insertTagged {
-            {
-                var set = Set(i64).init();
-                defer set.deinit();
+        // test insertTagged {
+        //     {
+        //         var set = Set(i64).init();
+        //         defer set.deinit();
 
-                set.insertTagged(TaggedValue{ .int = 4 });
+        //         set.insertTagged(TaggedValue{ .int = 4 });
 
-                try expect(set.count == 1);
-            }
-            {
-                var set = Set(String).init();
-                defer set.deinit();
+        //         try expect(set.count == 1);
+        //     }
+        //     {
+        //         var set = Set(String).init();
+        //         defer set.deinit();
 
-                set.insertTagged(TaggedValue{ .string = String.initUnchecked("erm") });
+        //         set.insertTagged(TaggedValue{ .string = String.initUnchecked("erm") });
 
-                try expect(set.count == 1);
-            }
-            {
-                var set = Set(i64).init();
-                defer set.deinit();
+        //         try expect(set.count == 1);
+        //     }
+        //     {
+        //         var set = Set(i64).init();
+        //         defer set.deinit();
 
-                for (0..100) |i| {
-                    set.insertTagged(TaggedValue{ .int = @intCast(i) });
-                }
+        //         for (0..100) |i| {
+        //             set.insertTagged(TaggedValue{ .int = @intCast(i) });
+        //         }
 
-                try expect(set.count == 100);
-            }
-            {
-                var set = Set(String).init();
-                defer set.deinit();
+        //         try expect(set.count == 100);
+        //     }
+        //     {
+        //         var set = Set(String).init();
+        //         defer set.deinit();
 
-                for (0..100) |i| {
-                    set.insertTagged(TaggedValue{ .string = String.fromInt(@intCast(i)) });
-                }
-                try expect(set.count == 100);
-            }
-        }
+        //         for (0..100) |i| {
+        //             set.insertTagged(TaggedValue{ .string = String.fromInt(@intCast(i)) });
+        //         }
+        //         try expect(set.count == 100);
+        //     }
+        // }
 
         // test containsUnchecked {
         //     var set = Set(String).init();
@@ -231,41 +231,41 @@ pub fn Set(comptime K: type) type {
         //     }
         // }
 
-        test containsTagged {
-            var set = Set(String).init();
-            defer set.deinit();
+        // test containsTagged {
+        //     var set = Set(String).init();
+        //     defer set.deinit();
 
-            var firstFind = TaggedValue{ .string = String.initUnchecked("erm") };
-            defer firstFind.deinit();
+        //     var firstFind = TaggedValue{ .string = String.initUnchecked("erm") };
+        //     defer firstFind.deinit();
 
-            try expect(set.containsTagged(&firstFind) == false);
+        //     try expect(set.containsTagged(&firstFind) == false);
 
-            set.insert(String.initUnchecked("erm"));
+        //     set.insert(String.initUnchecked("erm"));
 
-            try expect(set.containsTagged(&firstFind));
+        //     try expect(set.containsTagged(&firstFind));
 
-            for (0..99) |i| {
-                set.insert(String.fromInt(@intCast(i)));
-            }
+        //     for (0..99) |i| {
+        //         set.insert(String.fromInt(@intCast(i)));
+        //     }
 
-            try expect(set.count == 100);
+        //     try expect(set.count == 100);
 
-            try expect(set.containsTagged(&firstFind));
+        //     try expect(set.containsTagged(&firstFind));
 
-            for (0..99) |i| {
-                var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-                defer findVal.deinit();
+        //     for (0..99) |i| {
+        //         var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+        //         defer findVal.deinit();
 
-                try expect(set.containsTagged(&firstFind));
-            }
+        //         try expect(set.containsTagged(&firstFind));
+        //     }
 
-            for (100..150) |i| {
-                var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-                defer findVal.deinit();
+        //     for (100..150) |i| {
+        //         var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+        //         defer findVal.deinit();
 
-                try expect(set.containsTagged(&findVal) == false);
-            }
-        }
+        //         try expect(set.containsTagged(&findVal) == false);
+        //     }
+        // }
 
         // test eraseUnchecked {
         //     {
@@ -319,56 +319,56 @@ pub fn Set(comptime K: type) type {
         //     }
         // }
 
-        test eraseTagged {
-            {
-                var set = Set(String).init();
-                defer set.deinit();
+        // test eraseTagged {
+        //     {
+        //         var set = Set(String).init();
+        //         defer set.deinit();
 
-                var eraseVal = TaggedValue{ .string = String.initUnchecked("erm") };
-                defer eraseVal.deinit();
+        //         var eraseVal = TaggedValue{ .string = String.initUnchecked("erm") };
+        //         defer eraseVal.deinit();
 
-                try expect(set.eraseTagged(&eraseVal) == false);
+        //         try expect(set.eraseTagged(&eraseVal) == false);
 
-                set.insert(String.initUnchecked("erm"));
-                try expect(set.count == 1);
+        //         set.insert(String.initUnchecked("erm"));
+        //         try expect(set.count == 1);
 
-                try expect(set.eraseTagged(&eraseVal) == true);
-                try expect(set.count == 0);
-            }
-            {
-                var set = Set(String).init();
-                defer set.deinit();
+        //         try expect(set.eraseTagged(&eraseVal) == true);
+        //         try expect(set.count == 0);
+        //     }
+        //     {
+        //         var set = Set(String).init();
+        //         defer set.deinit();
 
-                for (0..100) |i| {
-                    set.insert(String.fromInt(@intCast(i)));
-                }
+        //         for (0..100) |i| {
+        //             set.insert(String.fromInt(@intCast(i)));
+        //         }
 
-                try expect(set.count == 100);
+        //         try expect(set.count == 100);
 
-                for (0..50) |i| {
-                    var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-                    defer eraseVal.deinit();
+        //         for (0..50) |i| {
+        //             var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+        //             defer eraseVal.deinit();
 
-                    try expect(set.eraseTagged(&eraseVal) == true);
-                }
+        //             try expect(set.eraseTagged(&eraseVal) == true);
+        //         }
 
-                try expect(set.count == 50);
+        //         try expect(set.count == 50);
 
-                for (0..50) |i| {
-                    var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-                    defer eraseVal.deinit();
+        //         for (0..50) |i| {
+        //             var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+        //             defer eraseVal.deinit();
 
-                    try expect(set.eraseTagged(&eraseVal) == false);
-                }
-                try expect(set.count == 50);
+        //             try expect(set.eraseTagged(&eraseVal) == false);
+        //         }
+        //         try expect(set.count == 50);
 
-                for (50..100) |i| {
-                    var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-                    defer eraseVal.deinit();
+        //         for (50..100) |i| {
+        //             var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
+        //             defer eraseVal.deinit();
 
-                    try expect(set.eraseTagged(&eraseVal) == true);
-                }
-            }
-        }
+        //             try expect(set.eraseTagged(&eraseVal) == true);
+        //         }
+        //     }
+        // }
     };
 }

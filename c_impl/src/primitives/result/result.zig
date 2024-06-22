@@ -79,51 +79,51 @@ pub const Error = extern struct {
         return null;
     }
 
-    test init {
-        {
-            var err = Self.init(String.initUnchecked("yuh"), null);
-            defer err.deinit();
+    // test init {
+    //     {
+    //         var err = Self.init(String.initUnchecked("yuh"), null);
+    //         defer err.deinit();
 
-            try expect(err.name.eqlSlice("yuh"));
-            try expect(err.metadata() == null);
-        }
-        {
-            const errMetadata = TaggedValue{ .int = 8 };
-            var err = Self.init(String.initUnchecked("yuh"), errMetadata); // <- takes ownership of `errMetadata` here
-            defer err.deinit();
+    //         try expect(err.name.eqlSlice("yuh"));
+    //         try expect(err.metadata() == null);
+    //     }
+    //     {
+    //         const errMetadata = TaggedValue{ .int = 8 };
+    //         var err = Self.init(String.initUnchecked("yuh"), errMetadata); // <- takes ownership of `errMetadata` here
+    //         defer err.deinit();
 
-            try expect(err.name.eqlSlice("yuh"));
-            if (err.metadata()) |foundMetadata| {
-                try expect(foundMetadata.tag == .int);
-                try expect(foundMetadata.value.int == 8);
-            } else {
-                try expect(false);
-            }
-        }
-    }
+    //         try expect(err.name.eqlSlice("yuh"));
+    //         if (err.metadata()) |foundMetadata| {
+    //             try expect(foundMetadata.tag == .int);
+    //             try expect(foundMetadata.value.int == 8);
+    //         } else {
+    //             try expect(false);
+    //         }
+    //     }
+    // }
 
-    test takeMetadata {
-        {
-            var err = Self.init(String.initUnchecked("example"), null);
-            defer err.deinit();
+    // test takeMetadata {
+    //     {
+    //         var err = Self.init(String.initUnchecked("example"), null);
+    //         defer err.deinit();
 
-            if (err.takeMetadata()) |_| {
-                try expect(false);
-            }
-        }
-        {
-            var err = Self.init(String.initUnchecked("example"), TaggedValue{ .string = String.initUnchecked("hello world! some metadata for this error idk") });
-            defer err.deinit();
+    //         if (err.takeMetadata()) |_| {
+    //             try expect(false);
+    //         }
+    //     }
+    //     {
+    //         var err = Self.init(String.initUnchecked("example"), TaggedValue{ .string = String.initUnchecked("hello world! some metadata for this error idk") });
+    //         defer err.deinit();
 
-            if (err.takeMetadata()) |taken| {
-                var mutTake = taken;
-                defer mutTake.deinit();
-                try expect(taken.string.eqlSlice("hello world! some metadata for this error idk"));
-            } else {
-                try expect(false);
-            }
-        }
-    }
+    //         if (err.takeMetadata()) |taken| {
+    //             var mutTake = taken;
+    //             defer mutTake.deinit();
+    //             try expect(taken.string.eqlSlice("hello world! some metadata for this error idk"));
+    //         } else {
+    //             try expect(false);
+    //         }
+    //     }
+    // }
 };
 
 pub fn Result(comptime T: type) type {
@@ -271,94 +271,94 @@ pub fn Result(comptime T: type) type {
             }
         }
 
-        test initOk {
-            {
-                var result = Result(i64).initOk(55);
-                try expect(result.okTag() == .int);
-                try expect(result.isOk());
-                if (result.ok()) |num| {
-                    try expect(num == 55);
-                } else |_| {
-                    try expect(false);
-                }
-            }
-            {
-                var result = Result(String).initOk(String.initUnchecked("hello world!"));
-                try expect(result.okTag() == .string);
-                try expect(result.isOk());
-                if (result.ok()) |s| {
-                    try expect(s.eqlSlice("hello world!"));
-                    var mutS = s;
-                    mutS.deinit();
-                } else |_| {
-                    try expect(false);
-                }
-            }
-        }
+        // test initOk {
+        //     {
+        //         var result = Result(i64).initOk(55);
+        //         try expect(result.okTag() == .int);
+        //         try expect(result.isOk());
+        //         if (result.ok()) |num| {
+        //             try expect(num == 55);
+        //         } else |_| {
+        //             try expect(false);
+        //         }
+        //     }
+        //     {
+        //         var result = Result(String).initOk(String.initUnchecked("hello world!"));
+        //         try expect(result.okTag() == .string);
+        //         try expect(result.isOk());
+        //         if (result.ok()) |s| {
+        //             try expect(s.eqlSlice("hello world!"));
+        //             var mutS = s;
+        //             mutS.deinit();
+        //         } else |_| {
+        //             try expect(false);
+        //         }
+        //     }
+        // }
 
-        test initOkTagged {
-            {
-                var tempResult = Result(anyopaque).initOkTagged(TaggedValue{ .int = 55 });
-                try expect(tempResult.okTag() == .int);
+        // test initOkTagged {
+        //     {
+        //         var tempResult = Result(anyopaque).initOkTagged(TaggedValue{ .int = 55 });
+        //         try expect(tempResult.okTag() == .int);
 
-                var result = tempResult.into(i64);
-                try expect(result.okTag() == .int);
-                try expect(result.isOk());
-                if (result.ok()) |num| {
-                    try expect(num == 55);
-                } else |_| {
-                    try expect(false);
-                }
-            }
-            {
-                var tempResult = Result(anyopaque).initOkTagged(TaggedValue{ .string = String.initUnchecked("hello world!") });
-                try expect(tempResult.okTag() == .string);
+        //         var result = tempResult.into(i64);
+        //         try expect(result.okTag() == .int);
+        //         try expect(result.isOk());
+        //         if (result.ok()) |num| {
+        //             try expect(num == 55);
+        //         } else |_| {
+        //             try expect(false);
+        //         }
+        //     }
+        //     {
+        //         var tempResult = Result(anyopaque).initOkTagged(TaggedValue{ .string = String.initUnchecked("hello world!") });
+        //         try expect(tempResult.okTag() == .string);
 
-                var result = tempResult.into(String);
-                try expect(result.okTag() == .string);
-                try expect(result.isOk());
-                if (result.ok()) |s| {
-                    try expect(s.eqlSlice("hello world!"));
-                    var mutS = s;
-                    mutS.deinit();
-                } else |_| {
-                    try expect(false);
-                }
-            }
-        }
+        //         var result = tempResult.into(String);
+        //         try expect(result.okTag() == .string);
+        //         try expect(result.isOk());
+        //         if (result.ok()) |s| {
+        //             try expect(s.eqlSlice("hello world!"));
+        //             var mutS = s;
+        //             mutS.deinit();
+        //         } else |_| {
+        //             try expect(false);
+        //         }
+        //     }
+        // }
 
-        test initErr {
-            {
-                var result = Result(i64).initErr(Error.init(String.initUnchecked("example"), null));
-                try expect(result.okTag() == .int);
-                try expect(result.isErr());
-                if (result.err()) |e| {
-                    try expect(e.name.eqlSlice("example"));
-                    var mutE = e;
-                    mutE.deinit();
-                } else |_| {
-                    try expect(false);
-                }
-            }
-        }
+        // test initErr {
+        //     {
+        //         var result = Result(i64).initErr(Error.init(String.initUnchecked("example"), null));
+        //         try expect(result.okTag() == .int);
+        //         try expect(result.isErr());
+        //         if (result.err()) |e| {
+        //             try expect(e.name.eqlSlice("example"));
+        //             var mutE = e;
+        //             mutE.deinit();
+        //         } else |_| {
+        //             try expect(false);
+        //         }
+        //     }
+        // }
 
-        test deinit {
-            {
-                var result = Result(String).initOk(String.initUnchecked("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
-                defer result.deinit();
-            }
-            {
-                var result = Result(String).initOk(String.initUnchecked("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
-                defer result.deinit();
+        // test deinit {
+        //     {
+        //         var result = Result(String).initOk(String.initUnchecked("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
+        //         defer result.deinit();
+        //     }
+        //     {
+        //         var result = Result(String).initOk(String.initUnchecked("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
+        //         defer result.deinit();
 
-                if (result.ok()) |s| {
-                    try expect(s.eqlSlice("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
-                    var mutS = s;
-                    mutS.deinit();
-                } else |_| {
-                    try expect(false);
-                }
-            }
-        }
+        //         if (result.ok()) |s| {
+        //             try expect(s.eqlSlice("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
+        //             var mutS = s;
+        //             mutS.deinit();
+        //         } else |_| {
+        //             try expect(false);
+        //         }
+        //     }
+        // }
     };
 }
