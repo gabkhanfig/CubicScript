@@ -3,6 +3,7 @@
 #include "primitives_context.h"
 #include "../primitives/string/string.h"
 #include "../primitives/array/array.h"
+#include <assert.h>
 
 static bool bool_eql(const bool* self, const bool* other) {
     return *self == *other;
@@ -90,3 +91,29 @@ const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .fullyQualifiedName = "array",
     .fullyQualifiedNameLength = 5,
 };
+
+const CubsStructContext *cubs_primitive_context_for_tag(CubsValueTag tag)
+{
+    assert(tag != cubsValueTagNone && "Cannot have a none struct context");
+    assert(tag != cubsValueTagUserStruct && "This function is for primitive types only");
+    switch(tag) {
+        case cubsValueTagBool: {
+            return &CUBS_BOOL_CONTEXT;
+        } break;
+        case cubsValueTagInt: {
+            return &CUBS_INT_CONTEXT;
+        } break;
+        case cubsValueTagFloat: {
+            return &CUBS_FLOAT_CONTEXT;
+        } break;
+        case cubsValueTagString: {
+            return &CUBS_STRING_CONTEXT;
+        } break;
+        case cubsValueTagArray: {
+            return &CUBS_ARRAY_CONTEXT;
+        } break;
+        default: {
+            cubs_panic("unsupported primitive context type");
+        } break;
+    }
+}

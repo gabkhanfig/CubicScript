@@ -18,7 +18,7 @@ static const size_t CUBS_ARRAY_N_POS = -1;
 /// Does not allocate any memory, just sets the correct bitmasks.
 CubsArray cubs_array_init_primitive(CubsValueTag tag);
 
-CubsArray cubs_array_init_user_struct(const CubsStructContext* rtti);
+CubsArray cubs_array_init_user_struct(const CubsStructContext* context);
 
 void cubs_array_deinit(CubsArray* self);
 
