@@ -84,6 +84,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/util/os.c",
 
     "src/primitives/script_value.c",
+    "src/primitives/primitives_context.c",
     "src/primitives/string/string.c",
     "src/primitives/array/array.c",
     "src/primitives/map/map.c",
