@@ -15,12 +15,12 @@ comptime {
 
     _ = @import("primitives/string/string.zig").String;
     _ = @import("primitives/array/array.zig").Array;
-    _ = @import("primitives/set/set.zig").Set;
-    _ = @import("primitives/map/map.zig").Map;
-    _ = @import("primitives/script_value.zig").TaggedValue;
-    _ = @import("primitives/option/option.zig").Option;
-    _ = @import("primitives/result/result.zig").Error;
-    _ = @import("primitives/result/result.zig").Result;
+    //_ = @import("primitives/set/set.zig").Set;
+    //_ = @import("primitives/map/map.zig").Map;
+    //_ = @import("primitives/script_value.zig").TaggedValue;
+    //_ = @import("primitives/option/option.zig").Option;
+    //_ = @import("primitives/result/result.zig").Error;
+    //_ = @import("primitives/result/result.zig").Result;
     _ = @import("primitives/vector/vector.zig").Vec2i;
     _ = @import("primitives/vector/vector.zig").Vec3i;
     _ = @import("primitives/vector/vector.zig").Vec4i;
