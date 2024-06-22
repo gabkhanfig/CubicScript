@@ -33,13 +33,13 @@ pub fn Array(comptime T: type) type {
         /// const arr = Array(UserStruct){.rtti = ...};
         /// ```
         pub fn init() Self {
-            const valueTag = script_value.scriptTypeToTag(T);
+            const valueTag = comptime script_value.scriptTypeToTag(T);
             if (valueTag != .userStruct) {
                 const raw = RawArray.cubs_array_init_primitive(valueTag);
                 return @bitCast(raw);
             } else {
-                // TODO figure out how to generate rtti
-                return .{ .context = undefined };
+                const raw = RawArray.cubs_array_init_user_struct(StructContext.auto(T));
+                return raw;
             }
         }
 

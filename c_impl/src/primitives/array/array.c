@@ -49,31 +49,28 @@ static void ensure_total_capacity(CubsArray* self, size_t minCapacity) {
 
 CubsArray cubs_array_init_primitive(CubsValueTag tag)
 {   
-    const size_t tagAsSizeT = (size_t)tag;
     const CubsStructContext* rtti = NULL;
     switch(tag) {
         case cubsValueTagBool: {
-            rtti = &BOOL_CONTEXT;
+            rtti = &CUBS_BOOL_CONTEXT;
         } break;
         case cubsValueTagInt: {
-            rtti = &INT_CONTEXT;
+            rtti = &CUBS_INT_CONTEXT;
         } break;
         case cubsValueTagFloat: {
-            rtti = &FLOAT_CONTEXT;
+            rtti = &CUBS_FLOAT_CONTEXT;
         } break;
         case cubsValueTagString: {
-            rtti = &STRING_CONTEXT;
+            rtti = &CUBS_STRING_CONTEXT;
         } break;
         case cubsValueTagArray: {
-            rtti = &ARRAY_CONTEXT;
+            rtti = &CUBS_ARRAY_CONTEXT;
         } break;
         default: {
             cubs_panic("unsupported array type");
         } break;
     }
-
-    const CubsArray arr = {.len = 0, .buf = NULL, .capacity = 0, .context = rtti};
-    return arr;
+    return cubs_array_init_user_struct(rtti);
 }
 
 CubsArray cubs_array_init_user_struct(const CubsStructContext *rtti)
