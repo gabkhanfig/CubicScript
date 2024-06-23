@@ -1,8 +1,8 @@
-#pragma once
-
 #include "primitives_context.h"
 #include "../primitives/string/string.h"
 #include "../primitives/array/array.h"
+#include "../primitives/map/map.h"
+#include "../util/panic.h"
 #include <assert.h>
 
 static bool bool_eql(const bool* self, const bool* other) {
@@ -92,6 +92,18 @@ const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .fullyQualifiedNameLength = 5,
 };
 
+const CubsStructContext CUBS_MAP_CONTEXT = {
+    .sizeOfType = sizeof(CubsMap),
+    .tag = cubsValueTagMap,
+    .onDeinit = (CubsStructOnDeinit)&cubs_map_deinit,
+    .eql = NULL,
+    .hash = NULL,
+    .name = "map",
+    .nameLength = 3,
+    .fullyQualifiedName = "map",
+    .fullyQualifiedNameLength = 3,
+};
+
 const CubsStructContext *cubs_primitive_context_for_tag(CubsValueTag tag)
 {
     assert(tag != cubsValueTagNone && "Cannot have a none struct context");
@@ -111,6 +123,9 @@ const CubsStructContext *cubs_primitive_context_for_tag(CubsValueTag tag)
         } break;
         case cubsValueTagArray: {
             return &CUBS_ARRAY_CONTEXT;
+        } break;
+        case cubsValueTagMap: {
+            return &CUBS_MAP_CONTEXT;
         } break;
         default: {
             cubs_panic("unsupported primitive context type");

@@ -6,6 +6,8 @@
 #include "value_tag.h"
 
 typedef void (*CubsStructOnDeinit)(void* self);
+typedef bool (*CubsStructEqlFn)(const void* self, const void* other);
+typedef size_t (*CubsStructHashFn)(const void* self);
 /// Is both RTTI, and a VTable for certain *optional* functionality, such as on-deinitialization,
 /// comparison operations, hashing, etc.
 typedef struct CubsStructContext {
@@ -13,7 +15,12 @@ typedef struct CubsStructContext {
     size_t sizeOfType;
     /// For user defined structs, use `cubsValueTagUserStruct`
     CubsValueTag tag;
+    /// Can be NULL
     CubsStructOnDeinit onDeinit;
+    /// Can be NULL
+    CubsStructEqlFn eql;
+    /// Can be NULL
+    CubsStructHashFn hash;
     const char* name;
     size_t nameLength;
     const char* fullyQualifiedName;
@@ -48,9 +55,13 @@ typedef struct CubsSet {
 
 typedef struct CubsMap {
     /// The number of key/value pairs in the hashmap.
-    size_t count;
+    size_t len;
     /// Accessing this is unsafe
-    void* _metadata[3];
+    void* _metadata[5];
+    /// Requires equality and hash function pointers
+    const CubsStructContext* keyContext;
+    /// Does not require equality and hash function pointers
+    const CubsStructContext* valueContext;
 } CubsMap;
 
 /// 0 / null intialization makes it a none option.

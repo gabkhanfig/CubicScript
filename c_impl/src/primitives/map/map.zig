@@ -6,29 +6,7 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
-
-// Maybe its possible to combine the groups allocation with the metadata?
-
-const c = struct {
-    extern fn cubs_map_init(keyTag: ValueTag, valueTag: ValueTag) callconv(.C) Map(anyopaque, anyopaque);
-    extern fn cubs_map_deinit(self: *Map(anyopaque, anyopaque)) callconv(.C) void;
-    extern fn cubs_map_key_tag(self: *const Map(anyopaque, anyopaque)) callconv(.C) ValueTag;
-    extern fn cubs_map_value_tag(self: *const Map(anyopaque, anyopaque)) callconv(.C) ValueTag;
-    extern fn cubs_map_key_size(self: *const Map(anyopaque, anyopaque)) callconv(.C) usize;
-    extern fn cubs_map_value_size(self: *const Map(anyopaque, anyopaque)) callconv(.C) usize;
-    extern fn cubs_map_find_unchecked(self: *const Map(anyopaque, anyopaque), key: *const anyopaque) callconv(.C) ?*const anyopaque;
-    extern fn cubs_map_find_raw_unchecked(self: *const Map(anyopaque, anyopaque), key: *const RawValue) callconv(.C) ?*const anyopaque;
-    extern fn cubs_map_find(self: *const Map(anyopaque, anyopaque), key: *const CTaggedValue) callconv(.C) ?*const anyopaque;
-    extern fn cubs_map_find_mut_unchecked(self: *Map(anyopaque, anyopaque), key: *const anyopaque) callconv(.C) ?*anyopaque;
-    extern fn cubs_map_find_raw_mut_unchecked(self: *Map(anyopaque, anyopaque), key: *const RawValue) callconv(.C) ?*anyopaque;
-    extern fn cubs_map_find_mut(self: *Map(anyopaque, anyopaque), key: *const CTaggedValue) callconv(.C) ?*anyopaque;
-    extern fn cubs_map_insert_unchecked(self: *Map(anyopaque, anyopaque), key: *anyopaque, value: *anyopaque) callconv(.C) void;
-    extern fn cubs_map_insert_raw_unchecked(self: *Map(anyopaque, anyopaque), key: RawValue, value: RawValue) callconv(.C) void;
-    extern fn cubs_map_insert(self: *Map(anyopaque, anyopaque), key: CTaggedValue, value: CTaggedValue) callconv(.C) void;
-    extern fn cubs_map_erase_unchecked(self: *const Map(anyopaque, anyopaque), key: *const anyopaque) callconv(.C) bool;
-    extern fn cubs_map_erase_raw_unchecked(self: *const Map(anyopaque, anyopaque), key: *const RawValue) callconv(.C) bool;
-    extern fn cubs_map_erase(self: *const Map(anyopaque, anyopaque), key: *const CTaggedValue) callconv(.C) bool;
-};
+const StructContext = script_value.StructContext;
 
 pub fn Map(comptime K: type, comptime V: type) type {
     return extern struct {
@@ -37,129 +15,65 @@ pub fn Map(comptime K: type, comptime V: type) type {
         pub const KeyType = K;
         pub const ValueType = V;
 
-        count: usize,
-        _metadata: [3]*anyopaque,
+        len: usize = 0,
+        _metadata: [5]?*anyopaque = std.mem.zeroes([5]?*anyopaque),
+        keyContext: *const StructContext,
+        valueContext: *const StructContext,
 
+        /// For all primitive script types, creates the map.
+        /// For user defined types, attemps to generate one.
+        /// Alternatively, one can be passed in manually through creating a map instance. For example
+        /// ```
+        /// const map = Map(UserStructA, UserStructB){.keyContext = ..., .valueContext = ...};
+        /// ```
         pub fn init() Self {
-            const kTag = script_value.scriptTypeToTag(K);
-            const vTag = script_value.scriptTypeToTag(V);
-            var temp = c.cubs_map_init(kTag, vTag);
-            return temp.into(K, V);
+            const kTag = comptime script_value.scriptTypeToTag(K);
+            const vTag = comptime script_value.scriptTypeToTag(V);
+            if (kTag != .userStruct and vTag != .userStruct) {
+                const raw = RawMap.cubs_map_init_primitives(kTag, vTag);
+                return @bitCast(raw);
+            } else {
+                const raw = RawMap.cubs_map_init_user_struct(StructContext.auto(K), StructContext.auto(V));
+                return @bitCast(raw);
+            }
         }
 
         pub fn deinit(self: *Self) void {
-            c.cubs_map_deinit(self.castMut(anyopaque, anyopaque));
-        }
-
-        pub fn keyTag(self: *const Self) ValueTag {
-            return c.cubs_map_key_tag(self);
-        }
-
-        pub fn valueTag(self: *const Self) ValueTag {
-            return c.cubs_map_value_tag(self);
-        }
-
-        pub fn cast(self: *const Self, comptime OtherK: type, comptime OtherV: type) *const Map(OtherK, OtherV) {
-            if (OtherK != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherK, self.keyTag());
-            }
-            if (OtherV != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherV, self.valueTag());
-            }
-            return @ptrCast(self);
-        }
-
-        pub fn castMut(self: *Self, comptime OtherK: type, comptime OtherV: type) *Map(OtherK, OtherV) {
-            if (OtherK != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherK, self.keyTag());
-            }
-            if (OtherV != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherV, self.valueTag());
-            }
-            return @ptrCast(self);
-        }
-
-        /// Converts an array of one type into an array of another type. Currently only works when converting
-        /// to and from `anyopaque` arrays.
-        pub fn into(self: *Self, comptime OtherK: type, comptime OtherV: type) Map(OtherK, OtherV) {
-            const casted = self.castMut(OtherK, OtherV).*;
-            self.* = undefined; // invalidate self
-            return casted;
+            RawMap.cubs_map_deinit(self.asRawMut());
         }
 
         pub fn find(self: *const Self, key: *const K) ?*const V {
-            return @ptrCast(@alignCast(c.cubs_map_find_unchecked(self.cast(anyopaque, anyopaque), @ptrCast(key))));
+            return @ptrCast(RawMap.cubs_map_find(self.asRaw(), @ptrCast(key)));
         }
 
-        pub fn findTagged(self: *const Self, key: *const TaggedValue) ?*const V {
-            const tempC = script_value.zigToCTaggedValueTemp(key.*);
-            return @ptrCast(@alignCast(c.cubs_map_find(self.cast(anyopaque, anyopaque), &tempC)));
-        }
-
-        pub fn findRawUnchecked(self: *const Self, key: *const RawValue) ?*const V {
-            return @ptrCast(@alignCast(c.cubs_map_find_raw_unchecked(self.cast(anyopaque, anyopaque), key)));
-        }
-
-        pub fn findMut(self: *Self, key: *const K) ?*V {
-            return @ptrCast(@alignCast(c.cubs_map_find_mut_unchecked(self.castMut(anyopaque, anyopaque), key)));
-        }
-
-        pub fn findMutTagged(self: *Self, key: *const TaggedValue) ?*V {
-            const tempC = script_value.zigToCTaggedValueTemp(key.*);
-            return @ptrCast(@alignCast(c.cubs_map_find_mut(self.castMut(anyopaque, anyopaque), &tempC)));
-        }
-
-        pub fn findRawMutUnchecked(self: *Self, key: *const RawValue) ?*V {
-            return @ptrCast(@alignCast(c.cubs_map_find_raw_mut_unchecked(self.castMut(anyopaque, anyopaque), key)));
+        pub fn find_mut(self: *Self, key: *const K) ?*V {
+            return @ptrCast(RawMap.cubs_map_find_mut(self.asRawMut(), @ptrCast(key)));
         }
 
         pub fn insert(self: *Self, key: K, value: V) void {
             var mutKey = key;
             var mutValue = value;
-            c.cubs_map_insert_unchecked(self.castMut(anyopaque, anyopaque), @ptrCast(&mutKey), @ptrCast(&mutValue));
-        }
-
-        pub fn insertTagged(self: *Self, key: TaggedValue, value: TaggedValue) void {
-            var mutKey = key;
-            var mutValue = value;
-            const cKey = @call(.always_inline, TaggedValue.intoCRepr, .{&mutKey});
-            const cValue = @call(.always_inline, TaggedValue.intoCRepr, .{&mutValue});
-            c.cubs_map_insert(self.castMut(anyopaque, anyopaque), cKey, cValue);
-        }
-
-        pub fn insertUnchecked(self: *Self, key: RawValue, value: RawValue) void {
-            c.cubs_map_insert_raw_unchecked(self.castMut(anyopaque, anyopaque), key, value);
+            RawMap.cubs_map_insert(self.asRawMut(), @ptrCast(&mutKey), @ptrCast(&mutValue));
         }
 
         pub fn erase(self: *Self, key: *const K) bool {
-            const tempC = script_value.zigToCTaggedValueTemp(key.*);
-            return c.cubs_map_erase_unchecked(self.castMut(anyopaque, anyopaque), &tempC);
+            return RawMap.cubs_map_erase(self.asRawMut(), @ptrCast(key));
         }
 
-        pub fn eraseTagged(self: *Self, key: *const TaggedValue) bool {
-            const tempC = script_value.zigToCTaggedValueTemp(key.*);
-            return c.cubs_map_erase(self.castMut(anyopaque, anyopaque), &tempC);
+        pub fn asRaw(self: *const Self) *const RawMap {
+            return @ptrCast(self);
         }
 
-        pub fn eraseUnchecked(self: *Self, key: *const RawValue) bool {
-            return c.cubs_map_erase_raw_unchecked(self.castMut(anyopaque, anyopaque), key);
+        pub fn asRawMut(self: *Self) *RawMap {
+            return @ptrCast(self);
         }
 
-        // test init {
-        //     inline for (@typeInfo(ValueTag).Enum.fields) |keyF| {
-        //         const keyEnum: ValueTag = @enumFromInt(keyF.value);
-        //         inline for (@typeInfo(ValueTag).Enum.fields) |valueF| {
-        //             const valueEnum: ValueTag = @enumFromInt(valueF.value);
-
-        //             var map = Map.init(keyEnum, valueEnum);
-        //             defer map.deinit();
-
-        //             try expect(map.keyTag() == keyEnum);
-        //             try expect(map.valueTag() == valueEnum);
-        //             try expect(map.count == 0);
-        //         }
-        //     }
-        // }
+        test init {
+            {
+                var map = Map(i64, f64).init();
+                defer map.deinit();
+            }
+        }
 
         // test insert {
         //     {
@@ -737,3 +651,20 @@ pub fn Map(comptime K: type, comptime V: type) type {
         // }
     };
 }
+
+pub const RawMap = extern struct {
+    len: usize,
+    _metadata: [5]?*anyopaque,
+    keyContext: *const StructContext,
+    valueContext: *const StructContext,
+
+    pub const SCRIPT_SELF_TAG: ValueTag = .map;
+
+    pub extern fn cubs_map_init_primitives(keyTag: ValueTag, valueTag: ValueTag) callconv(.C) RawMap;
+    pub extern fn cubs_map_init_user_struct(keyContext: *const StructContext, valueContext: *const StructContext) callconv(.C) RawMap;
+    pub extern fn cubs_map_deinit(self: *RawMap) callconv(.C) void;
+    pub extern fn cubs_map_find(self: *const RawMap, key: *const anyopaque) callconv(.C) ?*const anyopaque;
+    pub extern fn cubs_map_find_mut(self: *RawMap, key: *const anyopaque) callconv(.C) ?*anyopaque;
+    pub extern fn cubs_map_insert(self: *RawMap, key: *anyopaque, value: *anyopaque) callconv(.C) void;
+    pub extern fn cubs_map_erase(self: *RawMap, key: *const anyopaque) callconv(.C) bool;
+};

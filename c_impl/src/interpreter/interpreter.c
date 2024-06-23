@@ -177,6 +177,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                 } break;
                 case cubsValueTagArray: {
                     assert(operands.keyTag != cubsValueTagNone);
+                    assert(operands.keyTag != cubsValueTagUserStruct);
                     *(CubsArray*)dst = cubs_array_init_primitive(operands.keyTag);
                     _Static_assert(sizeof(CubsArray) == (4 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
@@ -186,6 +187,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                 } break;
                 case cubsValueTagSet: {
                     assert(operands.keyTag != cubsValueTagNone);
+                    assert(operands.keyTag != cubsValueTagUserStruct);
                     *(CubsSet*)dst = cubs_set_init(operands.keyTag);
                     _Static_assert(sizeof(CubsSet) == (4 * sizeof(size_t)), "");
                     // Must make sure the slots that the set uses are unused
@@ -196,12 +198,21 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                 case cubsValueTagMap: {
                     assert(operands.keyTag != cubsValueTagNone);
                     assert(operands.valueTag != cubsValueTagNone);
-                    *(CubsMap*)dst = cubs_map_init(operands.keyTag, operands.valueTag);
-                    _Static_assert(sizeof(CubsMap) == (4 * sizeof(size_t)), "");
+                    if(operands.keyTag != cubsValueTagUserStruct && operands.valueTag != cubsValueTagUserStruct) {
+                        *(CubsMap*)dst = cubs_map_init_primitives(operands.keyTag, operands.valueTag);
+                    } else {
+                        cubs_panic("Map initialization not done for user structs");
+                    }
+                    
+                    _Static_assert(sizeof(CubsMap) == (8 * sizeof(size_t)), "");
                     // Must make sure the slots that the map uses are unused
                     cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
                     cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
                     cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 5, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 6, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 7, cubsValueTagNone);
                 } break;
                 case cubsValueTagOption: {
                     const CubsOption nullOption = {0};
