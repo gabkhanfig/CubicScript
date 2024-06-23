@@ -30,7 +30,7 @@ pub fn Array(comptime T: type) type {
         /// For user defined types, attemps to generate one.
         /// Alternatively, one can be passed in manually through creating a struct instance. For example
         /// ```
-        /// const arr = Array(UserStruct){.rtti = ...};
+        /// const arr = Array(UserStruct){.context = ...};
         /// ```
         pub fn init() Self {
             const valueTag = comptime script_value.scriptTypeToTag(T);
