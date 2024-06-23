@@ -202,11 +202,16 @@ static size_t group_find(const Group* self, const void* key, const CubsStructCon
 }
 
 /// If the entry already exists, overrides the existing value.
-static void group_insert(Group* self, void* key, void* value, const CubsStructContext* keyContext, const CubsStructContext* valueContext, size_t hashCode, PairHeader** iterLast) {
-    assert((*iterLast)->iterAfter == NULL);
-
+static void group_insert(Group* self, void* key, void* value, const CubsStructContext* keyContext, const CubsStructContext* valueContext, size_t hashCode, PairHeader** iterFirst, PairHeader** iterLast) {
+    #if _DEBUG
+    if(*iterLast != NULL) {
+        assert((*iterLast)->iterAfter == NULL);
+    }
+    #endif
+    
     const CubsHashPairBitmask pairMask = cubs_hash_pair_bitmask_init(hashCode);
     const size_t existingIndex = group_find(self, &key, keyContext, pairMask);
+    
     if(existingIndex != -1) {
         void* pair = group_pair_buf_start_mut(self)[existingIndex];
         void* pairValue = pair_value_mut(pair, keyContext->sizeOfType);
@@ -243,8 +248,15 @@ static void group_insert(Group* self, void* key, void* value, const CubsStructCo
         newPair->iterBefore = *iterLast;
         newPair->iterAfter = NULL;
 
-        (*iterLast)->iterAfter = newPair;
-        (*iterLast) = newPair;
+        if(*iterFirst == NULL) { // This is the first element in the map
+            *iterFirst = newPair;
+        }
+        if(*iterLast == NULL) {
+            *iterLast = newPair;
+        } else {
+            (*iterLast)->iterAfter = newPair;
+            (*iterLast) = newPair;
+        }
 
         memcpy(pair_key_mut(newPair), key, keyContext->sizeOfType);
         memcpy(pair_value_mut(newPair, keyContext->sizeOfType), value, valueContext->sizeOfType);
@@ -369,8 +381,8 @@ CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag)
 
 CubsMap cubs_map_init_user_struct(const CubsStructContext *keyContext, const CubsStructContext *valueContext)
 {
-    assert(keyContext->eql != NULL);
-    assert(keyContext->hash != NULL);
+    assert(keyContext->eql != NULL && "Map's keyContext must contain a valid equality function pointer");
+    assert(keyContext->hash != NULL && "Map's keyContext must contain a valid hashing function pointer");
     const CubsMap out = {.len = 0, ._metadata = {0}, .keyContext = keyContext, .valueContext = valueContext};
     return out;
 }
@@ -443,7 +455,7 @@ void cubs_map_insert(CubsMap *self, void* key, void* value)
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
     const size_t groupIndex = groupBitmask.value % metadata->groupCount;
 
-    group_insert(&metadata->groupsArray[groupIndex], key, value, self->keyContext, self->valueContext, hashCode, &metadata->iterLast);
+    group_insert(&metadata->groupsArray[groupIndex], key, value, self->keyContext, self->valueContext, hashCode, &metadata->iterFirst, &metadata->iterLast);
     self->len += 1;
     metadata->available -= 1;
 }
