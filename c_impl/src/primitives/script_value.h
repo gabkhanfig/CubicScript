@@ -88,10 +88,6 @@ typedef struct CubsResult {
     void* metadata[5];
 } CubsResult;
 
-typedef struct CubsClass {
-  void* _inner;
-} CubsClass;
-
 typedef struct CubsOwnedInterface {
   void* _inner;
 } CubsOwnedInterface;
