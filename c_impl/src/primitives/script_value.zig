@@ -26,7 +26,6 @@ pub const Vec3f = @import("vector/vector.zig").Vec3f;
 pub const Vec4f = @import("vector/vector.zig").Vec4f;
 
 pub const ValueTag = enum(c_int) {
-    none = 0,
     bool = 1,
     int = 2,
     float = 3,
@@ -45,7 +44,6 @@ pub const ValueTag = enum(c_int) {
     err = 16,
     result = 17,
     taggedUnion = 18,
-    class = 19,
     ownedInterface = 20,
     interfaceRef = 21,
     constRef = 22,
