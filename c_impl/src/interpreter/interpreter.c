@@ -139,7 +139,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
         } break;
         case LOAD_TYPE_IMMEDIATE_LONG: {
             const OperandsLoadImmediateLong operands = *(const OperandsLoadImmediateLong*)bytecode;
-            assert(operands.immediateValueTag != cubsValueTagNone);
+            assert(operands.immediateValueTag != _CUBS_VALUE_TAG_NONE);
             assert(operands.immediateValueTag != cubsValueTagBool && "Don't use 64 bit immediate load for booleans");
 
             const uint64_t immediate = threadLocalStack.instructionPointer[1].value;
@@ -149,7 +149,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
         } break;
         case LOAD_TYPE_DEFAULT: {
             const OperandsLoadDefault operands = *(const OperandsLoadDefault*)bytecode;
-            assert(operands.tag != cubsValueTagNone);
+            assert(operands.tag != _CUBS_VALUE_TAG_NONE);
             
             void* dst = cubs_interpreter_stack_value_at(operands.dst);
 
@@ -171,33 +171,33 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                     *(CubsString*)dst = defaultString;
                     _Static_assert(sizeof(CubsString) == (4 * sizeof(size_t)), "");
                     // Must make sure the slots that the string uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagArray: {
-                    assert(operands.keyTag != cubsValueTagNone);
+                    assert(operands.keyTag != _CUBS_VALUE_TAG_NONE);
                     assert(operands.keyTag != cubsValueTagUserStruct);
                     *(CubsArray*)dst = cubs_array_init_primitive(operands.keyTag);
                     _Static_assert(sizeof(CubsArray) == (4 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagSet: {
-                    assert(operands.keyTag != cubsValueTagNone);
+                    assert(operands.keyTag != _CUBS_VALUE_TAG_NONE);
                     assert(operands.keyTag != cubsValueTagUserStruct);
                     *(CubsSet*)dst = cubs_set_init(operands.keyTag);
                     _Static_assert(sizeof(CubsSet) == (4 * sizeof(size_t)), "");
                     // Must make sure the slots that the set uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagMap: {
-                    assert(operands.keyTag != cubsValueTagNone);
-                    assert(operands.valueTag != cubsValueTagNone);
+                    assert(operands.keyTag != _CUBS_VALUE_TAG_NONE);
+                    assert(operands.valueTag != _CUBS_VALUE_TAG_NONE);
                     if(operands.keyTag != cubsValueTagUserStruct && operands.valueTag != cubsValueTagUserStruct) {
                         *(CubsMap*)dst = cubs_map_init_primitives(operands.keyTag, operands.valueTag);
                     } else {
@@ -206,87 +206,87 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                     
                     _Static_assert(sizeof(CubsMap) == (8 * sizeof(size_t)), "");
                     // Must make sure the slots that the map uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 5, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 6, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 7, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 5, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 6, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 7, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagOption: {
                     const CubsOption nullOption = {0};
                     *(CubsOption*)dst = nullOption;
                     _Static_assert(sizeof(CubsOption) == (5 * sizeof(size_t)), "");
                     // Must make sure the slots that the string uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagError: {
                     const CubsError defaultError = {0};
                     *(CubsError*)dst = defaultError;
                     _Static_assert(sizeof(CubsError) == (5 * sizeof(size_t)), "");
                     // Must make sure the slots that the string uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagVec2i: {
                     const CubsVec2i zeroVec = {0};
                     *(CubsVec2i*)dst = zeroVec;
                     _Static_assert(sizeof(CubsVec2i) == (2 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagVec3i: {
                     const CubsVec3i zeroVec = {0};
                     *(CubsVec3i*)dst = zeroVec;
                     _Static_assert(sizeof(CubsVec3i) == (3 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagVec4i: {
                     const CubsVec4i zeroVec = {0};
                     *(CubsVec4i*)dst = zeroVec;
                     _Static_assert(sizeof(CubsVec4i) == (4 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagVec2f: {
                     const CubsVec2f zeroVec = {0};
                     *(CubsVec2f*)dst = zeroVec;
                     _Static_assert(sizeof(CubsVec2f) == (2 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagVec3f: {
                     const CubsVec3f zeroVec = {0};
                     *(CubsVec3f*)dst = zeroVec;
                     _Static_assert(sizeof(CubsVec3f) == (3 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
                 } break;
                 case cubsValueTagVec4f: {
                     const CubsVec4f zeroVec = {0};
                     *(CubsVec4f*)dst = zeroVec;
                     _Static_assert(sizeof(CubsVec4f) == (4 * sizeof(size_t)), "");
                     // Must make sure the slots that the array uses are unused
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, cubsValueTagNone);
-                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, cubsValueTagNone);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
+                    cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
                 } break;
                 default: {
                     cubs_panic("unimplemented default initialization for type");
@@ -296,7 +296,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
         } break;
         case LOAD_TYPE_CLONE_FROM_PTR: {
             const OperandsLoadImmediateLong operands = *(const OperandsLoadImmediateLong*)bytecode;
-            assert(operands.immediateValueTag != cubsValueTagNone);
+            assert(operands.immediateValueTag != _CUBS_VALUE_TAG_NONE);
 
             const void* immediate = (const void*)(uintptr_t)threadLocalStack.instructionPointer[1].value;     
             void* dst = cubs_interpreter_stack_value_at(operands.dst);

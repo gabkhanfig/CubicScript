@@ -371,8 +371,6 @@ static void map_ensure_total_capacity(CubsMap* self) {
 
 CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag)
 {
-    assert(keyTag != cubsValueTagNone && "Cannot use none for map key");
-    assert(valueTag != cubsValueTagNone && "Cannot use none for set key");
     assert(keyTag != cubsValueTagUserStruct && "Use cubs_map_init_user_struct for user defined structs");
     assert(valueTag != cubsValueTagUserStruct && "Use cubs_map_init_user_struct for user defined structs");
 

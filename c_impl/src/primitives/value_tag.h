@@ -1,7 +1,6 @@
 #pragma once
 
 typedef enum CubsValueTag {
-    cubsValueTagNone = 0,
     cubsValueTagBool = 1,
     cubsValueTagInt = 2,
     cubsValueTagFloat = 3,
@@ -40,6 +39,9 @@ typedef enum CubsValueTag {
     cubsValueTagMat4f = 36,
     cubsValueTagUserStruct = 37,
     cubsValueTagStructRtti = 38,
-    // Enforce enum size is at least 32 bits
+
+    // Reserved for internal use.
+    _CUBS_VALUE_TAG_NONE = 0,
+    // Reserved for internal use. Enforces enum size is at least 32 bits.
     _CUBS_VALUE_TAG_MAX_VALUE = 0x7FFFFFFF,
 } CubsValueTag;

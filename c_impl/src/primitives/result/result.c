@@ -78,10 +78,6 @@ static const size_t IS_ERR_BIT = 1ULL << 63;
 
 CubsResult cubs_result_init_ok_unchecked(CubsValueTag okTag, void *okValue)
 {
-    if(okTag == cubsValueTagNone) {
-        const CubsResult result = {0};
-        return result;
-    }
     const size_t sizeOfOk = cubs_size_of_tagged_type(okTag);
     const size_t tagInfo = (((size_t)okTag) << OK_TAG_SHIFT) | (sizeOfOk << OK_SIZE_SHIFT);
     if(sizeOfOk > sizeof(void*[4])) {

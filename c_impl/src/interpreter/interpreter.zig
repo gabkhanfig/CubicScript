@@ -142,7 +142,7 @@ test "load default" {
     c.cubs_interpreter_push_frame(10, null, null, null);
     defer c.cubs_interpreter_pop_frame();
     { // bool
-        const bytecode = c.operands_make_load_default(c.cubsValueTagBool, c.cubsValueTagNone, c.cubsValueTagNone, 0);
+        const bytecode = c.operands_make_load_default(c.cubsValueTagBool, c._CUBS_VALUE_TAG_NONE, c._CUBS_VALUE_TAG_NONE, 0);
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
         try expect(c.cubs_interpreter_execute_operation(null) == 0);
@@ -151,7 +151,7 @@ test "load default" {
         try expect(@as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == false);
     }
     { // int
-        const bytecode = c.operands_make_load_default(c.cubsValueTagInt, c.cubsValueTagNone, c.cubsValueTagNone, 0);
+        const bytecode = c.operands_make_load_default(c.cubsValueTagInt, c._CUBS_VALUE_TAG_NONE, c._CUBS_VALUE_TAG_NONE, 0);
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
         try expect(c.cubs_interpreter_execute_operation(null) == 0);
@@ -160,7 +160,7 @@ test "load default" {
         try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 0);
     }
     { // float
-        const bytecode = c.operands_make_load_default(c.cubsValueTagFloat, c.cubsValueTagNone, c.cubsValueTagNone, 0);
+        const bytecode = c.operands_make_load_default(c.cubsValueTagFloat, c._CUBS_VALUE_TAG_NONE, c._CUBS_VALUE_TAG_NONE, 0);
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
         try expect(c.cubs_interpreter_execute_operation(null) == 0);
@@ -169,7 +169,7 @@ test "load default" {
         try expect(@as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 0.0);
     }
     { // string
-        const bytecode = c.operands_make_load_default(c.cubsValueTagString, c.cubsValueTagNone, c.cubsValueTagNone, 0);
+        const bytecode = c.operands_make_load_default(c.cubsValueTagString, c._CUBS_VALUE_TAG_NONE, c._CUBS_VALUE_TAG_NONE, 0);
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
         try expect(c.cubs_interpreter_execute_operation(null) == 0);
