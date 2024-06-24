@@ -109,165 +109,6 @@ pub fn Array(comptime T: type) type {
         pub fn asRawMut(self: *Self) *RawArray {
             return @ptrCast(self);
         }
-
-        // test init {
-        //     inline for (@typeInfo(ValueTag).Enum.fields) |f| {
-        //         var arr = Array.init(@enumFromInt(f.value));
-        //         defer arr.deinit();
-
-        //         try expect(arr.tag() == @as(ValueTag, @enumFromInt(f.value)));
-        //     }
-        // }
-
-        test "nested array" {
-            var arr1 = Array(Array(i64)).init();
-            defer arr1.deinit();
-
-            var arr2 = Array(i64).init();
-            arr2.push(1);
-            arr1.push(arr2);
-        }
-
-        test push {
-            {
-                var arr = Array(i64).init();
-                defer arr.deinit();
-
-                arr.push(6);
-                try expect(arr.len == 1);
-
-                arr.push(7);
-                try expect(arr.len == 2);
-            }
-            {
-                var arr = Array(String).init();
-                defer arr.deinit();
-
-                arr.push(String.initUnchecked("hi"));
-                try expect(arr.len == 1);
-
-                arr.push(String.initUnchecked("hi"));
-                try expect(arr.len == 2);
-            }
-        }
-
-        test atUnchecked {
-            {
-                var arr = Array(i64).init();
-                defer arr.deinit();
-
-                arr.push(6);
-                try expect(arr.atUnchecked(0).* == 6);
-
-                arr.push(7);
-                try expect(arr.atUnchecked(0).* == 6);
-                try expect(arr.atUnchecked(1).* == 7);
-            }
-            {
-                var arr = Array(String).init();
-                defer arr.deinit();
-
-                arr.push(String.initUnchecked("hi"));
-                try expect(arr.atUnchecked(0).eqlSlice("hi"));
-
-                arr.push(String.initUnchecked("hi"));
-                try expect(arr.atUnchecked(0).eqlSlice("hi"));
-                try expect(arr.atUnchecked(1).eqlSlice("hi"));
-            }
-        }
-
-        test at {
-            {
-                var arr = Array(i64).init();
-                defer arr.deinit();
-
-                arr.push(6);
-                try expect((try arr.at(0)).* == 6);
-                try std.testing.expectError(Error.OutOfRange, arr.at(1));
-
-                arr.push(7);
-                try expect((try arr.at(0)).* == 6);
-                try expect((try arr.at(1)).* == 7);
-                try std.testing.expectError(Error.OutOfRange, arr.at(2));
-            }
-            {
-                var arr = Array(String).init();
-                defer arr.deinit();
-
-                arr.push(String.initUnchecked("hi"));
-                try expect((try arr.at(0)).eqlSlice("hi"));
-                try std.testing.expectError(Error.OutOfRange, arr.at(1));
-
-                arr.push(String.initUnchecked("hi"));
-                try expect((try arr.at(0)).eqlSlice("hi"));
-                try expect((try arr.at(1)).eqlSlice("hi"));
-                try std.testing.expectError(Error.OutOfRange, arr.at(2));
-            }
-        }
-
-        test atMutUnchecked {
-            {
-                var arr = Array(i64).init();
-                defer arr.deinit();
-
-                arr.push(6);
-                try expect(arr.atMutUnchecked(0).* == 6);
-
-                arr.atMutUnchecked(0).* = 8;
-
-                arr.push(7);
-                try expect(arr.atMutUnchecked(0).* == 8);
-                try expect(arr.atMutUnchecked(1).* == 7);
-            }
-            {
-                var arr = Array(String).init();
-                defer arr.deinit();
-
-                arr.push(String.initUnchecked("hi"));
-                try expect(arr.atMutUnchecked(0).eqlSlice("hi"));
-
-                arr.atMutUnchecked(0).deinit();
-                arr.atMutUnchecked(0).* = String.initUnchecked("erm");
-
-                arr.push(String.initUnchecked("hi"));
-                try expect(arr.atMutUnchecked(0).eqlSlice("erm"));
-                try expect(arr.atMutUnchecked(1).eqlSlice("hi"));
-            }
-        }
-
-        test atMut {
-            {
-                var arr = Array(i64).init();
-                defer arr.deinit();
-
-                arr.push(6);
-                try expect((try arr.atMut(0)).* == 6);
-                try std.testing.expectError(Error.OutOfRange, arr.at(1));
-
-                (try arr.atMut(0)).* = 8;
-
-                arr.push(7);
-                try expect((try arr.atMut(0)).* == 8);
-                try expect((try arr.atMut(1)).* == 7);
-                try std.testing.expectError(Error.OutOfRange, arr.at(2));
-            }
-            {
-                var arr = Array(String).init();
-                defer arr.deinit();
-
-                arr.push(String.initUnchecked("hi"));
-                try expect((try arr.atMut(0)).eqlSlice("hi"));
-                try std.testing.expectError(Error.OutOfRange, arr.at(1));
-
-                (try arr.atMut(0)).deinit();
-                (try arr.atMut(0)).* = String.initUnchecked("erm");
-
-                arr.push(String.initUnchecked("hi"));
-                try expect((try arr.atMut(0)).eqlSlice("erm"));
-                try expect((try arr.atMut(1)).eqlSlice("hi"));
-                try std.testing.expectError(Error.OutOfRange, arr.at(2));
-            }
-        }
     };
 }
 
@@ -296,3 +137,153 @@ pub const RawArray = extern struct {
     pub extern fn cubs_array_at_mut_unchecked(self: *RawArray, index: usize) callconv(.C) *anyopaque;
     pub extern fn cubs_array_at_mut(out: **anyopaque, self: *RawArray, index: usize) callconv(.C) Err;
 };
+
+test "nested array" {
+    var arr1 = Array(Array(i64)).init();
+    defer arr1.deinit();
+
+    var arr2 = Array(i64).init();
+    arr2.push(1);
+    arr1.push(arr2);
+}
+
+test "push" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        arr.push(6);
+        try expect(arr.len == 1);
+
+        arr.push(7);
+        try expect(arr.len == 2);
+    }
+    {
+        var arr = Array(String).init();
+        defer arr.deinit();
+
+        arr.push(String.initUnchecked("hi"));
+        try expect(arr.len == 1);
+
+        arr.push(String.initUnchecked("hi"));
+        try expect(arr.len == 2);
+    }
+}
+
+test "atUnchecked" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        arr.push(6);
+        try expect(arr.atUnchecked(0).* == 6);
+
+        arr.push(7);
+        try expect(arr.atUnchecked(0).* == 6);
+        try expect(arr.atUnchecked(1).* == 7);
+    }
+    {
+        var arr = Array(String).init();
+        defer arr.deinit();
+
+        arr.push(String.initUnchecked("hi"));
+        try expect(arr.atUnchecked(0).eqlSlice("hi"));
+
+        arr.push(String.initUnchecked("hi"));
+        try expect(arr.atUnchecked(0).eqlSlice("hi"));
+        try expect(arr.atUnchecked(1).eqlSlice("hi"));
+    }
+}
+
+test "at" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        arr.push(6);
+        try expect((try arr.at(0)).* == 6);
+        try std.testing.expectError(error.OutOfRange, arr.at(1));
+
+        arr.push(7);
+        try expect((try arr.at(0)).* == 6);
+        try expect((try arr.at(1)).* == 7);
+        try std.testing.expectError(error.OutOfRange, arr.at(2));
+    }
+    {
+        var arr = Array(String).init();
+        defer arr.deinit();
+
+        arr.push(String.initUnchecked("hi"));
+        try expect((try arr.at(0)).eqlSlice("hi"));
+        try std.testing.expectError(error.OutOfRange, arr.at(1));
+
+        arr.push(String.initUnchecked("hi"));
+        try expect((try arr.at(0)).eqlSlice("hi"));
+        try expect((try arr.at(1)).eqlSlice("hi"));
+        try std.testing.expectError(error.OutOfRange, arr.at(2));
+    }
+}
+
+test "atMutUnchecked" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        arr.push(6);
+        try expect(arr.atMutUnchecked(0).* == 6);
+
+        arr.atMutUnchecked(0).* = 8;
+
+        arr.push(7);
+        try expect(arr.atMutUnchecked(0).* == 8);
+        try expect(arr.atMutUnchecked(1).* == 7);
+    }
+    {
+        var arr = Array(String).init();
+        defer arr.deinit();
+
+        arr.push(String.initUnchecked("hi"));
+        try expect(arr.atMutUnchecked(0).eqlSlice("hi"));
+
+        arr.atMutUnchecked(0).deinit();
+        arr.atMutUnchecked(0).* = String.initUnchecked("erm");
+
+        arr.push(String.initUnchecked("hi"));
+        try expect(arr.atMutUnchecked(0).eqlSlice("erm"));
+        try expect(arr.atMutUnchecked(1).eqlSlice("hi"));
+    }
+}
+
+test "atMut" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        arr.push(6);
+        try expect((try arr.atMut(0)).* == 6);
+        try std.testing.expectError(error.OutOfRange, arr.at(1));
+
+        (try arr.atMut(0)).* = 8;
+
+        arr.push(7);
+        try expect((try arr.atMut(0)).* == 8);
+        try expect((try arr.atMut(1)).* == 7);
+        try std.testing.expectError(error.OutOfRange, arr.at(2));
+    }
+    {
+        var arr = Array(String).init();
+        defer arr.deinit();
+
+        arr.push(String.initUnchecked("hi"));
+        try expect((try arr.atMut(0)).eqlSlice("hi"));
+        try std.testing.expectError(error.OutOfRange, arr.at(1));
+
+        (try arr.atMut(0)).deinit();
+        (try arr.atMut(0)).* = String.initUnchecked("erm");
+
+        arr.push(String.initUnchecked("hi"));
+        try expect((try arr.atMut(0)).eqlSlice("erm"));
+        try expect((try arr.atMut(1)).eqlSlice("hi"));
+        try std.testing.expectError(error.OutOfRange, arr.at(2));
+    }
+}

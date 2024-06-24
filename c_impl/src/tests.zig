@@ -14,7 +14,7 @@ comptime {
     _ = @import("primitives/script_value.zig").StructContext;
 
     _ = @import("primitives/string/string.zig").String;
-    _ = @import("primitives/array/array.zig").Array;
+    _ = @import("primitives/array/array.zig");
     //_ = @import("primitives/set/set.zig").Set;
     _ = @import("primitives/map/map.zig").Map;
     _ = @import("primitives/map/map.zig");
