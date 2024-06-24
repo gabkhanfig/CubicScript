@@ -21,10 +21,10 @@ typedef struct CubsStructContext {
     CubsStructEqlFn eql;
     /// Can be NULL
     CubsStructHashFn hash;
+    /// Can be NULL, only used for debugging purposes
     const char* name;
+    /// Is the length of `name`. Can be 0. Only used for debugging purposes
     size_t nameLength;
-    const char* fullyQualifiedName;
-    size_t fullyQualifiedNameLength;
 } CubsStructContext;
 
 /// 0 / null intialization makes it an empty string.

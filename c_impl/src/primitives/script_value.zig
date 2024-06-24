@@ -68,11 +68,11 @@ pub const ValueTag = enum(c_int) {
 pub const StructContext = extern struct {
     sizeOfType: usize,
     tag: ValueTag,
-    onDeinit: ?*const fn (*anyopaque) void = null,
+    onDeinit: ?*const fn (self: *anyopaque) callconv(.C) void = null,
+    eql: ?*const fn (self: *const anyopaque, other: *const anyopaque) callconv(.C) bool = null,
+    hash: ?*const fn (self: *const anyopaque) callconv(.C) usize = null,
     name: [*c]const u8,
     nameLength: usize,
-    fullyQualifiedName: [*c]const u8,
-    fullyQualifiedNameLength: usize,
 
     /// Automatically generate a struct context for script use
     pub fn auto(comptime T: type) *const StructContext {
@@ -81,32 +81,30 @@ pub const StructContext = extern struct {
     }
 
     fn generate(comptime T: type) StructContext {
-        var rtti: StructContext = undefined;
-        rtti.sizeOfType = @sizeOf(T);
-        rtti.tag = .userStruct;
+        var context: StructContext = undefined;
+        context.sizeOfType = @sizeOf(T);
+        context.tag = .userStruct;
 
-        rtti.onDeinit = null;
+        context.onDeinit = null;
         if (std.meta.hasFn(T, "deinit")) {
-            rtti.onDeinit = @ptrCast(&T.deinit);
+            context.onDeinit = @ptrCast(&T.deinit);
         }
 
-        const names = typeNames(T);
-        rtti.name = names.unqualified.ptr;
-        rtti.nameLength = names.unqualified.len;
-        rtti.fullyQualifiedName = names.qualified.ptr;
-        rtti.fullyQualifiedNameLength = names.qualified.len;
+        const name = unqualifiedTypeName(T);
+        context.name = name.ptr;
+        context.nameLength = name.len;
 
-        return rtti;
+        return context;
     }
 
-    fn typeNames(comptime T: type) struct { unqualified: []const u8, qualified: []const u8 } {
+    fn unqualifiedTypeName(comptime T: type) []const u8 {
         const fullyQualifiedName = @typeName(T);
 
         var unqualifiedName: []const u8 = fullyQualifiedName;
         if (std.mem.lastIndexOf(u8, fullyQualifiedName, ".")) |i| {
             unqualifiedName = fullyQualifiedName[(i + 1)..];
         }
-        return .{ .unqualified = unqualifiedName, .qualified = fullyQualifiedName };
+        return unqualifiedName;
     }
 
     test auto {

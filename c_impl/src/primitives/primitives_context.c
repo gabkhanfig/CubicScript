@@ -21,8 +21,6 @@ const CubsStructContext CUBS_BOOL_CONTEXT = {
     .hash = (CubsStructHashFn)&bool_hash,
     .name = "bool",
     .nameLength = 4,
-    .fullyQualifiedName = "bool",
-    .fullyQualifiedNameLength = 4,
 };
 
 static bool int_eql(const int64_t* self, const int64_t* other) {
@@ -41,8 +39,6 @@ const CubsStructContext CUBS_INT_CONTEXT = {
     .hash = (CubsStructHashFn)&int_hash,
     .name = "int",
     .nameLength = 3,
-    .fullyQualifiedName = "int",
-    .fullyQualifiedNameLength = 3,
 };
 
 static bool float_eql(const double* self, const double* other) {
@@ -64,8 +60,6 @@ const CubsStructContext CUBS_FLOAT_CONTEXT = {
     .hash = (CubsStructHashFn)&float_hash,
     .name = "float",
     .nameLength = 5,
-    .fullyQualifiedName = "float",
-    .fullyQualifiedNameLength = 5,
 };
 
 const CubsStructContext CUBS_STRING_CONTEXT = {
@@ -76,8 +70,6 @@ const CubsStructContext CUBS_STRING_CONTEXT = {
     .hash = (CubsStructHashFn)&cubs_string_hash,
     .name = "string",
     .nameLength = 6,
-    .fullyQualifiedName = "string",
-    .fullyQualifiedNameLength = 6,
 };
 
 const CubsStructContext CUBS_ARRAY_CONTEXT = {
@@ -88,8 +80,6 @@ const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .hash = NULL,
     .name = "array",
     .nameLength = 5,
-    .fullyQualifiedName = "array",
-    .fullyQualifiedNameLength = 5,
 };
 
 const CubsStructContext CUBS_MAP_CONTEXT = {
@@ -100,8 +90,6 @@ const CubsStructContext CUBS_MAP_CONTEXT = {
     .hash = NULL,
     .name = "map",
     .nameLength = 3,
-    .fullyQualifiedName = "map",
-    .fullyQualifiedNameLength = 3,
 };
 
 const CubsStructContext *cubs_primitive_context_for_tag(CubsValueTag tag)
