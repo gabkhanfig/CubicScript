@@ -10,6 +10,11 @@ typedef bool (*CubsStructEqlFn)(const void* self, const void* other);
 typedef size_t (*CubsStructHashFn)(const void* self);
 /// Is both RTTI, and a VTable for certain *optional* functionality, such as on-deinitialization,
 /// comparison operations, hashing, etc.
+/// # Script Classes
+/// When making a context for a script compatible class
+/// - `onDeinit` -> `cubs_class_opaque_deinit(...)`
+/// - `eql` -> `cubs_class_opaque_eql(...)`
+/// - `hash` -> `cubs_class_opaque_hash(...)`
 typedef struct CubsStructContext {
     /// In bytes. Will be rounded up to 8 for the interpreter where appropriate
     size_t sizeOfType;
@@ -163,6 +168,12 @@ typedef struct CubsMat3 {
 typedef struct CubsMat4 {
   void* _inner;
 } CubsMat4;
+
+void cubs_class_opaque_deinit(void* self);
+
+bool cubs_class_opaque_eql(const void* self, const void* other);
+
+size_t cubs_class_opaque_hash(const void* self);
 
 typedef union CubsRawValue {
     bool boolean;

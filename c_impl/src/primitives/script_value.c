@@ -9,6 +9,20 @@
 _Static_assert(sizeof(size_t) == sizeof(void*), "CubicScript requires a system with non-segmented addressing");
 _Static_assert(sizeof(void*) == 8, "CubicScript is not compatible with non-64 bit architectures");
 
+void cubs_class_opaque_deinit(void *self)
+{
+}
+
+bool cubs_class_opaque_eql(const void *self, const void *other)
+{
+    return false;
+}
+
+size_t cubs_class_opaque_hash(const void *self)
+{
+    return 0;
+}
+
 void cubs_raw_value_deinit(CubsRawValue *self, CubsValueTag tag)
 {
     switch(tag) {
