@@ -19,6 +19,7 @@ typedef enum CubsValueTag {
     cubsValueTagError = 16,
     cubsValueTagResult = 17,
     cubsValueTagTaggedUnion = 18,
+    cubsValueTagUserClass = 19,
     cubsValueTagOwnedInterface = 20,
     cubsValueTagInterfaceRef = 21,
     cubsValueTagConstRef = 22,

@@ -44,6 +44,7 @@ pub const ValueTag = enum(c_int) {
     err = 16,
     result = 17,
     taggedUnion = 18,
+    userClass = 19,
     ownedInterface = 20,
     interfaceRef = 21,
     constRef = 22,
