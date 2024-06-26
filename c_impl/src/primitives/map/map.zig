@@ -67,6 +67,25 @@ pub fn Map(comptime K: type, comptime V: type) type {
         pub fn asRawMut(self: *Self) *RawMap {
             return @ptrCast(self);
         }
+
+        pub fn iter(self: *const Self) Iter {
+            return Iter{ ._iter = CubsMapConstIter.cubs_map_const_iter_begin(self.asRaw()) };
+        }
+
+        pub const Iter = extern struct {
+            _iter: CubsMapConstIter,
+
+            pub fn next(self: *Iter) ?struct { key: *const K, value: *const V } {
+                if (!CubsMapConstIter.cubs_map_const_iter_next(&self._iter)) {
+                    return null;
+                } else {
+                    return .{
+                        .key = @ptrCast(@alignCast(self._iter.key.?)),
+                        .value = @ptrCast(@alignCast(self._iter.value.?)),
+                    };
+                }
+            }
+        };
     };
 }
 
@@ -85,6 +104,17 @@ pub const RawMap = extern struct {
     pub extern fn cubs_map_find_mut(self: *RawMap, key: *const anyopaque) callconv(.C) ?*anyopaque;
     pub extern fn cubs_map_insert(self: *RawMap, key: *anyopaque, value: *anyopaque) callconv(.C) void;
     pub extern fn cubs_map_erase(self: *RawMap, key: *const anyopaque) callconv(.C) bool;
+};
+
+pub const CubsMapConstIter = extern struct {
+    _map: *const RawMap,
+    _nextIter: ?*const anyopaque,
+    key: ?*const anyopaque,
+    value: ?*const anyopaque,
+
+    pub extern fn cubs_map_const_iter_begin(self: *const RawMap) callconv(.C) CubsMapConstIter;
+    pub extern fn cubs_map_const_iter_end(self: *const RawMap) callconv(.C) CubsMapConstIter;
+    pub extern fn cubs_map_const_iter_next(iter: *CubsMapConstIter) callconv(.C) bool;
 };
 
 test "init" {
@@ -308,5 +338,56 @@ test "erase" {
 
             try expect(map.erase(&eraseVal) == true);
         }
+    }
+}
+
+test "iter" {
+    var map = Map(i64, f64).init();
+    defer map.deinit();
+
+    {
+        var iter = map.iter();
+        try expect(iter.next() == null);
+    }
+
+    map.insert(0, 0.1);
+    {
+        var iter = map.iter();
+        var i: usize = 0;
+        while (iter.next()) |pair| {
+            try expect(i < 1);
+            try expect(pair.key.* == 0);
+            try expect(pair.value.* == 0.1);
+            i += 1;
+        }
+    }
+
+    map.insert(1, 0.2);
+    {
+        var iter = map.iter();
+
+        const pair1 = iter.next().?;
+        try expect(pair1.key.* == 0);
+        try expect(pair1.value.* == 0.1);
+
+        const pair2 = iter.next().?;
+        try expect(pair2.key.* == 1);
+        try expect(pair2.value.* == 0.2);
+
+        try expect(iter.next() == null);
+    }
+
+    for (2..10) |i| {
+        map.insert(@intCast(i), @floatFromInt(i));
+    }
+
+    {
+        var iter = map.iter();
+        var i: usize = 0;
+        while (iter.next()) |pair| {
+            try expect(pair.key.* == i);
+            i += 1;
+        }
+        try expect(i == 10);
     }
 }

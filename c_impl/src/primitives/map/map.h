@@ -5,6 +5,15 @@
 #include <stdint.h>
 #include "../script_value.h"
 
+typedef struct CubsMapConstIter {
+    const CubsMap* _map;
+    const void* _nextIter;
+    /// Will need to be cast to the appropriate type
+    const void* key;
+    /// Will need to be cast to the appropriate type
+    const void* value;
+} CubsMapConstIter;
+
 CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag);
 
 CubsMap cubs_map_init_user_struct(const CubsStructContext* keyContext, const CubsStructContext* valueContext);
@@ -31,3 +40,10 @@ void cubs_map_insert(CubsMap* self, void* key, void* value);
 /// and returns false if the entry doesn't exist.
 /// Assumes that `key` is the correct type that this map holds.
 bool cubs_map_erase(CubsMap* self, const void* key);
+
+CubsMapConstIter cubs_map_const_iter_begin(const CubsMap* self);
+
+/// For C++ interop
+CubsMapConstIter cubs_map_const_iter_end(const CubsMap* self);
+
+bool cubs_map_const_iter_next(CubsMapConstIter* iter);

@@ -478,3 +478,57 @@ bool cubs_map_erase(CubsMap *self, const void *key)
     }
     return result;
 }
+
+CubsMapConstIter cubs_map_const_iter_begin(const CubsMap* self)
+{
+    const Metadata* metadata = map_metadata(self);
+    const CubsMapConstIter iter = {
+        ._map = self,
+        ._nextIter = (const void*)metadata->iterFirst, // If `iterFirst == NULL`, means an 0 length iterator
+        .key = NULL, 
+        .value = NULL,
+    };
+    return iter;
+}
+
+CubsMapConstIter cubs_map_const_iter_end(const CubsMap *self)
+{
+    const CubsMapConstIter iter = {
+        ._map = self,
+        ._nextIter = NULL,
+        .key = NULL,
+        .value = NULL,
+    };
+    return iter;
+}
+
+bool cubs_map_const_iter_next(CubsMapConstIter *iter)
+{
+    if(iter->_nextIter == NULL) {
+        iter->key = NULL; // For C++
+        iter->value = NULL;
+        return false;
+    }
+
+    const Metadata* metadata = map_metadata(iter->_map);
+    PairHeader* currentPair = ((PairHeader*)iter->_nextIter);
+    if(currentPair == metadata->iterLast) {
+        const CubsMapConstIter newIter = {
+            ._map = iter->_map,
+            ._nextIter = NULL,
+            .key = pair_key(currentPair),
+            .value = pair_value(currentPair, iter->_map->keyContext->sizeOfType),
+        };
+        *iter = newIter;
+    } else {
+        assert(currentPair->iterAfter != NULL);
+        const CubsMapConstIter newIter = {
+            ._map = iter->_map,
+            ._nextIter = (const void*)currentPair->iterAfter,
+            .key = pair_key(currentPair),
+            .value = pair_value(currentPair, iter->_map->keyContext->sizeOfType),
+        };
+        *iter = newIter;
+    }    
+    return true;
+}
