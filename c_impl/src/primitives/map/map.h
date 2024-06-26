@@ -33,6 +33,16 @@ typedef struct CubsMapReverseConstIter {
     const void* value;
 } CubsMapReverseConstIter;
 
+typedef struct CubsMapReverseMutIter {
+    CubsMap* _map;
+    void* _nextIter;
+    /// Will need to be cast to the appropriate type.
+    /// Is immutable because modifiying the keys in a hashmap will completely mess up the way it's fetched.
+    const void* key;   
+    /// Will need to be cast to the appropriate type
+    void* value;
+} CubsMapReverseMutIter;
+
 CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag);
 
 CubsMap cubs_map_init_user_struct(const CubsStructContext* keyContext, const CubsStructContext* valueContext);
@@ -80,3 +90,10 @@ CubsMapReverseConstIter cubs_map_reverse_const_iter_begin(const CubsMap* self);
 CubsMapReverseConstIter cubs_map_reverse_const_iter_end(const CubsMap* self);
 
 bool cubs_map_reverse_const_iter_next(CubsMapReverseConstIter* iter);
+
+CubsMapReverseMutIter cubs_map_reverse_mut_iter_begin(CubsMap* self);
+
+/// For C++ interop
+CubsMapReverseMutIter cubs_map_reverse_mut_iter_end(CubsMap* self);
+
+bool cubs_map_reverse_mut_iter_next(CubsMapReverseMutIter* iter);

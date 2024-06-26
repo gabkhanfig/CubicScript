@@ -640,3 +640,54 @@ bool cubs_map_reverse_const_iter_next(CubsMapReverseConstIter *iter)
     }    
     return true;
 }
+
+CubsMapReverseMutIter cubs_map_reverse_mut_iter_begin(CubsMap* self) {
+    Metadata* metadata = map_metadata_mut(self);
+    const CubsMapReverseMutIter iter = {
+        ._map = self,
+        ._nextIter = (void*)metadata->iterLast, // If `iterLast == NULL`, means an 0 length iterator
+        .key = NULL, 
+        .value = NULL,
+    };
+    return iter;
+}
+
+CubsMapReverseMutIter cubs_map_reverse_mut_iter_end(CubsMap* self) {
+    const CubsMapReverseMutIter iter = {
+        ._map = self,
+        ._nextIter = NULL,
+        .key = NULL,
+        .value = NULL,
+    };
+    return iter;
+}
+
+bool cubs_map_reverse_mut_iter_next(CubsMapReverseMutIter* iter) {
+    if(iter->_nextIter == NULL) {
+        iter->key = NULL; // For C++
+        iter->value = NULL;
+        return false;
+    }
+
+    Metadata* metadata = map_metadata_mut(iter->_map);
+    PairHeader* currentPair = ((PairHeader*)iter->_nextIter);
+    if(currentPair == metadata->iterFirst) {
+        const CubsMapReverseMutIter newIter = {
+            ._map = iter->_map,
+            ._nextIter = NULL,
+            .key = pair_key(currentPair),
+            .value = pair_value_mut(currentPair, iter->_map->keyContext->sizeOfType),
+        };
+        *iter = newIter;
+    } else {
+        assert(currentPair->iterBefore != NULL);
+        const CubsMapReverseMutIter newIter = {
+            ._map = iter->_map,
+            ._nextIter = (void*)currentPair->iterBefore,
+            .key = pair_key(currentPair),
+            .value = pair_value_mut(currentPair, iter->_map->keyContext->sizeOfType),
+        };
+        *iter = newIter;
+    }    
+    return true;
+}

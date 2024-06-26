@@ -80,6 +80,10 @@ pub fn Map(comptime K: type, comptime V: type) type {
             return ReverseIter{ ._iter = CubsMapReverseConstIter.cubs_map_reverse_const_iter_begin(self.asRaw()) };
         }
 
+        pub fn reverseMutIter(self: *Self) ReverseMutIter {
+            return ReverseMutIter{ ._iter = CubsMapReverseMutIter.cubs_map_reverse_mut_iter_begin(self.asRawMut()) };
+        }
+
         pub const Iter = extern struct {
             _iter: CubsMapConstIter,
 
@@ -115,6 +119,21 @@ pub fn Map(comptime K: type, comptime V: type) type {
 
             pub fn next(self: *ReverseIter) ?struct { key: *const K, value: *const V } {
                 if (!CubsMapReverseConstIter.cubs_map_reverse_const_iter_next(&self._iter)) {
+                    return null;
+                } else {
+                    return .{
+                        .key = @ptrCast(@alignCast(self._iter.key.?)),
+                        .value = @ptrCast(@alignCast(self._iter.value.?)),
+                    };
+                }
+            }
+        };
+
+        pub const ReverseMutIter = extern struct {
+            _iter: CubsMapReverseMutIter,
+
+            pub fn next(self: *ReverseMutIter) ?struct { key: *const K, value: *V } {
+                if (!CubsMapReverseMutIter.cubs_map_reverse_mut_iter_next(&self._iter)) {
                     return null;
                 } else {
                     return .{
@@ -175,6 +194,17 @@ pub const CubsMapReverseConstIter = extern struct {
     pub extern fn cubs_map_reverse_const_iter_begin(self: *const RawMap) callconv(.C) CubsMapReverseConstIter;
     pub extern fn cubs_map_reverse_const_iter_end(self: *const RawMap) callconv(.C) CubsMapReverseConstIter;
     pub extern fn cubs_map_reverse_const_iter_next(iter: *CubsMapReverseConstIter) callconv(.C) bool;
+};
+
+pub const CubsMapReverseMutIter = extern struct {
+    _map: *RawMap,
+    _nextIter: ?*anyopaque,
+    key: ?*const anyopaque,
+    value: ?*anyopaque,
+
+    pub extern fn cubs_map_reverse_mut_iter_begin(self: *RawMap) callconv(.C) CubsMapReverseMutIter;
+    pub extern fn cubs_map_reverse_mut_iter_end(self: *RawMap) callconv(.C) CubsMapReverseMutIter;
+    pub extern fn cubs_map_reverse_mut_iter_next(iter: *CubsMapReverseMutIter) callconv(.C) bool;
 };
 
 test "init" {
@@ -561,6 +591,69 @@ test "reverseIter" {
         while (iter.next()) |pair| {
             i -= 1;
             try expect(pair.key.* == i);
+        }
+        try expect(i == 0);
+    }
+}
+
+test "reverseMutIter" {
+    var map = Map(i64, f64).init();
+    defer map.deinit();
+
+    {
+        var iter = map.reverseMutIter();
+        try expect(iter.next() == null);
+    }
+
+    map.insert(0, 0.1);
+    {
+        var iter = map.reverseMutIter();
+        var i: usize = 0;
+        while (iter.next()) |pair| {
+            try expect(i < 1);
+            try expect(pair.key.* == 0);
+            try expect(pair.value.* == 0.1);
+            i += 1;
+        }
+    }
+
+    map.insert(1, 0.2);
+    {
+        var iter = map.reverseMutIter();
+
+        const pair2 = iter.next().?;
+        try expect(pair2.key.* == 1);
+        try expect(pair2.value.* == 0.2);
+
+        const pair1 = iter.next().?;
+        try expect(pair1.key.* == 0);
+        try expect(pair1.value.* == 0.1);
+
+        try expect(iter.next() == null);
+    }
+
+    for (2..10) |i| {
+        map.insert(@intCast(i), @floatFromInt(i));
+    }
+
+    {
+        var iter = map.reverseMutIter();
+        var i: usize = 10;
+        while (iter.next()) |pair| {
+            i -= 1;
+            try expect(pair.key.* == i);
+            pair.value.* = 1.5;
+        }
+        try expect(i == 0);
+    }
+
+    {
+        var iter = map.reverseMutIter();
+        var i: usize = 10;
+        while (iter.next()) |pair| {
+            i -= 1;
+            try expect(pair.key.* == i);
+            try expect(pair.value.* == 1.5);
         }
         try expect(i == 0);
     }
