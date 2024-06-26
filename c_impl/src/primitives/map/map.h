@@ -24,6 +24,15 @@ typedef struct CubsMapMutIter {
     void* value;
 } CubsMapMutIter;
 
+typedef struct CubsMapReverseConstIter {
+    const CubsMap* _map;
+    const void* _nextIter;
+    /// Will need to be cast to the appropriate type
+    const void* key;
+    /// Will need to be cast to the appropriate type
+    const void* value;
+} CubsMapReverseConstIter;
+
 CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag);
 
 CubsMap cubs_map_init_user_struct(const CubsStructContext* keyContext, const CubsStructContext* valueContext);
@@ -64,3 +73,10 @@ CubsMapMutIter cubs_map_mut_iter_begin(CubsMap* self);
 CubsMapMutIter cubs_map_mut_iter_end(CubsMap* self);
 
 bool cubs_map_mut_iter_next(CubsMapMutIter* iter);
+
+CubsMapReverseConstIter cubs_map_reverse_const_iter_begin(const CubsMap* self);
+
+/// For C++ interop
+CubsMapReverseConstIter cubs_map_reverse_const_iter_end(const CubsMap* self);
+
+bool cubs_map_reverse_const_iter_next(CubsMapReverseConstIter* iter);

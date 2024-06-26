@@ -535,7 +535,7 @@ bool cubs_map_const_iter_next(CubsMapConstIter *iter)
 
 CubsMapMutIter cubs_map_mut_iter_begin(CubsMap *self)
 {
-    const Metadata* metadata = map_metadata(self);
+    Metadata* metadata = map_metadata_mut(self);
     const CubsMapMutIter iter = {
         ._map = self,
         ._nextIter = (void*)metadata->iterFirst, // If `iterFirst == NULL`, means an 0 length iterator
@@ -581,6 +581,60 @@ bool cubs_map_mut_iter_next(CubsMapMutIter *iter)
             ._nextIter = (const void*)currentPair->iterAfter,
             .key = pair_key(currentPair),
             .value = pair_value_mut(currentPair, iter->_map->keyContext->sizeOfType),
+        };
+        *iter = newIter;
+    }    
+    return true;
+}
+
+CubsMapReverseConstIter cubs_map_reverse_const_iter_begin(const CubsMap *self)
+{
+    const Metadata* metadata = map_metadata(self);
+    const CubsMapReverseConstIter iter = {
+        ._map = self,
+        ._nextIter = (const void*)metadata->iterLast, // If `iterLast == NULL`, means an 0 length iterator
+        .key = NULL, 
+        .value = NULL,
+    };
+    return iter;
+}
+
+CubsMapReverseConstIter cubs_map_reverse_const_iter_end(const CubsMap *self)
+{
+    const CubsMapReverseConstIter iter = {
+        ._map = self,
+        ._nextIter = NULL,
+        .key = NULL,
+        .value = NULL,
+    };
+    return iter;
+}
+
+bool cubs_map_reverse_const_iter_next(CubsMapReverseConstIter *iter)
+{
+    if(iter->_nextIter == NULL) {
+        iter->key = NULL; // For C++
+        iter->value = NULL;
+        return false;
+    }
+
+    const Metadata* metadata = map_metadata(iter->_map);
+    PairHeader* currentPair = ((PairHeader*)iter->_nextIter);
+    if(currentPair == metadata->iterFirst) {
+        const CubsMapReverseConstIter newIter = {
+            ._map = iter->_map,
+            ._nextIter = NULL,
+            .key = pair_key(currentPair),
+            .value = pair_value(currentPair, iter->_map->keyContext->sizeOfType),
+        };
+        *iter = newIter;
+    } else {
+        assert(currentPair->iterBefore != NULL);
+        const CubsMapReverseConstIter newIter = {
+            ._map = iter->_map,
+            ._nextIter = (const void*)currentPair->iterBefore,
+            .key = pair_key(currentPair),
+            .value = pair_value(currentPair, iter->_map->keyContext->sizeOfType),
         };
         *iter = newIter;
     }    
