@@ -49,6 +49,8 @@ CubsMap cubs_map_init_user_struct(const CubsStructContext* keyContext, const Cub
 
 void cubs_map_deinit(CubsMap* self);
 
+CubsMap cubs_map_clone(const CubsMap* self);
+
 /// Find `key` within the map `self`. If it doesn't exist, returns `NULL`, otherwise
 /// returns an immutable reference to the value in the key/value pair.
 /// Assumes that `key` is the correct type that this map holds.

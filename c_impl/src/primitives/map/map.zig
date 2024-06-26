@@ -42,6 +42,10 @@ pub fn Map(comptime K: type, comptime V: type) type {
             RawMap.cubs_map_deinit(self.asRawMut());
         }
 
+        pub fn clone(self: *const Self) Self {
+            return @bitCast(RawMap.cubs_map_clone(self.asRaw()));
+        }
+
         pub fn find(self: *const Self, key: *const K) ?*const V {
             return @ptrCast(@alignCast(RawMap.cubs_map_find(self.asRaw(), @ptrCast(key))));
         }
@@ -157,6 +161,7 @@ pub const RawMap = extern struct {
     pub extern fn cubs_map_init_primitives(keyTag: ValueTag, valueTag: ValueTag) callconv(.C) RawMap;
     pub extern fn cubs_map_init_user_struct(keyContext: *const StructContext, valueContext: *const StructContext) callconv(.C) RawMap;
     pub extern fn cubs_map_deinit(self: *RawMap) callconv(.C) void;
+    pub extern fn cubs_map_clone(self: *const RawMap) callconv(.C) RawMap;
     pub extern fn cubs_map_find(self: *const RawMap, key: *const anyopaque) callconv(.C) ?*const anyopaque;
     pub extern fn cubs_map_find_mut(self: *RawMap, key: *const anyopaque) callconv(.C) ?*anyopaque;
     pub extern fn cubs_map_insert(self: *RawMap, key: *anyopaque, value: *anyopaque) callconv(.C) void;
@@ -656,5 +661,27 @@ test "reverseMutIter" {
             try expect(pair.value.* == 1.5);
         }
         try expect(i == 0);
+    }
+}
+
+test "clone" {
+    var map = Map(i64, f64).init();
+    defer map.deinit();
+
+    for (0..100) |i| {
+        map.insert(@intCast(i), @floatFromInt(i));
+    }
+
+    var clone = map.clone();
+    defer clone.deinit();
+
+    try expect(clone.len == map.len);
+
+    var iter = clone.iter();
+    var i: i64 = 0;
+    while (iter.next()) |pair| {
+        try expect(pair.key.* == i);
+        try expect(pair.value.* == @as(f64, @floatFromInt(i)));
+        i += 1;
     }
 }

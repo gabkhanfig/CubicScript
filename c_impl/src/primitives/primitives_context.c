@@ -104,11 +104,16 @@ const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .nameLength = 5,
 };
 
+static void map_clone(CubsMap* dst, const CubsMap* self) {
+    const CubsMap temp = cubs_map_clone(self);
+    *dst = temp;
+}
+
 const CubsStructContext CUBS_MAP_CONTEXT = {
     .sizeOfType = sizeof(CubsMap),
     .tag = cubsValueTagMap,
     .onDeinit = (CubsStructOnDeinit)&cubs_map_deinit,
-    .clone = NULL,
+    .clone = (CubsStructCloneFn)&map_clone,
     .eql = NULL,
     .hash = NULL,
     .name = "map",

@@ -400,6 +400,54 @@ void cubs_map_deinit(CubsMap *self)
     metadata->groupsArray = NULL;
 }
 
+CubsMap cubs_map_clone(const CubsMap *self)
+{
+    if(self->len == 0) {
+        const CubsMap map = {.len = 0, ._metadata = {0}, .keyContext = self->keyContext, .valueContext = self->valueContext};
+        return map;
+    }
+
+    const Metadata* selfMetadata = map_metadata(self);
+    const size_t newGroupCount = selfMetadata->groupCount; // there probably is a more optimal way to do this
+
+    Group* newGroups = (Group*)cubs_malloc(sizeof(Group) * newGroupCount, _Alignof(Group));
+    for(size_t i = 0; i < newGroupCount; i++) {
+        newGroups[i] = group_init();
+    }
+
+    CubsMap newSelf = cubs_map_init_user_struct(self->keyContext, self->valueContext);
+    newSelf.len = self->len;
+    const Metadata newMetadataData = {
+        .available = ((GROUP_ALLOC_SIZE * newGroupCount * 4) / 5) - self->len, // * 0.8 for load factor
+        .groupCount = newGroupCount,
+        .groupsArray = newGroups,
+        .iterFirst = NULL,
+        .iterLast = NULL,
+    };
+    Metadata* newMetadata = map_metadata_mut(&newSelf);
+    *newMetadata = newMetadataData;
+
+    void* keyTempStorage = cubs_malloc(self->keyContext->sizeOfType, _Alignof(size_t));
+    void* valueTempStorage = cubs_malloc(self->valueContext->sizeOfType, _Alignof(size_t));
+
+    CubsMapConstIter iter = cubs_map_const_iter_begin(self);
+    size_t hashCode = ((PairHeader*)iter._nextIter)->hashCode;
+    while(cubs_map_const_iter_next(&iter)) {   
+        const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
+        const size_t groupIndex = groupBitmask.value % newMetadata->groupCount;
+    
+        self->keyContext->clone(keyTempStorage, iter.key);
+        self->keyContext->clone(valueTempStorage, iter.value);
+
+        group_insert(&newMetadata->groupsArray[groupIndex], keyTempStorage, valueTempStorage, self->keyContext, self->valueContext, hashCode, &newMetadata->iterFirst, &newMetadata->iterLast); 
+    }
+
+    cubs_free(keyTempStorage, self->keyContext->sizeOfType, _Alignof(size_t));
+    cubs_free(valueTempStorage, self->valueContext->sizeOfType, _Alignof(size_t));
+
+    return newSelf;
+}
+
 const void* cubs_map_find(const CubsMap *self, const void *key)
 {
     if(self->len == 0) {
