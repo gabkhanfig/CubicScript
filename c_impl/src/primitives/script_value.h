@@ -6,6 +6,7 @@
 #include "value_tag.h"
 
 typedef void (*CubsStructOnDeinit)(void* self);
+typedef void (*CubsStructCloneFn)(void* dst, const void* self);
 typedef bool (*CubsStructEqlFn)(const void* self, const void* other);
 typedef size_t (*CubsStructHashFn)(const void* self);
 /// Is both RTTI, and a VTable for certain *optional* functionality, such as on-deinitialization,
@@ -22,6 +23,8 @@ typedef struct CubsStructContext {
     CubsValueTag tag;
     /// Can be NULL
     CubsStructOnDeinit onDeinit;
+    /// Can be NULL
+    CubsStructCloneFn clone;
     /// Can be NULL
     CubsStructEqlFn eql;
     /// Can be NULL
