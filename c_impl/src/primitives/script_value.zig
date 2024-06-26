@@ -70,6 +70,7 @@ pub const StructContext = extern struct {
     sizeOfType: usize,
     tag: ValueTag,
     onDeinit: ?*const fn (self: *anyopaque) callconv(.C) void = null,
+    clone: ?*const fn (dst: *anyopaque, self: *const anyopaque) callconv(.C) void = null,
     eql: ?*const fn (self: *const anyopaque, other: *const anyopaque) callconv(.C) bool = null,
     hash: ?*const fn (self: *const anyopaque) callconv(.C) usize = null,
     name: [*c]const u8,
