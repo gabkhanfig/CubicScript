@@ -148,3 +148,27 @@ CubsArrayError cubs_array_at_mut(void** out, CubsArray *self, size_t index)
     *out = temp;
     return cubsArrayErrorNone;
 }
+
+bool cubs_array_eql(const CubsArray *self, const CubsArray *other)
+{
+    assert(self->context->eql != NULL);
+    assert(other->context->eql != NULL);
+    assert(self->context->eql == other->context->eql);
+    assert(self->context->sizeOfType == other->context->sizeOfType);
+    assert(self->context->tag == other->context->tag);
+
+    if(self->len != other->len) {
+        return false;
+    }
+
+    const size_t sizeOfType = self->context->sizeOfType;
+    for(size_t i = 0; i < self->len; i++) {
+        const void* selfValue = (const void*)&((const char*)self->buf)[i * sizeOfType];
+        const void* otherValue = (const void*)&((const char*)other->buf)[i * sizeOfType];
+
+        if(self->context->eql(selfValue, otherValue) == false) {
+            return false;
+        }
+    }
+    return true;
+}

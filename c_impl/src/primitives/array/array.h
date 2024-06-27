@@ -50,3 +50,12 @@ void* cubs_array_at_mut_unchecked(CubsArray* self, size_t index);
 /// `out` must be a pointer to a variable of type `CubsRawValue*`, as it's used 
 /// to get the actual data.
 CubsArrayError cubs_array_at_mut(void** out, CubsArray* self, size_t index);
+
+/// Does equality check for `self` having the same elements, in the same order, as `other`.
+/// # Debug Asserts
+/// - `self->context->eql != NULL`
+/// - `other->context->eql != NULL`
+/// - `self->context->eql == other->context->eql`
+/// - `self->context->sizeOfType == other->context->sizeOfType`
+/// - `self->context->tag == other->context->tag`
+bool cubs_array_eql(const CubsArray* self, const CubsArray* other);

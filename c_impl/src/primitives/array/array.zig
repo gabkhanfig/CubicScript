@@ -106,6 +106,10 @@ pub fn Array(comptime T: type) type {
             }
         }
 
+        pub fn eql(self: *const Self, other: *const Self) bool {
+            return RawArray.cubs_array_eql(self.asRaw(), other.asRaw());
+        }
+
         pub fn asRaw(self: *const Self) *const RawArray {
             return @ptrCast(self);
         }
@@ -141,6 +145,7 @@ pub const RawArray = extern struct {
     pub extern fn cubs_array_at(out: **const anyopaque, self: *const RawArray, index: usize) callconv(.C) Err;
     pub extern fn cubs_array_at_mut_unchecked(self: *RawArray, index: usize) callconv(.C) *anyopaque;
     pub extern fn cubs_array_at_mut(out: **anyopaque, self: *RawArray, index: usize) callconv(.C) Err;
+    pub extern fn cubs_array_eql(self: *const RawArray, other: *const RawArray) callconv(.C) bool;
 };
 
 test "nested array" {
@@ -328,5 +333,62 @@ test "clone" {
         try expect(clone.atUnchecked(3).eqlSlice("3"));
         try expect(clone.atUnchecked(4).eqlSlice("4"));
         try expect(clone.atUnchecked(5).eqlSlice("5"));
+    }
+}
+
+test "eql" {
+    {
+        var arr1 = Array(i64).init();
+        defer arr1.deinit();
+
+        for (0..6) |i| {
+            arr1.push(@intCast(i));
+        }
+
+        var arr2 = Array(i64).init();
+        defer arr2.deinit();
+
+        for (0..6) |i| {
+            arr2.push(@intCast(i));
+        }
+
+        try expect(arr1.eql(&arr2));
+
+        arr2.atMutUnchecked(0).* = 10;
+        try expect(!arr1.eql(&arr2));
+
+        arr2.atMutUnchecked(0).* = 0;
+        try expect(arr1.eql(&arr2));
+
+        arr2.push(6);
+        try expect(!arr1.eql(&arr2));
+    }
+    {
+        var arr1 = Array(String).init();
+        defer arr1.deinit();
+
+        for (0..6) |i| {
+            arr1.push(String.fromInt(@intCast(i)));
+        }
+
+        var arr2 = Array(String).init();
+        defer arr2.deinit();
+
+        for (0..6) |i| {
+            arr2.push(String.fromInt(@intCast(i)));
+        }
+
+        try expect(arr1.eql(&arr2));
+
+        arr2.atMutUnchecked(0).deinit();
+        arr2.atMutUnchecked(0).* = String.initUnchecked("hello world!");
+        try expect(!arr1.eql(&arr2));
+
+        arr2.atMutUnchecked(0).deinit();
+        arr2.atMutUnchecked(0).* = String.fromInt(0);
+        try expect(arr1.eql(&arr2));
+
+        arr2.push(String.fromInt(6));
+        try expect(!arr1.eql(&arr2));
     }
 }
