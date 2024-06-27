@@ -80,6 +80,33 @@ void cubs_array_deinit(CubsArray *self)
     self->len = 0;
 }
 
+CubsArray cubs_array_clone(const CubsArray *self)
+{
+    CubsArray newSelf = {.len = self->len, .context = self->context, .buf = NULL, .capacity = 0};
+
+    if(self->len == 0) {
+        return newSelf;
+    }
+
+    ensure_total_capacity(&newSelf, self->len);
+  
+    const size_t sizeOfType = self->context->sizeOfType;
+    void* valueTempStorage = cubs_malloc(sizeOfType, _Alignof(size_t));
+
+    for(size_t i = 0; i < self->len; i++) {
+
+        void* selfValue = (void*)&((char*)self->buf)[i * sizeOfType];
+        void* newValue = (void*)&((char*)newSelf.buf)[i * sizeOfType];
+   
+        self->context->clone(valueTempStorage, selfValue);
+
+        memcpy(newValue, valueTempStorage, sizeOfType);
+    }
+
+    cubs_free(valueTempStorage, sizeOfType, _Alignof(size_t));
+    return newSelf;
+}
+
 void cubs_array_push_unchecked(CubsArray *self, void *value)
 {
     ensure_total_capacity(self, self->len + 1);

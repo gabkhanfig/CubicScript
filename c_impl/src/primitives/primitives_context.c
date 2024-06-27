@@ -93,11 +93,16 @@ const CubsStructContext CUBS_STRING_CONTEXT = {
     .nameLength = 6,
 };
 
+static void array_clone(CubsArray* dst, const CubsArray* self) {
+    const CubsArray temp = cubs_array_clone(self);
+    *dst = temp;
+}
+
 const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .sizeOfType = sizeof(CubsArray),
     .tag = cubsValueTagArray,
     .onDeinit = (CubsStructOnDeinit)&cubs_array_deinit,
-    .clone = NULL,
+    .clone = (CubsStructCloneFn)&array_clone,
     .eql = NULL,
     .hash = NULL,
     .name = "array",

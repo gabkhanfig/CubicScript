@@ -22,6 +22,8 @@ CubsArray cubs_array_init_user_struct(const CubsStructContext* context);
 
 void cubs_array_deinit(CubsArray* self);
 
+CubsArray cubs_array_clone(const CubsArray* self);
+
 /// Takes ownership of the memory at `value`, copying the memory at that location into the array.
 /// Accessing the memory at `value` after this call is undefined behaviour.
 /// Does not validate that `value` has the correct active union, nor that its valid script value memory.

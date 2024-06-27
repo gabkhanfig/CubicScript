@@ -47,6 +47,10 @@ pub fn Array(comptime T: type) type {
             return RawArray.cubs_array_deinit(self.asRawMut());
         }
 
+        pub fn clone(self: *const Self) Self {
+            return @bitCast(RawArray.cubs_array_clone(self.asRaw()));
+        }
+
         /// Takes ownership of `value`. Accessing the memory of `value` after this
         /// function is undefined behaviour.
         pub fn push(self: *Self, value: T) void {
@@ -129,6 +133,7 @@ pub const RawArray = extern struct {
     pub extern fn cubs_array_init_primitive(tag: ValueTag) callconv(.C) RawArray;
     pub extern fn cubs_array_init_user_struct(rtti: *const StructContext) callconv(.C) RawArray;
     pub extern fn cubs_array_deinit(self: *RawArray) callconv(.C) void;
+    pub extern fn cubs_array_clone(self: *const RawArray) callconv(.C) RawArray;
     pub extern fn cubs_array_tag(self: *const RawArray) callconv(.C) ValueTag;
     pub extern fn cubs_array_len(self: *const RawArray) callconv(.C) usize;
     pub extern fn cubs_array_push_unchecked(self: *RawArray, value: *anyopaque) callconv(.C) void;
@@ -285,5 +290,43 @@ test "atMut" {
         try expect((try arr.atMut(0)).eqlSlice("erm"));
         try expect((try arr.atMut(1)).eqlSlice("hi"));
         try std.testing.expectError(error.OutOfRange, arr.at(2));
+    }
+}
+
+test "clone" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        for (0..6) |i| {
+            arr.push(@intCast(i));
+        }
+
+        var clone = arr.clone();
+        defer clone.deinit();
+
+        try expect(clone.len == 6);
+        for (0..6) |i| {
+            try expect(clone.atUnchecked(i).* == @as(i64, @intCast(i)));
+        }
+    }
+    {
+        var arr = Array(String).init();
+        defer arr.deinit();
+
+        for (0..6) |i| {
+            arr.push(String.fromInt(@intCast(i)));
+        }
+
+        var clone = arr.clone();
+        defer clone.deinit();
+
+        try expect(clone.len == 6);
+        try expect(clone.atUnchecked(0).eqlSlice("0"));
+        try expect(clone.atUnchecked(1).eqlSlice("1"));
+        try expect(clone.atUnchecked(2).eqlSlice("2"));
+        try expect(clone.atUnchecked(3).eqlSlice("3"));
+        try expect(clone.atUnchecked(4).eqlSlice("4"));
+        try expect(clone.atUnchecked(5).eqlSlice("5"));
     }
 }
