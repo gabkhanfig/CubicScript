@@ -172,3 +172,25 @@ bool cubs_array_eql(const CubsArray *self, const CubsArray *other)
     }
     return true;
 }
+
+
+CubsArrayConstIter cubs_array_const_iter_begin(const CubsArray* self) {
+    const CubsArrayConstIter iter = {._arr = self, ._nextIndex = 0, .value = NULL};
+    return iter;
+}
+
+CubsArrayConstIter cubs_array_const_iter_end(const CubsArray* self) {
+    const CubsArrayConstIter iter = {._arr = self, ._nextIndex = self->len, .value = NULL};
+    return iter;
+}
+
+bool cubs_array_const_iter_next(CubsArrayConstIter* iter) {
+    if(iter->_nextIndex == iter->_arr->len) {
+        return false;
+    }
+  
+    const size_t sizeOfType = iter->_arr->context->sizeOfType;
+    iter->value = (const void*)&((const char*)iter->_arr->buf)[iter->_nextIndex * sizeOfType];
+    iter->_nextIndex += 1;
+    return true;
+}

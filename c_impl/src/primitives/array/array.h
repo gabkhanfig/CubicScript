@@ -5,6 +5,12 @@
 #include <stdint.h>
 #include "../script_value.h"
 
+typedef struct CubsArrayConstIter {
+    const CubsArray* _arr;
+    size_t _nextIndex;
+    const void* value;
+} CubsArrayConstIter;
+
 typedef enum CubsArrayError {
   cubsArrayErrorNone = 0,
   cubsArrayErrorOutOfRange = 1,
@@ -59,3 +65,10 @@ CubsArrayError cubs_array_at_mut(void** out, CubsArray* self, size_t index);
 /// - `self->context->sizeOfType == other->context->sizeOfType`
 /// - `self->context->tag == other->context->tag`
 bool cubs_array_eql(const CubsArray* self, const CubsArray* other);
+
+CubsArrayConstIter cubs_array_const_iter_begin(const CubsArray* self);
+
+/// For C++ interop
+CubsArrayConstIter cubs_array_const_iter_end(const CubsArray* self);
+
+bool cubs_array_const_iter_next(CubsArrayConstIter* iter);

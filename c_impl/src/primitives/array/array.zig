@@ -110,6 +110,22 @@ pub fn Array(comptime T: type) type {
             return RawArray.cubs_array_eql(self.asRaw(), other.asRaw());
         }
 
+        pub fn iter(self: *const Self) Iter {
+            return Iter{ ._iter = CubsArrayConstIter.cubs_array_const_iter_begin(self.asRaw()) };
+        }
+
+        pub const Iter = extern struct {
+            _iter: CubsArrayConstIter,
+
+            pub fn next(self: *Iter) ?*const T {
+                if (!CubsArrayConstIter.cubs_array_const_iter_next(&self._iter)) {
+                    return null;
+                } else {
+                    return @ptrCast(@alignCast(self._iter.value));
+                }
+            }
+        };
+
         pub fn asRaw(self: *const Self) *const RawArray {
             return @ptrCast(self);
         }
@@ -146,6 +162,16 @@ pub const RawArray = extern struct {
     pub extern fn cubs_array_at_mut_unchecked(self: *RawArray, index: usize) callconv(.C) *anyopaque;
     pub extern fn cubs_array_at_mut(out: **anyopaque, self: *RawArray, index: usize) callconv(.C) Err;
     pub extern fn cubs_array_eql(self: *const RawArray, other: *const RawArray) callconv(.C) bool;
+};
+
+pub const CubsArrayConstIter = extern struct {
+    _arr: *const RawArray,
+    _nextIndex: usize,
+    value: *const anyopaque,
+
+    pub extern fn cubs_array_const_iter_begin(self: *const RawArray) callconv(.C) CubsArrayConstIter;
+    pub extern fn cubs_array_const_iter_end(self: *const RawArray) callconv(.C) CubsArrayConstIter;
+    pub extern fn cubs_array_const_iter_next(iter: *CubsArrayConstIter) callconv(.C) bool;
 };
 
 test "nested array" {
@@ -390,5 +416,39 @@ test "eql" {
 
         arr2.push(String.fromInt(6));
         try expect(!arr1.eql(&arr2));
+    }
+}
+
+test "iter" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        {
+            var iter = arr.iter();
+            try expect(iter.next() == null);
+        }
+
+        arr.push(0);
+
+        {
+            var iter = arr.iter();
+            try expect(iter.next().?.* == 0);
+            try expect(iter.next() == null);
+        }
+
+        for (1..10) |i| {
+            arr.push(@intCast(i));
+        }
+
+        {
+            var iter = arr.iter();
+            var i: usize = 0;
+            while (iter.next()) |value| {
+                try expect(value.* == @as(i64, @intCast(i)));
+                i += 1;
+            }
+            try expect(i == 10);
+        }
     }
 }
