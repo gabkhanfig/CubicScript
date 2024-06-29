@@ -114,11 +114,27 @@ pub fn Array(comptime T: type) type {
             return Iter{ ._iter = CubsArrayConstIter.cubs_array_const_iter_begin(self.asRaw()) };
         }
 
+        pub fn mutIter(self: *Self) MutIter {
+            return MutIter{ ._iter = CubsArrayMutIter.cubs_array_mut_iter_begin(self.asRawMut()) };
+        }
+
         pub const Iter = extern struct {
             _iter: CubsArrayConstIter,
 
             pub fn next(self: *Iter) ?*const T {
                 if (!CubsArrayConstIter.cubs_array_const_iter_next(&self._iter)) {
+                    return null;
+                } else {
+                    return @ptrCast(@alignCast(self._iter.value));
+                }
+            }
+        };
+
+        pub const MutIter = extern struct {
+            _iter: CubsArrayMutIter,
+
+            pub fn next(self: *MutIter) ?*T {
+                if (!CubsArrayMutIter.cubs_array_mut_iter_next(&self._iter)) {
                     return null;
                 } else {
                     return @ptrCast(@alignCast(self._iter.value));
@@ -169,9 +185,23 @@ pub const CubsArrayConstIter = extern struct {
     _nextIndex: usize,
     value: *const anyopaque,
 
-    pub extern fn cubs_array_const_iter_begin(self: *const RawArray) callconv(.C) CubsArrayConstIter;
-    pub extern fn cubs_array_const_iter_end(self: *const RawArray) callconv(.C) CubsArrayConstIter;
-    pub extern fn cubs_array_const_iter_next(iter: *CubsArrayConstIter) callconv(.C) bool;
+    const Self = @This();
+
+    pub extern fn cubs_array_const_iter_begin(self: *const RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_const_iter_end(self: *const RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_const_iter_next(iter: *Self) callconv(.C) bool;
+};
+
+pub const CubsArrayMutIter = extern struct {
+    _arr: *RawArray,
+    _nextIndex: usize,
+    value: *anyopaque,
+
+    const Self = @This();
+
+    pub extern fn cubs_array_mut_iter_begin(self: *RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_mut_iter_end(self: *RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_mut_iter_next(iter: *Self) callconv(.C) bool;
 };
 
 test "nested array" {
@@ -446,6 +476,58 @@ test "iter" {
             var i: usize = 0;
             while (iter.next()) |value| {
                 try expect(value.* == @as(i64, @intCast(i)));
+                i += 1;
+            }
+            try expect(i == 10);
+        }
+    }
+}
+
+test "mutIter" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        {
+            var iter = arr.mutIter();
+            try expect(iter.next() == null);
+        }
+
+        arr.push(0);
+
+        {
+            var iter = arr.mutIter();
+            const firstVal = iter.next().?;
+            try expect(firstVal.* == 0);
+            firstVal.* = 20;
+            try expect(iter.next() == null);
+        }
+
+        for (1..10) |i| {
+            arr.push(@intCast(i));
+        }
+
+        {
+            var iter = arr.mutIter();
+            var i: usize = 0;
+            while (iter.next()) |value| {
+                if (i == 0) {
+                    try expect(value.* == 20);
+                } else {
+                    try expect(value.* == @as(i64, @intCast(i)));
+                    value.* += 20;
+                }
+
+                i += 1;
+            }
+            try expect(i == 10);
+        }
+
+        {
+            var iter = arr.mutIter();
+            var i: usize = 0;
+            while (iter.next()) |value| {
+                try expect(value.* == @as(i64, @intCast(i + 20)));
                 i += 1;
             }
             try expect(i == 10);

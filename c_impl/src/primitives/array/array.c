@@ -194,3 +194,25 @@ bool cubs_array_const_iter_next(CubsArrayConstIter* iter) {
     iter->_nextIndex += 1;
     return true;
 }
+
+CubsArrayMutIter cubs_array_mut_iter_begin(CubsArray* self) {
+    const CubsArrayMutIter iter = {._arr = self, ._nextIndex = 0, .value = NULL};
+    return iter;
+}
+
+/// For C++ interop
+CubsArrayMutIter cubs_array_mut_iter_end(CubsArray* self) {
+    const CubsArrayMutIter iter = {._arr = self, ._nextIndex = self->len, .value = NULL};
+    return iter;
+}
+
+bool cubs_array_mut_iter_next(CubsArrayMutIter* iter) {
+    if(iter->_nextIndex == iter->_arr->len) {
+        return false;
+    }
+  
+    const size_t sizeOfType = iter->_arr->context->sizeOfType;
+    iter->value = (void*)&((char*)iter->_arr->buf)[iter->_nextIndex * sizeOfType];
+    iter->_nextIndex += 1;
+    return true;
+}

@@ -11,6 +11,24 @@ typedef struct CubsArrayConstIter {
     const void* value;
 } CubsArrayConstIter;
 
+typedef struct CubsArrayMutIter {
+    CubsArray* _arr;
+    size_t _nextIndex;
+    void* value;
+} CubsArrayMutIter;
+
+typedef struct CubsArrayReverseConstIter {
+    const CubsArray* _arr;
+    size_t _nextIndex;
+    const void* value;
+} CubsArrayReverseConstIter;
+
+typedef struct CubsArrayReverseMutIter {
+    CubsArray* _arr;
+    size_t _nextIndex;
+    void* value;
+} CubsArrayReverseMutIter;
+
 typedef enum CubsArrayError {
   cubsArrayErrorNone = 0,
   cubsArrayErrorOutOfRange = 1,
@@ -72,3 +90,10 @@ CubsArrayConstIter cubs_array_const_iter_begin(const CubsArray* self);
 CubsArrayConstIter cubs_array_const_iter_end(const CubsArray* self);
 
 bool cubs_array_const_iter_next(CubsArrayConstIter* iter);
+
+CubsArrayMutIter cubs_array_mut_iter_begin(CubsArray* self);
+
+/// For C++ interop
+CubsArrayMutIter cubs_array_mut_iter_end(CubsArray* self);
+
+bool cubs_array_mut_iter_next(CubsArrayMutIter* iter);
