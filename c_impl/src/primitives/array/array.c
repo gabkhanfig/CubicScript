@@ -5,6 +5,7 @@
 #include "../../util/panic.h"
 #include <stdio.h>
 #include "../primitives_context.h"
+#include "../../util/hash.h"
 
 static const size_t CAPACITY_BITMASK = 0xFFFFFFFFFFFFULL;
 static const size_t TAG_SHIFT = 48;
@@ -171,6 +172,21 @@ bool cubs_array_eql(const CubsArray *self, const CubsArray *other)
         }
     }
     return true;
+}
+
+size_t cubs_array_hash(const CubsArray *self)
+{
+    assert(self->context->hash != NULL);
+
+    const size_t globalHashSeed = cubs_hash_seed();
+    size_t h = globalHashSeed;
+
+    for(size_t i = 0; i < self->len; i++) {
+        const size_t hashedValue = self->context->hash(cubs_array_at_unchecked(self, i));
+        h = cubs_combine_hash(hashedValue, h);
+    }
+
+    return h;
 }
 
 CubsArrayConstIter cubs_array_const_iter_begin(const CubsArray* self) {

@@ -84,6 +84,8 @@ CubsArrayError cubs_array_at_mut(void** out, CubsArray* self, size_t index);
 /// - `self->context->tag == other->context->tag`
 bool cubs_array_eql(const CubsArray* self, const CubsArray* other);
 
+size_t cubs_array_hash(const CubsArray* self);
+
 CubsArrayConstIter cubs_array_const_iter_begin(const CubsArray* self);
 
 /// For C++ interop

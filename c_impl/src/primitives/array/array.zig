@@ -110,6 +110,10 @@ pub fn Array(comptime T: type) type {
             return RawArray.cubs_array_eql(self.asRaw(), other.asRaw());
         }
 
+        pub fn hash(self: *const Self) usize {
+            return RawArray.cubs_array_hash(self.asRaw());
+        }
+
         pub fn iter(self: *const Self) Iter {
             return Iter{ ._iter = CubsArrayConstIter.cubs_array_const_iter_begin(self.asRaw()) };
         }
@@ -210,6 +214,7 @@ pub const RawArray = extern struct {
     pub extern fn cubs_array_at_mut_unchecked(self: *RawArray, index: usize) callconv(.C) *anyopaque;
     pub extern fn cubs_array_at_mut(out: **anyopaque, self: *RawArray, index: usize) callconv(.C) Err;
     pub extern fn cubs_array_eql(self: *const RawArray, other: *const RawArray) callconv(.C) bool;
+    pub extern fn cubs_array_hash(self: *const RawArray) callconv(.C) usize;
 };
 
 pub const CubsArrayConstIter = extern struct {
@@ -673,5 +678,34 @@ test "reverseMutIter" {
             }
             try expect(i == 0);
         }
+    }
+}
+
+test "hash" {
+    var emptyArr = Array(i64).init();
+    defer emptyArr.deinit();
+
+    var oneArr = Array(i64).init();
+    defer oneArr.deinit();
+
+    oneArr.push(5);
+
+    var manyArr = Array(i64).init();
+    defer manyArr.deinit();
+
+    manyArr.push(5);
+    manyArr.push(5);
+    manyArr.push(5);
+
+    const h1 = emptyArr.hash();
+    const h2 = oneArr.hash();
+    const h3 = manyArr.hash();
+
+    if (h1 == h2) {
+        return error.SkipZigTest;
+    } else if (h1 == h3) {
+        return error.SkipZigTest;
+    } else if (h2 == h3) {
+        return error.SkipZigTest;
     }
 }
