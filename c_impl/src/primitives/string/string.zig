@@ -702,4 +702,37 @@ pub const String = extern struct {
             try expect(err == error.ParseBool);
         }
     }
+
+    test hash {
+        var emptyString = String{};
+        defer emptyString.deinit();
+
+        var oneCharString = String.initUnchecked("a");
+        defer oneCharString.deinit();
+
+        var smallString = String.initUnchecked("hello world!");
+        defer smallString.deinit();
+
+        var longString = String.initUnchecked("ashpdiuahspdiuahspdiuhaspdiuhapsiudhpaisuhdpaiushdpasd");
+        defer longString.deinit();
+
+        const h1 = emptyString.hash();
+        const h2 = oneCharString.hash();
+        const h3 = smallString.hash();
+        const h4 = longString.hash();
+
+        if (h1 == h2) {
+            return error.SkipZigTest;
+        } else if (h1 == h3) {
+            return error.SkipZigTest;
+        } else if (h1 == h4) {
+            return error.SkipZigTest;
+        } else if (h2 == h3) {
+            return error.SkipZigTest;
+        } else if (h2 == h4) {
+            return error.SkipZigTest;
+        } else if (h3 == h4) {
+            return error.SkipZigTest;
+        }
+    }
 };

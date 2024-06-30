@@ -7,6 +7,7 @@
 #include "../../util/panic.h"
 #include <stdio.h>
 #include "../../util/unreachable.h"
+#include "../../util/hash.h"
 
 //#if __AVX2__
 #include <immintrin.h>
@@ -392,7 +393,7 @@ CubsOrdering cubs_string_cmp(const CubsString *self, const CubsString *rhs)
 
 size_t cubs_string_hash(const CubsString *self)
 {
-  const size_t HASH_MODIFIER = 0xc6a4a7935bd1e995ULL;
+  const size_t HASH_MODIFIER = cubs_hash_seed();
   const size_t HASH_SHIFT = 47;
 
   size_t h = 0;
