@@ -104,7 +104,7 @@ const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .onDeinit = (CubsStructOnDeinit)&cubs_array_deinit,
     .clone = (CubsStructCloneFn)&array_clone,
     .eql = (CubsStructEqlFn)&cubs_array_eql,
-    .hash = NULL,
+    .hash = (CubsStructHashFn)&cubs_array_hash,
     .name = "array",
     .nameLength = 5,
 };
