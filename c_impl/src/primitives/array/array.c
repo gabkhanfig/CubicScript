@@ -173,7 +173,6 @@ bool cubs_array_eql(const CubsArray *self, const CubsArray *other)
     return true;
 }
 
-
 CubsArrayConstIter cubs_array_const_iter_begin(const CubsArray* self) {
     const CubsArrayConstIter iter = {._arr = self, ._nextIndex = 0, .value = NULL};
     return iter;
@@ -214,5 +213,49 @@ bool cubs_array_mut_iter_next(CubsArrayMutIter* iter) {
     const size_t sizeOfType = iter->_arr->context->sizeOfType;
     iter->value = (void*)&((char*)iter->_arr->buf)[iter->_nextIndex * sizeOfType];
     iter->_nextIndex += 1;
+    return true;
+}
+
+CubsArrayReverseConstIter cubs_array_reverse_const_iter_begin(const CubsArray* self) {
+    const CubsArrayReverseConstIter iter = {._arr = self, ._priorIndex = self->len, .value = NULL};
+    return iter;
+}
+
+/// For C++ interop
+CubsArrayReverseConstIter cubs_array_reverse_const_iter_end(const CubsArray* self) {
+    const CubsArrayReverseConstIter iter = {._arr = self, ._priorIndex = 0, .value = NULL};
+    return iter;
+}
+
+bool cubs_array_reverse_const_iter_next(CubsArrayReverseConstIter* iter) {
+    if(iter->_priorIndex == 0) {
+        return false;
+    }
+
+    const size_t sizeOfType = iter->_arr->context->sizeOfType;
+    iter->_priorIndex -= 1; // decrement BEFORE access
+    iter->value = (const void*)&((const char*)iter->_arr->buf)[iter->_priorIndex * sizeOfType];
+    return true;
+}
+
+CubsArrayReverseMutIter cubs_array_reverse_mut_iter_begin(CubsArray* self) {    
+    const CubsArrayReverseMutIter iter = {._arr = self, ._priorIndex = self->len, .value = NULL};
+    return iter;
+}
+
+/// For C++ interop
+CubsArrayReverseMutIter cubs_array_reverse_mut_iter_end(CubsArray* self) {
+    const CubsArrayReverseMutIter iter = {._arr = self, ._priorIndex = 0, .value = NULL};
+    return iter;
+}
+
+bool cubs_array_reverse_mut_iter_next(CubsArrayReverseMutIter* iter) {
+    if(iter->_priorIndex == 0) {
+        return false;
+    }
+
+    const size_t sizeOfType = iter->_arr->context->sizeOfType;
+    iter->_priorIndex -= 1; // decrement BEFORE access
+    iter->value = (void*)&((char*)iter->_arr->buf)[iter->_priorIndex * sizeOfType];
     return true;
 }

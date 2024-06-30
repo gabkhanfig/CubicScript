@@ -19,13 +19,13 @@ typedef struct CubsArrayMutIter {
 
 typedef struct CubsArrayReverseConstIter {
     const CubsArray* _arr;
-    size_t _nextIndex;
+    size_t _priorIndex;
     const void* value;
 } CubsArrayReverseConstIter;
 
 typedef struct CubsArrayReverseMutIter {
     CubsArray* _arr;
-    size_t _nextIndex;
+    size_t _priorIndex;
     void* value;
 } CubsArrayReverseMutIter;
 
@@ -97,3 +97,17 @@ CubsArrayMutIter cubs_array_mut_iter_begin(CubsArray* self);
 CubsArrayMutIter cubs_array_mut_iter_end(CubsArray* self);
 
 bool cubs_array_mut_iter_next(CubsArrayMutIter* iter);
+
+CubsArrayReverseConstIter cubs_array_reverse_const_iter_begin(const CubsArray* self);
+
+/// For C++ interop
+CubsArrayReverseConstIter cubs_array_reverse_const_iter_end(const CubsArray* self);
+
+bool cubs_array_reverse_const_iter_next(CubsArrayReverseConstIter* iter);
+
+CubsArrayReverseMutIter cubs_array_reverse_mut_iter_begin(CubsArray* self);
+
+/// For C++ interop
+CubsArrayReverseMutIter cubs_array_reverse_mut_iter_end(CubsArray* self);
+
+bool cubs_array_reverse_mut_iter_next(CubsArrayReverseMutIter* iter);

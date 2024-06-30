@@ -118,6 +118,14 @@ pub fn Array(comptime T: type) type {
             return MutIter{ ._iter = CubsArrayMutIter.cubs_array_mut_iter_begin(self.asRawMut()) };
         }
 
+        pub fn reverseIter(self: *const Self) ReverseIter {
+            return ReverseIter{ ._iter = CubsArrayReverseConstIter.cubs_array_reverse_const_iter_begin(self.asRaw()) };
+        }
+
+        pub fn reverseMutIter(self: *Self) ReverseMutIter {
+            return ReverseMutIter{ ._iter = CubsArrayReverseMutIter.cubs_array_reverse_mut_iter_begin(self.asRawMut()) };
+        }
+
         pub const Iter = extern struct {
             _iter: CubsArrayConstIter,
 
@@ -135,6 +143,30 @@ pub fn Array(comptime T: type) type {
 
             pub fn next(self: *MutIter) ?*T {
                 if (!CubsArrayMutIter.cubs_array_mut_iter_next(&self._iter)) {
+                    return null;
+                } else {
+                    return @ptrCast(@alignCast(self._iter.value));
+                }
+            }
+        };
+
+        pub const ReverseIter = extern struct {
+            _iter: CubsArrayReverseConstIter,
+
+            pub fn next(self: *ReverseIter) ?*const T {
+                if (!CubsArrayReverseConstIter.cubs_array_reverse_const_iter_next(&self._iter)) {
+                    return null;
+                } else {
+                    return @ptrCast(@alignCast(self._iter.value));
+                }
+            }
+        };
+
+        pub const ReverseMutIter = extern struct {
+            _iter: CubsArrayReverseMutIter,
+
+            pub fn next(self: *ReverseMutIter) ?*T {
+                if (!CubsArrayReverseMutIter.cubs_array_reverse_mut_iter_next(&self._iter)) {
                     return null;
                 } else {
                     return @ptrCast(@alignCast(self._iter.value));
@@ -202,6 +234,30 @@ pub const CubsArrayMutIter = extern struct {
     pub extern fn cubs_array_mut_iter_begin(self: *RawArray) callconv(.C) Self;
     pub extern fn cubs_array_mut_iter_end(self: *RawArray) callconv(.C) Self;
     pub extern fn cubs_array_mut_iter_next(iter: *Self) callconv(.C) bool;
+};
+
+pub const CubsArrayReverseConstIter = extern struct {
+    _arr: *const RawArray,
+    _priorIndex: usize,
+    value: *const anyopaque,
+
+    const Self = @This();
+
+    pub extern fn cubs_array_reverse_const_iter_begin(self: *const RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_reverse_const_iter_end(self: *const RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_reverse_const_iter_next(iter: *Self) callconv(.C) bool;
+};
+
+pub const CubsArrayReverseMutIter = extern struct {
+    _arr: *RawArray,
+    _priorIndex: usize,
+    value: *anyopaque,
+
+    const Self = @This();
+
+    pub extern fn cubs_array_reverse_mut_iter_begin(self: *RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_reverse_mut_iter_end(self: *RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_reverse_mut_iter_next(iter: *Self) callconv(.C) bool;
 };
 
 test "nested array" {
@@ -531,6 +587,91 @@ test "mutIter" {
                 i += 1;
             }
             try expect(i == 10);
+        }
+    }
+}
+
+test "reverseIter" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        {
+            var iter = arr.reverseIter();
+            try expect(iter.next() == null);
+        }
+
+        arr.push(0);
+
+        {
+            var iter = arr.reverseIter();
+            try expect(iter.next().?.* == 0);
+            try expect(iter.next() == null);
+        }
+
+        for (1..10) |i| {
+            arr.push(@intCast(i));
+        }
+
+        {
+            var iter = arr.reverseIter();
+            var i: usize = 10;
+            while (iter.next()) |value| {
+                i -= 1;
+                try expect(value.* == @as(i64, @intCast(i)));
+            }
+            try expect(i == 0);
+        }
+    }
+}
+
+test "reverseMutIter" {
+    {
+        var arr = Array(i64).init();
+        defer arr.deinit();
+
+        {
+            var iter = arr.reverseMutIter();
+            try expect(iter.next() == null);
+        }
+
+        arr.push(0);
+
+        {
+            var iter = arr.reverseMutIter();
+            const firstVal = iter.next().?;
+            try expect(firstVal.* == 0);
+            firstVal.* = 20;
+            try expect(iter.next() == null);
+        }
+
+        for (1..10) |i| {
+            arr.push(@intCast(i));
+        }
+
+        {
+            var iter = arr.reverseMutIter();
+            var i: usize = 10;
+            while (iter.next()) |value| {
+                i -= 1;
+                if (i == 0) {
+                    try expect(value.* == 20);
+                } else {
+                    try expect(value.* == @as(i64, @intCast(i)));
+                    value.* += 20;
+                }
+            }
+            try expect(i == 0);
+        }
+
+        {
+            var iter = arr.reverseMutIter();
+            var i: usize = 10;
+            while (iter.next()) |value| {
+                i -= 1;
+                try expect(value.* == @as(i64, @intCast(i + 20)));
+            }
+            try expect(i == 0);
         }
     }
 }
