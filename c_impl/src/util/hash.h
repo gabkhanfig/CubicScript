@@ -4,6 +4,17 @@
 #include <stdint.h>
 #include "../primitives/script_value.h"
 
+/// Instantiated once per program call 
+size_t cubs_hash_seed();
+
+/// Combine hash values `a` and `b`. Useful when combined with `cubs_hash_seed()` to
+/// seed the hash per program instantiation.
+inline static size_t cubs_combine_hash(size_t a, size_t b) {
+    // c++ boost hash combine for 64 bit
+    const size_t h = b + 0x517cc1b727220a95ULL + ((a) & ~(0xFC00000000000000ULL)) + ((a) >> 2);
+    return h;
+}
+
 size_t cubs_compute_hash(const CubsRawValue* value, CubsValueTag tag);
 
 typedef struct CubsHashGroupBitmask {
