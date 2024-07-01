@@ -527,6 +527,45 @@ bool cubs_map_erase(CubsMap *self, const void *key)
     return result;
 }
 
+bool cubs_map_eql(const CubsMap *self, const CubsMap *other)
+{   
+    assert(self->keyContext->sizeOfType == other->keyContext->sizeOfType);
+    assert(self->keyContext->eql != NULL);
+    assert(other->keyContext->eql != NULL);
+    assert(self->keyContext->eql == other->keyContext->eql);
+
+    assert(self->valueContext->sizeOfType == other->valueContext->sizeOfType);
+    assert(self->valueContext->eql != NULL);
+    assert(other->valueContext->eql != NULL);
+    assert(self->valueContext->eql == other->valueContext->eql);
+
+    if(self->len != other->len) {
+        return false;
+    }
+
+    CubsMapConstIter selfIter = cubs_map_const_iter_begin(self);
+    CubsMapConstIter otherIter = cubs_map_const_iter_begin(other);
+
+    while(true) {
+        bool selfNext = cubs_map_const_iter_next(&selfIter);
+        bool otherNext = cubs_map_const_iter_next(&otherIter);
+
+        assert(selfNext == otherNext);
+
+        // Went through all elements
+        if(selfNext == false) {
+            return true;
+        }
+
+        if(self->keyContext->eql(selfIter.key, otherIter.key) == false) {
+            return false;
+        }
+        if(self->valueContext->eql(selfIter.value, otherIter.value) == false) {
+            return false;
+        }
+    }
+}
+
 CubsMapConstIter cubs_map_const_iter_begin(const CubsMap* self)
 {
     const Metadata* metadata = map_metadata(self);

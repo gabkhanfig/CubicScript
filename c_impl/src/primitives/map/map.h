@@ -72,6 +72,8 @@ void cubs_map_insert(CubsMap* self, void* key, void* value);
 /// Assumes that `key` is the correct type that this map holds.
 bool cubs_map_erase(CubsMap* self, const void* key);
 
+bool cubs_map_eql(const CubsMap* self, const CubsMap* other);
+
 CubsMapConstIter cubs_map_const_iter_begin(const CubsMap* self);
 
 /// For C++ interop

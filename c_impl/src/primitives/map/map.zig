@@ -64,6 +64,10 @@ pub fn Map(comptime K: type, comptime V: type) type {
             return RawMap.cubs_map_erase(self.asRawMut(), @ptrCast(key));
         }
 
+        pub fn eql(self: *const Self, other: *const Self) bool {
+            return RawMap.cubs_map_eql(self.asRaw(), other.asRaw());
+        }
+
         pub fn asRaw(self: *const Self) *const RawMap {
             return @ptrCast(self);
         }
@@ -166,6 +170,7 @@ pub const RawMap = extern struct {
     pub extern fn cubs_map_find_mut(self: *RawMap, key: *const anyopaque) callconv(.C) ?*anyopaque;
     pub extern fn cubs_map_insert(self: *RawMap, key: *anyopaque, value: *anyopaque) callconv(.C) void;
     pub extern fn cubs_map_erase(self: *RawMap, key: *const anyopaque) callconv(.C) bool;
+    pub extern fn cubs_map_eql(self: *const RawMap, other: *const RawMap) callconv(.C) bool;
 };
 
 pub const CubsMapConstIter = extern struct {
@@ -683,5 +688,68 @@ test "clone" {
         try expect(pair.key.* == i);
         try expect(pair.value.* == @as(f64, @floatFromInt(i)));
         i += 1;
+    }
+}
+
+test "eql" {
+    { // consistent order
+        var m1 = Map(i64, f64).init();
+        defer m1.deinit();
+
+        var m2 = Map(i64, f64).init();
+        defer m2.deinit();
+
+        try expect(m1.eql(&m2)); // both empty
+
+        for (0..100) |i| {
+            m1.insert(@intCast(i), @floatFromInt(i));
+            m2.insert(@intCast(i), @floatFromInt(i));
+        }
+
+        try expect(m1.eql(&m2)); // both have the same values in the same order
+
+        m1.insert(1000, 1.5);
+
+        try expect(!m1.eql(&m2)); // different length
+
+        m2.insert(1000, 1.2);
+
+        try expect(!m1.eql(&m2)); // same length, different values in the key-value pair
+
+        m2.findMut(&@as(i64, 1000)).?.* = 1.5;
+
+        try expect(m1.eql(&m2)); // both have the same values in the same order
+
+        try expect(m2.erase(&@as(i64, 1000)));
+        m2.insert(999, 1.5);
+
+        try expect(!m1.eql(&m2)); // same length, different keys in the key-value pair
+    }
+    {
+        var m1 = Map(i64, f64).init();
+        defer m1.deinit();
+
+        var m2 = Map(i64, f64).init();
+        defer m2.deinit();
+
+        for (0..100) |i| {
+            m1.insert(@intCast(i), @floatFromInt(i));
+        }
+
+        {
+            var i: usize = 100;
+            while (i > 0) {
+                i -= 1;
+                m2.insert(@intCast(i), @floatFromInt(i));
+            }
+        }
+
+        for (0..100) |i| {
+            const findVal: i64 = @intCast(i);
+            try expect(m1.find(&findVal) != null);
+            try expect(m2.find(&findVal) != null);
+        }
+
+        try expect(!m1.eql(&m2)); // same keys and values, but different order
     }
 }

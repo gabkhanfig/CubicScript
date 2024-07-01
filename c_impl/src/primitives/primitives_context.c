@@ -37,6 +37,7 @@ static bool int_eql(const int64_t* self, const int64_t* other) {
 }
 
 static size_t int_hash(const int64_t* self) {
+    // Don't bother combining with the seed, as the hashmap and hashset do that themselves
     return (size_t)(*self);
 }
 
@@ -61,7 +62,8 @@ static bool float_eql(const double* self, const double* other) {
 
 static size_t float_hash(const double* self) {  
     // Since technically multiple representations can be the same value,
-    // cast to an integer and hash from there
+    // cast to an integer and hash from there 
+    // Don't bother combining with the seed, as the hashmap and hashset do that themselves
     const int64_t floatAsInt = (int64_t)(*self);
     return int_hash(&floatAsInt);
 }
@@ -119,7 +121,7 @@ const CubsStructContext CUBS_MAP_CONTEXT = {
     .tag = cubsValueTagMap,
     .onDeinit = (CubsStructOnDeinit)&cubs_map_deinit,
     .clone = (CubsStructCloneFn)&map_clone,
-    .eql = NULL,
+    .eql = (CubsStructEqlFn)&cubs_map_eql,
     .hash = NULL,
     .name = "map",
     .nameLength = 3,
