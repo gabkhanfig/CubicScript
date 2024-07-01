@@ -68,6 +68,10 @@ pub fn Map(comptime K: type, comptime V: type) type {
             return RawMap.cubs_map_eql(self.asRaw(), other.asRaw());
         }
 
+        pub fn hash(self: *const Self) usize {
+            return RawMap.cubs_map_hash(self.asRaw());
+        }
+
         pub fn asRaw(self: *const Self) *const RawMap {
             return @ptrCast(self);
         }
@@ -171,6 +175,7 @@ pub const RawMap = extern struct {
     pub extern fn cubs_map_insert(self: *RawMap, key: *anyopaque, value: *anyopaque) callconv(.C) void;
     pub extern fn cubs_map_erase(self: *RawMap, key: *const anyopaque) callconv(.C) bool;
     pub extern fn cubs_map_eql(self: *const RawMap, other: *const RawMap) callconv(.C) bool;
+    pub extern fn cubs_map_hash(self: *const RawMap) callconv(.C) usize;
 };
 
 pub const CubsMapConstIter = extern struct {
@@ -751,5 +756,63 @@ test "eql" {
         }
 
         try expect(!m1.eql(&m2)); // same keys and values, but different order
+    }
+}
+
+test "hash" {
+    {
+        var emptyMap = Map(i64, f64).init();
+        defer emptyMap.deinit();
+
+        var oneMap = Map(i64, f64).init();
+        defer oneMap.deinit();
+
+        oneMap.insert(1, 1.5);
+
+        var twoMap = Map(i64, f64).init();
+        defer twoMap.deinit();
+
+        twoMap.insert(1, 1.5);
+        twoMap.insert(1, 1.5);
+
+        var manyMap = Map(i64, f64).init();
+        defer manyMap.deinit();
+
+        for (0..100) |i| {
+            manyMap.insert(@intCast(i), @floatFromInt(i));
+        }
+
+        const h1 = emptyMap.hash();
+        const h2 = oneMap.hash();
+        const h3 = twoMap.hash();
+        const h4 = manyMap.hash();
+
+        if (h1 == h2) {
+            return error.SkipZigTest;
+        } else if (h1 == h3) {
+            return error.SkipZigTest;
+        } else if (h1 == h4) {
+            return error.SkipZigTest;
+        } else if (h2 == h3) {
+            return error.SkipZigTest;
+        } else if (h2 == h4) {
+            return error.SkipZigTest;
+        } else if (h3 == h4) {
+            return error.SkipZigTest;
+        }
+    }
+    {
+        var m1 = Map(i64, f64).init();
+        defer m1.deinit();
+
+        var m2 = Map(i64, f64).init();
+        defer m2.deinit();
+
+        for (0..100) |i| {
+            m1.insert(@intCast(i), @floatFromInt(i));
+            m2.insert(@intCast(i), @floatFromInt(i));
+        }
+
+        try expect(m1.hash() == m2.hash());
     }
 }

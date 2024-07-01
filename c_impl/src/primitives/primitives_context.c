@@ -122,7 +122,7 @@ const CubsStructContext CUBS_MAP_CONTEXT = {
     .onDeinit = (CubsStructOnDeinit)&cubs_map_deinit,
     .clone = (CubsStructCloneFn)&map_clone,
     .eql = (CubsStructEqlFn)&cubs_map_eql,
-    .hash = NULL,
+    .hash = (CubsStructHashFn)&cubs_map_hash,
     .name = "map",
     .nameLength = 3,
 };

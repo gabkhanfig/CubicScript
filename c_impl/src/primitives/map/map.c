@@ -566,6 +566,26 @@ bool cubs_map_eql(const CubsMap *self, const CubsMap *other)
     }
 }
 
+size_t cubs_map_hash(const CubsMap *self)
+{
+    assert(self->keyContext->hash != NULL);
+    assert(self->valueContext->hash != NULL);
+
+    CubsMapConstIter selfIter = cubs_map_const_iter_begin(self);
+    
+    const size_t globalHashSeed = cubs_hash_seed();
+    size_t h = globalHashSeed;
+
+    while(cubs_map_const_iter_next(&selfIter)) {
+        const size_t hashedKey = self->keyContext->hash(selfIter.key);
+        const size_t hashedValue = self->valueContext->hash(selfIter.value);
+        const size_t combinedHash = cubs_combine_hash(hashedKey, hashedValue);
+        h = cubs_combine_hash(combinedHash, h);
+    }
+
+    return h;
+}
+
 CubsMapConstIter cubs_map_const_iter_begin(const CubsMap* self)
 {
     const Metadata* metadata = map_metadata(self);

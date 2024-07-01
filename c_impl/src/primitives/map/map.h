@@ -74,6 +74,8 @@ bool cubs_map_erase(CubsMap* self, const void* key);
 
 bool cubs_map_eql(const CubsMap* self, const CubsMap* other);
 
+size_t cubs_map_hash(const CubsMap* self);
+
 CubsMapConstIter cubs_map_const_iter_begin(const CubsMap* self);
 
 /// For C++ interop
