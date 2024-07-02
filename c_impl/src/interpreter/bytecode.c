@@ -65,10 +65,16 @@ void operands_make_load_immediate_long(Bytecode* doubleBytecode, CubsValueTag ta
     doubleBytecode[1].value = (size_t)immediate;
 }
 
-Bytecode operands_make_load_default(CubsValueTag tag, CubsValueTag optKeyTag, CubsValueTag optValueTag, uint16_t dst)
+void operands_make_load_default(Bytecode* multiBytecode, CubsValueTag tag, uint16_t dst, const CubsStructContext* optKeyContext, const CubsStructContext* optValueContext)
 {
     assert(dst <= MAX_FRAME_LENGTH);
-    _Alignas(_Alignof(Bytecode)) const OperandsLoadDefault operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_DEFAULT, .dst = dst, .tag = tag, .keyTag = optKeyTag, .valueTag = optValueTag};
-    const Bytecode b = *(const Bytecode*)&operands;
-    return b;
+    _Alignas(_Alignof(Bytecode)) const OperandsLoadDefault operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_DEFAULT, .dst = dst, .tag = tag};
+    multiBytecode[0] = *(const Bytecode*)&operands;
+    if(optKeyContext != NULL) {
+        multiBytecode[1] = *(const Bytecode*)optKeyContext;
+    }
+    if(optValueContext != NULL) {
+        assert(optKeyContext != NULL && "If value context isn't NULL, the key context mustn't be NULL for hashmaps");
+        multiBytecode[2] = *(const Bytecode*)optValueContext;
+    }
 }

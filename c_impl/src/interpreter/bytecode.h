@@ -85,8 +85,9 @@ typedef struct {
     uint64_t reserveLoadType: 2;
     uint64_t dst: BITS_PER_STACK_OPERAND;
     uint64_t tag: 6;
-    uint64_t keyTag: 6;
-    uint64_t valueTag: 6;
 } OperandsLoadDefault;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadDefault);
-Bytecode operands_make_load_default(CubsValueTag tag, CubsValueTag optKeyTag, CubsValueTag optValueTag, uint16_t dst);
+/// If `tag` is a generic type that IS NOT `cubsValueTagMap`, `multiBytecode` must be a pointer to at least 2 bytecodes. 
+/// If `tag == cubsValueTagMap`, `multiBytecode` must be a pointer to at least 3 bytecodes. 
+/// Otherwise, `multiBytecode` is treated as a single pointer.
+void operands_make_load_default(Bytecode* multiBytecode, CubsValueTag tag, uint16_t dst, const CubsStructContext* optKeyContext, const CubsStructContext* optValueContext);
