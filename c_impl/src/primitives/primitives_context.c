@@ -20,7 +20,7 @@ static size_t bool_hash(const bool* self) {
 const CubsStructContext CUBS_BOOL_CONTEXT = {
     .sizeOfType = sizeof(bool),
     .tag = cubsValueTagBool,
-    .onDeinit = NULL,
+    .destructor = NULL,
     .clone = (CubsStructCloneFn)&bool_clone,
     .eql = (CubsStructEqlFn)&bool_eql,
     .hash = (CubsStructHashFn)&bool_hash,
@@ -44,7 +44,7 @@ static size_t int_hash(const int64_t* self) {
 const CubsStructContext CUBS_INT_CONTEXT = {
     .sizeOfType = sizeof(int64_t),
     .tag = cubsValueTagInt,
-    .onDeinit = NULL, 
+    .destructor = NULL, 
     .clone = (CubsStructCloneFn)&int_clone,
     .eql = (CubsStructEqlFn)&int_eql,
     .hash = (CubsStructHashFn)&int_hash,
@@ -71,7 +71,7 @@ static size_t float_hash(const double* self) {
 const CubsStructContext CUBS_FLOAT_CONTEXT = {
     .sizeOfType = sizeof(double),
     .tag = cubsValueTagFloat,
-    .onDeinit = NULL, 
+    .destructor = NULL, 
     .clone = (CubsStructCloneFn)&float_clone,
     .eql = (CubsStructEqlFn)&float_eql,
     .hash = (CubsStructHashFn)&float_hash,
@@ -87,7 +87,7 @@ static void string_clone(CubsString* dst, const CubsString* self) {
 const CubsStructContext CUBS_STRING_CONTEXT = {
     .sizeOfType = sizeof(CubsString),
     .tag = cubsValueTagString,
-    .onDeinit = (CubsStructOnDeinit)&cubs_string_deinit,
+    .destructor = (CubsStructDestructorFn)&cubs_string_deinit,
     .clone = (CubsStructCloneFn)&string_clone,
     .eql = (CubsStructEqlFn)&cubs_string_eql,
     .hash = (CubsStructHashFn)&cubs_string_hash,
@@ -103,7 +103,7 @@ static void array_clone(CubsArray* dst, const CubsArray* self) {
 const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .sizeOfType = sizeof(CubsArray),
     .tag = cubsValueTagArray,
-    .onDeinit = (CubsStructOnDeinit)&cubs_array_deinit,
+    .destructor = (CubsStructDestructorFn)&cubs_array_deinit,
     .clone = (CubsStructCloneFn)&array_clone,
     .eql = (CubsStructEqlFn)&cubs_array_eql,
     .hash = (CubsStructHashFn)&cubs_array_hash,
@@ -119,7 +119,7 @@ static void map_clone(CubsMap* dst, const CubsMap* self) {
 const CubsStructContext CUBS_MAP_CONTEXT = {
     .sizeOfType = sizeof(CubsMap),
     .tag = cubsValueTagMap,
-    .onDeinit = (CubsStructOnDeinit)&cubs_map_deinit,
+    .destructor = (CubsStructDestructorFn)&cubs_map_deinit,
     .clone = (CubsStructCloneFn)&map_clone,
     .eql = (CubsStructEqlFn)&cubs_map_eql,
     .hash = (CubsStructHashFn)&cubs_map_hash,

@@ -68,11 +68,11 @@ void cubs_array_deinit(CubsArray *self)
     }
 
     const size_t sizeOfType = self->context->sizeOfType;
-    if(self->context->onDeinit != NULL) {       
+    if(self->context->destructor != NULL) {       
         char* byteStart = (char*)self->buf;
         for(size_t i = 0; i < self->len; i++) {
             const size_t actualIndex = i * sizeOfType;
-            self->context->onDeinit((void*)&byteStart[actualIndex]);
+            self->context->destructor((void*)&byteStart[actualIndex]);
         }      
     }
     

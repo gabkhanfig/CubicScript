@@ -94,11 +94,11 @@ static void pair_deinit(PairHeader* pair, const CubsStructContext* keyContext, c
         *iterLast = before;
     }
     
-    if(keyContext->onDeinit != NULL) {
-        keyContext->onDeinit(pair_key_mut(pair));
+    if(keyContext->destructor != NULL) {
+        keyContext->destructor(pair_key_mut(pair));
     }
-    if(valueContext->onDeinit != NULL) {
-        valueContext->onDeinit(pair_value_mut(pair, keyContext->sizeOfType));
+    if(valueContext->destructor != NULL) {
+        valueContext->destructor(pair_value_mut(pair, keyContext->sizeOfType));
     }
 
     cubs_free((void*)pair, sizeof(PairHeader) + keyContext->sizeOfType + valueContext->sizeOfType, _Alignof(size_t));
@@ -215,13 +215,13 @@ static void group_insert(Group* self, void* key, void* value, const CubsStructCo
     if(existingIndex != -1) {
         void* pair = group_pair_buf_start_mut(self)[existingIndex];
         void* pairValue = pair_value_mut(pair, keyContext->sizeOfType);
-        if(valueContext->onDeinit != NULL) {
-            valueContext->onDeinit(pairValue);
+        if(valueContext->destructor != NULL) {
+            valueContext->destructor(pairValue);
         }
         memcpy(pairValue, value, valueContext->sizeOfType);
 
-        if(keyContext->onDeinit != NULL) {
-            keyContext->onDeinit(key);  // don't need duplicate keys
+        if(keyContext->destructor != NULL) {
+            keyContext->destructor(key);  // don't need duplicate keys
         }
         return;
     }
