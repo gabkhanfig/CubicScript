@@ -419,7 +419,7 @@ CubsMap cubs_map_clone(const CubsMap *self)
         const size_t groupIndex = groupBitmask.value % newMetadata->groupCount;
     
         self->keyContext->clone(keyTempStorage, iter.key);
-        self->keyContext->clone(valueTempStorage, iter.value);
+        self->valueContext->clone(valueTempStorage, iter.value);
 
         group_insert(&newMetadata->groupsArray[groupIndex], keyTempStorage, valueTempStorage, self->keyContext, self->valueContext, hashCode, &newMetadata->iterFirst, &newMetadata->iterLast); 
     }
