@@ -22,6 +22,7 @@ add_library(CubicScript STATIC
     "src/util/global_allocator.c"
     "src/util/panic.c"
     "src/util/os.c"
+    "src/util/simd.c"
     "src/util/math.c"
     "src/util/hash.c"
     "src/primitives/script_value.c"

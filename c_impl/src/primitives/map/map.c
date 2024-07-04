@@ -9,10 +9,7 @@
 #include "../../util/bitwise.h"
 #include "../string/string.h"
 #include "../primitives_context.h"
-
-#if __AVX2__
-#include <immintrin.h>
-#endif
+#include "../../util/simd.h"
 
 static const size_t GROUP_ALLOC_SIZE = 32;
 static const size_t ALIGNMENT = 32;
@@ -168,21 +165,17 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
 }
 
 /// Returns -1 if not found
-static size_t group_find(const Group* self, const void* key, const CubsStructContext* keyContext, CubsHashPairBitmask pairMask) {
-    #if __AVX2__
-    const __m256i maskVec = _mm256_set1_epi8(pairMask.value);
-    
+static size_t group_find(const Group* self, const void* key, const CubsStructContext* keyContext, CubsHashPairBitmask pairMask) {   
     size_t i = 0;
     while(i < self->capacity) {
-        const __m256i hashMasks = *(const __m256i*)&self->hashMasks[i];
-        const __m256i result = _mm256_cmpeq_epi8(maskVec, hashMasks);
-        int resultMask = _mm256_movemask_epi8(result);
-        while(true) { // Go through each bit
+        uint32_t resultMask = _cubs_simd_cmpeq_mask_8bit_32wide_aligned(pairMask.value, &self->hashMasks[i]);
+        while(true) { // check each bit
             uint32_t index;
             if(!countTrailingZeroes32(&index, resultMask)) {
                 i += 32;
                 break;
             }
+
             const size_t actualIndex = index + i;
             const void* pair = group_pair_buf_start(self)[actualIndex];
             const void* pairKey = pair_key(pair);
@@ -193,11 +186,9 @@ static size_t group_find(const Group* self, const void* key, const CubsStructCon
                 continue;
             }
             return actualIndex;
-        }       
+        }
     }
-    #else
-    _Static_assert(false, "find not implemented for target architecture");
-    #endif
+
     return -1;
 }
 
@@ -227,18 +218,11 @@ static void group_insert(Group* self, void* key, void* value, const CubsStructCo
     }
 
     group_ensure_total_capacity(self, self->pairCount + 1);
-
-    #if __AVX2__
-    // SIMD find first zero
-    const __m256i zeroVec = _mm256_set1_epi8(0);
+  
     size_t i = 0;
-    while(i < self->capacity) {  
-        const __m256i hashMasks = *(const __m256i*)&self->hashMasks[i];
-        const __m256i result = _mm256_cmpeq_epi8(zeroVec, hashMasks);
-        int resultMask = _mm256_movemask_epi8(result);
-        
-        uint32_t index;
-        if(!countTrailingZeroes32(&index, resultMask)) {
+    while(i < self->capacity) {
+        size_t index;
+        if(!_cubs_simd_index_of_first_zero_8bit_32wide_aligned(&index, &self->hashMasks[i])) {
             i += 32;
             continue;
         }
@@ -268,9 +252,7 @@ static void group_insert(Group* self, void* key, void* value, const CubsStructCo
         self->pairCount += 1;
         return;
     }
-    #else
-    _Static_assert(false, "find not implemented for target architecture");
-    #endif
+
     unreachable();
 }
 
