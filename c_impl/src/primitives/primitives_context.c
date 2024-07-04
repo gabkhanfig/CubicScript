@@ -18,7 +18,7 @@ static size_t bool_hash(const bool* self) {
 }
 
 const CubsStructContext CUBS_BOOL_CONTEXT = {
-    .sizeOfType = 8, // the minimum number of bytes per "stack slot" is 8
+    .sizeOfType = sizeof(size_t), // the minimum number of bytes per "stack slot" is sizeof(size_t)
     .tag = cubsValueTagBool,
     .destructor = NULL,
     .clone = (CubsStructCloneFn)&bool_clone,
