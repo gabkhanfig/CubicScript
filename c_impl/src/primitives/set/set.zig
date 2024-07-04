@@ -6,22 +6,7 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
-
-const c = struct {
-    extern fn cubs_set_init(keyTag: ValueTag) callconv(.C) Set(anyopaque);
-    extern fn cubs_set_deinit(self: *Set(anyopaque)) callconv(.C) void;
-    extern fn cubs_set_tag(self: *const Set(anyopaque)) callconv(.C) ValueTag;
-    extern fn cubs_set_size(self: *const Set(anyopaque)) callconv(.C) usize;
-    extern fn cubs_set_contains_unchecked(self: *const Set, key: *const anyopaque) callconv(.C) bool;
-    extern fn cubs_set_contains_raw_unchecked(self: *const Set, key: *const RawValue) callconv(.C) bool;
-    extern fn cubs_set_contains(self: *const Set(anyopaque), key: *const CTaggedValue) callconv(.C) bool;
-    extern fn cubs_set_insert_unchecked(self: *Set(anyopaque), key: *anyopaque) callconv(.C) void;
-    extern fn cubs_set_insert_raw_unchecked(self: *Set(anyopaque), key: RawValue) callconv(.C) void;
-    extern fn cubs_set_insert(self: *Set(anyopaque), key: CTaggedValue) callconv(.C) void;
-    extern fn cubs_set_erase_unchecked(self: *Set(anyopaque), key: *const anyopaque) callconv(.C) bool;
-    extern fn cubs_set_erase_raw_unchecked(self: *Set(anyopaque), key: *const RawValue) callconv(.C) bool;
-    extern fn cubs_set_erase(self: *Set(anyopaque), key: *const CTaggedValue) callconv(.C) bool;
-};
+const StructContext = script_value.StructContext;
 
 pub fn Set(comptime K: type) type {
     return extern struct {
@@ -29,346 +14,530 @@ pub fn Set(comptime K: type) type {
         pub const SCRIPT_SELF_TAG: ValueTag = .set;
         pub const KeyType = K;
 
-        count: usize,
-        _metadata: [3]*anyopaque,
+        len: usize = 0,
+        _metadata: [5]?*anyopaque = std.mem.zeroes([5]?*anyopaque),
+        context: *const StructContext,
 
         pub fn init() Self {
             const kTag = script_value.scriptTypeToTag(K);
-            var temp = c.cubs_set_init(kTag);
-            return temp.into(K);
+            if (kTag != .userStruct) {
+                const raw = CubsSet.cubs_set_init_primitive(kTag);
+                return @bitCast(raw);
+            } else {
+                const raw = CubsSet.cubs_set_init_user_struct(StructContext.auto(K));
+                return @bitCast(raw);
+            }
         }
 
         pub fn deinit(self: *Self) void {
-            c.cubs_set_deinit(self.castMut(anyopaque));
+            CubsSet.cubs_set_deinit(self.asRawMut());
         }
 
-        pub fn tag(self: *const Self) ValueTag {
-            return c.cubs_set_tag(self.cast(anyopaque));
-        }
-        pub fn cast(self: *const Self, comptime OtherK: type) *const Set(OtherK) {
-            if (OtherK != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherK, self.tag());
-            }
-            return @ptrCast(self);
+        pub fn clone(self: *const Self) Self {
+            return @bitCast(CubsSet.cubs_set_clone(self.asRaw()));
         }
 
-        pub fn castMut(self: *Self, comptime OtherK: type) *Set(OtherK) {
-            if (OtherK != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherK, self.tag());
-            }
-            return @ptrCast(self);
+        /// Does NOT take ownership of `key`. Zig will likely optimize this to pass by const reference in many cases,
+        /// but allows to easily pass in immediate values, rather than using temporary storage.
+        pub fn contains(self: *const Self, key: K) bool {
+            return CubsSet.cubs_set_contains(self.asRaw(), @ptrCast(&key));
         }
 
-        /// Converts an array of one type into an array of another type. Currently only works when converting
-        /// to and from `anyopaque` arrays.
-        pub fn into(self: *Self, comptime OtherK: type) Set(OtherK) {
-            const casted = self.castMut(OtherK).*;
-            self.* = undefined; // invalidate self
-            return casted;
-        }
-
-        pub fn contains(self: *const Self, key: *const K) bool {
-            return c.cubs_set_contains_unchecked(self.cast(anyopaque), @ptrCast(key));
-        }
-
-        pub fn containsRawUnchecked(self: *const Self, key: *const RawValue) bool {
-            return c.cubs_set_contains_raw_unchecked(self.cast(anyopaque), key);
-        }
-
-        pub fn containsTagged(self: *const Self, key: *const TaggedValue) bool {
-            const tempC = script_value.zigToCTaggedValueTemp(key.*);
-            return c.cubs_set_contains(self.cast(anyopaque), &tempC);
-        }
-
+        /// Takes ownership of the memory of `key`.
         pub fn insert(self: *Self, key: K) void {
             var tempKey = key;
-            c.cubs_set_insert_unchecked(self.castMut(anyopaque), @ptrCast(&tempKey));
+            CubsSet.cubs_set_insert(self.asRawMut(), @ptrCast(&tempKey));
         }
 
-        pub fn insertRawUnchecked(self: *Self, key: RawValue) void {
-            c.cubs_set_insert_raw_unchecked(self.castMut(anyopaque), key);
+        /// Does NOT take ownership of `key`. Zig will likely optimize this to pass by const reference in many cases,
+        /// but allows to easily pass in immediate values, rather than using temporary storage.
+        pub fn erase(self: *Self, key: K) bool {
+            return CubsSet.cubs_set_erase(self.asRawMut(), @ptrCast(&key));
         }
 
-        pub fn insertTagged(self: *Self, key: TaggedValue) void {
-            var mutKey = key;
-            const cKey = @call(.always_inline, TaggedValue.intoCRepr, .{&mutKey});
-            c.cubs_set_insert(self.castMut(anyopaque), cKey);
+        pub fn eql(self: *const Self, other: *const Self) bool {
+            return CubsSet.cubs_set_eql(self.asRaw(), other.asRaw());
         }
 
-        pub fn erase(self: *Self, key: *const K) bool {
-            return c.cubs_set_erase_unchecked(self.castMut(anyopaque), @ptrCast(key));
+        pub fn hash(self: *const Self) usize {
+            return CubsSet.cubs_set_hash(self.asRaw());
         }
 
-        pub fn eraseRawUnchecked(self: *Self, key: *const RawValue) bool {
-            return c.cubs_set_erase_raw_unchecked(self.castMut(anyopaque), key);
+        pub fn asRaw(self: *const Self) *const CubsSet {
+            return @ptrCast(self);
         }
 
-        pub fn eraseTagged(self: *Self, key: *const TaggedValue) bool {
-            const tempC = script_value.zigToCTaggedValueTemp(key.*);
-            return c.cubs_set_erase(self.castMut(anyopaque), &tempC);
+        pub fn asRawMut(self: *Self) *CubsSet {
+            return @ptrCast(self);
         }
 
-        // test init {
-        //     inline for (@typeInfo(ValueTag).Enum.fields) |keyF| {
-        //         const keyEnum: ValueTag = @enumFromInt(keyF.value);
-        //         var set = Set.init(keyEnum);
-        //         defer set.deinit();
-
-        //         try expect(set.tag() == keyEnum);
-        //         try expect(set.count == 0);
-        //     }
-        // }
-
-        // test insertUnchecked {
-        //     {
-        //         var set = Set(i64).init();
-        //         defer set.deinit();
-
-        //         set.insertUnchecked(RawValue{ .int = 4 });
-
-        //         try expect(set.count == 1);
-        //     }
-        //     {
-        //         var set = Set(String).init();
-        //         defer set.deinit();
-
-        //         set.insertUnchecked(RawValue{ .string = String.initUnchecked("erm") });
-
-        //         try expect(set.count == 1);
-        //     }
-        //     {
-        //         var set = Set(i64).init();
-        //         defer set.deinit();
-
-        //         for (0..100) |i| {
-        //             set.insertUnchecked(RawValue{ .int = @intCast(i) });
-        //         }
-
-        //         try expect(set.count == 100);
-        //     }
-        //     {
-        //         var set = Set(String).init();
-        //         defer set.deinit();
-
-        //         for (0..100) |i| {
-        //             set.insertUnchecked(RawValue{ .string = String.fromInt(@intCast(i)) });
-        //         }
-        //         try expect(set.count == 100);
-        //     }
-        // }
-
-        // test insertTagged {
-        //     {
-        //         var set = Set(i64).init();
-        //         defer set.deinit();
-
-        //         set.insertTagged(TaggedValue{ .int = 4 });
-
-        //         try expect(set.count == 1);
-        //     }
-        //     {
-        //         var set = Set(String).init();
-        //         defer set.deinit();
-
-        //         set.insertTagged(TaggedValue{ .string = String.initUnchecked("erm") });
-
-        //         try expect(set.count == 1);
-        //     }
-        //     {
-        //         var set = Set(i64).init();
-        //         defer set.deinit();
-
-        //         for (0..100) |i| {
-        //             set.insertTagged(TaggedValue{ .int = @intCast(i) });
-        //         }
-
-        //         try expect(set.count == 100);
-        //     }
-        //     {
-        //         var set = Set(String).init();
-        //         defer set.deinit();
-
-        //         for (0..100) |i| {
-        //             set.insertTagged(TaggedValue{ .string = String.fromInt(@intCast(i)) });
-        //         }
-        //         try expect(set.count == 100);
-        //     }
-        // }
-
-        // test containsUnchecked {
-        //     var set = Set(String).init();
-        //     defer set.deinit();
-
-        //     var firstFind = RawValue{ .string = String.initUnchecked("erm") };
-        //     defer firstFind.deinit(.string);
-
-        //     try expect(set.containsUnchecked(&firstFind) == false);
-
-        //     set.insert(TaggedValue{ .string = String.initUnchecked("erm") });
-
-        //     try expect(set.containsUnchecked(&firstFind));
-
-        //     for (0..99) |i| {
-        //         set.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) });
-        //     }
-
-        //     try expect(set.count == 100);
-
-        //     try expect(set.containsUnchecked(&firstFind));
-
-        //     for (0..99) |i| {
-        //         var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
-        //         defer findVal.deinit(.string);
-
-        //         try expect(set.containsUnchecked(&firstFind));
-        //     }
-
-        //     for (100..150) |i| {
-        //         var findVal = RawValue{ .string = String.fromInt(@intCast(i)) };
-        //         defer findVal.deinit(.string);
-
-        //         try expect(set.containsUnchecked(&findVal) == false);
-        //     }
-        // }
-
-        // test containsTagged {
-        //     var set = Set(String).init();
-        //     defer set.deinit();
-
-        //     var firstFind = TaggedValue{ .string = String.initUnchecked("erm") };
-        //     defer firstFind.deinit();
-
-        //     try expect(set.containsTagged(&firstFind) == false);
-
-        //     set.insert(String.initUnchecked("erm"));
-
-        //     try expect(set.containsTagged(&firstFind));
-
-        //     for (0..99) |i| {
-        //         set.insert(String.fromInt(@intCast(i)));
-        //     }
-
-        //     try expect(set.count == 100);
-
-        //     try expect(set.containsTagged(&firstFind));
-
-        //     for (0..99) |i| {
-        //         var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-        //         defer findVal.deinit();
-
-        //         try expect(set.containsTagged(&firstFind));
-        //     }
-
-        //     for (100..150) |i| {
-        //         var findVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-        //         defer findVal.deinit();
-
-        //         try expect(set.containsTagged(&findVal) == false);
-        //     }
-        // }
-
-        // test eraseUnchecked {
-        //     {
-        //         var set = Set(String).init();
-        //         defer set.deinit();
-
-        //         var eraseVal = RawValue{ .string = String.initUnchecked("erm") };
-        //         defer eraseVal.deinit(.string);
-
-        //         try expect(set.eraseUnchecked(&eraseVal) == false);
-
-        //         set.insert(TaggedValue{ .string = String.initUnchecked("erm") });
-        //         try expect(set.count == 1);
-
-        //         try expect(set.eraseUnchecked(&eraseVal) == true);
-        //         try expect(set.count == 0);
-        //     }
-        //     {
-        //         var set = Set(String).init();
-        //         defer set.deinit();
-
-        //         for (0..100) |i| {
-        //             set.insert(TaggedValue{ .string = String.fromInt(@intCast(i)) });
-        //         }
-
-        //         try expect(set.count == 100);
-
-        //         for (0..50) |i| {
-        //             var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
-        //             defer eraseVal.deinit(.string);
-
-        //             try expect(set.eraseUnchecked(&eraseVal) == true);
-        //         }
-
-        //         try expect(set.count == 50);
-
-        //         for (0..50) |i| {
-        //             var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
-        //             defer eraseVal.deinit(.string);
-
-        //             try expect(set.eraseUnchecked(&eraseVal) == false);
-        //         }
-        //         try expect(set.count == 50);
-
-        //         for (50..100) |i| {
-        //             var eraseVal = RawValue{ .string = String.fromInt(@intCast(i)) };
-        //             defer eraseVal.deinit(.string);
-
-        //             try expect(set.eraseUnchecked(&eraseVal) == true);
-        //         }
-        //     }
-        // }
-
-        // test eraseTagged {
-        //     {
-        //         var set = Set(String).init();
-        //         defer set.deinit();
-
-        //         var eraseVal = TaggedValue{ .string = String.initUnchecked("erm") };
-        //         defer eraseVal.deinit();
-
-        //         try expect(set.eraseTagged(&eraseVal) == false);
-
-        //         set.insert(String.initUnchecked("erm"));
-        //         try expect(set.count == 1);
-
-        //         try expect(set.eraseTagged(&eraseVal) == true);
-        //         try expect(set.count == 0);
-        //     }
-        //     {
-        //         var set = Set(String).init();
-        //         defer set.deinit();
-
-        //         for (0..100) |i| {
-        //             set.insert(String.fromInt(@intCast(i)));
-        //         }
-
-        //         try expect(set.count == 100);
-
-        //         for (0..50) |i| {
-        //             var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-        //             defer eraseVal.deinit();
-
-        //             try expect(set.eraseTagged(&eraseVal) == true);
-        //         }
-
-        //         try expect(set.count == 50);
-
-        //         for (0..50) |i| {
-        //             var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-        //             defer eraseVal.deinit();
-
-        //             try expect(set.eraseTagged(&eraseVal) == false);
-        //         }
-        //         try expect(set.count == 50);
-
-        //         for (50..100) |i| {
-        //             var eraseVal = TaggedValue{ .string = String.fromInt(@intCast(i)) };
-        //             defer eraseVal.deinit();
-
-        //             try expect(set.eraseTagged(&eraseVal) == true);
-        //         }
-        //     }
-        // }
+        pub fn iter(self: *const Self) Iter {
+            return Iter{ ._iter = CubsSetIter.cubs_set_iter_begin(self.asRaw()) };
+        }
+
+        pub fn reverseIter(self: *const Self) ReverseIter {
+            return ReverseIter{ ._iter = CubsSetReverseIter.cubs_set_reverse_iter_begin(self.asRaw()) };
+        }
+
+        pub const Iter = extern struct {
+            _iter: CubsSetIter,
+
+            pub fn next(self: *Iter) ?*const K {
+                if (!CubsSetIter.cubs_set_iter_next(&self._iter)) {
+                    return null;
+                } else {
+                    return @ptrCast(@alignCast(self._iter.key.?));
+                }
+            }
+        };
+
+        pub const ReverseIter = extern struct {
+            _iter: CubsSetReverseIter,
+
+            pub fn next(self: *ReverseIter) ?*const K {
+                if (!CubsSetReverseIter.cubs_set_reverse_iter_next(&self._iter)) {
+                    return null;
+                } else {
+                    return @ptrCast(@alignCast(self._iter.key.?));
+                }
+            }
+        };
     };
+}
+
+pub const CubsSet = extern struct {
+    len: usize,
+    _metadata: [5]?*anyopaque,
+    keyContext: *const StructContext,
+
+    pub const SCRIPT_SELF_TAG: ValueTag = .set;
+
+    pub extern fn cubs_set_init_primitive(tag: ValueTag) callconv(.C) CubsSet;
+    pub extern fn cubs_set_init_user_struct(context: *const StructContext) callconv(.C) CubsSet;
+    pub extern fn cubs_set_deinit(self: *CubsSet) callconv(.C) void;
+    pub extern fn cubs_set_clone(self: *const CubsSet) callconv(.C) CubsSet;
+    pub extern fn cubs_set_contains(self: *const CubsSet, key: *const anyopaque) callconv(.C) bool;
+    pub extern fn cubs_set_insert(self: *CubsSet, key: *anyopaque) callconv(.C) void;
+    pub extern fn cubs_set_erase(self: *CubsSet, key: *const anyopaque) callconv(.C) bool;
+    pub extern fn cubs_set_eql(self: *const CubsSet, other: *const CubsSet) callconv(.C) bool;
+    pub extern fn cubs_set_hash(self: *const CubsSet) callconv(.C) usize;
+};
+
+pub const CubsSetIter = extern struct {
+    _set: *const CubsSet,
+    _nextIter: ?*const anyopaque,
+    key: ?*const anyopaque,
+    value: ?*const anyopaque,
+
+    pub extern fn cubs_set_iter_begin(self: *const CubsSet) callconv(.C) CubsSetIter;
+    pub extern fn cubs_set_iter_end(self: *const CubsSet) callconv(.C) CubsSetIter;
+    pub extern fn cubs_set_iter_next(iter: *CubsSetIter) callconv(.C) bool;
+};
+
+pub const CubsSetReverseIter = extern struct {
+    _set: *const CubsSet,
+    _nextIter: ?*const anyopaque,
+    key: ?*const anyopaque,
+    value: ?*const anyopaque,
+
+    pub extern fn cubs_set_reverse_iter_begin(self: *const CubsSet) callconv(.C) CubsSetReverseIter;
+    pub extern fn cubs_set_reverse_iter_end(self: *const CubsSet) callconv(.C) CubsSetReverseIter;
+    pub extern fn cubs_set_reverse_iter_next(iter: *CubsSetReverseIter) callconv(.C) bool;
+};
+
+test "init" {
+    {
+        var set = Set(i64).init();
+        defer set.deinit();
+    }
+    {
+        var set = Set(String).init();
+        defer set.deinit();
+    }
+    // {
+    //     var set = set(set(i64, i64), String).init();
+    //     defer set.deinit();
+    // }
+}
+
+test "insert" {
+    {
+        var set = Set(i64).init();
+        defer set.deinit();
+
+        set.insert(4);
+
+        try expect(set.len == 1);
+    }
+    {
+        var set = Set(String).init();
+        defer set.deinit();
+
+        set.insert(String.initUnchecked("erm"));
+
+        try expect(set.len == 1);
+    }
+    {
+        var set = Set(i64).init();
+        defer set.deinit();
+
+        for (0..100) |i| {
+            set.insert(@intCast(i));
+        }
+
+        try expect(set.len == 100);
+    }
+    {
+        var set = Set(String).init();
+        defer set.deinit();
+
+        for (0..100) |i| {
+            set.insert(String.fromInt(@intCast(i)));
+        }
+        try expect(set.len == 100);
+    }
+}
+
+test "contains" {
+    var set = Set(String).init();
+    defer set.deinit();
+
+    var firstFind = String.initUnchecked("erm");
+    defer firstFind.deinit();
+
+    try expect(set.contains(firstFind) == false);
+
+    set.insert(String.initUnchecked("erm"));
+
+    try expect(set.contains(firstFind));
+
+    for (0..99) |i| {
+        set.insert(String.fromInt(@intCast(i)));
+    }
+
+    try expect(set.len == 100);
+
+    try expect(set.contains(firstFind));
+
+    for (0..99) |i| {
+        var findVal = String.fromInt(@intCast(i));
+        defer findVal.deinit();
+
+        try expect(set.contains(findVal));
+    }
+
+    for (100..150) |i| {
+        var findVal = String.fromInt(@intCast(i));
+        defer findVal.deinit();
+
+        try expect(set.contains(findVal) == false);
+    }
+}
+
+test "erase" {
+    {
+        var set = Set(String).init();
+        defer set.deinit();
+
+        var eraseVal = String.initUnchecked("erm");
+        defer eraseVal.deinit();
+
+        try expect(set.erase(eraseVal) == false);
+
+        set.insert(String.initUnchecked("erm"));
+        try expect(set.len == 1);
+
+        try expect(set.erase(eraseVal) == true);
+        try expect(set.len == 0);
+    }
+    {
+        var set = Set(String).init();
+        defer set.deinit();
+
+        for (0..100) |i| {
+            set.insert(String.fromInt(@intCast(i)));
+        }
+
+        try expect(set.len == 100);
+
+        for (0..50) |i| {
+            var eraseVal = String.fromInt(@intCast(i));
+            defer eraseVal.deinit();
+
+            try expect(set.erase(eraseVal) == true);
+        }
+
+        try expect(set.len == 50);
+
+        for (0..50) |i| {
+            var eraseVal = String.fromInt(@intCast(i));
+            defer eraseVal.deinit();
+
+            try expect(set.erase(eraseVal) == false);
+        }
+        try expect(set.len == 50);
+
+        for (50..100) |i| {
+            var eraseVal = String.fromInt(@intCast(i));
+            defer eraseVal.deinit();
+
+            try expect(set.erase(eraseVal) == true);
+        }
+    }
+}
+
+test "iter" {
+    var set = Set(i64).init();
+    defer set.deinit();
+
+    {
+        var iter = set.iter();
+        try expect(iter.next() == null);
+    }
+
+    set.insert(0);
+    {
+        var iter = set.iter();
+        var i: usize = 0;
+        while (iter.next()) |key| {
+            try expect(i < 1);
+            try expect(key.* == 0);
+            i += 1;
+        }
+    }
+
+    set.insert(1);
+    {
+        var iter = set.iter();
+
+        const key1 = iter.next().?;
+        try expect(key1.* == 0);
+
+        const key2 = iter.next().?;
+        try expect(key2.* == 1);
+
+        try expect(iter.next() == null);
+    }
+
+    for (2..10) |i| {
+        set.insert(@intCast(i));
+    }
+
+    {
+        var iter = set.iter();
+        var i: usize = 0;
+        while (iter.next()) |key| {
+            try expect(key.* == i);
+            i += 1;
+        }
+        try expect(i == 10);
+    }
+}
+
+test "reverseIter" {
+    var set = Set(i64).init();
+    defer set.deinit();
+
+    {
+        var iter = set.reverseIter();
+        try expect(iter.next() == null);
+    }
+
+    set.insert(0);
+    {
+        var iter = set.reverseIter();
+        var i: usize = 0;
+        while (iter.next()) |key| {
+            try expect(i < 1);
+            try expect(key.* == 0);
+            i += 1;
+        }
+    }
+
+    set.insert(1);
+    {
+        var iter = set.reverseIter();
+
+        const key2 = iter.next().?;
+        try expect(key2.* == 1);
+
+        const key1 = iter.next().?;
+        try expect(key1.* == 0);
+
+        try expect(iter.next() == null);
+    }
+
+    for (2..10) |i| {
+        set.insert(@intCast(i));
+    }
+
+    {
+        var iter = set.reverseIter();
+        var i: usize = set.len;
+        while (iter.next()) |key| {
+            i -= 1;
+            try expect(key.* == i);
+        }
+        try expect(i == 0);
+    }
+}
+
+test "clone" {
+    var set = Set(i64).init();
+    defer set.deinit();
+
+    for (0..100) |i| {
+        set.insert(@intCast(i));
+    }
+
+    var clone = set.clone();
+    defer clone.deinit();
+
+    try expect(clone.len == set.len);
+
+    var iter = clone.iter();
+    var i: i64 = 0;
+    while (iter.next()) |key| {
+        try expect(key.* == i);
+        i += 1;
+    }
+}
+
+test "eql" {
+    { // consistent order
+        var m1 = Set(i64).init();
+        defer m1.deinit();
+
+        var m2 = Set(i64).init();
+        defer m2.deinit();
+
+        try expect(m1.eql(&m2)); // both empty
+
+        for (0..100) |i| {
+            m1.insert(@intCast(i));
+            m2.insert(@intCast(i));
+        }
+
+        try expect(m1.eql(&m2)); // both have the same values in the same order
+
+        m1.insert(1000);
+
+        try expect(!m1.eql(&m2)); // different length
+
+        m2.insert(1000);
+
+        try expect(m1.eql(&m2)); // both have the same values in the same order
+
+        try expect(m2.erase(1000));
+        m2.insert(999);
+
+        try expect(!m1.eql(&m2)); // same length, different keys in the key-value pair
+    }
+    { // different order
+        var m1 = Set(i64).init();
+        defer m1.deinit();
+
+        var m2 = Set(i64).init();
+        defer m2.deinit();
+
+        m1.insert(1000);
+
+        try expect(!m1.eql(&m2));
+
+        for (0..100) |i| {
+            m1.insert(@intCast(i));
+            m2.insert(@intCast(i));
+        }
+
+        try expect(!m1.eql(&m2)); // different length
+
+        m2.insert(1000);
+
+        try expect(!m1.eql(&m2)); // both have the same values in the different order
+    }
+    {
+        var m1 = Set(i64).init();
+        defer m1.deinit();
+
+        var m2 = Set(i64).init();
+        defer m2.deinit();
+
+        for (0..100) |i| {
+            m1.insert(@intCast(i));
+        }
+
+        {
+            var i: usize = 100;
+            while (i > 0) {
+                i -= 1;
+                m2.insert(@intCast(i));
+            }
+        }
+
+        for (0..100) |i| {
+            const findVal: i64 = @intCast(i);
+            try expect(m1.contains(findVal));
+            try expect(m2.contains(findVal));
+        }
+
+        try expect(!m1.eql(&m2)); // same keys and values, but different order
+    }
+}
+
+test "hash" {
+    {
+        var emptySet = Set(i64).init();
+        defer emptySet.deinit();
+
+        var oneSet = Set(i64).init();
+        defer oneSet.deinit();
+
+        oneSet.insert(1);
+
+        var twoSet = Set(i64).init();
+        defer twoSet.deinit();
+
+        twoSet.insert(1);
+        twoSet.insert(1);
+
+        var manySet = Set(i64).init();
+        defer manySet.deinit();
+
+        for (0..100) |i| {
+            manySet.insert(@intCast(i));
+        }
+
+        const h1 = emptySet.hash();
+        const h2 = oneSet.hash();
+        const h3 = twoSet.hash();
+        const h4 = manySet.hash();
+
+        if (h1 == h2) {
+            return error.SkipZigTest;
+        } else if (h1 == h3) {
+            return error.SkipZigTest;
+        } else if (h1 == h4) {
+            return error.SkipZigTest;
+        } else if (h2 == h3) {
+            return error.SkipZigTest;
+        } else if (h2 == h4) {
+            return error.SkipZigTest;
+        } else if (h3 == h4) {
+            return error.SkipZigTest;
+        }
+    }
+    {
+        var m1 = Set(i64).init();
+        defer m1.deinit();
+
+        var m2 = Set(i64).init();
+        defer m2.deinit();
+
+        for (0..100) |i| {
+            m1.insert(@intCast(i));
+            m2.insert(@intCast(i));
+        }
+
+        try expect(m1.hash() == m2.hash());
+    }
 }
