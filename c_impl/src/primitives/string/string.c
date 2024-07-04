@@ -8,10 +8,7 @@
 #include <stdio.h>
 #include "../../util/unreachable.h"
 #include "../../util/hash.h"
-
-//#if __AVX2__
-#include <immintrin.h>
-//#endif
+#include "../../util/simd.h"
 
 static const char HEAP_FLAG_BIT = (char)0b10000000;
 static const size_t MAX_SSO_LEN = 23;
@@ -137,73 +134,6 @@ static void heap_rep_deinit(HeapRep* self) {
     }
     cubs_free((void*)self->refCount, sizeof(AtomicRefCount), _Alignof(AtomicRefCount));
     cubs_free((void*)self->buf, self->allocSizeAndFlag & ~HEAP_REP_FLAG_BITMASK, HEAP_BUF_ALIGNMENT);
-}
-
-static bool simd_compare_equal_string_and_string(const char* buffer, const char* otherBuffer, size_t len) {
-  #if __AVX2__
-  assert((((size_t)buffer) % 32 == 0) && "String buffer must be 32 byte aligned");
-  assert((((size_t)otherBuffer) % 32 == 0) && "String buffer must be 32 byte aligned");
-
-  const __m256i* thisVec = (const __m256i*)buffer;
-  const __m256i* otherVec = (const __m256i*)otherBuffer;
-
-  const size_t remainder = (len + 1) % 32; // add one for null terminator
-  const size_t bytesToCheck = remainder ? ((len + 1) + (32 - remainder)) : len + 1;
-  for(size_t i = 0; i < bytesToCheck; i += 32) {
-    // _mm256_cmpeq_epi8_mask is an AVX512 extension
-    const __m256i result = _mm256_cmpeq_epi8(*thisVec, *otherVec);
-    const int mask = _mm256_movemask_epi8(result);
-    if(mask == (int)~0) {
-      thisVec++;
-      otherVec++;
-      continue;
-    }
-    return false;
-  }
-  return true;
-  #endif
-}
-
-/// Expects that the length of buffer is equal to `slice.len`.
-static bool simd_compare_equal_string_and_slice(const char* buffer, const CubsStringSlice slice) {
-  #if __AVX2__
-  assert((((size_t)buffer) % 32 == 0) && "String buffer must be 32 byte aligned");
-
-  const __m256i* thisVec = (const __m256i*)buffer;
-  __m256i otherVec; // initializing the memory is unnecessary
-
-  size_t i = 0;
-  if(slice.len >= 32) {
-    for(; i <= (slice.len - 32); i += 32) {
-      memcpy(&otherVec, slice.str + i, 32);
-      const __m256i result = _mm256_cmpeq_epi8(*thisVec, otherVec);
-      const int mask = _mm256_movemask_epi8(result);
-      if(mask == (int)~0) {
-        thisVec++;
-        continue;
-      }
-      return false;
-    }
-  }
-  
-  for(; i < slice.len; i++) {
-    if(buffer[i] != slice.str[i]) return false;
-  }
-  return true;
-  #endif
-}
-
-static __m256i string_hash_iteration(const __m256i* vec, char num) {
-	// in the case of SSO, will ignore the 
-	const __m256i seed = _mm256_set1_epi64x(0);
-	const __m256i indices = _mm256_set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-	const __m256i numVec = _mm256_set1_epi8(num);
-
-	// Checks if num is greater than each value of indices.
-	// Mask is 0xFF if greater than, and 0x00 otherwise. 
-	const __m256i mask = _mm256_cmpgt_epi8(numVec, indices);
-	const __m256i partial = _mm256_and_si256(*vec, mask);
-	return _mm256_add_epi8(partial, numVec);
 }
 
 static size_t index_of_pos_linear(CubsStringSlice self, CubsStringSlice slice, size_t startIndex) {
@@ -354,7 +284,7 @@ bool cubs_string_eql(const CubsString *self, const CubsString *other)
         return true;
     }
 
-    return simd_compare_equal_string_and_string(selfHeap->buf, otherHeap->buf, self->len);
+    return _cubs_simd_cmpeq_strings(selfHeap->buf, otherHeap->buf, self->len);
 }
 
 bool cubs_string_eql_slice(const CubsString* self, CubsStringSlice slice) {
@@ -372,7 +302,7 @@ bool cubs_string_eql_slice(const CubsString* self, CubsStringSlice slice) {
 			&& (selfChars[2] == buf[2]);
   }
 
-  return simd_compare_equal_string_and_slice(heap_rep(self)->buf, slice);
+  return _cubs_simd_cmpeq_string_slice(heap_rep(self)->buf, slice.str, slice.len);
 }
 
 CubsOrdering cubs_string_cmp(const CubsString *self, const CubsString *rhs)
@@ -393,48 +323,11 @@ CubsOrdering cubs_string_cmp(const CubsString *self, const CubsString *rhs)
 
 size_t cubs_string_hash(const CubsString *self)
 {
-  const size_t HASH_MODIFIER = cubs_hash_seed();
-  const size_t HASH_SHIFT = 47;
-
-  size_t h = 0;
-  h = 0 ^ (self->len * HASH_MODIFIER);
-
-	if (is_sso(self)) {
-		__m256i thisVec = {0};
-    memcpy((void*)&thisVec, (const void*)sso_rep(self)->sso, self->len);
-		const __m256i hashIter = string_hash_iteration(&thisVec, (char)self->len);
-    const uint64_t* m256i_u64 = (const uint64_t*)&hashIter;
-
-		for (size_t i = 0; i < 4; i++) {
-			h ^= m256i_u64[i];
-			h *= HASH_MODIFIER;
-			h ^= h >> HASH_SHIFT;
-		}
-	}
-	else {
-		const size_t iterationsToDo = ((self->len) % 32 == 0 ?
-			self->len :
-			self->len + (32 - (self->len % 32)))
-			/ 32;
-
-		for (size_t i = 0; i < iterationsToDo; i++) {
-			const __m256i* thisVec = (const __m256i*)(heap_rep(self)->buf);
-			const char num = i != (iterationsToDo - 1) ? (char)(32) : (char)((iterationsToDo * i) - self->len);
-			const __m256i hashIter = string_hash_iteration(thisVec + i, num);
-      const uint64_t* m256i_u64 = (const uint64_t*)&hashIter;
-
-			for (size_t j = 0; j < 4; j++) {
-				h ^= m256i_u64[j];
-				h *= HASH_MODIFIER;
-				h ^= h >> HASH_SHIFT;
-			}
-		}
-	}
-
-	h ^= h >> HASH_SHIFT;
-	h *= HASH_MODIFIER;
-	h ^= h >> HASH_SHIFT;
-	return h;
+    if(is_sso(self)) {
+        return _cubs_simd_string_hash_sso(sso_rep(self)->sso, self->len);
+    } else {
+        return _cubs_simd_string_hash_heap(heap_rep(self)->buf, self->len);
+    }
 }
 
 size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t startIndex)
