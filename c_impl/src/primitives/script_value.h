@@ -18,8 +18,10 @@ typedef size_t (*CubsStructHashFn)(const void* self);
 /// - `eql` -> `cubs_class_opaque_eql(...)`
 /// - `hash` -> `cubs_class_opaque_hash(...)`
 typedef struct CubsStructContext {
-    /// In bytes. Will be rounded up to 8 for the interpreter where appropriate
+    /// In bytes.
     size_t sizeOfType;
+    /// The size used in the interpreter. Is nearly always the same as `sizeOfType`, with the exception being booleans.
+    size_t powOf8Size;
     /// For user defined structs, use `cubsValueTagUserStruct`
     CubsValueTag tag;
     /// Can be NULL

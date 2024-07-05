@@ -25,6 +25,8 @@ CubsSet cubs_set_init_user_struct(const CubsStructContext* context);
 
 void cubs_set_deinit(CubsSet* self);
 
+CubsSet cubs_set_clone(const CubsSet* self);
+
 bool cubs_set_contains(const CubsSet* self, const void* key);
 
 void cubs_set_insert(CubsSet* self, void* key);

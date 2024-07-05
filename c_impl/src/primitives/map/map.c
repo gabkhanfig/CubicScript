@@ -65,15 +65,15 @@ static void* pair_key_mut(PairHeader* pair) {
 }
 
 /// Get the memory of the value of `pair`.
-static const void* pair_value(const PairHeader* pair, size_t sizeOfKey) {
+static const void* pair_value(const PairHeader* pair, size_t powOf8Size) {
     const char* keyByteStart = (const char*)(&pair[1]);
-    return (const void*)&(keyByteStart[sizeOfKey]);
+    return (const void*)&(keyByteStart[powOf8Size]);
 }
 
 /// Get the memory of the value of `pair`.
-static void* pair_value_mut(PairHeader* pair, size_t sizeOfKey) {
+static void* pair_value_mut(PairHeader* pair, size_t powOf8Size) {
     char* keyByteStart = (char*)(&pair[1]);
-    return (void*)&(keyByteStart[sizeOfKey]);
+    return (void*)&(keyByteStart[powOf8Size]);
 }
 
 static void pair_deinit(PairHeader* pair, const CubsStructContext* keyContext, const CubsStructContext* valueContext, PairHeader** iterFirst, PairHeader** iterLast) {
@@ -95,10 +95,10 @@ static void pair_deinit(PairHeader* pair, const CubsStructContext* keyContext, c
         keyContext->destructor(pair_key_mut(pair));
     }
     if(valueContext->destructor != NULL) {
-        valueContext->destructor(pair_value_mut(pair, keyContext->sizeOfType));
+        valueContext->destructor(pair_value_mut(pair, keyContext->powOf8Size));
     }
 
-    cubs_free((void*)pair, sizeof(PairHeader) + keyContext->sizeOfType + valueContext->sizeOfType, _Alignof(size_t));
+    cubs_free((void*)pair, sizeof(PairHeader) + keyContext->powOf8Size + valueContext->powOf8Size, _Alignof(size_t));
 }
 
 static Group group_init() {
@@ -227,7 +227,7 @@ static void group_insert(Group* self, void* key, void* value, const CubsStructCo
             continue;
         }
 
-        PairHeader* newPair = (PairHeader*)cubs_malloc(sizeof(PairHeader) + keyContext->sizeOfType + valueContext->sizeOfType, _Alignof(size_t));
+        PairHeader* newPair = (PairHeader*)cubs_malloc(sizeof(PairHeader) + keyContext->powOf8Size + valueContext->powOf8Size, _Alignof(size_t));
         newPair->hashCode = hashCode;
         newPair->iterBefore = *iterLast;
         newPair->iterAfter = NULL;
@@ -243,7 +243,7 @@ static void group_insert(Group* self, void* key, void* value, const CubsStructCo
         }
 
         memcpy(pair_key_mut(newPair), key, keyContext->sizeOfType);
-        memcpy(pair_value_mut(newPair, keyContext->sizeOfType), value, valueContext->sizeOfType);
+        memcpy(pair_value_mut(newPair, keyContext->powOf8Size), value, valueContext->sizeOfType);
     
         const size_t actualIndex = index + i;
         self->hashMasks[actualIndex] = pairMask.value;
@@ -448,7 +448,7 @@ const void* cubs_map_find(const CubsMap *self, const void *key)
         return NULL;
     }
 
-    return pair_value(group_pair_buf_start(group)[found], self->keyContext->sizeOfType);
+    return pair_value(group_pair_buf_start(group)[found], self->keyContext->powOf8Size);
 }
 
 void* cubs_map_find_mut(CubsMap *self, const void *key)
@@ -469,7 +469,7 @@ void* cubs_map_find_mut(CubsMap *self, const void *key)
         return NULL;
     }
 
-    return pair_value_mut(group_pair_buf_start_mut(group)[found], self->keyContext->sizeOfType);
+    return pair_value_mut(group_pair_buf_start_mut(group)[found], self->keyContext->powOf8Size);
 }
 
 void cubs_map_insert(CubsMap *self, void* key, void* value)
@@ -660,7 +660,7 @@ bool cubs_map_mut_iter_next(CubsMapMutIter *iter)
             ._map = iter->_map,
             ._nextIter = NULL,
             .key = pair_key(currentPair),
-            .value = pair_value_mut(currentPair, iter->_map->keyContext->sizeOfType),
+            .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
         };
         *iter = newIter;
     } else {
@@ -669,7 +669,7 @@ bool cubs_map_mut_iter_next(CubsMapMutIter *iter)
             ._map = iter->_map,
             ._nextIter = (const void*)currentPair->iterAfter,
             .key = pair_key(currentPair),
-            .value = pair_value_mut(currentPair, iter->_map->keyContext->sizeOfType),
+            .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
         };
         *iter = newIter;
     }    
@@ -765,7 +765,7 @@ bool cubs_map_reverse_mut_iter_next(CubsMapReverseMutIter* iter) {
             ._map = iter->_map,
             ._nextIter = NULL,
             .key = pair_key(currentPair),
-            .value = pair_value_mut(currentPair, iter->_map->keyContext->sizeOfType),
+            .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
         };
         *iter = newIter;
     } else {
@@ -774,7 +774,7 @@ bool cubs_map_reverse_mut_iter_next(CubsMapReverseMutIter* iter) {
             ._map = iter->_map,
             ._nextIter = (void*)currentPair->iterBefore,
             .key = pair_key(currentPair),
-            .value = pair_value_mut(currentPair, iter->_map->keyContext->sizeOfType),
+            .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
         };
         *iter = newIter;
     }    

@@ -83,7 +83,7 @@ static void key_header_deinit(KeyHeader* header, const CubsStructContext* keyCon
         keyContext->destructor(key_of_header_mut(header));
     }
 
-    cubs_free((void*)header, sizeof(KeyHeader) + keyContext->sizeOfType, _Alignof(size_t));
+    cubs_free((void*)header, sizeof(KeyHeader) + keyContext->powOf8Size, _Alignof(size_t));
 }
 
 static Group group_init() {
@@ -205,7 +205,7 @@ static void group_insert(Group* self, void* key, const CubsStructContext* keyCon
             continue;
         }
 
-        KeyHeader* newPair = (KeyHeader*)cubs_malloc(sizeof(KeyHeader) + keyContext->sizeOfType, _Alignof(size_t));
+        KeyHeader* newPair = (KeyHeader*)cubs_malloc(sizeof(KeyHeader) + keyContext->powOf8Size, _Alignof(size_t));
         newPair->hashCode = hashCode;
         newPair->iterBefore = *iterLast;
         newPair->iterAfter = NULL;

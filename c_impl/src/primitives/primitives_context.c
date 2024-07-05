@@ -1,6 +1,7 @@
 #include "primitives_context.h"
 #include "../primitives/string/string.h"
 #include "../primitives/array/array.h"
+#include "../primitives/set/set.h"
 #include "../primitives/map/map.h"
 #include "../util/panic.h"
 #include <assert.h>
@@ -18,7 +19,8 @@ static size_t bool_hash(const bool* self) {
 }
 
 const CubsStructContext CUBS_BOOL_CONTEXT = {
-    .sizeOfType = sizeof(size_t), // the minimum number of bytes per "stack slot" is sizeof(size_t)
+    .sizeOfType = 1,
+    .powOf8Size = sizeof(size_t),
     .tag = cubsValueTagBool,
     .destructor = NULL,
     .clone = (CubsStructCloneFn)&bool_clone,
@@ -43,6 +45,7 @@ static size_t int_hash(const int64_t* self) {
 
 const CubsStructContext CUBS_INT_CONTEXT = {
     .sizeOfType = sizeof(int64_t),
+    .powOf8Size = sizeof(int64_t),
     .tag = cubsValueTagInt,
     .destructor = NULL, 
     .clone = (CubsStructCloneFn)&int_clone,
@@ -70,6 +73,7 @@ static size_t float_hash(const double* self) {
 
 const CubsStructContext CUBS_FLOAT_CONTEXT = {
     .sizeOfType = sizeof(double),
+    .powOf8Size = sizeof(double),
     .tag = cubsValueTagFloat,
     .destructor = NULL, 
     .clone = (CubsStructCloneFn)&float_clone,
@@ -86,6 +90,7 @@ static void string_clone(CubsString* dst, const CubsString* self) {
 
 const CubsStructContext CUBS_STRING_CONTEXT = {
     .sizeOfType = sizeof(CubsString),
+    .powOf8Size = sizeof(CubsString),
     .tag = cubsValueTagString,
     .destructor = (CubsStructDestructorFn)&cubs_string_deinit,
     .clone = (CubsStructCloneFn)&string_clone,
@@ -102,6 +107,7 @@ static void array_clone(CubsArray* dst, const CubsArray* self) {
 
 const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .sizeOfType = sizeof(CubsArray),
+    .powOf8Size = sizeof(CubsArray),
     .tag = cubsValueTagArray,
     .destructor = (CubsStructDestructorFn)&cubs_array_deinit,
     .clone = (CubsStructCloneFn)&array_clone,
@@ -111,6 +117,23 @@ const CubsStructContext CUBS_ARRAY_CONTEXT = {
     .nameLength = 5,
 };
 
+static void set_clone(CubsSet* dst, const CubsSet* self) {
+    const CubsSet temp = cubs_set_clone(self);
+    *dst = temp;
+}
+
+const CubsStructContext CUBS_SET_CONTEXT = {  
+    .sizeOfType = sizeof(CubsSet),
+    .powOf8Size = sizeof(CubsSet),
+    .tag = cubsValueTagSet,
+    .destructor = (CubsStructDestructorFn)&cubs_set_deinit,
+    .clone = (CubsStructCloneFn)&set_clone,
+    .eql = (CubsStructEqlFn)&cubs_set_eql,
+    .hash = (CubsStructHashFn)&cubs_set_hash,
+    .name = "set",
+    .nameLength = 3,
+};
+
 static void map_clone(CubsMap* dst, const CubsMap* self) {
     const CubsMap temp = cubs_map_clone(self);
     *dst = temp;
@@ -118,6 +141,7 @@ static void map_clone(CubsMap* dst, const CubsMap* self) {
 
 const CubsStructContext CUBS_MAP_CONTEXT = {
     .sizeOfType = sizeof(CubsMap),
+    .powOf8Size = sizeof(CubsMap),
     .tag = cubsValueTagMap,
     .destructor = (CubsStructDestructorFn)&cubs_map_deinit,
     .clone = (CubsStructCloneFn)&map_clone,
@@ -145,6 +169,9 @@ const CubsStructContext *cubs_primitive_context_for_tag(CubsValueTag tag)
         } break;
         case cubsValueTagArray: {
             return &CUBS_ARRAY_CONTEXT;
+        } break;
+        case cubsValueTagSet: {
+            return &CUBS_SET_CONTEXT;
         } break;
         case cubsValueTagMap: {
             return &CUBS_MAP_CONTEXT;
