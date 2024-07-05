@@ -2,33 +2,31 @@
 #include <assert.h>
 #include "../../util/global_allocator.h"
 #include <string.h>
+#include "../primitives_context.h"
 
-const size_t MAX_INLINE_STORAGE = sizeof(void*[4]);
-
-CubsOption cubs_option_init_unchecked(CubsValueTag tag, void *value)
-{
-    const size_t sizeOfValue = cubs_size_of_tagged_type(tag);
-    if(sizeOfValue > MAX_INLINE_STORAGE) { // Would mean type cannot fit within the buffer
-        void* valueStorage = cubs_malloc(sizeOfValue, _Alignof(size_t));
-        memcpy(valueStorage, value, sizeOfValue);
-        const CubsOption option = {.tag = tag, .sizeOfType = sizeOfValue, .isSome = true, .metadata = {valueStorage, NULL, NULL, NULL}};
-        return option;
-    }
-    else {
-        CubsOption option = {.tag = tag, .sizeOfType = sizeOfValue, .isSome = true};
-        memcpy(option.metadata, value, sizeOfValue);
-        return option;
-    }
+CubsOption cubs_option_init_primitive(CubsValueTag tag, void* optionalValue)
+{  
+    assert(tag != cubsValueTagUserClass && "Use cubs_option_init_user_class for user defined classes");
+    return cubs_option_init_user_class(cubs_primitive_context_for_tag(tag), optionalValue);
 }
 
-CubsOption cubs_option_init_raw_unchecked(CubsValueTag tag, CubsRawValue value)
+CubsOption cubs_option_init_user_class(const CubsStructContext *context, void *optionalValue)
 {
-    return cubs_option_init_unchecked(tag, (void*)&value);
-}
-
-CubsOption cubs_option_init(CubsTaggedValue value)
-{
-    return cubs_option_init_unchecked(value.tag, (void*)&value.value);
+    assert(context != NULL);
+    if(optionalValue == NULL) {
+        const CubsOption option = {._metadata = {0}, .isSome = false, .context = context};
+        return option;
+    } else {
+        CubsOption option = {._metadata = {0}, .isSome = true, .context = context};
+        if(context->sizeOfType <= sizeof(option._metadata)) {
+            memcpy((void*)&option._metadata, optionalValue, context->sizeOfType);
+        } else {
+            void* metadataMem = cubs_malloc(context->sizeOfType, _Alignof(size_t));
+            memcpy(metadataMem, optionalValue, context->sizeOfType);
+            option._metadata[0] = metadataMem;
+        }
+        return option;
+    }
 }
 
 void cubs_option_deinit(CubsOption *self)
@@ -37,56 +35,49 @@ void cubs_option_deinit(CubsOption *self)
         return;
     }
 
-    cubs_void_value_deinit(cubs_option_get_mut_unchecked(self), self->tag);
+    if(self->context->destructor != NULL) {
+        if(self->context->sizeOfType <= sizeof(self->_metadata)) {
+            self->context->destructor(&self->_metadata);
+        } else {
+            self->context->destructor(self->_metadata[0]);
+            cubs_free(self->_metadata[0], self->context->sizeOfType, _Alignof(size_t));
+        }
+    }
+
     memset((void*)self, 0, sizeof(CubsOption));
 }
 
-const void *cubs_option_get_unchecked(const CubsOption *self)
+const void *cubs_option_get(const CubsOption *self)
 {
     assert(self->isSome);
-    if(self->sizeOfType > MAX_INLINE_STORAGE) {
-        return self->metadata[0];
-    }
-    else {
-        return self->metadata;
+
+    if(self->context->sizeOfType <= sizeof(self->_metadata)) {
+        return &self->_metadata;
+    } else {
+        return self->_metadata[0];
     }
 }
 
-void *cubs_option_get_mut_unchecked(CubsOption *self)
+void *cubs_option_get_mut(CubsOption *self)
 {
     assert(self->isSome);
-    if(self->sizeOfType > MAX_INLINE_STORAGE) {
-        return self->metadata[0];
-    }
-    else {
-        return self->metadata;
+
+    if(self->context->sizeOfType <= sizeof(self->_metadata)) {
+        return &self->_metadata;
+    } else {
+        return self->_metadata[0];
     }
 }
 
-CubsOptionError cubs_option_get(const void **out, const CubsOption *self)
+void cubs_option_take(void *out, CubsOption *self)
 {
-    if(!self->isSome) {
-        return cubsOptionErrorIsNone;
-    }
-    *out = cubs_option_get_unchecked(self);
-    return cubsOptionErrorNone;
-}
+    assert(self->isSome);
 
-CubsOptionError cubs_option_get_mut(void **out, CubsOption *self)
-{
-    if(!self->isSome) {
-        return cubsOptionErrorIsNone;
+    if(self->context->sizeOfType <= sizeof(self->_metadata)) {
+        memcpy(out, &self->_metadata, self->context->sizeOfType);
+    } else {
+        memcpy(out, self->_metadata[0], self->context->sizeOfType);
+        cubs_free(self->_metadata[0], self->context->sizeOfType, _Alignof(size_t));
     }
-    *out = cubs_option_get_mut_unchecked(self);
-    return cubsOptionErrorNone;
-}
-
-CubsOptionError cubs_option_take(void* out, CubsOption* self)
-{
-    if(!self->isSome) {
-        return cubsOptionErrorIsNone;
-    }
-    memcpy(out, cubs_option_get_unchecked(self), self->sizeOfType);
     memset((void*)self, 0, sizeof(CubsOption));
-    return cubsOptionErrorNone;
 }

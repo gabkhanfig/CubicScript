@@ -57,9 +57,11 @@ typedef struct CubsArray {
 
 typedef struct CubsSet {
     /// The number of key/value pairs in the hashset.
-    size_t count;
+    size_t len;
     /// Accessing this is unsafe
-    void* _metadata[3];
+    void* _metadata[5];
+    /// Requires equality and hash function pointers
+    const CubsStructContext* context;
 } CubsSet;
 
 typedef struct CubsMap {
@@ -75,26 +77,25 @@ typedef struct CubsMap {
 
 /// 0 / null intialization makes it a none option.
 typedef struct CubsOption {
-    /// Reading this is safe. Writing is unsafe.
-    CubsValueTag tag;
-    /// Reading this is safe. Writing is unsafe.
     bool isSome;
-    /// Reading this is safe. Writing is unsafe.
-    uint8_t sizeOfType;
-    /// Accessing this is unsafe
-    void* metadata[4];
+    void* _metadata[4];
+    const CubsStructContext* context;
 } CubsOption;
 
 typedef struct CubsError {
-    /// Accessing this is unsafe.
-    void* metadata;
     /// Reading and writing to this is safe.
     CubsString name;
+    /// Can be NULL. Must be cast to the appropriate type.
+    void* metadata;
+    /// Is the type of `metadata`.
+    const CubsStructContext* metadataContext;
 } CubsError;
 
 typedef struct CubsResult {
     /// Accessing this is unsafe.
-    void* metadata[5];
+    void* metadata[sizeof(CubsError) / sizeof(void*)];
+    bool isOk;
+    const CubsStructContext* okContext;
 } CubsResult;
 
 typedef struct CubsOwnedInterface {
