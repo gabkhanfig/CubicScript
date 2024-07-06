@@ -13,6 +13,8 @@ CubsOption cubs_option_init_user_class(const CubsStructContext* context, void* o
 
 void cubs_option_deinit(CubsOption* self);
 
+CubsOption cubs_option_clone(const CubsOption* self);
+
 /// Always returns a valid pointer.
 /// # Debug Asserts
 /// `self->isSome`
@@ -27,3 +29,7 @@ void* cubs_option_get_mut(CubsOption* self);
 /// # Debug Asserts
 /// `self->isSome`
 void cubs_option_take(void* out, CubsOption* self);
+
+bool cubs_option_eql(const CubsOption* self, const CubsOption* other);
+
+size_t cubs_option_hash(const CubsOption* self);

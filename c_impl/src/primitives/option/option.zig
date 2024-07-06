@@ -48,6 +48,10 @@ pub fn Option(comptime T: type) type {
             CubsOption.cubs_option_deinit(self.asRawMut());
         }
 
+        pub fn clone(self: *const Self) Self {
+            return @bitCast(CubsOption.cubs_option_clone(self.asRaw()));
+        }
+
         pub fn get(self: *const Self) *const T {
             return @ptrCast(@alignCast(CubsOption.cubs_option_get(self.asRaw())));
         }
@@ -62,6 +66,14 @@ pub fn Option(comptime T: type) type {
             var out: T = undefined;
             CubsOption.cubs_option_take(@ptrCast(&out), self.asRawMut());
             return out;
+        }
+
+        pub fn eql(self: *const Self, other: *const Self) bool {
+            return CubsOption.cubs_option_eql(self.asRaw(), other.asRaw());
+        }
+
+        pub fn hash(self: *const Self) usize {
+            return CubsOption.cubs_option_hash(self.asRaw());
         }
 
         pub fn asRaw(self: *const Self) *const CubsOption {
@@ -85,9 +97,12 @@ pub const CubsOption = extern struct {
     pub extern fn cubs_option_init_primitive(tag: ValueTag, optionalValue: ?*anyopaque) callconv(.C) Self;
     pub extern fn cubs_option_init_user_class(context: *const StructContext, optionalValue: ?*anyopaque) callconv(.C) Self;
     pub extern fn cubs_option_deinit(self: *Self) callconv(.C) void;
+    pub extern fn cubs_option_clone(self: *const Self) callconv(.C) Self;
     pub extern fn cubs_option_get(self: *const Self) callconv(.C) *const anyopaque;
     pub extern fn cubs_option_get_mut(self: *Self) callconv(.C) *anyopaque;
     pub extern fn cubs_option_take(out: *anyopaque, self: *Self) callconv(.C) void;
+    pub extern fn cubs_option_eql(self: *const Self, other: *const Self) callconv(.C) bool;
+    pub extern fn cubs_option_hash(self: *const Self) callconv(.C) usize;
 };
 
 test "null" {
@@ -103,12 +118,12 @@ test "null" {
 
         try expect(opt.isSome == false);
     }
-    // {
-    //     var opt = Option(Option(String)).init(null);
-    //     defer opt.deinit();
+    {
+        var opt = Option(Option(String)).init(null);
+        defer opt.deinit();
 
-    //     try expect(opt.isSome == false);
-    // }
+        try expect(opt.isSome == false);
+    }
 }
 
 test "some" {
@@ -138,5 +153,123 @@ test "take" {
         const took = opt.take();
         try expect(took == 4);
         try expect(opt.isSome == false);
+    }
+}
+
+test "clone" {
+    {
+        var nullOpt = Option(i64).init(null);
+        defer nullOpt.deinit();
+
+        var clone = nullOpt.clone();
+        defer clone.deinit();
+
+        try expect(!clone.isSome);
+    }
+    {
+        var someOpt = Option(i64).init(1);
+        defer someOpt.deinit();
+
+        var clone = someOpt.clone();
+        defer clone.deinit();
+
+        try expect(clone.isSome);
+        try expect(clone.get().* == 1);
+    }
+}
+
+test "eql" {
+    {
+        var nullOpt1 = Option(i64).init(null);
+        defer nullOpt1.deinit();
+
+        var nullOpt2 = Option(i64).init(null);
+        defer nullOpt2.deinit();
+
+        try expect(nullOpt1.eql(&nullOpt2));
+    }
+    {
+        var nullOpt = Option(i64).init(null);
+        defer nullOpt.deinit();
+
+        var someOpt = Option(i64).init(1);
+        defer someOpt.deinit();
+
+        try expect(!nullOpt.eql(&someOpt));
+        try expect(!someOpt.eql(&nullOpt));
+    }
+    {
+        var someOpt1 = Option(i64).init(1);
+        defer someOpt1.deinit();
+
+        var someOpt2 = Option(i64).init(1);
+        defer someOpt2.deinit();
+
+        try expect(someOpt1.eql(&someOpt2));
+    }
+    {
+        var someOpt1 = Option(i64).init(1);
+        defer someOpt1.deinit();
+
+        var someOpt2 = Option(i64).init(2);
+        defer someOpt2.deinit();
+
+        try expect(!someOpt1.eql(&someOpt2));
+        try expect(!someOpt2.eql(&someOpt1));
+    }
+}
+
+test "hash" {
+    {
+        var nullOpt1 = Option(i64).init(null);
+        defer nullOpt1.deinit();
+
+        var nullOpt2 = Option(i64).init(null);
+        defer nullOpt2.deinit();
+
+        const h1 = nullOpt1.hash();
+        const h2 = nullOpt2.hash();
+
+        try expect(h1 == h2);
+    }
+    {
+        var nullOpt = Option(i64).init(null);
+        defer nullOpt.deinit();
+
+        var someOpt = Option(i64).init(1);
+        defer someOpt.deinit();
+
+        const h1 = nullOpt.hash();
+        const h2 = someOpt.hash();
+
+        if (h1 == h2) {
+            return error.SkipZigTest;
+        }
+    }
+    {
+        var someOpt1 = Option(i64).init(1);
+        defer someOpt1.deinit();
+
+        var someOpt2 = Option(i64).init(1);
+        defer someOpt2.deinit();
+
+        const h1 = someOpt1.hash();
+        const h2 = someOpt2.hash();
+
+        try expect(h1 == h2);
+    }
+    {
+        var someOpt1 = Option(i64).init(1);
+        defer someOpt1.deinit();
+
+        var someOpt2 = Option(i64).init(2);
+        defer someOpt2.deinit();
+
+        const h1 = someOpt1.hash();
+        const h2 = someOpt2.hash();
+
+        if (h1 == h2) {
+            return error.SkipZigTest;
+        }
     }
 }
