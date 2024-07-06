@@ -3,6 +3,7 @@
 #include "../primitives/array/array.h"
 #include "../primitives/set/set.h"
 #include "../primitives/map/map.h"
+#include "../primitives/option/option.h"
 #include "../util/panic.h"
 #include <assert.h>
 
@@ -151,6 +152,23 @@ const CubsStructContext CUBS_MAP_CONTEXT = {
     .nameLength = 3,
 };
 
+static void option_clone(CubsOption* dst, const CubsOption* self) {
+    const CubsOption temp = cubs_option_clone(self);
+    *dst = temp;
+}
+
+const CubsStructContext CUBS_OPTION_CONTEXT = {
+    .sizeOfType = sizeof(CubsOption),
+    .powOf8Size = sizeof(CubsOption),
+    .tag = cubsValueTagOption,
+    .destructor = (CubsStructDestructorFn)&cubs_option_deinit,
+    .clone = (CubsStructCloneFn)&option_clone,
+    .eql = (CubsStructEqlFn)&cubs_option_eql,
+    .hash = (CubsStructHashFn)&cubs_option_hash,
+    .name = "option",
+    .nameLength = 6,
+};
+
 const CubsStructContext *cubs_primitive_context_for_tag(CubsValueTag tag)
 {
     assert(tag != cubsValueTagUserStruct && "This function is for primitive types only");
@@ -175,6 +193,9 @@ const CubsStructContext *cubs_primitive_context_for_tag(CubsValueTag tag)
         } break;
         case cubsValueTagMap: {
             return &CUBS_MAP_CONTEXT;
+        } break;
+        case cubsValueTagOption: {
+            return &CUBS_OPTION_CONTEXT;
         } break;
         default: {
             cubs_panic("unsupported primitive context type");

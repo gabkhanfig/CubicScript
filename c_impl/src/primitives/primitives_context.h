@@ -9,7 +9,9 @@ extern const CubsStructContext CUBS_INT_CONTEXT;
 extern const CubsStructContext CUBS_FLOAT_CONTEXT;
 extern const CubsStructContext CUBS_STRING_CONTEXT;
 extern const CubsStructContext CUBS_ARRAY_CONTEXT;
+extern const CubsStructContext CUBS_SET_CONTEXT;
 extern const CubsStructContext CUBS_MAP_CONTEXT;
+extern const CubsStructContext CUBS_OPTION_CONTEXT;
 
 /// Always returns a valid pointer
 /// # Debug Asserts
