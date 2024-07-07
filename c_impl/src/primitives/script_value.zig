@@ -66,7 +66,7 @@ pub const ValueTag = enum(c_int) {
     structRtti = 38,
 };
 
-pub const StructContext = extern struct {
+pub const TypeContext = extern struct {
     sizeOfType: usize,
     tag: ValueTag,
     onDeinit: ?*const fn (self: *anyopaque) callconv(.C) void = null,
@@ -77,13 +77,13 @@ pub const StructContext = extern struct {
     nameLength: usize,
 
     /// Automatically generate a struct context for script use
-    pub fn auto(comptime T: type) *const StructContext {
+    pub fn auto(comptime T: type) *const TypeContext {
         const rtti = comptime generate(T);
         return &rtti;
     }
 
-    fn generate(comptime T: type) StructContext {
-        var context: StructContext = undefined;
+    fn generate(comptime T: type) TypeContext {
+        var context: TypeContext = undefined;
         context.sizeOfType = @sizeOf(T);
         context.tag = .userStruct;
 

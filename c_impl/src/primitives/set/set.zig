@@ -6,7 +6,7 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
-const StructContext = script_value.StructContext;
+const TypeContext = script_value.TypeContext;
 
 pub fn Set(comptime K: type) type {
     return extern struct {
@@ -16,7 +16,7 @@ pub fn Set(comptime K: type) type {
 
         len: usize = 0,
         _metadata: [5]?*anyopaque = std.mem.zeroes([5]?*anyopaque),
-        context: *const StructContext,
+        context: *const TypeContext,
 
         pub fn init() Self {
             const kTag = script_value.scriptTypeToTag(K);
@@ -24,7 +24,7 @@ pub fn Set(comptime K: type) type {
                 const raw = CubsSet.cubs_set_init_primitive(kTag);
                 return @bitCast(raw);
             } else {
-                const raw = CubsSet.cubs_set_init_user_struct(StructContext.auto(K));
+                const raw = CubsSet.cubs_set_init_user_struct(TypeContext.auto(K));
                 return @bitCast(raw);
             }
         }
@@ -108,12 +108,12 @@ pub fn Set(comptime K: type) type {
 pub const CubsSet = extern struct {
     len: usize,
     _metadata: [5]?*anyopaque,
-    keyContext: *const StructContext,
+    keyContext: *const TypeContext,
 
     pub const SCRIPT_SELF_TAG: ValueTag = .set;
 
     pub extern fn cubs_set_init_primitive(tag: ValueTag) callconv(.C) CubsSet;
-    pub extern fn cubs_set_init_user_struct(context: *const StructContext) callconv(.C) CubsSet;
+    pub extern fn cubs_set_init_user_struct(context: *const TypeContext) callconv(.C) CubsSet;
     pub extern fn cubs_set_deinit(self: *CubsSet) callconv(.C) void;
     pub extern fn cubs_set_clone(self: *const CubsSet) callconv(.C) CubsSet;
     pub extern fn cubs_set_contains(self: *const CubsSet, key: *const anyopaque) callconv(.C) bool;

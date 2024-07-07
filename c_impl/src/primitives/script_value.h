@@ -17,7 +17,7 @@ typedef size_t (*CubsStructHashFn)(const void* self);
 /// - `clone` -> `cubs_class_opaque_clone(...)`
 /// - `eql` -> `cubs_class_opaque_eql(...)`
 /// - `hash` -> `cubs_class_opaque_hash(...)`
-typedef struct CubsStructContext {
+typedef struct CubsTypeContext {
     /// In bytes.
     size_t sizeOfType;
     /// The size used in the interpreter. Is nearly always the same as `sizeOfType`, with the exception being booleans.
@@ -36,7 +36,7 @@ typedef struct CubsStructContext {
     const char* name;
     /// Is the length of `name`. Can be 0. Only used for debugging purposes
     size_t nameLength;
-} CubsStructContext;
+} CubsTypeContext;
 
 /// 0 / null intialization makes it an empty string.
 typedef struct CubsString {
@@ -54,7 +54,7 @@ typedef struct CubsArray {
     void* buf;
     /// Accessing this is unsafe
     size_t capacity;
-    const CubsStructContext* context;
+    const CubsTypeContext* context;
 } CubsArray;
 
 typedef struct CubsSet {
@@ -63,7 +63,7 @@ typedef struct CubsSet {
     /// Accessing this is unsafe
     void* _metadata[5];
     /// Requires equality and hash function pointers
-    const CubsStructContext* context;
+    const CubsTypeContext* context;
 } CubsSet;
 
 typedef struct CubsMap {
@@ -72,32 +72,32 @@ typedef struct CubsMap {
     /// Accessing this is unsafe
     void* _metadata[5];
     /// Requires equality and hash function pointers
-    const CubsStructContext* keyContext;
+    const CubsTypeContext* keyContext;
     /// Does not require equality and hash function pointers
-    const CubsStructContext* valueContext;
+    const CubsTypeContext* valueContext;
 } CubsMap;
 
 /// 0 / null intialization makes it a none option.
 typedef struct CubsOption {
     bool isSome;
     void* _metadata[4];
-    const CubsStructContext* context;
+    const CubsTypeContext* context;
 } CubsOption;
 
 typedef struct CubsError {
-    /// Reading and writing to this is safe.
     CubsString name;
     /// Can be NULL. Must be cast to the appropriate type.
     void* metadata;
-    /// Is the type of `metadata`.
-    const CubsStructContext* metadataContext;
+    /// Is the type of `metadata`. Can be NULL if the error has no metadata.
+    const CubsTypeContext* context;
 } CubsError;
 
 typedef struct CubsResult {
     /// Accessing this is unsafe.
     void* metadata[sizeof(CubsError) / sizeof(void*)];
     bool isOk;
-    const CubsStructContext* okContext;
+    /// Context of the ok value. If `NULL`, is an empty ok value.
+    const CubsTypeContext* context;
 } CubsResult;
 
 typedef struct CubsOwnedInterface {
