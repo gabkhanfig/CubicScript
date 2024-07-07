@@ -28,12 +28,12 @@ typedef struct InterpreterStackState {
     size_t nextBaseOffset;
     InterpreterStackFrame frame;
     size_t stack[CUBS_STACK_SLOTS];
-    const CubsStructContext* contexts[CUBS_STACK_SLOTS];
+    const CubsTypeContext* contexts[CUBS_STACK_SLOTS];
 } InterpreterStackState;
 
 static _Thread_local InterpreterStackState threadLocalStack = {0};
 
-void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldInstructionPointer, void* returnValueDst, const CubsStructContext** returnContextDst) {
+void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldInstructionPointer, void* returnValueDst, const CubsTypeContext** returnContextDst) {
     assert(frameLength <= MAX_FRAME_LENGTH);
     { // store previous instruction pointer, frame length, return dst, and return tag dst
         size_t* basePointer = &((size_t*)threadLocalStack.stack)[threadLocalStack.nextBaseOffset];
@@ -75,7 +75,7 @@ void cubs_interpreter_pop_frame()
     const size_t oldInstructionPointer = basePointer[OLD_INSTRUCTION_POINTER];
     const size_t oldFrameLength = basePointer[OLD_FRAME_LENGTH];
     void* const oldReturnValueDst = (void*)basePointer[OLD_RETURN_VALUE_DST];
-    const CubsStructContext** const oldReturnTagDst = (const CubsStructContext**)basePointer[OLD_RETURN_CONTEXT_DST];
+    const CubsTypeContext** const oldReturnTagDst = (const CubsTypeContext**)basePointer[OLD_RETURN_CONTEXT_DST];
 
     const InterpreterStackFrame newFrame = {
         .basePointerOffset = threadLocalStack.nextBaseOffset,
@@ -97,14 +97,14 @@ void *cubs_interpreter_stack_value_at(size_t offset)
     return (void*)(&threadLocalStack.stack[threadLocalStack.frame.basePointerOffset + offset]);
 }
 
-const CubsStructContext* cubs_interpreter_stack_context_at(size_t offset)
+const CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset)
 {
     assert(offset < threadLocalStack.frame.frameLength);
-    const CubsStructContext* context = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
+    const CubsTypeContext* context = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
     return context;
 }
 
-void cubs_interpreter_stack_set_context_at(size_t offset, const CubsStructContext* context)
+void cubs_interpreter_stack_set_context_at(size_t offset, const CubsTypeContext* context)
 {
     assert(offset < threadLocalStack.frame.frameLength);
     assert((offset + context->sizeOfType) < ((threadLocalStack.frame.frameLength + 1) * sizeof(size_t)));
@@ -182,7 +182,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_STRING_CONTEXT);
                 } break;
                 case cubsValueTagArray: {
-                    const CubsStructContext* context = (const CubsStructContext*)threadLocalStack.instructionPointer[1].value;
+                    const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
                     *(CubsArray*)dst = cubs_array_init_user_struct(context);
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_ARRAY_CONTEXT);
                     (*ipIncrement) += 1; // move instruction pointer further into the bytecode
@@ -195,8 +195,8 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                     //cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_MAP_CONTEXT);
                 } break;
                 case cubsValueTagMap: {
-                    const CubsStructContext* keyContext = (const CubsStructContext*)threadLocalStack.instructionPointer[1].value;
-                    const CubsStructContext* valueContext = (const CubsStructContext*)threadLocalStack.instructionPointer[2].value;
+                    const CubsTypeContext* keyContext = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
+                    const CubsTypeContext* valueContext = (const CubsTypeContext*)threadLocalStack.instructionPointer[2].value;
                     *(CubsMap*)dst = cubs_map_init_user_struct(keyContext, valueContext);
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_MAP_CONTEXT);
                     (*ipIncrement) += 2; // move instruction pointer further into the bytecode
@@ -293,7 +293,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
             assert(operands.immediateValueTag != _CUBS_VALUE_TAG_NONE);
 
             const void* immediate = (const void*)(uintptr_t)threadLocalStack.instructionPointer[1].value;
-            const CubsStructContext* context = (const CubsStructContext*)threadLocalStack.instructionPointer[2].value;
+            const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[2].value;
             void* dst = cubs_interpreter_stack_value_at(operands.dst);
 
             assert(context->clone != NULL);

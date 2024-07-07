@@ -90,4 +90,4 @@ VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadDefault);
 /// If `tag` is a generic type that IS NOT `cubsValueTagMap`, `multiBytecode` must be a pointer to at least 2 bytecodes. 
 /// If `tag == cubsValueTagMap`, `multiBytecode` must be a pointer to at least 3 bytecodes. 
 /// Otherwise, `multiBytecode` is treated as a single pointer.
-void operands_make_load_default(Bytecode* multiBytecode, CubsValueTag tag, uint16_t dst, const CubsStructContext* optKeyContext, const CubsStructContext* optValueContext);
+void operands_make_load_default(Bytecode* multiBytecode, CubsValueTag tag, uint16_t dst, const CubsTypeContext* optKeyContext, const CubsTypeContext* optValueContext);

@@ -64,7 +64,7 @@ static void* key_of_header_mut(KeyHeader* header) {
     return (void*)(&header[1]);
 }
 
-static void key_header_deinit(KeyHeader* header, const CubsStructContext* keyContext, KeyHeader** iterFirst, KeyHeader** iterLast) {
+static void key_header_deinit(KeyHeader* header, const CubsTypeContext* keyContext, KeyHeader** iterFirst, KeyHeader** iterLast) {
     // Change iterator doubly-linked list
     KeyHeader* before = header->iterBefore;
     KeyHeader* after = header->iterAfter;
@@ -102,7 +102,7 @@ static void group_free(Group* self) {
 }
 
 /// Deinitialize the pairs, and free the group
-static void group_deinit(Group* self, const CubsStructContext* keyContext, KeyHeader** iterFirst, KeyHeader** iterLast) {
+static void group_deinit(Group* self, const CubsTypeContext* keyContext, KeyHeader** iterFirst, KeyHeader** iterLast) {
     if(self->pairCount != 0) {
         for(uint32_t i = 0; i < self->capacity; i++) {
             if(self->hashMasks[i] == 0) {
@@ -150,7 +150,7 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
 }
 
 /// Returns -1 if not found
-static size_t group_find(const Group* self, const void* key, const CubsStructContext* keyContext, CubsHashPairBitmask pairMask) {   
+static size_t group_find(const Group* self, const void* key, const CubsTypeContext* keyContext, CubsHashPairBitmask pairMask) {   
     size_t i = 0;
     while(i < self->capacity) {
         uint32_t resultMask = _cubs_simd_cmpeq_mask_8bit_32wide_aligned(pairMask.value, &self->hashMasks[i]);
@@ -178,7 +178,7 @@ static size_t group_find(const Group* self, const void* key, const CubsStructCon
 }
 
 /// If the entry already exists, overrides the existing value.
-static void group_insert(Group* self, void* key, const CubsStructContext* keyContext, size_t hashCode, KeyHeader** iterFirst, KeyHeader** iterLast) {
+static void group_insert(Group* self, void* key, const CubsTypeContext* keyContext, size_t hashCode, KeyHeader** iterFirst, KeyHeader** iterLast) {
     #if _DEBUG
     if(*iterLast != NULL) {
         assert((*iterLast)->iterAfter == NULL);
@@ -233,7 +233,7 @@ static void group_insert(Group* self, void* key, const CubsStructContext* keyCon
     unreachable();
 }
 
-static bool group_erase(Group* self, const void* key, const CubsStructContext* keyContext, CubsHashPairBitmask pairMask, KeyHeader** iterFirst, KeyHeader** iterLast) {
+static bool group_erase(Group* self, const void* key, const CubsTypeContext* keyContext, CubsHashPairBitmask pairMask, KeyHeader** iterFirst, KeyHeader** iterLast) {
     const size_t found = group_find(self, key, keyContext, pairMask);
     if(found == -1) {
         return false;
@@ -335,7 +335,7 @@ CubsSet cubs_set_init_primitive(CubsValueTag tag)
     return cubs_set_init_user_struct(cubs_primitive_context_for_tag(tag));
 }
 
-CubsSet cubs_set_init_user_struct(const CubsStructContext *context)
+CubsSet cubs_set_init_user_struct(const CubsTypeContext *context)
 {
     assert(context->eql != NULL && "Map's keyContext must contain a valid equality function pointer");
     assert(context->hash != NULL && "Map's keyContext must contain a valid hashing function pointer");

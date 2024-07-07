@@ -21,7 +21,7 @@ typedef struct CubsSetReverseIter {
 
 CubsSet cubs_set_init_primitive(CubsValueTag tag);
 
-CubsSet cubs_set_init_user_struct(const CubsStructContext* context);
+CubsSet cubs_set_init_user_struct(const CubsTypeContext* context);
 
 void cubs_set_deinit(CubsSet* self);
 

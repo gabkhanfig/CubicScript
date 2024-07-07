@@ -11,7 +11,7 @@ CubsOption cubs_option_init_primitive(CubsValueTag tag, void* optionalValue)
     return cubs_option_init_user_class(cubs_primitive_context_for_tag(tag), optionalValue);
 }
 
-CubsOption cubs_option_init_user_class(const CubsStructContext *context, void *optionalValue)
+CubsOption cubs_option_init_user_class(const CubsTypeContext *context, void *optionalValue)
 {
     assert(context != NULL);
     if(optionalValue == NULL) {

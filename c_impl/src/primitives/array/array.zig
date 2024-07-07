@@ -7,7 +7,7 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
-const StructContext = script_value.StructContext;
+const TypeContext = script_value.TypeContext;
 
 pub fn Array(comptime T: type) type {
     return extern struct {
@@ -20,7 +20,7 @@ pub fn Array(comptime T: type) type {
         len: usize = 0,
         buf: ?*T = null,
         capacity: usize = 0,
-        context: *const StructContext,
+        context: *const TypeContext,
 
         pub const Error = error{
             OutOfRange,
@@ -38,7 +38,7 @@ pub fn Array(comptime T: type) type {
                 const raw = RawArray.cubs_array_init_primitive(valueTag);
                 return @bitCast(raw);
             } else {
-                const raw = RawArray.cubs_array_init_user_struct(StructContext.auto(T));
+                const raw = RawArray.cubs_array_init_user_struct(TypeContext.auto(T));
                 return raw;
             }
         }
@@ -192,7 +192,7 @@ pub const RawArray = extern struct {
     len: usize,
     buf: ?*anyopaque,
     capacity: usize,
-    context: *const StructContext,
+    context: *const TypeContext,
 
     pub const Err = enum(c_int) {
         None = 0,
@@ -203,7 +203,7 @@ pub const RawArray = extern struct {
     pub const SCRIPT_SELF_TAG: ValueTag = .array;
 
     pub extern fn cubs_array_init_primitive(tag: ValueTag) callconv(.C) RawArray;
-    pub extern fn cubs_array_init_user_struct(rtti: *const StructContext) callconv(.C) RawArray;
+    pub extern fn cubs_array_init_user_struct(rtti: *const TypeContext) callconv(.C) RawArray;
     pub extern fn cubs_array_deinit(self: *RawArray) callconv(.C) void;
     pub extern fn cubs_array_clone(self: *const RawArray) callconv(.C) RawArray;
     pub extern fn cubs_array_tag(self: *const RawArray) callconv(.C) ValueTag;

@@ -19,7 +19,7 @@ static size_t bool_hash(const bool* self) {
     return (size_t)(*self);
 }
 
-const CubsStructContext CUBS_BOOL_CONTEXT = {
+const CubsTypeContext CUBS_BOOL_CONTEXT = {
     .sizeOfType = 1,
     .powOf8Size = sizeof(size_t),
     .tag = cubsValueTagBool,
@@ -44,7 +44,7 @@ static size_t int_hash(const int64_t* self) {
     return (size_t)(*self);
 }
 
-const CubsStructContext CUBS_INT_CONTEXT = {
+const CubsTypeContext CUBS_INT_CONTEXT = {
     .sizeOfType = sizeof(int64_t),
     .powOf8Size = sizeof(int64_t),
     .tag = cubsValueTagInt,
@@ -72,7 +72,7 @@ static size_t float_hash(const double* self) {
     return int_hash(&floatAsInt);
 }
 
-const CubsStructContext CUBS_FLOAT_CONTEXT = {
+const CubsTypeContext CUBS_FLOAT_CONTEXT = {
     .sizeOfType = sizeof(double),
     .powOf8Size = sizeof(double),
     .tag = cubsValueTagFloat,
@@ -89,7 +89,7 @@ static void string_clone(CubsString* dst, const CubsString* self) {
     *dst = temp;
 }
 
-const CubsStructContext CUBS_STRING_CONTEXT = {
+const CubsTypeContext CUBS_STRING_CONTEXT = {
     .sizeOfType = sizeof(CubsString),
     .powOf8Size = sizeof(CubsString),
     .tag = cubsValueTagString,
@@ -106,7 +106,7 @@ static void array_clone(CubsArray* dst, const CubsArray* self) {
     *dst = temp;
 }
 
-const CubsStructContext CUBS_ARRAY_CONTEXT = {
+const CubsTypeContext CUBS_ARRAY_CONTEXT = {
     .sizeOfType = sizeof(CubsArray),
     .powOf8Size = sizeof(CubsArray),
     .tag = cubsValueTagArray,
@@ -123,7 +123,7 @@ static void set_clone(CubsSet* dst, const CubsSet* self) {
     *dst = temp;
 }
 
-const CubsStructContext CUBS_SET_CONTEXT = {  
+const CubsTypeContext CUBS_SET_CONTEXT = {  
     .sizeOfType = sizeof(CubsSet),
     .powOf8Size = sizeof(CubsSet),
     .tag = cubsValueTagSet,
@@ -140,7 +140,7 @@ static void map_clone(CubsMap* dst, const CubsMap* self) {
     *dst = temp;
 }
 
-const CubsStructContext CUBS_MAP_CONTEXT = {
+const CubsTypeContext CUBS_MAP_CONTEXT = {
     .sizeOfType = sizeof(CubsMap),
     .powOf8Size = sizeof(CubsMap),
     .tag = cubsValueTagMap,
@@ -157,7 +157,7 @@ static void option_clone(CubsOption* dst, const CubsOption* self) {
     *dst = temp;
 }
 
-const CubsStructContext CUBS_OPTION_CONTEXT = {
+const CubsTypeContext CUBS_OPTION_CONTEXT = {
     .sizeOfType = sizeof(CubsOption),
     .powOf8Size = sizeof(CubsOption),
     .tag = cubsValueTagOption,
@@ -169,7 +169,7 @@ const CubsStructContext CUBS_OPTION_CONTEXT = {
     .nameLength = 6,
 };
 
-const CubsStructContext *cubs_primitive_context_for_tag(CubsValueTag tag)
+const CubsTypeContext *cubs_primitive_context_for_tag(CubsValueTag tag)
 {
     assert(tag != cubsValueTagUserStruct && "This function is for primitive types only");
     switch(tag) {

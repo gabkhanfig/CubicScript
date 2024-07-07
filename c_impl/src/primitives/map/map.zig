@@ -6,7 +6,7 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
-const StructContext = script_value.StructContext;
+const TypeContext = script_value.TypeContext;
 
 pub fn Map(comptime K: type, comptime V: type) type {
     return extern struct {
@@ -17,8 +17,8 @@ pub fn Map(comptime K: type, comptime V: type) type {
 
         len: usize = 0,
         _metadata: [5]?*anyopaque = std.mem.zeroes([5]?*anyopaque),
-        keyContext: *const StructContext,
-        valueContext: *const StructContext,
+        keyContext: *const TypeContext,
+        valueContext: *const TypeContext,
 
         /// For all primitive script types, creates the map.
         /// For user defined types, attemps to generate one.
@@ -33,7 +33,7 @@ pub fn Map(comptime K: type, comptime V: type) type {
                 const raw = RawMap.cubs_map_init_primitives(kTag, vTag);
                 return @bitCast(raw);
             } else {
-                const raw = RawMap.cubs_map_init_user_struct(StructContext.auto(K), StructContext.auto(V));
+                const raw = RawMap.cubs_map_init_user_struct(TypeContext.auto(K), TypeContext.auto(V));
                 return @bitCast(raw);
             }
         }
@@ -161,13 +161,13 @@ pub fn Map(comptime K: type, comptime V: type) type {
 pub const RawMap = extern struct {
     len: usize,
     _metadata: [5]?*anyopaque,
-    keyContext: *const StructContext,
-    valueContext: *const StructContext,
+    keyContext: *const TypeContext,
+    valueContext: *const TypeContext,
 
     pub const SCRIPT_SELF_TAG: ValueTag = .map;
 
     pub extern fn cubs_map_init_primitives(keyTag: ValueTag, valueTag: ValueTag) callconv(.C) RawMap;
-    pub extern fn cubs_map_init_user_struct(keyContext: *const StructContext, valueContext: *const StructContext) callconv(.C) RawMap;
+    pub extern fn cubs_map_init_user_struct(keyContext: *const TypeContext, valueContext: *const TypeContext) callconv(.C) RawMap;
     pub extern fn cubs_map_deinit(self: *RawMap) callconv(.C) void;
     pub extern fn cubs_map_clone(self: *const RawMap) callconv(.C) RawMap;
     pub extern fn cubs_map_find(self: *const RawMap, key: *const anyopaque) callconv(.C) ?*const anyopaque;

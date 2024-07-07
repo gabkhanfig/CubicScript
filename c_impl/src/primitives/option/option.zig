@@ -6,7 +6,7 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
-const StructContext = script_value.StructContext;
+const TypeContext = script_value.TypeContext;
 
 /// Default initialization makes it a none option
 pub fn Option(comptime T: type) type {
@@ -17,7 +17,7 @@ pub fn Option(comptime T: type) type {
 
         isSome: bool = false,
         _metadata: [4]?*anyopaque = std.mem.zeroes([4]?*anyopaque),
-        context: *const StructContext,
+        context: *const TypeContext,
 
         ///
         pub fn init(value: ?T) Self {
@@ -28,7 +28,7 @@ pub fn Option(comptime T: type) type {
                     if (valueTag != .userClass) {
                         break :blk CubsOption.cubs_option_init_primitive(valueTag, &mutValue);
                     } else {
-                        break :blk CubsOption.cubs_option_init_user_class(StructContext.auto(T), &mutValue);
+                        break :blk CubsOption.cubs_option_init_user_class(TypeContext.auto(T), &mutValue);
                     }
                 };
                 return @bitCast(opt);
@@ -37,7 +37,7 @@ pub fn Option(comptime T: type) type {
                     if (valueTag != .userClass) {
                         break :blk CubsOption.cubs_option_init_primitive(valueTag, null);
                     } else {
-                        break :blk CubsOption.cubs_option_init_user_class(StructContext.auto(T), null);
+                        break :blk CubsOption.cubs_option_init_user_class(TypeContext.auto(T), null);
                     }
                 };
                 return @bitCast(opt);
@@ -89,13 +89,13 @@ pub fn Option(comptime T: type) type {
 pub const CubsOption = extern struct {
     isSome: bool = false,
     _metadata: [4]?*anyopaque = std.mem.zeroes([4]?*anyopaque),
-    context: *const StructContext,
+    context: *const TypeContext,
 
     const Self = @This();
     pub const SCRIPT_SELF_TAG: ValueTag = .option;
 
     pub extern fn cubs_option_init_primitive(tag: ValueTag, optionalValue: ?*anyopaque) callconv(.C) Self;
-    pub extern fn cubs_option_init_user_class(context: *const StructContext, optionalValue: ?*anyopaque) callconv(.C) Self;
+    pub extern fn cubs_option_init_user_class(context: *const TypeContext, optionalValue: ?*anyopaque) callconv(.C) Self;
     pub extern fn cubs_option_deinit(self: *Self) callconv(.C) void;
     pub extern fn cubs_option_clone(self: *const Self) callconv(.C) Self;
     pub extern fn cubs_option_get(self: *const Self) callconv(.C) *const anyopaque;

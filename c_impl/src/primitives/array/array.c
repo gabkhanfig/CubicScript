@@ -54,7 +54,7 @@ CubsArray cubs_array_init_primitive(CubsValueTag tag)
     return cubs_array_init_user_struct(cubs_primitive_context_for_tag(tag));
 }
 
-CubsArray cubs_array_init_user_struct(const CubsStructContext *context)
+CubsArray cubs_array_init_user_struct(const CubsTypeContext *context)
 {
     assert(context != NULL);
     const CubsArray arr = {.len = 0, .buf = NULL, .capacity = 0, .context = context};
