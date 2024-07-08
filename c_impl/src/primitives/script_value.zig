@@ -9,6 +9,10 @@ const c = struct {
     extern fn cubs_tagged_value_deinit(self: *CTaggedValue) void;
     extern fn cubs_tagged_value_clone(self: *const RawValue) CTaggedValue;
     extern fn cubs_tagged_value_eql(self: *const CTaggedValue, other: *const CTaggedValue) bool;
+
+    const primitive_context = @cImport({
+        @cInclude("primitives/primitives_context.h");
+    });
 };
 
 pub const String = @import("string/string.zig").String;
@@ -79,8 +83,28 @@ pub const TypeContext = extern struct {
 
     /// Automatically generate a struct context for script use
     pub fn auto(comptime T: type) *const TypeContext {
-        const rtti = comptime generate(T);
-        return &rtti;
+        if (T == bool) {
+            return @ptrCast(&c.primitive_context.CUBS_BOOL_CONTEXT);
+        } else if (T == i64) {
+            return @ptrCast(&c.primitive_context.CUBS_INT_CONTEXT);
+        } else if (T == f64) {
+            return @ptrCast(&c.primitive_context.CUBS_FLOAT_CONTEXT);
+        } else if (T == String) {
+            return @ptrCast(&c.primitive_context.CUBS_STRING_CONTEXT);
+        }
+        // if (@hasDecl(T, "SCRIPT_SELF_TAG")) {
+        // comptime {
+        //     const tag: ValueTag = T.SCRIPT_SELF_TAG;
+        //     switch (tag) {
+        //         else => {
+        //             @compileError("Unsupported primitive context type");
+        //         },
+        //     }
+        // }
+        // } else {
+        const context = comptime generate(T);
+        return &context;
+        // }
     }
 
     fn generate(comptime T: type) TypeContext {

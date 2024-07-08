@@ -19,7 +19,7 @@ comptime {
     _ = @import("primitives/map/map.zig");
     //_ = @import("primitives/script_value.zig").TaggedValue;
     _ = @import("primitives/option/option.zig");
-    //_ = @import("primitives/result/result.zig").Error;
+    _ = @import("primitives/error/error.zig");
     //_ = @import("primitives/result/result.zig").Result;
     _ = @import("primitives/vector/vector.zig").Vec2i;
     _ = @import("primitives/vector/vector.zig").Vec3i;

@@ -91,6 +91,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/primitives/map/map.c",
     "src/primitives/set/set.c",
     "src/primitives/option/option.c",
+    "src/primitives/error/error.c",
     "src/primitives/result/result.c",
     "src/primitives/vector/vector.c",
 };
