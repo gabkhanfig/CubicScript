@@ -20,28 +20,28 @@ pub fn Array(comptime T: type) type {
         len: usize = 0,
         buf: ?*T = null,
         capacity: usize = 0,
-        context: *const TypeContext,
+        context: *const TypeContext = TypeContext.auto(T),
 
         pub const Error = error{
             OutOfRange,
         };
 
-        /// For all primitive script types, creates the array.
-        /// For user defined types, attemps to generate one.
-        /// Alternatively, one can be passed in manually through creating a struct instance. For example
-        /// ```
-        /// const arr = Array(UserStruct){.context = ...};
-        /// ```
-        pub fn init() Self {
-            const valueTag = comptime script_value.scriptTypeToTag(T);
-            if (valueTag != .userStruct) {
-                const raw = RawArray.cubs_array_init_primitive(valueTag);
-                return @bitCast(raw);
-            } else {
-                const raw = RawArray.cubs_array_init_user_struct(TypeContext.auto(T));
-                return raw;
-            }
-        }
+        // /// For all primitive script types, creates the array.
+        // /// For user defined types, attemps to generate one.
+        // /// Alternatively, one can be passed in manually through creating a struct instance. For example
+        // /// ```
+        // /// const arr = Array(UserStruct){.context = ...};
+        // /// ```
+        // pub fn init() Self {
+        //     const valueTag = comptime script_value.scriptTypeToTag(T);
+        //     if (valueTag != .userStruct) {
+        //         const raw = RawArray.cubs_array_init_primitive(valueTag);
+        //         return @bitCast(raw);
+        //     } else {
+        //         const raw = RawArray.cubs_array_init_user_struct(TypeContext.auto(T));
+        //         return raw;
+        //     }
+        // }
 
         pub fn deinit(self: *Self) void {
             return RawArray.cubs_array_deinit(self.asRawMut());
@@ -266,17 +266,17 @@ pub const CubsArrayReverseMutIter = extern struct {
 };
 
 test "nested array" {
-    var arr1 = Array(Array(i64)).init();
+    var arr1 = Array(Array(i64)){};
     defer arr1.deinit();
 
-    var arr2 = Array(i64).init();
+    var arr2 = Array(i64){};
     arr2.push(1);
     arr1.push(arr2);
 }
 
 test "push" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         arr.push(6);
@@ -286,7 +286,7 @@ test "push" {
         try expect(arr.len == 2);
     }
     {
-        var arr = Array(String).init();
+        var arr = Array(String){};
         defer arr.deinit();
 
         arr.push(String.initUnchecked("hi"));
@@ -299,7 +299,7 @@ test "push" {
 
 test "atUnchecked" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         arr.push(6);
@@ -310,7 +310,7 @@ test "atUnchecked" {
         try expect(arr.atUnchecked(1).* == 7);
     }
     {
-        var arr = Array(String).init();
+        var arr = Array(String){};
         defer arr.deinit();
 
         arr.push(String.initUnchecked("hi"));
@@ -324,7 +324,7 @@ test "atUnchecked" {
 
 test "at" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         arr.push(6);
@@ -337,7 +337,7 @@ test "at" {
         try std.testing.expectError(error.OutOfRange, arr.at(2));
     }
     {
-        var arr = Array(String).init();
+        var arr = Array(String){};
         defer arr.deinit();
 
         arr.push(String.initUnchecked("hi"));
@@ -353,7 +353,7 @@ test "at" {
 
 test "atMutUnchecked" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         arr.push(6);
@@ -366,7 +366,7 @@ test "atMutUnchecked" {
         try expect(arr.atMutUnchecked(1).* == 7);
     }
     {
-        var arr = Array(String).init();
+        var arr = Array(String){};
         defer arr.deinit();
 
         arr.push(String.initUnchecked("hi"));
@@ -383,7 +383,7 @@ test "atMutUnchecked" {
 
 test "atMut" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         arr.push(6);
@@ -398,7 +398,7 @@ test "atMut" {
         try std.testing.expectError(error.OutOfRange, arr.at(2));
     }
     {
-        var arr = Array(String).init();
+        var arr = Array(String){};
         defer arr.deinit();
 
         arr.push(String.initUnchecked("hi"));
@@ -417,7 +417,7 @@ test "atMut" {
 
 test "clone" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         for (0..6) |i| {
@@ -433,7 +433,7 @@ test "clone" {
         }
     }
     {
-        var arr = Array(String).init();
+        var arr = Array(String){};
         defer arr.deinit();
 
         for (0..6) |i| {
@@ -455,14 +455,14 @@ test "clone" {
 
 test "eql" {
     {
-        var arr1 = Array(i64).init();
+        var arr1 = Array(i64){};
         defer arr1.deinit();
 
         for (0..6) |i| {
             arr1.push(@intCast(i));
         }
 
-        var arr2 = Array(i64).init();
+        var arr2 = Array(i64){};
         defer arr2.deinit();
 
         for (0..6) |i| {
@@ -481,14 +481,14 @@ test "eql" {
         try expect(!arr1.eql(&arr2));
     }
     {
-        var arr1 = Array(String).init();
+        var arr1 = Array(String){};
         defer arr1.deinit();
 
         for (0..6) |i| {
             arr1.push(String.fromInt(@intCast(i)));
         }
 
-        var arr2 = Array(String).init();
+        var arr2 = Array(String){};
         defer arr2.deinit();
 
         for (0..6) |i| {
@@ -512,7 +512,7 @@ test "eql" {
 
 test "iter" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         {
@@ -546,7 +546,7 @@ test "iter" {
 
 test "mutIter" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         {
@@ -598,7 +598,7 @@ test "mutIter" {
 
 test "reverseIter" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         {
@@ -632,7 +632,7 @@ test "reverseIter" {
 
 test "reverseMutIter" {
     {
-        var arr = Array(i64).init();
+        var arr = Array(i64){};
         defer arr.deinit();
 
         {
@@ -682,15 +682,15 @@ test "reverseMutIter" {
 }
 
 test "hash" {
-    var emptyArr = Array(i64).init();
+    var emptyArr = Array(i64){};
     defer emptyArr.deinit();
 
-    var oneArr = Array(i64).init();
+    var oneArr = Array(i64){};
     defer oneArr.deinit();
 
     oneArr.push(5);
 
-    var manyArr = Array(i64).init();
+    var manyArr = Array(i64){};
     defer manyArr.deinit();
 
     manyArr.push(5);
