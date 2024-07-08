@@ -83,6 +83,10 @@ pub const TypeContext = extern struct {
 
     /// Automatically generate a struct context for script use
     pub fn auto(comptime T: type) *const TypeContext {
+        if (T == void) {
+            @compileError("Cannot generate TypeContext for void");
+        }
+
         if (T == bool) {
             return @ptrCast(&c.primitive_context.CUBS_BOOL_CONTEXT);
         } else if (T == i64) {
@@ -142,15 +146,29 @@ pub const TypeContext = extern struct {
     }
 
     test auto {
+        { // primitives
+            const ValidatePrimitiveAuto = struct {
+                fn validate(comptime T: type, context: *const c.primitive_context.CubsTypeContext) !void {
+                    try expect(@intFromPtr(TypeContext.auto(T)) == @intFromPtr(context));
+                }
+            };
+            const validate = ValidatePrimitiveAuto.validate;
+            const primitive_context = c.primitive_context;
+
+            try validate(bool, &primitive_context.CUBS_BOOL_CONTEXT);
+            try validate(i64, &primitive_context.CUBS_INT_CONTEXT);
+            try validate(f64, &primitive_context.CUBS_FLOAT_CONTEXT);
+            try validate(String, &primitive_context.CUBS_STRING_CONTEXT);
+        }
         { // plain struct
             const Example = extern struct {
                 num: i64,
             };
-            const rtti = auto(Example);
-            try expect(rtti.sizeOfType == @sizeOf(Example));
-            try expect(rtti.tag == .userStruct);
-            try expect(rtti.onDeinit == null);
-            try expect(std.mem.eql(u8, rtti.name[0..rtti.nameLength], "Example"));
+            const context = auto(Example);
+            try expect(context.sizeOfType == @sizeOf(Example));
+            try expect(context.tag == .userStruct);
+            try expect(context.onDeinit == null);
+            try expect(std.mem.eql(u8, context.name[0..context.nameLength], "Example"));
         }
     }
 };
