@@ -76,7 +76,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/sync/mutex.c",
     "src/sync/rwlock.c",
     "src/sync/sync_queue.c",
-    "src/sync/script_thread.c",
+    "src/sync/thread.c",
     //"src/util/global_allocator.c",
     "src/util/panic.c",
     "src/util/math.c",

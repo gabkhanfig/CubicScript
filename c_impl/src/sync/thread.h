@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+void cubs_thread_yield();
+
 /// A function pointer for when the script instance has closed and the thread is no longer needed.
 typedef void(*CubsThreadOnScriptClose)(void* threadObj);
 typedef uint64_t(*CubsThreadGetId)(const void* threadObj);

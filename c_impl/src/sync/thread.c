@@ -1,4 +1,4 @@
-#include "script_thread.h"
+#include "thread.h"
 #include "../util/global_allocator.h"
 #include "../util/panic.h"
 #include <stdio.h>
@@ -13,6 +13,11 @@
 #if _MSC_VER
 #include <vcruntime_c11_atomic_support.h>
 #endif
+
+void cubs_thread_yield()
+{
+    (void)SwitchToThread();
+}
 
 typedef struct {
     HANDLE thread;
@@ -86,6 +91,12 @@ CubsThread cubs_thread_spawn(bool closeWithScript)
 #if __unix__
 
 #include <pthread.h>
+#include <sched.h>
+
+void cubs_thread_yield()
+{
+    (void)sched_yield();
+}
 
 typedef struct {
     pthread_t thread;

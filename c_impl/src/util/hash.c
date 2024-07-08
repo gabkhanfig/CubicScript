@@ -7,6 +7,7 @@
 #include "../sync/mutex.h"
 #include <stdlib.h>
 #include "../sync/atomic.h"
+#include "../sync/thread.h"
 
 typedef struct {
     /// `0` is used as an invalid seed. This makes it easy to check if it has been set or not pseudo-randomly,
@@ -29,14 +30,14 @@ size_t cubs_hash_seed()
     while(true) {
         // Attempt to lock the mutex
         if(!cubs_mutex_try_lock(&ATOMIC_SEED.mutex)) {
-                // If unsuccessful to lock, check if the seed was set by another thread
-                const size_t currentSeed = cubs_atomic_load_64(&ATOMIC_SEED.seed);
-                // If was set by another thread, use it
-                if(currentSeed != 0) {
-                    return currentSeed;
-                }
-                // Otherwise try again
-                continue;
+            // If unsuccessful to lock, check if the seed was set by another thread
+            const size_t currentSeed = cubs_atomic_load_64(&ATOMIC_SEED.seed);
+            // If was set by another thread, use it
+            if(currentSeed != 0) {
+                return currentSeed;
+            }
+            // Otherwise try again
+            continue;
         }
 
         // TODO maybe generate a crytpographically secure hash seed?

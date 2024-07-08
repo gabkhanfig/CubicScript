@@ -6,7 +6,7 @@ comptime {
     _ = @import("interpreter/interpreter.zig");
 
     // Many tests are within the structs themselves, so importing .ScriptThread for example is necessary.
-    _ = @import("sync/script_thread.zig").ScriptThread;
+    _ = @import("sync/thread.zig").ScriptThread;
     _ = @import("sync/locks.zig").Mutex;
     _ = @import("sync/locks.zig").RwLock;
     _ = @import("sync/sync_queue.zig");
