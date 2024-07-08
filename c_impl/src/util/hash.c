@@ -37,6 +37,7 @@ size_t cubs_hash_seed()
                 return currentSeed;
             }
             // Otherwise try again
+            cubs_thread_yield();
             continue;
         }
 
