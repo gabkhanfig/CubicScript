@@ -18,7 +18,15 @@ pub const Vec2f = @import("vector/vector.zig").Vec2f;
 pub const Vec3f = @import("vector/vector.zig").Vec3f;
 pub const Vec4f = @import("vector/vector.zig").Vec4f;
 
-pub const CubsError = @import("error/error.zig").CubsError;
+pub const c = struct {
+    pub const CubsString = @import("string/string.zig").CubsString;
+    pub const CubsArray = @import("array/array.zig").CubsArray;
+    pub const CubsSet = @import("set/set.zig").CubsSet;
+    pub const CubsMap = @import("map/map.zig").CubsMap;
+    pub const CubsOption = @import("option/option.zig").CubsOption;
+    pub const CubsError = @import("error/error.zig").CubsError;
+    pub const CubsResult = @import("result/result.zig").CubsResult;
+};
 
 pub const ValueTag = enum(c_int) {
     bool = 1,

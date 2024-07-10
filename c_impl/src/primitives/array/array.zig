@@ -44,18 +44,18 @@ pub fn Array(comptime T: type) type {
         // }
 
         pub fn deinit(self: *Self) void {
-            return RawArray.cubs_array_deinit(self.asRawMut());
+            return CubsArray.cubs_array_deinit(self.asRawMut());
         }
 
         pub fn clone(self: *const Self) Self {
-            return @bitCast(RawArray.cubs_array_clone(self.asRaw()));
+            return @bitCast(CubsArray.cubs_array_clone(self.asRaw()));
         }
 
         /// Takes ownership of `value`. Accessing the memory of `value` after this
         /// function is undefined behaviour.
         pub fn push(self: *Self, value: T) void {
             var mutValue = value;
-            RawArray.cubs_array_push_unchecked(self.asRawMut(), @ptrCast(&mutValue));
+            CubsArray.cubs_array_push_unchecked(self.asRawMut(), @ptrCast(&mutValue));
         }
 
         pub fn slice(self: *const Self) []const T {
@@ -75,12 +75,12 @@ pub fn Array(comptime T: type) type {
         }
 
         pub fn atUnchecked(self: *const Self, index: usize) *const T {
-            return @ptrCast(@alignCast(RawArray.cubs_array_at_unchecked(self.asRaw(), index)));
+            return @ptrCast(@alignCast(CubsArray.cubs_array_at_unchecked(self.asRaw(), index)));
         }
 
         pub fn at(self: *const Self, index: usize) Error!*const T {
             var out: *const anyopaque = undefined;
-            switch (RawArray.cubs_array_at(&out, self.asRaw(), index)) {
+            switch (CubsArray.cubs_array_at(&out, self.asRaw(), index)) {
                 .None => {
                     return @ptrCast(@alignCast(out));
                 },
@@ -91,12 +91,12 @@ pub fn Array(comptime T: type) type {
         }
 
         pub fn atMutUnchecked(self: *Self, index: usize) *T {
-            return @ptrCast(@alignCast(RawArray.cubs_array_at_mut_unchecked(self.asRawMut(), index)));
+            return @ptrCast(@alignCast(CubsArray.cubs_array_at_mut_unchecked(self.asRawMut(), index)));
         }
 
         pub fn atMut(self: *Self, index: usize) Error!*T {
             var out: *anyopaque = undefined;
-            switch (RawArray.cubs_array_at_mut(&out, self.asRawMut(), index)) {
+            switch (CubsArray.cubs_array_at_mut(&out, self.asRawMut(), index)) {
                 .None => {
                     return @ptrCast(@alignCast(out));
                 },
@@ -107,11 +107,11 @@ pub fn Array(comptime T: type) type {
         }
 
         pub fn eql(self: *const Self, other: *const Self) bool {
-            return RawArray.cubs_array_eql(self.asRaw(), other.asRaw());
+            return CubsArray.cubs_array_eql(self.asRaw(), other.asRaw());
         }
 
         pub fn hash(self: *const Self) usize {
-            return RawArray.cubs_array_hash(self.asRaw());
+            return CubsArray.cubs_array_hash(self.asRaw());
         }
 
         pub fn iter(self: *const Self) Iter {
@@ -178,17 +178,17 @@ pub fn Array(comptime T: type) type {
             }
         };
 
-        pub fn asRaw(self: *const Self) *const RawArray {
+        pub fn asRaw(self: *const Self) *const CubsArray {
             return @ptrCast(self);
         }
 
-        pub fn asRawMut(self: *Self) *RawArray {
+        pub fn asRawMut(self: *Self) *CubsArray {
             return @ptrCast(self);
         }
     };
 }
 
-pub const RawArray = extern struct {
+pub const CubsArray = extern struct {
     len: usize,
     buf: ?*anyopaque,
     capacity: usize,
@@ -202,66 +202,66 @@ pub const RawArray = extern struct {
     pub const CUBS_ARRAY_N_POS: usize = @bitCast(@as(i64, -1));
     pub const SCRIPT_SELF_TAG: ValueTag = .array;
 
-    pub extern fn cubs_array_init_primitive(tag: ValueTag) callconv(.C) RawArray;
-    pub extern fn cubs_array_init_user_struct(rtti: *const TypeContext) callconv(.C) RawArray;
-    pub extern fn cubs_array_deinit(self: *RawArray) callconv(.C) void;
-    pub extern fn cubs_array_clone(self: *const RawArray) callconv(.C) RawArray;
-    pub extern fn cubs_array_tag(self: *const RawArray) callconv(.C) ValueTag;
-    pub extern fn cubs_array_len(self: *const RawArray) callconv(.C) usize;
-    pub extern fn cubs_array_push_unchecked(self: *RawArray, value: *anyopaque) callconv(.C) void;
-    pub extern fn cubs_array_at_unchecked(self: *const RawArray, index: usize) callconv(.C) *const anyopaque;
-    pub extern fn cubs_array_at(out: **const anyopaque, self: *const RawArray, index: usize) callconv(.C) Err;
-    pub extern fn cubs_array_at_mut_unchecked(self: *RawArray, index: usize) callconv(.C) *anyopaque;
-    pub extern fn cubs_array_at_mut(out: **anyopaque, self: *RawArray, index: usize) callconv(.C) Err;
-    pub extern fn cubs_array_eql(self: *const RawArray, other: *const RawArray) callconv(.C) bool;
-    pub extern fn cubs_array_hash(self: *const RawArray) callconv(.C) usize;
+    pub extern fn cubs_array_init_primitive(tag: ValueTag) callconv(.C) CubsArray;
+    pub extern fn cubs_array_init_user_struct(rtti: *const TypeContext) callconv(.C) CubsArray;
+    pub extern fn cubs_array_deinit(self: *CubsArray) callconv(.C) void;
+    pub extern fn cubs_array_clone(self: *const CubsArray) callconv(.C) CubsArray;
+    pub extern fn cubs_array_tag(self: *const CubsArray) callconv(.C) ValueTag;
+    pub extern fn cubs_array_len(self: *const CubsArray) callconv(.C) usize;
+    pub extern fn cubs_array_push_unchecked(self: *CubsArray, value: *anyopaque) callconv(.C) void;
+    pub extern fn cubs_array_at_unchecked(self: *const CubsArray, index: usize) callconv(.C) *const anyopaque;
+    pub extern fn cubs_array_at(out: **const anyopaque, self: *const CubsArray, index: usize) callconv(.C) Err;
+    pub extern fn cubs_array_at_mut_unchecked(self: *CubsArray, index: usize) callconv(.C) *anyopaque;
+    pub extern fn cubs_array_at_mut(out: **anyopaque, self: *CubsArray, index: usize) callconv(.C) Err;
+    pub extern fn cubs_array_eql(self: *const CubsArray, other: *const CubsArray) callconv(.C) bool;
+    pub extern fn cubs_array_hash(self: *const CubsArray) callconv(.C) usize;
 };
 
 pub const CubsArrayConstIter = extern struct {
-    _arr: *const RawArray,
+    _arr: *const CubsArray,
     _nextIndex: usize,
     value: *const anyopaque,
 
     const Self = @This();
 
-    pub extern fn cubs_array_const_iter_begin(self: *const RawArray) callconv(.C) Self;
-    pub extern fn cubs_array_const_iter_end(self: *const RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_const_iter_begin(self: *const CubsArray) callconv(.C) Self;
+    pub extern fn cubs_array_const_iter_end(self: *const CubsArray) callconv(.C) Self;
     pub extern fn cubs_array_const_iter_next(iter: *Self) callconv(.C) bool;
 };
 
 pub const CubsArrayMutIter = extern struct {
-    _arr: *RawArray,
+    _arr: *CubsArray,
     _nextIndex: usize,
     value: *anyopaque,
 
     const Self = @This();
 
-    pub extern fn cubs_array_mut_iter_begin(self: *RawArray) callconv(.C) Self;
-    pub extern fn cubs_array_mut_iter_end(self: *RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_mut_iter_begin(self: *CubsArray) callconv(.C) Self;
+    pub extern fn cubs_array_mut_iter_end(self: *CubsArray) callconv(.C) Self;
     pub extern fn cubs_array_mut_iter_next(iter: *Self) callconv(.C) bool;
 };
 
 pub const CubsArrayReverseConstIter = extern struct {
-    _arr: *const RawArray,
+    _arr: *const CubsArray,
     _priorIndex: usize,
     value: *const anyopaque,
 
     const Self = @This();
 
-    pub extern fn cubs_array_reverse_const_iter_begin(self: *const RawArray) callconv(.C) Self;
-    pub extern fn cubs_array_reverse_const_iter_end(self: *const RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_reverse_const_iter_begin(self: *const CubsArray) callconv(.C) Self;
+    pub extern fn cubs_array_reverse_const_iter_end(self: *const CubsArray) callconv(.C) Self;
     pub extern fn cubs_array_reverse_const_iter_next(iter: *Self) callconv(.C) bool;
 };
 
 pub const CubsArrayReverseMutIter = extern struct {
-    _arr: *RawArray,
+    _arr: *CubsArray,
     _priorIndex: usize,
     value: *anyopaque,
 
     const Self = @This();
 
-    pub extern fn cubs_array_reverse_mut_iter_begin(self: *RawArray) callconv(.C) Self;
-    pub extern fn cubs_array_reverse_mut_iter_end(self: *RawArray) callconv(.C) Self;
+    pub extern fn cubs_array_reverse_mut_iter_begin(self: *CubsArray) callconv(.C) Self;
+    pub extern fn cubs_array_reverse_mut_iter_end(self: *CubsArray) callconv(.C) Self;
     pub extern fn cubs_array_reverse_mut_iter_next(iter: *Self) callconv(.C) bool;
 };
 

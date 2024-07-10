@@ -30,54 +30,46 @@ pub fn Map(comptime K: type, comptime V: type) type {
             const kTag = comptime script_value.scriptTypeToTag(K);
             const vTag = comptime script_value.scriptTypeToTag(V);
             if (kTag != .userStruct and vTag != .userStruct) {
-                const raw = RawMap.cubs_map_init_primitives(kTag, vTag);
+                const raw = CubsMap.cubs_map_init_primitives(kTag, vTag);
                 return @bitCast(raw);
             } else {
-                const raw = RawMap.cubs_map_init_user_struct(TypeContext.auto(K), TypeContext.auto(V));
+                const raw = CubsMap.cubs_map_init_user_struct(TypeContext.auto(K), TypeContext.auto(V));
                 return @bitCast(raw);
             }
         }
 
         pub fn deinit(self: *Self) void {
-            RawMap.cubs_map_deinit(self.asRawMut());
+            CubsMap.cubs_map_deinit(self.asRawMut());
         }
 
         pub fn clone(self: *const Self) Self {
-            return @bitCast(RawMap.cubs_map_clone(self.asRaw()));
+            return @bitCast(CubsMap.cubs_map_clone(self.asRaw()));
         }
 
         pub fn find(self: *const Self, key: *const K) ?*const V {
-            return @ptrCast(@alignCast(RawMap.cubs_map_find(self.asRaw(), @ptrCast(key))));
+            return @ptrCast(@alignCast(CubsMap.cubs_map_find(self.asRaw(), @ptrCast(key))));
         }
 
         pub fn findMut(self: *Self, key: *const K) ?*V {
-            return @ptrCast(@alignCast(RawMap.cubs_map_find_mut(self.asRawMut(), @ptrCast(key))));
+            return @ptrCast(@alignCast(CubsMap.cubs_map_find_mut(self.asRawMut(), @ptrCast(key))));
         }
 
         pub fn insert(self: *Self, key: K, value: V) void {
             var mutKey = key;
             var mutValue = value;
-            RawMap.cubs_map_insert(self.asRawMut(), @ptrCast(&mutKey), @ptrCast(&mutValue));
+            CubsMap.cubs_map_insert(self.asRawMut(), @ptrCast(&mutKey), @ptrCast(&mutValue));
         }
 
         pub fn erase(self: *Self, key: *const K) bool {
-            return RawMap.cubs_map_erase(self.asRawMut(), @ptrCast(key));
+            return CubsMap.cubs_map_erase(self.asRawMut(), @ptrCast(key));
         }
 
         pub fn eql(self: *const Self, other: *const Self) bool {
-            return RawMap.cubs_map_eql(self.asRaw(), other.asRaw());
+            return CubsMap.cubs_map_eql(self.asRaw(), other.asRaw());
         }
 
         pub fn hash(self: *const Self) usize {
-            return RawMap.cubs_map_hash(self.asRaw());
-        }
-
-        pub fn asRaw(self: *const Self) *const RawMap {
-            return @ptrCast(self);
-        }
-
-        pub fn asRawMut(self: *Self) *RawMap {
-            return @ptrCast(self);
+            return CubsMap.cubs_map_hash(self.asRaw());
         }
 
         pub fn iter(self: *const Self) Iter {
@@ -94,6 +86,14 @@ pub fn Map(comptime K: type, comptime V: type) type {
 
         pub fn reverseMutIter(self: *Self) ReverseMutIter {
             return ReverseMutIter{ ._iter = CubsMapReverseMutIter.cubs_map_reverse_mut_iter_begin(self.asRawMut()) };
+        }
+
+        pub fn asRaw(self: *const Self) *const CubsMap {
+            return @ptrCast(self);
+        }
+
+        pub fn asRawMut(self: *Self) *CubsMap {
+            return @ptrCast(self);
         }
 
         pub const Iter = extern struct {
@@ -158,7 +158,7 @@ pub fn Map(comptime K: type, comptime V: type) type {
     };
 }
 
-pub const RawMap = extern struct {
+pub const CubsMap = extern struct {
     len: usize,
     _metadata: [5]?*anyopaque,
     keyContext: *const TypeContext,
@@ -166,59 +166,59 @@ pub const RawMap = extern struct {
 
     pub const SCRIPT_SELF_TAG: ValueTag = .map;
 
-    pub extern fn cubs_map_init_primitives(keyTag: ValueTag, valueTag: ValueTag) callconv(.C) RawMap;
-    pub extern fn cubs_map_init_user_struct(keyContext: *const TypeContext, valueContext: *const TypeContext) callconv(.C) RawMap;
-    pub extern fn cubs_map_deinit(self: *RawMap) callconv(.C) void;
-    pub extern fn cubs_map_clone(self: *const RawMap) callconv(.C) RawMap;
-    pub extern fn cubs_map_find(self: *const RawMap, key: *const anyopaque) callconv(.C) ?*const anyopaque;
-    pub extern fn cubs_map_find_mut(self: *RawMap, key: *const anyopaque) callconv(.C) ?*anyopaque;
-    pub extern fn cubs_map_insert(self: *RawMap, key: *anyopaque, value: *anyopaque) callconv(.C) void;
-    pub extern fn cubs_map_erase(self: *RawMap, key: *const anyopaque) callconv(.C) bool;
-    pub extern fn cubs_map_eql(self: *const RawMap, other: *const RawMap) callconv(.C) bool;
-    pub extern fn cubs_map_hash(self: *const RawMap) callconv(.C) usize;
+    pub extern fn cubs_map_init_primitives(keyTag: ValueTag, valueTag: ValueTag) callconv(.C) CubsMap;
+    pub extern fn cubs_map_init_user_struct(keyContext: *const TypeContext, valueContext: *const TypeContext) callconv(.C) CubsMap;
+    pub extern fn cubs_map_deinit(self: *CubsMap) callconv(.C) void;
+    pub extern fn cubs_map_clone(self: *const CubsMap) callconv(.C) CubsMap;
+    pub extern fn cubs_map_find(self: *const CubsMap, key: *const anyopaque) callconv(.C) ?*const anyopaque;
+    pub extern fn cubs_map_find_mut(self: *CubsMap, key: *const anyopaque) callconv(.C) ?*anyopaque;
+    pub extern fn cubs_map_insert(self: *CubsMap, key: *anyopaque, value: *anyopaque) callconv(.C) void;
+    pub extern fn cubs_map_erase(self: *CubsMap, key: *const anyopaque) callconv(.C) bool;
+    pub extern fn cubs_map_eql(self: *const CubsMap, other: *const CubsMap) callconv(.C) bool;
+    pub extern fn cubs_map_hash(self: *const CubsMap) callconv(.C) usize;
 };
 
 pub const CubsMapConstIter = extern struct {
-    _map: *const RawMap,
+    _map: *const CubsMap,
     _nextIter: ?*const anyopaque,
     key: ?*const anyopaque,
     value: ?*const anyopaque,
 
-    pub extern fn cubs_map_const_iter_begin(self: *const RawMap) callconv(.C) CubsMapConstIter;
-    pub extern fn cubs_map_const_iter_end(self: *const RawMap) callconv(.C) CubsMapConstIter;
+    pub extern fn cubs_map_const_iter_begin(self: *const CubsMap) callconv(.C) CubsMapConstIter;
+    pub extern fn cubs_map_const_iter_end(self: *const CubsMap) callconv(.C) CubsMapConstIter;
     pub extern fn cubs_map_const_iter_next(iter: *CubsMapConstIter) callconv(.C) bool;
 };
 
 pub const CubsMapMutIter = extern struct {
-    _map: *RawMap,
+    _map: *CubsMap,
     _nextIter: ?*anyopaque,
     key: ?*const anyopaque,
     value: ?*anyopaque,
 
-    pub extern fn cubs_map_mut_iter_begin(self: *RawMap) callconv(.C) CubsMapMutIter;
-    pub extern fn cubs_map_mut_iter_end(self: *RawMap) callconv(.C) CubsMapMutIter;
+    pub extern fn cubs_map_mut_iter_begin(self: *CubsMap) callconv(.C) CubsMapMutIter;
+    pub extern fn cubs_map_mut_iter_end(self: *CubsMap) callconv(.C) CubsMapMutIter;
     pub extern fn cubs_map_mut_iter_next(iter: *CubsMapMutIter) callconv(.C) bool;
 };
 
 pub const CubsMapReverseConstIter = extern struct {
-    _map: *const RawMap,
+    _map: *const CubsMap,
     _nextIter: ?*const anyopaque,
     key: ?*const anyopaque,
     value: ?*const anyopaque,
 
-    pub extern fn cubs_map_reverse_const_iter_begin(self: *const RawMap) callconv(.C) CubsMapReverseConstIter;
-    pub extern fn cubs_map_reverse_const_iter_end(self: *const RawMap) callconv(.C) CubsMapReverseConstIter;
+    pub extern fn cubs_map_reverse_const_iter_begin(self: *const CubsMap) callconv(.C) CubsMapReverseConstIter;
+    pub extern fn cubs_map_reverse_const_iter_end(self: *const CubsMap) callconv(.C) CubsMapReverseConstIter;
     pub extern fn cubs_map_reverse_const_iter_next(iter: *CubsMapReverseConstIter) callconv(.C) bool;
 };
 
 pub const CubsMapReverseMutIter = extern struct {
-    _map: *RawMap,
+    _map: *CubsMap,
     _nextIter: ?*anyopaque,
     key: ?*const anyopaque,
     value: ?*anyopaque,
 
-    pub extern fn cubs_map_reverse_mut_iter_begin(self: *RawMap) callconv(.C) CubsMapReverseMutIter;
-    pub extern fn cubs_map_reverse_mut_iter_end(self: *RawMap) callconv(.C) CubsMapReverseMutIter;
+    pub extern fn cubs_map_reverse_mut_iter_begin(self: *CubsMap) callconv(.C) CubsMapReverseMutIter;
+    pub extern fn cubs_map_reverse_mut_iter_end(self: *CubsMap) callconv(.C) CubsMapReverseMutIter;
     pub extern fn cubs_map_reverse_mut_iter_next(iter: *CubsMapReverseMutIter) callconv(.C) bool;
 };
 

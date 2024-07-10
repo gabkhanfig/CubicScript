@@ -9,7 +9,7 @@ const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
 const TypeContext = script_value.TypeContext;
 const Error = script_value.Error;
-const CubsError = script_value.CubsError;
+const CubsError = script_value.c.CubsError;
 const Map = script_value.Map;
 
 /// `OkT` is the type of the ok variant. It mustn't be an error type. It may be `void` to represent

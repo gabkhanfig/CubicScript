@@ -3,49 +3,6 @@ const expect = std.testing.expect;
 const Ordering = @import("../../util/ordering.zig").Ordering;
 const script_value = @import("../script_value.zig");
 
-// Importing the header directly really messes with the language server, so this is simpler
-const c = struct {
-    const Err = enum(c_int) {
-        None = 0,
-        InvalidUtf8 = 1,
-        IndexOutOfBounds = 2,
-        ParseBool = 3,
-        ParseInt = 4,
-        ParseFloat = 5,
-    };
-
-    const CUBS_STRING_N_POS: usize = @bitCast(@as(i64, -1));
-
-    const Slice = extern struct {
-        str: [*]const u8,
-        len: usize,
-
-        fn fromLiteral(literal: []const u8) Slice {
-            return .{ .str = literal.ptr, .len = literal.len };
-        }
-    };
-
-    extern fn cubs_string_init(self: *String, slice: Slice) callconv(.C) c.Err;
-    extern fn cubs_string_init_unchecked(slice: Slice) callconv(.C) String;
-    extern fn cubs_string_deinit(self: *String) callconv(.C) void;
-    extern fn cubs_string_clone(self: *const String) callconv(.C) String;
-    extern fn cubs_string_as_slice(self: *const String) callconv(.C) Slice;
-    extern fn cubs_string_eql(self: *const String, other: *const String) callconv(.C) bool;
-    extern fn cubs_string_eql_slice(self: *const String, slice: Slice) callconv(.C) bool;
-    extern fn cubs_string_cmp(self: *const String, other: *const String) callconv(.C) Ordering;
-    extern fn cubs_string_hash(self: *const String) callconv(.C) usize;
-    extern fn cubs_string_find(self: *const String, slice: Slice, startIndex: usize) callconv(.C) usize;
-    extern fn cubs_string_rfind(self: *const String, slice: Slice, startIndex: usize) callconv(.C) usize;
-    extern fn cubs_string_concat(self: *const String, other: *const String) callconv(.C) String;
-    extern fn cubs_string_concat_slice(out: *String, self: *const String, slice: Slice) callconv(.C) c.Err;
-    extern fn cubs_string_concat_slice_unchecked(self: *const String, slice: Slice) callconv(.C) String;
-    extern fn cubs_string_substr(out: *String, self: *const String, startInclusive: usize, endExclusive: usize) Err;
-    extern fn cubs_string_from_bool(b: bool) String;
-    extern fn cubs_string_from_int(b: i64) String;
-    extern fn cubs_string_from_float(b: f64) String;
-    extern fn cubs_string_to_bool(out: *bool, self: *const String) Err;
-};
-
 pub const String = extern struct {
     const Self = @This();
     pub const SCRIPT_SELF_TAG: script_value.ValueTag = .string;
@@ -57,7 +14,7 @@ pub const String = extern struct {
 
     pub fn init(literal: []const u8) error{InvalidUtf8}!Self {
         var self: String = undefined;
-        const result = c.cubs_string_init(&self, c.Slice.fromLiteral(literal));
+        const result = CubsString.cubs_string_init(self.asRawMut(), CubsString.CubsStringSlice.fromLiteral(literal));
         switch (result) {
             .None => {
                 return self;
@@ -72,64 +29,64 @@ pub const String = extern struct {
     }
 
     pub fn initUnchecked(literal: []const u8) Self {
-        return c.cubs_string_init_unchecked(c.Slice.fromLiteral(literal));
+        return @bitCast(CubsString.cubs_string_init_unchecked(CubsString.CubsStringSlice.fromLiteral(literal)));
     }
 
     pub fn deinit(self: *Self) void {
-        c.cubs_string_deinit(@ptrCast(self));
+        CubsString.cubs_string_deinit(@ptrCast(self));
     }
 
     pub fn clone(self: *const Self) Self {
-        return c.cubs_string_clone(@ptrCast(self));
+        return @bitCast(CubsString.cubs_string_clone(@ptrCast(self)));
     }
 
     pub fn asSlice(self: *const Self) []const u8 {
-        const slice = c.cubs_string_as_slice(self);
+        const slice = CubsString.cubs_string_as_slice(self.asRaw());
         return slice.str[0..slice.len];
     }
 
     pub fn eql(self: *const Self, other: Self) bool {
-        return c.cubs_string_eql(@ptrCast(self), @ptrCast(&other));
+        return CubsString.cubs_string_eql(@ptrCast(self), @ptrCast(&other));
     }
 
     pub fn eqlSlice(self: *const Self, literal: []const u8) bool {
-        return c.cubs_string_eql_slice(@ptrCast(self), c.Slice.fromLiteral(literal));
+        return CubsString.cubs_string_eql_slice(@ptrCast(self), CubsString.CubsStringSlice.fromLiteral(literal));
     }
 
     pub fn cmp(self: *const Self, other: Self) Ordering {
-        return c.cubs_string_cmp(@ptrCast(self), @ptrCast(&other));
+        return CubsString.cubs_string_cmp(@ptrCast(self), @ptrCast(&other));
     }
 
     pub fn hash(self: *const Self) usize {
-        return @intCast(c.cubs_string_hash(@ptrCast(self)));
+        return @intCast(CubsString.cubs_string_hash(@ptrCast(self)));
     }
 
     pub fn find(self: *const Self, literal: []const u8, startIndex: usize) ?usize {
-        const result: usize = c.cubs_string_find(@ptrCast(self), c.Slice.fromLiteral(literal), @intCast(startIndex));
-        if (result == c.CUBS_STRING_N_POS) {
+        const result: usize = CubsString.cubs_string_find(@ptrCast(self), CubsString.CubsStringSlice.fromLiteral(literal), @intCast(startIndex));
+        if (result == CubsString.CUBS_STRING_N_POS) {
             return null;
         }
         return @intCast(result);
     }
 
     pub fn rfind(self: *const Self, literal: []const u8, startIndex: usize) ?usize {
-        const result: usize = c.cubs_string_rfind(@ptrCast(self), c.Slice.fromLiteral(literal), @intCast(startIndex));
-        if (result == c.CUBS_STRING_N_POS) {
+        const result: usize = CubsString.cubs_string_rfind(@ptrCast(self), CubsString.CubsStringSlice.fromLiteral(literal), @intCast(startIndex));
+        if (result == CubsString.CUBS_STRING_N_POS) {
             return null;
         }
         return @intCast(result);
     }
 
     pub fn concat(self: *const Self, other: Self) Self {
-        return c.cubs_string_concat(self, &other);
+        return @bitCast(CubsString.cubs_string_concat(self.asRaw(), other.asRaw()));
     }
 
     pub fn concatSlice(self: *const Self, slice: []const u8) error{InvalidUtf8}!Self {
         var new: String = undefined;
-        const result = c.cubs_string_concat_slice(&new, self, c.Slice.fromLiteral(slice));
+        const result = CubsString.cubs_string_concat_slice(new.asRawMut(), self.asRaw(), CubsString.CubsStringSlice.fromLiteral(slice));
         switch (result) {
             .None => {
-                return new;
+                return @bitCast(new);
             },
             .InvalidUtf8 => {
                 return error.InvalidUtf8;
@@ -141,12 +98,12 @@ pub const String = extern struct {
     }
 
     pub fn concatSliceUnchecked(self: *const Self, slice: []const u8) Self {
-        return c.cubs_string_concat_slice_unchecked(self, c.Slice.fromLiteral(slice));
+        return @bitCast(CubsString.cubs_string_concat_slice_unchecked(self.asRaw(), CubsString.CubsStringSlice.fromLiteral(slice)));
     }
 
     pub fn substr(self: *const Self, startInclusive: usize, endExclusive: usize) error{ InvalidUtf8, IndexOutOfBounds }!Self {
         var newStr: String = undefined;
-        const result = c.cubs_string_substr(&newStr, self, startInclusive, endExclusive);
+        const result = CubsString.cubs_string_substr(newStr.asRawMut(), self.asRaw(), startInclusive, endExclusive);
         switch (result) {
             .None => {
                 return newStr;
@@ -164,20 +121,20 @@ pub const String = extern struct {
     }
 
     pub fn fromBool(b: bool) Self {
-        return c.cubs_string_from_bool(b);
+        return @bitCast(CubsString.cubs_string_from_bool(b));
     }
 
     pub fn fromInt(num: i64) Self {
-        return c.cubs_string_from_int(num);
+        return @bitCast(CubsString.cubs_string_from_int(num));
     }
 
     pub fn fromFloat(num: f64) Self {
-        return c.cubs_string_from_float(num);
+        return @bitCast(CubsString.cubs_string_from_float(num));
     }
 
     pub fn toBool(self: *const Self) error{ParseBool}!bool {
         var b: bool = undefined;
-        const result = c.cubs_string_to_bool(&b, self);
+        const result = CubsString.cubs_string_to_bool(&b, self.asRaw());
         switch (result) {
             .None => {
                 return b;
@@ -189,6 +146,14 @@ pub const String = extern struct {
                 unreachable;
             },
         }
+    }
+
+    pub fn asRaw(self: *const Self) *const CubsString {
+        return @ptrCast(self);
+    }
+
+    pub fn asRawMut(self: *Self) *CubsString {
+        return @ptrCast(self);
     }
 
     test init {
@@ -735,4 +700,54 @@ pub const String = extern struct {
             return error.SkipZigTest;
         }
     }
+};
+
+pub const CubsString = extern struct {
+    /// Safe to read, unsafe to write
+    len: usize = 0,
+    /// Do not access
+    _metadata: [3]?*anyopaque = std.mem.zeroes([3]?*anyopaque),
+
+    const Self = @This();
+    pub const SCRIPT_SELF_TAG: script_value.ValueTag = .string;
+
+    pub const Err = enum(c_int) {
+        None = 0,
+        InvalidUtf8 = 1,
+        IndexOutOfBounds = 2,
+        ParseBool = 3,
+        ParseInt = 4,
+        ParseFloat = 5,
+    };
+
+    pub const CUBS_STRING_N_POS: usize = @bitCast(@as(i64, -1));
+
+    pub const CubsStringSlice = extern struct {
+        str: [*]const u8,
+        len: usize,
+
+        pub fn fromLiteral(literal: []const u8) CubsStringSlice {
+            return .{ .str = literal.ptr, .len = literal.len };
+        }
+    };
+
+    extern fn cubs_string_init(self: *Self, slice: CubsStringSlice) callconv(.C) Err;
+    extern fn cubs_string_init_unchecked(slice: CubsStringSlice) callconv(.C) Self;
+    extern fn cubs_string_deinit(self: *Self) callconv(.C) void;
+    extern fn cubs_string_clone(self: *const Self) callconv(.C) Self;
+    extern fn cubs_string_as_slice(self: *const Self) callconv(.C) CubsStringSlice;
+    extern fn cubs_string_eql(self: *const Self, other: *const Self) callconv(.C) bool;
+    extern fn cubs_string_eql_slice(self: *const Self, slice: CubsStringSlice) callconv(.C) bool;
+    extern fn cubs_string_cmp(self: *const Self, other: *const Self) callconv(.C) Ordering;
+    extern fn cubs_string_hash(self: *const Self) callconv(.C) usize;
+    extern fn cubs_string_find(self: *const Self, slice: CubsStringSlice, startIndex: usize) callconv(.C) usize;
+    extern fn cubs_string_rfind(self: *const Self, slice: CubsStringSlice, startIndex: usize) callconv(.C) usize;
+    extern fn cubs_string_concat(self: *const Self, other: *const Self) callconv(.C) Self;
+    extern fn cubs_string_concat_slice(out: *Self, self: *const Self, slice: CubsStringSlice) callconv(.C) Err;
+    extern fn cubs_string_concat_slice_unchecked(self: *const Self, slice: CubsStringSlice) callconv(.C) Self;
+    extern fn cubs_string_substr(out: *Self, self: *const Self, startInclusive: usize, endExclusive: usize) Err;
+    extern fn cubs_string_from_bool(b: bool) Self;
+    extern fn cubs_string_from_int(b: i64) Self;
+    extern fn cubs_string_from_float(b: f64) Self;
+    extern fn cubs_string_to_bool(out: *bool, self: *const Self) Err;
 };
