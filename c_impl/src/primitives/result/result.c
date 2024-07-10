@@ -1,6 +1,6 @@
 #include "result.h"
 #include "../primitives_context.h"
-#include "../../util/global_allocator.h"
+#include "../../util/mem.h"
 #include <assert.h>
 #include <string.h>
 #include "../error/error.h"

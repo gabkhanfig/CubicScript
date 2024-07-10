@@ -2,11 +2,9 @@
 #include <assert.h>
 #include <string.h>
 #include "../util/panic.h"
+#include "../util/mem.h"
 
 // TODO thread local allocation?
-
-extern void* _cubs_os_aligned_malloc(size_t len, size_t align);
-extern void* _cubs_os_aligned_free(void *buf, size_t len, size_t align);
 
 static const size_t OBJECT_PTR_BITMASK = 0xFFFFFFFFFFFFULL;
 static const size_t TAG_BITMASK = ~0xFFFFFFFFFFFFULL;
@@ -102,13 +100,13 @@ static void add_sync_object(SyncQueue* self, CubsSyncObject object, LockAcquireT
         if(self->capacity != 0) {
            newObjectCapacity = newObjectCapacity << 1; // ensures allocates a multiple of 64 bytes
         }
-        InQueueSyncObj* newObjects = (InQueueSyncObj*)_cubs_os_aligned_malloc(sizeof(InQueueSyncObj) * newObjectCapacity, 64);
+        InQueueSyncObj* newObjects = (InQueueSyncObj*)_cubs_raw_aligned_malloc(sizeof(InQueueSyncObj) * newObjectCapacity, 64);
         if(newObjects == NULL) {
             cubs_panic("CubicScript failed to allocate memory");
         }
         if(self->objects != NULL) {
             memcpy((void*)newObjects, (const void*)self->objects, sizeof(InQueueSyncObj) * self->len);
-            _cubs_os_aligned_free((void*)self->objects, self->capacity, 64);
+            _cubs_raw_aligned_free((void*)self->objects, self->capacity, 64);
         }
         self->objects = newObjects;
         self->capacity = newObjectCapacity;
@@ -169,14 +167,14 @@ static void queues_ensure_total_capacity() {
     if(threadLocalQueues.queueCount != 0) {
         newObjectCapacity = threadLocalQueues.queueCount << 1; // ensures allocates a multiple of 64 bytes
     }
-    SyncQueue* newQueues = (SyncQueue*)_cubs_os_aligned_malloc(sizeof(SyncQueue) * newObjectCapacity, 64);
+    SyncQueue* newQueues = (SyncQueue*)_cubs_raw_aligned_malloc(sizeof(SyncQueue) * newObjectCapacity, 64);
     if(newQueues == NULL) {
         cubs_panic("CubicScript failed to allocate memory");
     }
     memset(newQueues, 0, sizeof(SyncQueue) * newObjectCapacity);
     if(threadLocalQueues.queues != NULL) {
         memcpy((void*)newQueues, (const void*)threadLocalQueues.queues, sizeof(SyncQueue) * threadLocalQueues.queueCount);
-        _cubs_os_aligned_free((void*)threadLocalQueues.queues, sizeof(SyncQueue) * threadLocalQueues.queueCount, 64);
+        _cubs_raw_aligned_free((void*)threadLocalQueues.queues, sizeof(SyncQueue) * threadLocalQueues.queueCount, 64);
     }
     threadLocalQueues.queues = newQueues;
     threadLocalQueues.queueCount = newObjectCapacity;

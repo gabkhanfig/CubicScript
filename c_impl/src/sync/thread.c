@@ -1,5 +1,5 @@
 #include "thread.h"
-#include "../util/global_allocator.h"
+#include "../util/mem.h"
 #include "../util/panic.h"
 #include <stdio.h>
 #include "rwlock.h"

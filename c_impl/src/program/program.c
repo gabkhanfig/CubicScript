@@ -1,7 +1,7 @@
 #include "program.h"
 #include "../sync/mutex.h"
 #include <stdio.h>
-#include "../util/global_allocator.h"
+#include "../util/mem.h"
 #include <string.h>
 #include "../util/panic.h"
 

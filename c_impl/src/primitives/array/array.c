@@ -1,6 +1,6 @@
 #include "array.h"
 #include <assert.h>
-#include "../../util/global_allocator.h"
+#include "../../util/mem.h"
 #include <string.h>
 #include "../../util/panic.h"
 #include <stdio.h>
