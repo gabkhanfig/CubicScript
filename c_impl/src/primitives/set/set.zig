@@ -20,7 +20,7 @@ pub fn Set(comptime K: type) type {
 
         pub fn init() Self {
             const kTag = script_value.scriptTypeToTag(K);
-            if (kTag != .userStruct) {
+            if (kTag != .userClass) {
                 const raw = CubsSet.cubs_set_init_primitive(kTag);
                 return @bitCast(raw);
             } else {

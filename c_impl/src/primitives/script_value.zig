@@ -65,8 +65,6 @@ pub const ValueTag = enum(c_int) {
     vec4f = 34,
     mat3f = 35,
     mat4f = 36,
-    userStruct = 37,
-    structRtti = 38,
 };
 
 pub const TypeContext = extern struct {
@@ -120,7 +118,7 @@ pub const TypeContext = extern struct {
                 break :blk @sizeOf(T);
             }
         };
-        context.tag = .userStruct;
+        context.tag = .userClass;
 
         context.onDeinit = null;
         if (std.meta.hasFn(T, "deinit")) {
@@ -164,7 +162,7 @@ pub const TypeContext = extern struct {
             };
             const context = auto(Example);
             try expect(context.sizeOfType == @sizeOf(Example));
-            try expect(context.tag == .userStruct);
+            try expect(context.tag == .userClass);
             try expect(context.onDeinit == null);
             try expect(std.mem.eql(u8, context.name[0..context.nameLength], "Example"));
         }

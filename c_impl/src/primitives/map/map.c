@@ -353,8 +353,8 @@ static void map_ensure_total_capacity(CubsMap* self) {
 
 CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag)
 {
-    assert(keyTag != cubsValueTagUserStruct && "Use cubs_map_init_user_struct for user defined structs");
-    assert(valueTag != cubsValueTagUserStruct && "Use cubs_map_init_user_struct for user defined structs");
+    assert(keyTag != cubsValueTagUserClass && "Use cubs_map_init_user_struct for user defined structs");
+    assert(valueTag != cubsValueTagUserClass && "Use cubs_map_init_user_struct for user defined structs");
 
     return cubs_map_init_user_struct(cubs_primitive_context_for_tag(keyTag), cubs_primitive_context_for_tag(valueTag));
 }

@@ -29,7 +29,7 @@ pub fn Map(comptime K: type, comptime V: type) type {
         pub fn init() Self {
             const kTag = comptime script_value.scriptTypeToTag(K);
             const vTag = comptime script_value.scriptTypeToTag(V);
-            if (kTag != .userStruct and vTag != .userStruct) {
+            if (kTag != .userClass and vTag != .userClass) {
                 const raw = CubsMap.cubs_map_init_primitives(kTag, vTag);
                 return @bitCast(raw);
             } else {

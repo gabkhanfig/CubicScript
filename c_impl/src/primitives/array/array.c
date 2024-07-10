@@ -50,7 +50,7 @@ static void ensure_total_capacity(CubsArray* self, size_t minCapacity) {
 
 CubsArray cubs_array_init_primitive(CubsValueTag tag)
 {   
-    assert(tag != cubsValueTagUserStruct && "Use cubs_array_init_user_struct for user defined structs");
+    assert(tag != cubsValueTagUserClass && "Use cubs_array_init_user_struct for user defined structs");
     return cubs_array_init_user_struct(cubs_primitive_context_for_tag(tag));
 }
 

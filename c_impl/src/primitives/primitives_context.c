@@ -171,7 +171,7 @@ const CubsTypeContext CUBS_OPTION_CONTEXT = {
 
 const CubsTypeContext *cubs_primitive_context_for_tag(CubsValueTag tag)
 {
-    assert(tag != cubsValueTagUserStruct && "This function is for primitive types only");
+    assert(tag != cubsValueTagUserClass && "This function is for primitive types only");
     switch(tag) {
         case cubsValueTagBool: {
             return &CUBS_BOOL_CONTEXT;

@@ -37,8 +37,6 @@ typedef enum CubsValueTag {
     cubsValueTagVec4f = 34,
     cubsValueTagMat3f = 35,
     cubsValueTagMat4f = 36,
-    cubsValueTagUserStruct = 37,
-    cubsValueTagStructRtti = 38,
 
     // Reserved for internal use.
     _CUBS_VALUE_TAG_NONE = 0,
