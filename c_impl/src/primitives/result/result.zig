@@ -7,358 +7,359 @@ const RawValue = script_value.RawValue;
 const CTaggedValue = script_value.CTaggedValue;
 const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
+const TypeContext = script_value.TypeContext;
+const Error = script_value.Error;
+const CubsError = script_value.CubsError;
+const Map = script_value.Map;
 
-const c = struct {
-    extern fn cubs_error_init_unchecked(errorName: String, optionalErrorMetadata: ?*anyopaque, optionalErrorTag: ValueTag) callconv(.C) Error;
-    extern fn cubs_error_init_raw_unchecked(errorName: String, optionalErrorMetadata: ?*RawValue, optionalErrorTag: ValueTag) callconv(.C) Error;
-    extern fn cubs_error_init(errorName: String, optionalErrorMetadata: ?*CTaggedValue) callconv(.C) Error;
-    extern fn cubs_error_deinit(self: *Error) callconv(.C) void;
-    extern fn cubs_error_metadata(self: *const Error) callconv(.C) ?*const CTaggedValue;
-    extern fn cubs_error_take_metadata_unchecked(self: *Error) callconv(.C) CTaggedValue;
-    extern fn cubs_error_take_metadata(out: *CTaggedValue, self: *Error) callconv(.C) bool;
-
-    const Err = enum(c_int) {
-        None = 0,
-        IsOk = 1,
-        IsErr = 2,
-    };
-
-    extern fn cubs_result_init_ok_unchecked(okTag: ValueTag, okValue: *anyopaque) callconv(.C) Result(anyopaque);
-    extern fn cubs_result_init_ok_raw_unchecked(okTag: ValueTag, okValue: RawValue) callconv(.C) Result(anyopaque);
-    extern fn cubs_result_init_ok(okValue: CTaggedValue) callconv(.C) Result(anyopaque);
-    extern fn cubs_result_init_err(okTag: ValueTag, err: Error) callconv(.C) Result(anyopaque);
-    extern fn cubs_result_deinit(self: *Result(anyopaque)) callconv(.C) void;
-    extern fn cubs_result_ok_tag(self: *const Result(anyopaque)) callconv(.C) ValueTag;
-    extern fn cubs_result_size_of_ok(self: *const Result(anyopaque)) callconv(.C) usize;
-    extern fn cubs_result_is_ok(self: *const Result(anyopaque)) callconv(.C) bool;
-    extern fn cubs_result_ok_unchecked(out: *anyopaque, self: *Result(anyopaque)) callconv(.C) void;
-    extern fn cubs_result_ok(out: *anyopaque, self: *Result(anyopaque)) callconv(.C) Err;
-    extern fn cubs_result_err_unchecked(self: *Result(anyopaque)) callconv(.C) Error;
-    extern fn cubs_result_err(out: *Error, self: *Result(anyopaque)) callconv(.C) Err;
-};
-
-pub const Error = extern struct {
-    const Self = @This();
-    pub const SCRIPT_SELF_TAG: ValueTag = .err;
-
-    _metadata: ?*anyopaque,
-    name: String,
-
-    /// Takes ownership of `errorMetadata`, so accessing the memory afterwards is invalid.
-    pub fn init(name: String, errorMetadata: ?TaggedValue) Self {
-        if (errorMetadata) |m| {
-            var tagged = script_value.zigToCTaggedValueTemp(m);
-            return c.cubs_error_init(name, &tagged);
-        }
-        return c.cubs_error_init(name, null);
-    }
-
-    /// For an error with no metadata, use `ValueTag.none`.
-    pub fn initUnchecked(name: String, optionalMetadata: ?*anyopaque, optionalTag: ValueTag) Self {
-        return c.cubs_error_init_unchecked(name, optionalMetadata, optionalTag);
-    }
-
-    /// For an error with no metadata, use `ValueTag.none`.
-    pub fn initRawUnchecked(name: String, optionalMetadata: ?*RawValue, optionalTag: ValueTag) Self {
-        return c.cubs_error_init_raw_unchecked(name, optionalMetadata, optionalTag);
-    }
-
-    pub fn deinit(self: *Self) void {
-        c.cubs_error_deinit(self);
-    }
-
-    pub fn metadata(self: *const Self) ?*const CTaggedValue {
-        return c.cubs_error_metadata(self);
-    }
-
-    pub fn takeMetadata(self: *Self) ?TaggedValue {
-        var temp: CTaggedValue = undefined;
-        if (c.cubs_error_take_metadata(&temp, self)) {
-            return TaggedValue.fromCRepr(temp);
-        }
-        return null;
-    }
-
-    // test init {
-    //     {
-    //         var err = Self.init(String.initUnchecked("yuh"), null);
-    //         defer err.deinit();
-
-    //         try expect(err.name.eqlSlice("yuh"));
-    //         try expect(err.metadata() == null);
-    //     }
-    //     {
-    //         const errMetadata = TaggedValue{ .int = 8 };
-    //         var err = Self.init(String.initUnchecked("yuh"), errMetadata); // <- takes ownership of `errMetadata` here
-    //         defer err.deinit();
-
-    //         try expect(err.name.eqlSlice("yuh"));
-    //         if (err.metadata()) |foundMetadata| {
-    //             try expect(foundMetadata.tag == .int);
-    //             try expect(foundMetadata.value.int == 8);
-    //         } else {
-    //             try expect(false);
-    //         }
-    //     }
-    // }
-
-    // test takeMetadata {
-    //     {
-    //         var err = Self.init(String.initUnchecked("example"), null);
-    //         defer err.deinit();
-
-    //         if (err.takeMetadata()) |_| {
-    //             try expect(false);
-    //         }
-    //     }
-    //     {
-    //         var err = Self.init(String.initUnchecked("example"), TaggedValue{ .string = String.initUnchecked("hello world! some metadata for this error idk") });
-    //         defer err.deinit();
-
-    //         if (err.takeMetadata()) |taken| {
-    //             var mutTake = taken;
-    //             defer mutTake.deinit();
-    //             try expect(taken.string.eqlSlice("hello world! some metadata for this error idk"));
-    //         } else {
-    //             try expect(false);
-    //         }
-    //     }
-    // }
-};
-
-pub fn Result(comptime T: type) type {
+/// `OkT` is the type of the ok variant. It mustn't be an error type. It may be `void` to represent
+/// an empty ok.
+/// `ErrMetadataT` is the metadata type held by the `Error`. Can be `void` to represent an error with only
+/// a name and no metadata.
+pub fn Result(comptime OkT: type, comptime ErrMetadataT: type) type {
     return extern struct {
         const Self = @This();
         pub const SCRIPT_SELF_TAG: ValueTag = .result;
-        pub const ValueType = T;
+        pub const ValueType = OkT;
+        pub const ErrorMetadataType = ErrMetadataT;
 
         comptime {
-            if (T == Error) {
-                @compileError("Result Ok type may not be an error type");
+            if (OkT != void and OkT != bool and OkT != i64 and OkT != f64) {
+                if (@hasDecl(OkT, "SCRIPT_SELF_TAG")) {
+                    if (OkT.SCRIPT_SELF_TAG == .err) {
+                        @compileError("Result Ok type may not be an error type");
+                    }
+                }
+            }
+            if (ErrMetadataT != void and ErrMetadataT != bool and ErrMetadataT != i64 and ErrMetadataT != f64) {
+                if (@hasDecl(ErrMetadataT, "SCRIPT_SELF_TAG")) {
+                    if (ErrMetadataT.SCRIPT_SELF_TAG == .err) {
+                        @compileError("Result Error Metadata type may not be an error type");
+                    }
+                }
             }
         }
 
-        _metadata: [5]?*anyopaque,
+        metadata: [@sizeOf(CubsError) / @sizeOf(*anyopaque)]?*anyopaque,
+        isErr: bool,
+        /// Context of the ok value. If `NULL`, is an empty ok value.
+        context: ?*const TypeContext,
 
-        pub fn initOk(inOk: T) Self {
-            if (T == anyopaque) {
-                @compileError("Use `initOkTagged` to initialize a new Result");
+        pub fn initOk(inOk: OkT) Self {
+            if (OkT == void) {
+                return @bitCast(CubsResult.cubs_result_init_ok_user_class(null, null));
+            } else {
+                var mutValue = inOk;
+                const context = TypeContext.auto(OkT);
+                return @bitCast(CubsResult.cubs_result_init_ok_user_class(@ptrCast(&mutValue), context));
             }
-            const valueTag = script_value.scriptTypeToTag(T);
-            var mutValue = inOk;
-            var temp = c.cubs_result_init_ok_unchecked(valueTag, @ptrCast(&mutValue));
-            assert(c.cubs_result_size_of_ok(&temp) == @sizeOf(T));
-            assert(temp.okTag() == valueTag);
-            return temp.into(T);
         }
 
-        pub fn initOkRawUnchecked(inOk: RawValue) Self {
-            if (T == anyopaque) {
-                @compileError("Use `initOkTagged` to initialize a new Result");
+        pub fn initErr(inErr: Error(ErrMetadataT)) Self {
+            if (OkT == void) {
+                return @bitCast(CubsResult.cubs_result_init_err_user_class(@bitCast(inErr), null));
+            } else {
+                const context = TypeContext.auto(OkT);
+                return @bitCast(CubsResult.cubs_result_init_err_user_class(@bitCast(inErr), context));
             }
-            const valueTag = script_value.scriptTypeToTag(T);
-            var temp = c.cubs_result_init_ok_raw_unchecked(valueTag, inOk);
-            assert(c.cubs_result_size_of_ok(&temp) == @sizeOf(T));
-            assert(temp.okTag() == valueTag);
-            return temp.into(T);
-        }
-
-        pub fn initOkTagged(inOk: TaggedValue) Self {
-            if (T != anyopaque) {
-                const valueTag = script_value.scriptTypeToTag(T);
-                assert(inOk.tag() == valueTag);
-            }
-            const cVal = script_value.zigToCTaggedValueTemp(inOk);
-            var temp = c.cubs_result_init_ok(cVal);
-
-            assert(temp.okTag() == inOk.tag());
-            if (T != anyopaque) {
-                assert(c.cubs_result_size_of_ok(&temp) == @sizeOf(T));
-            }
-
-            return temp.into(T);
-        }
-
-        pub fn initErr(inErr: Error) Self {
-            const valueTag = script_value.scriptTypeToTag(T);
-            var temp = c.cubs_result_init_err(valueTag, inErr);
-            assert(c.cubs_result_size_of_ok(&temp) == @sizeOf(T));
-            assert(temp.okTag() == valueTag);
-            return temp.into(T);
         }
 
         pub fn deinit(self: *Self) void {
-            c.cubs_result_deinit(self.castMut(anyopaque));
+            CubsResult.cubs_result_deinit(self.asRawMut());
         }
 
-        pub fn cast(self: *const Self, comptime OtherT: type) *const Result(OtherT) {
-            if (OtherT != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherT, self.okTag());
-            }
-            return @ptrCast(self);
+        pub fn getOk(self: *const Self) *const OkT {
+            return @ptrCast(@alignCast(CubsResult.cubs_result_get_ok(self.asRaw())));
         }
 
-        pub fn castMut(self: *Self, comptime OtherT: type) *Result(OtherT) {
-            if (OtherT != anyopaque) {
-                script_value.validateTypeMatchesTag(OtherT, self.okTag());
-            }
-            return @ptrCast(self);
+        pub fn getOkMut(self: *Self) *OkT {
+            return @ptrCast(@alignCast(CubsResult.cubs_result_get_ok_mut(self.asRawMut())));
         }
 
-        /// Converts a `Result(...)` of one type into a `Result(OtherT)` of another type. Currently only works when converting
-        /// to and from `anyopaque` arrays.
-        pub fn into(self: *Self, comptime OtherT: type) Result(OtherT) {
-            const casted = self.castMut(OtherT).*;
-            self.* = undefined; // invalidate self
-            return casted;
-        }
-
-        pub fn okTag(self: *const Self) ValueTag {
-            return c.cubs_result_ok_tag(self.cast(anyopaque));
-        }
-
-        pub fn isOk(self: *const Self) bool {
-            return c.cubs_result_is_ok(self.cast(anyopaque));
-        }
-
-        pub fn isErr(self: *const Self) bool {
-            return !self.isOk();
-        }
-
-        /// Takes out the ok value from the result, taking ownership of it. Also deinitializes `self`.
-        pub fn okUnchecked(self: *Self) T {
-            var out: T = undefined;
-            c.cubs_result_ok_unchecked(@ptrCast(&out), self.castMut(anyopaque));
+        pub fn takeOk(self: *Self) OkT {
+            var out: OkT = undefined;
+            CubsResult.cubs_result_take_ok(@ptrCast(&out), self.asRawMut());
             return out;
         }
 
-        /// Takes out the ok value from the result, taking ownership of it. Also deinitializes `self`.
-        pub fn ok(self: *Self) error{IsErr}!T {
-            var out: T = undefined;
-            switch (c.cubs_result_ok(@ptrCast(&out), self.castMut(anyopaque))) {
-                .None => {
-                    return out;
-                },
-                .IsErr => {
-                    return error.IsErr;
-                },
-                else => {
-                    unreachable;
-                },
-            }
+        pub fn getErr(self: *const Self) *const Error(ErrMetadataT) {
+            return @ptrCast(@alignCast(CubsResult.cubs_result_get_err(self.asRaw())));
         }
 
-        /// Takes out the err value from the result, taking ownership of it. Also deinitializes `self`.
-        pub fn errUnchecked(self: *Self) Error {
-            var out: Error = undefined;
-            c.cubs_result_err_unchecked(&out, self.castMut(anyopaque));
-            return out;
+        pub fn getErrMut(self: *Self) *Error(ErrMetadataT) {
+            return @ptrCast(@alignCast(CubsResult.cubs_result_get_err_mut(self.asRawMut())));
         }
 
-        /// Takes out the err value from the result, taking ownership of it. Also deinitializes `self`.
-        pub fn err(self: *Self) error{IsOk}!Error {
-            var out: Error = undefined;
-            switch (c.cubs_result_err(&out, self.castMut(anyopaque))) {
-                .None => {
-                    return out;
-                },
-                .IsOk => {
-                    return error.IsOk;
-                },
-                else => {
-                    unreachable;
-                },
-            }
+        pub fn takeErr(self: *Self) Error(ErrMetadataT) {
+            return @bitCast(CubsResult.cubs_result_take_err(self.asRawMut()));
         }
 
-        // test initOk {
-        //     {
-        //         var result = Result(i64).initOk(55);
-        //         try expect(result.okTag() == .int);
-        //         try expect(result.isOk());
-        //         if (result.ok()) |num| {
-        //             try expect(num == 55);
-        //         } else |_| {
-        //             try expect(false);
-        //         }
-        //     }
-        //     {
-        //         var result = Result(String).initOk(String.initUnchecked("hello world!"));
-        //         try expect(result.okTag() == .string);
-        //         try expect(result.isOk());
-        //         if (result.ok()) |s| {
-        //             try expect(s.eqlSlice("hello world!"));
-        //             var mutS = s;
-        //             mutS.deinit();
-        //         } else |_| {
-        //             try expect(false);
-        //         }
-        //     }
-        // }
+        pub fn asRaw(self: *const Self) *const CubsResult {
+            return @ptrCast(self);
+        }
 
-        // test initOkTagged {
-        //     {
-        //         var tempResult = Result(anyopaque).initOkTagged(TaggedValue{ .int = 55 });
-        //         try expect(tempResult.okTag() == .int);
-
-        //         var result = tempResult.into(i64);
-        //         try expect(result.okTag() == .int);
-        //         try expect(result.isOk());
-        //         if (result.ok()) |num| {
-        //             try expect(num == 55);
-        //         } else |_| {
-        //             try expect(false);
-        //         }
-        //     }
-        //     {
-        //         var tempResult = Result(anyopaque).initOkTagged(TaggedValue{ .string = String.initUnchecked("hello world!") });
-        //         try expect(tempResult.okTag() == .string);
-
-        //         var result = tempResult.into(String);
-        //         try expect(result.okTag() == .string);
-        //         try expect(result.isOk());
-        //         if (result.ok()) |s| {
-        //             try expect(s.eqlSlice("hello world!"));
-        //             var mutS = s;
-        //             mutS.deinit();
-        //         } else |_| {
-        //             try expect(false);
-        //         }
-        //     }
-        // }
-
-        // test initErr {
-        //     {
-        //         var result = Result(i64).initErr(Error.init(String.initUnchecked("example"), null));
-        //         try expect(result.okTag() == .int);
-        //         try expect(result.isErr());
-        //         if (result.err()) |e| {
-        //             try expect(e.name.eqlSlice("example"));
-        //             var mutE = e;
-        //             mutE.deinit();
-        //         } else |_| {
-        //             try expect(false);
-        //         }
-        //     }
-        // }
-
-        // test deinit {
-        //     {
-        //         var result = Result(String).initOk(String.initUnchecked("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
-        //         defer result.deinit();
-        //     }
-        //     {
-        //         var result = Result(String).initOk(String.initUnchecked("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
-        //         defer result.deinit();
-
-        //         if (result.ok()) |s| {
-        //             try expect(s.eqlSlice("ahoduihaosidhoaisdhoaishdoaihsdoaihsd"));
-        //             var mutS = s;
-        //             mutS.deinit();
-        //         } else |_| {
-        //             try expect(false);
-        //         }
-        //     }
-        // }
+        pub fn asRawMut(self: *Self) *CubsResult {
+            return @ptrCast(self);
+        }
     };
+}
+
+pub const CubsResult = extern struct {
+    metadata: [@sizeOf(CubsError) / @sizeOf(*anyopaque)]?*anyopaque,
+    isErr: bool,
+    /// Context of the ok value. If `NULL`, is an empty ok value.
+    context: ?*const TypeContext,
+
+    const Self = @This();
+    pub const SCRIPT_SELF_TAG: ValueTag = .result;
+
+    pub extern fn cubs_result_init_ok_primitive(okValue: ?*anyopaque, okTag: ValueTag) callconv(.C) Self;
+    pub extern fn cubs_result_init_ok_user_class(okValue: ?*anyopaque, okContext: ?*const TypeContext) callconv(.C) Self;
+    pub extern fn cubs_result_init_err_primitive(err: CubsError, okTag: ValueTag) callconv(.C) Self;
+    pub extern fn cubs_result_init_err_user_class(err: CubsError, okContext: ?*const TypeContext) callconv(.C) Self;
+    pub extern fn cubs_result_deinit(self: *Self) callconv(.C) void;
+    pub extern fn cubs_result_get_ok(self: *const Self) callconv(.C) *const anyopaque;
+    pub extern fn cubs_result_get_ok_mut(self: *Self) callconv(.C) *anyopaque;
+    pub extern fn cubs_result_take_ok(outOk: *anyopaque, self: *Self) callconv(.C) void;
+    pub extern fn cubs_result_get_err(self: *const Self) callconv(.C) *const CubsError;
+    pub extern fn cubs_result_get_err_mut(self: *Self) callconv(.C) *CubsError;
+    pub extern fn cubs_result_take_err(self: *Self) callconv(.C) CubsError;
+};
+
+test "initOk" {
+    {
+        var res = Result(void, void).initOk({});
+        defer res.deinit();
+
+        try expect(!res.isErr);
+    }
+    {
+        var res = Result(i64, void).initOk(5);
+        defer res.deinit();
+
+        try expect(!res.isErr);
+    }
+    {
+        var res = Result(String, void).initOk(String.initUnchecked("hello to this absolutely amazing world!"));
+        defer res.deinit();
+
+        try expect(!res.isErr);
+    }
+    {
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        defer res.deinit();
+
+        try expect(!res.isErr);
+    }
+}
+
+test "initErr" {
+    {
+        var res = Result(void, void).initErr(Error(void).init(String.initUnchecked("wuh"), {}));
+        defer res.deinit();
+
+        try expect(res.isErr);
+    }
+    {
+        var res = Result(void, i64).initErr(Error(i64).init(String.initUnchecked("wuh"), 10));
+        defer res.deinit();
+
+        try expect(res.isErr);
+    }
+    {
+        var res = Result(i64, i64).initErr(Error(i64).init(String.initUnchecked("wuh"), 10));
+        defer res.deinit();
+
+        try expect(res.isErr);
+    }
+    {
+        var res = Result(void, String).initErr(Error(String).init(
+            String.initUnchecked("wuh"),
+            String.initUnchecked("extra"),
+        ));
+        defer res.deinit();
+
+        try expect(res.isErr);
+    }
+}
+
+test "getOk" {
+    {
+        var res = Result(i64, void).initOk(10);
+        defer res.deinit();
+
+        try expect(res.getOk().* == 10);
+    }
+    {
+        var res = Result(String, void).initOk(String.initUnchecked("wuh"));
+        defer res.deinit();
+
+        try expect(res.getOk().eqlSlice("wuh"));
+    }
+    {
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        defer res.deinit();
+
+        try expect(res.getOk().len == 0);
+    }
+}
+
+test "getErr" {
+    {
+        var res = Result(void, void).initErr(Error(void).init(String.initUnchecked("exampleError"), {}));
+        defer res.deinit();
+
+        try expect(res.getErr().name.eqlSlice("exampleError"));
+    }
+    {
+        var res = Result(void, i64).initErr(Error(i64).init(String.initUnchecked("exampleError"), 10));
+        defer res.deinit();
+
+        try expect(res.getErr().name.eqlSlice("exampleError"));
+        try expect(res.getErr().metadata.?.* == 10);
+    }
+}
+
+test "getOkMut" {
+    {
+        var res = Result(i64, void).initOk(10);
+        defer res.deinit();
+
+        res.getOkMut().* = 5;
+
+        try expect(res.getOk().* == 5);
+    }
+    {
+        var res = Result(String, void).initOk(String.initUnchecked("wuh"));
+        defer res.deinit();
+
+        res.getOkMut().deinit();
+        res.getOkMut().* = String.initUnchecked("euh");
+
+        try expect(res.getOk().eqlSlice("euh"));
+    }
+    {
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        defer res.deinit();
+
+        res.getOkMut().insert(1, 1);
+
+        try expect(res.getOk().len == 1);
+        try expect(res.getOk().find(&@as(i64, 1)).?.* == 1);
+    }
+}
+
+test "getErrMut" {
+    {
+        var res = Result(void, void).initErr(Error(void).init(String.initUnchecked("exampleError"), {}));
+        defer res.deinit();
+
+        res.getErrMut().name.deinit();
+        res.getErrMut().name = String.initUnchecked("otherError");
+
+        try expect(res.getErr().name.eqlSlice("otherError"));
+    }
+    {
+        var res = Result(void, i64).initErr(Error(i64).init(String.initUnchecked("exampleError"), 10));
+        defer res.deinit();
+
+        res.getErrMut().name.deinit();
+        res.getErrMut().name = String.initUnchecked("otherError");
+        res.getErrMut().metadata.?.* = 5;
+
+        try expect(res.getErr().name.eqlSlice("otherError"));
+        try expect(res.getErr().metadata.?.* == 5);
+    }
+}
+
+test "takeOk" {
+    { // with deinit
+        var res = Result(i64, void).initOk(10);
+        defer res.deinit();
+
+        const num = res.takeOk();
+
+        try expect(num == 10);
+    }
+    { // without deinit
+        var res = Result(i64, void).initOk(10);
+
+        const num = res.takeOk();
+
+        try expect(num == 10);
+    }
+
+    { // with deinit
+        var res = Result(String, void).initOk(String.initUnchecked("wuh"));
+        defer res.deinit();
+
+        var str = res.takeOk();
+        defer str.deinit();
+
+        try expect(str.eqlSlice("wuh"));
+    }
+    { // without deinit
+        var res = Result(String, void).initOk(String.initUnchecked("wuh"));
+
+        var str = res.takeOk();
+        defer str.deinit();
+
+        try expect(str.eqlSlice("wuh"));
+    }
+    { // with deinit
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        defer res.deinit();
+
+        var map = res.takeOk();
+        defer map.deinit();
+
+        try expect(map.len == 0);
+    }
+    { // without deinit
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+
+        var map = res.takeOk();
+        defer map.deinit();
+
+        try expect(map.len == 0);
+    }
+}
+
+test "takeErr" {
+    { // with deinit
+        var res = Result(void, void).initErr(Error(void).init(String.initUnchecked("exampleError"), {}));
+        defer res.deinit();
+
+        var err = res.takeErr();
+        defer err.deinit();
+
+        try expect(err.name.eqlSlice("exampleError"));
+    }
+    { // without deinit
+        var res = Result(void, void).initErr(Error(void).init(String.initUnchecked("exampleError"), {}));
+
+        var err = res.takeErr();
+        defer err.deinit();
+
+        try expect(err.name.eqlSlice("exampleError"));
+    }
+    { // with deinit
+        var res = Result(void, i64).initErr(Error(i64).init(String.initUnchecked("exampleError"), 10));
+        defer res.deinit();
+
+        var err = res.takeErr();
+        defer err.deinit();
+
+        try expect(err.name.eqlSlice("exampleError"));
+        try expect(err.metadata.?.* == 10);
+    }
+    { // without deinit
+        var res = Result(void, i64).initErr(Error(i64).init(String.initUnchecked("exampleError"), 10));
+
+        var err = res.takeErr();
+        defer err.deinit();
+
+        try expect(err.name.eqlSlice("exampleError"));
+        try expect(err.metadata.?.* == 10);
+    }
 }

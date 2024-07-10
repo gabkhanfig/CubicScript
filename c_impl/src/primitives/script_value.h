@@ -95,7 +95,7 @@ typedef struct CubsError {
 typedef struct CubsResult {
     /// Accessing this is unsafe.
     void* metadata[sizeof(CubsError) / sizeof(void*)];
-    bool isOk;
+    bool isErr;
     /// Context of the ok value. If `NULL`, is an empty ok value.
     const CubsTypeContext* context;
 } CubsResult;

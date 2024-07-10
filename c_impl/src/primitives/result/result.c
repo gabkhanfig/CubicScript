@@ -1,194 +1,129 @@
-// #include "result.h"
-// #include <assert.h>
-// #include "../../util/global_allocator.h"
-// #include <string.h>
-// #include "../string/string.h"
+#include "result.h"
+#include "../primitives_context.h"
+#include "../../util/global_allocator.h"
+#include <assert.h>
+#include <string.h>
+#include "../error/error.h"
 
-// CubsError cubs_error_init_unchecked(CubsString errorName, void *optionalErrorMetadata, CubsValueTag optionalErrorTag)
-// {
-//     CubsError err = {.name = errorName, .metadata = NULL};
-//     if(optionalErrorMetadata == NULL) {
-//         return err;
-//     }
+CubsResult cubs_result_init_ok_primitive(void *okValue, CubsValueTag okTag)
+{
+    if(okValue == NULL) {
+        assert(okTag == 0);
+        return cubs_result_init_ok_user_class(NULL, NULL);
+    } else {
+        return cubs_result_init_ok_user_class(okValue, cubs_primitive_context_for_tag(okTag));
+    }
+}
 
-//     const size_t sizeOfType = cubs_size_of_tagged_type(optionalErrorTag);
-//     CubsTaggedValue* mem = cubs_malloc(sizeof(CubsTaggedValue), _Alignof(CubsTaggedValue));
-//     mem->tag = optionalErrorTag;
-//     memcpy(&mem->value, optionalErrorMetadata, sizeOfType);
-//     err.metadata = (void*)mem;
-//     return err;
-// }
+CubsResult cubs_result_init_ok_user_class(void *okValue, const CubsTypeContext *okContext)
+{
+    if(okValue == NULL) {
+        const CubsResult result = {.metadata = {0}, .isErr = false, .context = NULL};
+        return result;
+    } else {
+        assert(okContext != NULL);
+        CubsResult result = {.metadata = {0}, .isErr = false, .context = okContext};
+        if(okContext->sizeOfType <= sizeof(result.metadata)) {
+            memcpy(&result.metadata, okValue, okContext->sizeOfType);
+        } else {
+            void* mem = cubs_malloc(okContext->sizeOfType, _Alignof(size_t));
+            memcpy(mem, okValue, okContext->sizeOfType);
+            result.metadata[0] = mem;
+        }
+        return result;
+    }
+}
 
-// CubsError cubs_error_init_raw_unchecked(CubsString errorName, CubsRawValue* optionalErrorMetadata, CubsValueTag optionalErrorTag) {
-//     return cubs_error_init_unchecked(errorName, (void*)optionalErrorMetadata, optionalErrorTag);
-// }
+CubsResult cubs_result_init_err_primitive(CubsError errValue, CubsValueTag okTag)
+{
+    if(okTag == 0) {
+        return cubs_result_init_err_user_class(errValue, NULL);
+    } else {        
+        return cubs_result_init_err_user_class(errValue, cubs_primitive_context_for_tag(okTag));
+    }
+}
 
-// CubsError cubs_error_init(CubsString errorName, CubsTaggedValue *optionalErrorMetadata)
-// {
-//     if(optionalErrorMetadata == NULL) {
-//         const CubsError err = {.name = errorName, .metadata = NULL};
-//         return err;
-//     } else {
-//         return cubs_error_init_raw_unchecked(errorName, &optionalErrorMetadata->value, optionalErrorMetadata->tag);
-//     }
-// }
+CubsResult cubs_result_init_err_user_class(CubsError errValue, const CubsTypeContext *okContext)
+{
+    CubsResult result = {.metadata = {0}, .isErr = true, .context = okContext};
+    memcpy((void*)&result.metadata, (const void*)&errValue, sizeof(CubsError));
+    return result;
+}
 
-// void cubs_error_deinit(CubsError *self)
-// {
-//     cubs_string_deinit(&self->name);
-//     CubsTaggedValue* metadata = (CubsTaggedValue*)self->metadata;
-//     if(metadata == NULL) {
-//         return;
-//     }
-//     cubs_tagged_value_deinit(metadata);
-//     cubs_free((void*)metadata, sizeof(CubsTaggedValue), _Alignof(CubsTaggedValue));
-//     self->metadata = NULL;
-// }
+void cubs_result_deinit(CubsResult *self)
+{
+    if(!self->isErr) {
+        if(self->context == NULL) {
+            return;
+        }
+        void* okValue = cubs_result_get_ok_mut(self);
+        if(self->context->destructor != NULL) {
+            self->context->destructor(okValue);
+        }
+        if(self->context->sizeOfType > sizeof(self->metadata)) {
+            cubs_free(okValue, self->context->sizeOfType, _Alignof(size_t));
+        }
+    } else {
+        CubsError* err = cubs_result_get_err_mut(self);
+        cubs_error_deinit(err);
+    }
+    memset((void*)self, 0, sizeof(CubsResult));
+}
 
-// const CubsTaggedValue *cubs_error_metadata(const CubsError *self)
-// {
-//     return (const CubsTaggedValue*)self->metadata;
-// }
+const void *cubs_result_get_ok(const CubsResult *self)
+{
+    assert(!self->isErr);
+    assert(self->context != NULL);
 
-// CubsTaggedValue cubs_error_take_metadata_unchecked(CubsError *self)
-// {
-//     assert(self->metadata != NULL);
-//     CubsTaggedValue* metadata = (CubsTaggedValue*)self->metadata;
-//     CubsTaggedValue out = *metadata;
-//     cubs_free((void*)metadata, sizeof(CubsTaggedValue), _Alignof(CubsTaggedValue));
-//     self->metadata = NULL;
-//     return out;
-// }
+    if(self->context->sizeOfType <= sizeof(self->metadata)) {
+        return &self->metadata;
+    } else {
+        return self->metadata[0];
+    }
+}
 
-// bool cubs_error_take_metadata(CubsTaggedValue *out, CubsError *self)
-// {
-//     if(self->metadata == NULL) {
-//         return false;
-//     }
-//     *out = cubs_error_take_metadata_unchecked(self);
-//     return true;
-// }
+void *cubs_result_get_ok_mut(CubsResult *self)
+{
+    assert(!self->isErr);
+    assert(self->context != NULL);
 
-// static const size_t ERR_METADATA_PTR_BITMASK = 0xFFFFFFFFFFFFULL;
-// static const size_t OK_TAG_SHIFT = 48;
-// static const size_t OK_TAG_BITMASK = 0b111111ULL << 48;
-// static const size_t OK_SIZE_SHIFT = 54;
-// static const size_t OK_SIZE_BITMASK = 0b111111ULL << 54;
-// static const size_t IS_ERR_BIT = 1ULL << 63;
+    if(self->context->sizeOfType <= sizeof(self->metadata)) {
+        return &self->metadata;
+    } else {
+        return self->metadata[0];
+    }
+}
 
-// CubsResult cubs_result_init_ok_unchecked(CubsValueTag okTag, void *okValue)
-// {
-//     const size_t sizeOfOk = cubs_size_of_tagged_type(okTag);
-//     const size_t tagInfo = (((size_t)okTag) << OK_TAG_SHIFT) | (sizeOfOk << OK_SIZE_SHIFT);
-//     if(sizeOfOk > sizeof(void*[4])) {
-//         void* mem = cubs_malloc(sizeOfOk, _Alignof(size_t));
-//         memcpy(mem, okValue, sizeOfOk);
-//         const CubsResult result = {.metadata = {(void*)tagInfo, mem, NULL, NULL, NULL}};
-//         return result;
-//     } else {
-//         CubsResult result = {.metadata = {(void*)tagInfo, NULL, NULL, NULL, NULL}};
-//         memcpy(&result.metadata[1], okValue, sizeOfOk);
-//         return result;
-//     }
-// }
+void cubs_result_take_ok(void *outOk, CubsResult *self)
+{
+    assert(!self->isErr);
+    assert(self->context != NULL);
 
-// CubsResult cubs_result_init_ok_raw_unchecked(CubsValueTag okTag, CubsRawValue okValue)
-// {
-//     return cubs_result_init_ok_unchecked(okTag, (void*)&okValue);
-// }
+    void* okValue = cubs_result_get_ok_mut(self);
+    memcpy(outOk, okValue, self->context->sizeOfType);
+    if(self->context->sizeOfType > sizeof(self->metadata)) {
+        cubs_free(okValue, self->context->sizeOfType, _Alignof(size_t));
+    }
+    memset((void*)self, 0, sizeof(CubsResult));
+}
 
-// CubsResult cubs_result_init_ok(CubsTaggedValue okValue)
-// {
-//     return cubs_result_init_ok_unchecked(okValue.tag, (void*)&okValue.value);
-// }
+const CubsError *cubs_result_get_err(const CubsResult *self)
+{
+    assert(self->isErr);
+    return (const CubsError*)&self->metadata;
+}
 
-// CubsResult cubs_result_init_err(CubsValueTag okTag, CubsError err)
-// {
-//     const size_t sizeOfOk = cubs_size_of_tagged_type(okTag);
-//     CubsResult result = *(CubsResult*)&err;
-//     result.metadata[0] = (void*)(((size_t)result.metadata[0]) | (((size_t)okTag) << OK_TAG_SHIFT) | (sizeOfOk << OK_SIZE_SHIFT) | IS_ERR_BIT);
-//     return result;
-// }
+CubsError *cubs_result_get_err_mut(CubsResult *self)
+{
+    assert(self->isErr);
+    return (CubsError*)&self->metadata;
+}
 
-// void cubs_result_deinit(CubsResult *self)
-// {
-//     if(cubs_result_is_ok(self)) {
-//         const CubsValueTag tag = cubs_result_ok_tag(self);
-//         const size_t sizeOfOk = cubs_size_of_tagged_type(tag);
-//         if(sizeOfOk > sizeof(void*[4])) {
-//             void* mem = self->metadata[1];
-//             if(mem == NULL) {
-//                 return;
-//             }
-//             cubs_void_value_deinit(mem, tag);
-//             cubs_free(mem, sizeOfOk, _Alignof(size_t));
-//         } else {
-//             cubs_void_value_deinit((void*)&self->metadata[1], tag);
-//         }
-//     } else {
-//         CubsError err = cubs_result_err_unchecked(self);
-//         cubs_error_deinit(&err);
-//     }
-// }
-
-// CubsValueTag cubs_result_ok_tag(const CubsResult * self)
-// {
-//     const size_t mask = ((size_t)self->metadata[0]) & OK_TAG_BITMASK;
-//     return (CubsValueTag)(mask >> OK_TAG_SHIFT);
-// }
-
-// size_t cubs_result_size_of_ok(const CubsResult *self)
-// {
-//     const size_t mask = ((size_t)self->metadata[0]) & OK_SIZE_BITMASK;
-//     return (CubsValueTag)(mask >> OK_SIZE_SHIFT);
-// }
-
-// bool cubs_result_is_ok(const CubsResult *self)
-// {
-//     const size_t mask = ((size_t)self->metadata[0]) & IS_ERR_BIT;
-//     return mask == 0;
-// }
-
-// void cubs_result_ok_unchecked(void *outOk, CubsResult *self)
-// {
-//     assert(cubs_result_is_ok(self));
-//     const size_t sizeOfOk = cubs_result_size_of_ok(self);
-//     if(sizeOfOk > sizeof(void*[4])) {
-//         void* src = self->metadata[1];
-//         memcpy(outOk, src, sizeOfOk);
-//         cubs_free(src, sizeOfOk, _Alignof(size_t));
-//     } else {
-//         memcpy(outOk, &self->metadata[1], sizeOfOk);
-//     }
-//     memset(&self->metadata[1], 0, sizeof(void*[4]));
-// }
-
-// CubsResultError cubs_result_ok(void *outOk, CubsResult *self)
-// {
-//     if(!cubs_result_is_ok(self)) {
-//         return cubsResultErrorIsErr;
-//     }
-//     cubs_result_ok_unchecked(outOk, self);
-//     return cubsResultErrorNone;
-// }
-
-// CubsError cubs_result_err_unchecked(CubsResult *self)
-// {
-//     _Static_assert(sizeof(CubsError) == sizeof(CubsResult), "CubsError and CubsResult must match in size");
-//     assert(!cubs_result_is_ok(self));
-//     CubsError out;
-//     memcpy((void*)&out, self, sizeof(CubsError));
-//     out.metadata = (void*)(((size_t)out.metadata) & ERR_METADATA_PTR_BITMASK); // removing flags from metadata ptr
-//     memset(&self->metadata[1], 0, sizeof(void*[4]));
-//     self->metadata[0] = (void*)(((size_t)self->metadata[0]) & ~ERR_METADATA_PTR_BITMASK); // remote metadata reference
-//     return out;
-// }
-
-// CubsResultError cubs_result_err(CubsError *out, CubsResult *self)
-// {
-//     if(cubs_result_is_ok(self)) {
-//         return cubsResultErrorIsOk;
-//     }
-//     *out = cubs_result_err_unchecked(self);
-//     return cubsResultErrorNone;
-// }
+CubsError cubs_result_take_err(CubsResult *self)
+{
+    assert(self->isErr);
+    CubsError err;
+    memcpy((void*)&err, (const void*)cubs_result_get_err(self), sizeof(CubsError));
+    memset((void*)self, 0, sizeof(CubsResult));
+    return err;
+}
