@@ -181,38 +181,3 @@ void cubs_class_opaque_deinit(void* self);
 bool cubs_class_opaque_eql(const void* self, const void* other);
 
 size_t cubs_class_opaque_hash(const void* self);
-
-typedef union CubsRawValue {
-    bool boolean;
-    int64_t intNum;
-    double floatNum;
-    CubsString string;
-    CubsArray arr;
-    CubsSet set;
-    CubsMap map;
-    CubsOption option;
-} CubsRawValue;
-
-/// It is safe to call this function multiple times on the same object, since all primitives handle double deinitialization.
-void cubs_raw_value_deinit(CubsRawValue* self, CubsValueTag tag);
-
-void cubs_void_value_deinit(void* value, CubsValueTag tag);
-
-CubsRawValue cubs_raw_value_clone(const CubsRawValue* self, CubsValueTag tag);
-
-bool cubs_raw_value_eql(const CubsRawValue* self, const CubsRawValue* other, CubsValueTag tag);
-
-typedef struct CubsTaggedValue {
-    CubsRawValue value;
-    CubsValueTag tag;
-} CubsTaggedValue;
-
-/// It is safe to call this function multiple times on the same object, since all primitives handle double deinitialization.
-void cubs_tagged_value_deinit(CubsTaggedValue* self);
-
-CubsTaggedValue cubs_tagged_value_clone(const CubsTaggedValue* self);
-
-bool cubs_tagged_value_eql(const CubsTaggedValue* self, const CubsTaggedValue* other);
-
-size_t cubs_size_of_tagged_type(CubsValueTag tag);
-

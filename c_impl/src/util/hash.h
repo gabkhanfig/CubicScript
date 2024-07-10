@@ -15,8 +15,6 @@ inline static size_t cubs_combine_hash(size_t a, size_t b) {
     return h;
 }
 
-size_t cubs_compute_hash(const CubsRawValue* value, CubsValueTag tag);
-
 typedef struct CubsHashGroupBitmask {
     size_t value;
 } CubsHashGroupBitmask;
