@@ -667,7 +667,7 @@ bool cubs_map_mut_iter_next(CubsMapMutIter *iter)
         assert(currentPair->iterAfter != NULL);
         const CubsMapMutIter newIter = {
             ._map = iter->_map,
-            ._nextIter = (const void*)currentPair->iterAfter,
+            ._nextIter = (void*)currentPair->iterAfter,
             .key = pair_key(currentPair),
             .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
         };
