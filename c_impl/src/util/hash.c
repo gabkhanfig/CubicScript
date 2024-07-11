@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "../primitives/string/string.h"
 #include <time.h>
-#include "../sync/mutex.h"
+#include "../sync/locks.h"
 #include <stdlib.h>
 #include "../sync/atomic.h"
 #include "../sync/thread.h"

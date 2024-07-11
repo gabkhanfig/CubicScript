@@ -2,7 +2,7 @@
 #include "../util/mem.h"
 #include "../util/panic.h"
 #include <stdio.h>
-#include "rwlock.h"
+#include "locks.h"
 
 #if defined(_WIN32) || defined(WIN32)
 

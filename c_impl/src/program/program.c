@@ -1,5 +1,5 @@
 #include "program.h"
-#include "../sync/mutex.h"
+#include "../sync/locks.h"
 #include <stdio.h>
 #include "../util/mem.h"
 #include <string.h>

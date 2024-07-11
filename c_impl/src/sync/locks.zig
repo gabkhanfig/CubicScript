@@ -2,8 +2,7 @@ const std = @import("std");
 const expect = std.testing.expect;
 
 const c = @cImport({
-    @cInclude("sync/mutex.h");
-    @cInclude("sync/rwlock.h");
+    @cInclude("sync/locks.h");
 });
 
 pub const Mutex = struct {
