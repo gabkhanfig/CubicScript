@@ -123,6 +123,7 @@ typedef struct CubsUnique {
 
 typedef struct CubsShared {
     void* _inner;
+    void* _refCount;
     const CubsTypeContext* context;
 } CubsShared;
 
