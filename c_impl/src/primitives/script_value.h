@@ -117,15 +117,18 @@ typedef struct CubsMutRef {
 } CubsMutRef;
 
 typedef struct CubsUnique {
-  void* _inner;
+    void* _inner;
+    const CubsTypeContext* context;
 } CubsUnique;
 
 typedef struct CubsShared {
-  void* _inner;
+    void* _inner;
+    const CubsTypeContext* context;
 } CubsShared;
 
 typedef struct CubsWeak {
-  void* _inner;
+    void* _inner;
+    const CubsTypeContext* context;
 } CubsWeak;
 
 typedef struct CubsFunctionPtr {
