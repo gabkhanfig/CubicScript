@@ -1,5 +1,5 @@
 #include "string.h"
-#include "../../sync/atomic_ref_count.h"
+#include "../../sync/atomic.h"
 #include <assert.h>
 #include "../../util/mem.h"
 #include <string.h>
