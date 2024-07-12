@@ -85,7 +85,7 @@ pub const CubsUnique = extern struct {
     //pub extern fn cubs_unique_take(out: *anyopaque, self: *Self) callconv(.C) void;
 };
 
-test "init" {
+test "unique init" {
     {
         var unique = Unique(i64).init(10);
         defer unique.deinit();
@@ -102,7 +102,7 @@ test "init" {
 
 const Thread = std.Thread;
 
-test "shared lock" {
+test "unique shared lock" {
     const Validate = struct {
         fn lock(u: *const Unique(i64), value: i64) void {
             for (0..100000) |_| {
@@ -137,7 +137,7 @@ test "shared lock" {
     t4.join();
 }
 
-test "exclusive lock" {
+test "unique exclusive lock" {
     const Validate = struct {
         fn lock(u: *Unique(i64)) void {
             for (0..100000) |_| {
