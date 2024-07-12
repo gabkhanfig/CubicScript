@@ -55,6 +55,10 @@ pub fn Unique(comptime T: type) type {
             return @ptrCast(@alignCast(CubsUnique.cubs_unique_get_mut(self.asRawMut())));
         }
 
+        pub fn clone(self: *const Self) Self {
+            return @bitCast(CubsUnique.cubs_unique_clone(self.asRaw()));
+        }
+
         pub fn asRaw(self: *const Self) *const CubsUnique {
             return @ptrCast(self);
         }
@@ -82,6 +86,7 @@ pub const CubsUnique = extern struct {
     pub extern fn cubs_unique_unlock_exclusive(self: *Self) callconv(.C) void;
     pub extern fn cubs_unique_get(self: *const Self) callconv(.C) *const anyopaque;
     pub extern fn cubs_unique_get_mut(self: *Self) callconv(.C) *anyopaque;
+    pub extern fn cubs_unique_clone(self: *const Self) callconv(.C) Self;
     //pub extern fn cubs_unique_take(out: *anyopaque, self: *Self) callconv(.C) void;
 };
 
@@ -177,4 +182,21 @@ test "unique exclusive lock" {
     t4.join();
 
     try expect(unique.get().* == 400010);
+}
+
+test "unique clone" {
+    var unique = Unique(i64).init(10);
+    defer unique.deinit();
+
+    unique.lockExclusive();
+    defer unique.unlockExclusive();
+
+    var clone = unique.clone();
+    defer clone.deinit();
+
+    try expect(clone.tryLockExclusive()); // should use different locks
+    defer clone.unlockExclusive();
+
+    try expect(clone.get().* == unique.get().*); // same value
+    try expect(clone.get() != unique.get()); // different address
 }

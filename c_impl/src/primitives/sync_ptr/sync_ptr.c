@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "../../util/mem.h"
 #include <string.h>
+#include "../../util/hash.h"
 
 #define ALIGNMENT 64
 
@@ -162,6 +163,38 @@ void *cubs_unique_get_mut(CubsUnique *self)
     RefHeader* header = (RefHeader*)self->_inner;
     return header_value_mut(header);
 }
+
+CubsUnique cubs_unique_clone(const CubsUnique *self)
+{
+    assert(self->context->clone != NULL);
+
+    RefHeader* header = header_init(false, self->context->sizeOfType);
+    self->context->clone(header_value_mut(header), cubs_unique_get(self));
+    const CubsUnique unique = {._inner = (void*)header, .context = self->context};
+    return unique;
+}
+
+// // TODO equality and hashing without locking are unsafe for the set/map. figure out how to do this or if it shouldnt be allowed as keys
+
+// bool cubs_unique_eql(const CubsUnique *self, const CubsUnique *other)
+// {
+//     return cubs_unique_eql_value(self, cubs_unique_get(other));
+// }
+
+// bool cubs_unique_eql_value(const CubsUnique *self, const void *other)
+// {
+//     assert(self->context->eql != NULL);
+//     return self->context->eql(cubs_unique_get(self), other);
+// }
+
+// size_t cubs_unique_hash(const CubsUnique *self)
+// {
+//     assert(self->context->hash != NULL);
+
+//     const size_t globalHashSeed = cubs_hash_seed();
+//     size_t h = globalHashSeed;
+//     return cubs_combine_hash(h, self->context->hash(self));
+// }
 
 // void cubs_unique_take(void *out, CubsUnique *self)
 // {
