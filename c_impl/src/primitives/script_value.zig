@@ -11,6 +11,7 @@ pub const Map = @import("map/map.zig").Map;
 pub const Option = @import("option/option.zig").Option;
 pub const Error = @import("error/error.zig").Error;
 pub const Result = @import("result/result.zig").Result;
+pub const Unique = @import("sync_ptr/sync_ptr.zig").Unique;
 pub const Vec2i = @import("vector/vector.zig").Vec2i;
 pub const Vec3i = @import("vector/vector.zig").Vec3i;
 pub const Vec4i = @import("vector/vector.zig").Vec4i;
@@ -26,6 +27,7 @@ pub const c = struct {
     pub const CubsOption = @import("option/option.zig").CubsOption;
     pub const CubsError = @import("error/error.zig").CubsError;
     pub const CubsResult = @import("result/result.zig").CubsResult;
+    pub const CubsUnique = @import("sync_ptr/sync_ptr.zig").CubsUnique;
 };
 
 pub const ValueTag = enum(c_int) {
