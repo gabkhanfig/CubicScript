@@ -212,3 +212,91 @@ CubsUnique cubs_unique_clone(const CubsUnique *self)
 //         header_free(header, self->context->sizeOfType);
 //     }
 // }
+
+/// Copies the memory at `value`.
+CubsShared cubs_shared_init(void* value, const CubsTypeContext* context) {
+    assert(context != NULL);
+    assert(value != NULL);
+
+    RefHeader* header = header_init(true, context->sizeOfType);
+    memcpy(header_value_mut(header), value, context->sizeOfType);
+    const CubsShared shared = {._inner = (void*)header, .context = context};
+    return shared;
+}
+
+void cubs_shared_deinit(CubsShared* self) {
+    if(self->_inner == NULL) {
+        return;
+    }
+
+    RefHeader* header = (RefHeader*)self->_inner;
+    self->_inner = NULL;
+
+    const bool lastRef = atomic_ref_count_remove_ref(header_shared_ref_count_mut(header));
+    if(!lastRef) {
+        return;
+    }
+
+    cubs_rwlock_lock_exclusive(&header->lock);
+
+    if(self->context->destructor != NULL) {
+        self->context->destructor(header_value_mut(header));
+    }   
+    cubs_atomic_flag_store(&header->isExpired, true);
+    const bool shouldFree = cubs_atomic_load_64(&header->weakCount.count) == 0;
+
+    cubs_rwlock_unlock_exclusive(&header->lock);
+
+    if(shouldFree) { // there are no weak references
+        header_free(header, self->context->sizeOfType);
+    }
+}
+
+void cubs_shared_lock_shared(const CubsShared* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    cubs_rwlock_lock_shared(&header->lock);
+}
+
+bool cubs_shared_try_lock_shared(const CubsShared* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    return cubs_rwlock_try_lock_shared(&header->lock);
+}
+
+void cubs_shared_unlock_shared(const CubsShared* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    cubs_rwlock_unlock_shared(&header->lock);
+}
+
+void cubs_shared_lock_exclusive(CubsShared* self) {
+    RefHeader* header = (RefHeader*)self->_inner;
+    cubs_rwlock_lock_exclusive(&header->lock);
+}
+
+bool cubs_shared_try_lock_exclusive(CubsShared* self) {
+    RefHeader* header = (RefHeader*)self->_inner;
+    return cubs_rwlock_try_lock_exclusive(&header->lock);
+}
+
+void cubs_shared_unlock_exclusive(CubsShared* self) {
+    RefHeader* header = (RefHeader*)self->_inner;
+    cubs_rwlock_unlock_exclusive(&header->lock);
+}
+
+const void *cubs_shared_get(const CubsShared *self)
+{
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    return header_value(header);
+}
+
+void *cubs_shared_get_mut(CubsShared *self)
+{
+    RefHeader* header = (RefHeader*)self->_inner;
+    return header_value_mut(header);
+}
+
+CubsShared cubs_shared_clone(const CubsShared* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    AtomicRefCount* refCount = header_shared_ref_count_mut((RefHeader*)header); // explicitly cast away const
+    atomic_ref_count_add_ref(refCount);
+    return *self;
+}

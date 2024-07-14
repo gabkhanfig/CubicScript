@@ -46,3 +46,32 @@ CubsUnique cubs_unique_clone(const CubsUnique* self);
 //void cubs_unique_take(void* out, CubsUnique* self);
 
 //CubsWeak cubs_unique_make_weak(CubsUnique* self);
+
+/// Copies the memory at `value`.
+CubsShared cubs_shared_init(void* value, const CubsTypeContext* context);
+
+/// Mustn't be locked
+void cubs_shared_deinit(CubsShared* self);
+
+void cubs_shared_lock_shared(const CubsShared* self);
+
+bool cubs_shared_try_lock_shared(const CubsShared* self);
+
+void cubs_shared_unlock_shared(const CubsShared* self);
+
+void cubs_shared_lock_exclusive(CubsShared* self);
+
+bool cubs_shared_try_lock_exclusive(CubsShared* self);
+
+void cubs_shared_unlock_exclusive(CubsShared* self);
+
+/// Gets the value that this shared pointer owns.
+/// Getting without also shared or exclusive locking the shared is undefined behaviour.
+const void* cubs_shared_get(const CubsShared* self);
+
+/// Gets the value that this shared pointer owns.
+/// Getting without also exclusive locking the shared is undefined behaviour.
+void* cubs_shared_get_mut(CubsShared* self);
+
+/// Clones `self`, incrementing the ref count. Does not need to be locked.
+CubsShared cubs_shared_clone(const CubsShared* self);
