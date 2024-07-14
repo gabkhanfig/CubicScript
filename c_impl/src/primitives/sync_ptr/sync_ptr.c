@@ -24,6 +24,10 @@ static size_t header_and_data_alloc_size(bool isShared, size_t sizeOfType) {
     } else {
         sum = sizeof(RefHeader) + sizeOfType;
     }
+    const size_t remainder = sum % ALIGNMENT;
+    if(remainder == 0) {
+        return sum;
+    }
     const size_t requiredAllocation = sum + (ALIGNMENT - (sum % ALIGNMENT));
     assert((requiredAllocation % ALIGNMENT) == 0);
     return requiredAllocation;
@@ -31,32 +35,24 @@ static size_t header_and_data_alloc_size(bool isShared, size_t sizeOfType) {
 
 /// If shared, sets the shared ref count to 1.
 static RefHeader* header_init(bool isShared, size_t sizeOfType) { 
-    const size_t allocSize = header_and_data_alloc_size(false, sizeOfType);
-    AtomicRefCount* mem = (AtomicRefCount*)cubs_malloc(allocSize, ALIGNMENT);
-    atomic_ref_count_init(mem);
-
-    RefHeader* header = (RefHeader*)&mem[1];
+    const size_t allocSize = header_and_data_alloc_size(isShared, sizeOfType);
+    void* mem = cubs_malloc(allocSize, ALIGNMENT);
+    
+    RefHeader* header = (RefHeader*)mem;
+    if(isShared) {
+        AtomicRefCount* refCount = (AtomicRefCount*)mem;
+        atomic_ref_count_init(refCount);
+        header = (RefHeader*)&refCount[1];
+    }
+    
     RefHeader headerData;
-    cubs_rwlock_init(&headerData.lock);
     headerData.weakCount.count = 0;
     headerData.isExpired.flag = false;
-    headerData.isShared = false;
+    headerData.isShared = isShared;
     *header = headerData;
+    cubs_rwlock_init(&header->lock);
     return header;
 }
-
-// static void header_deinit(RefHeader* header, const CubsTypeContext* context) {
-//     #if _DEBUG
-//     if(header->isShared) {
-//         const size_t currentRefCount = cubs_atomic_load_64(header_shared_ref_count(header));
-//         assert(currentRefCount == 0);
-//     }
-//     #endif
-//     if(context->destructor) {
-//         context->destructor(header_value_mut(header));
-//     }
-//     header_free(header, context->sizeOfType);
-// }
 
 static const void* header_value(const RefHeader* header) {
     return (const void*)(&header[1]);
@@ -68,12 +64,12 @@ static void* header_value_mut(RefHeader* header) {
 
 static const AtomicRefCount* header_shared_ref_count(const RefHeader* header) {
     assert(header->isShared);
-    return (const AtomicRefCount*)header - 1;
+    return ((const AtomicRefCount*)header) - 1;
 }
 
 static AtomicRefCount* header_shared_ref_count_mut(RefHeader* header) {
     assert(header->isShared);
-    return (AtomicRefCount*)header - 1;
+    return ((AtomicRefCount*)header) - 1;
 }
 
 /// Free without deinitizling the value
