@@ -300,3 +300,8 @@ CubsShared cubs_shared_clone(const CubsShared* self) {
     atomic_ref_count_add_ref(refCount);
     return *self;
 }
+
+bool cubs_shared_eql(const CubsShared *self, const CubsShared *other)
+{
+    return self->_inner == other->_inner;
+}

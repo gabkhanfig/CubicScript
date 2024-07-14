@@ -75,3 +75,7 @@ void* cubs_shared_get_mut(CubsShared* self);
 
 /// Clones `self`, incrementing the ref count. Does not need to be locked.
 CubsShared cubs_shared_clone(const CubsShared* self);
+
+/// Checks if `self` and `other` point to the same shared object. If the two
+/// have the same value, but different shared objects, this returns false.
+bool cubs_shared_eql(const CubsShared* self, const CubsShared* other);

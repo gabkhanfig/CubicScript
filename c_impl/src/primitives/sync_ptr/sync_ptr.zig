@@ -144,6 +144,10 @@ pub fn Shared(comptime T: type) type {
             return @bitCast(CubsShared.cubs_shared_clone(self.asRaw()));
         }
 
+        pub fn eql(self: *const Self, other: Self) bool {
+            return CubsShared.cubs_shared_eql(self.asRaw(), other.asRaw());
+        }
+
         pub fn asRaw(self: *const Self) *const CubsShared {
             return @ptrCast(self);
         }
@@ -172,6 +176,7 @@ pub const CubsShared = extern struct {
     pub extern fn cubs_shared_get(self: *const Self) callconv(.C) *const anyopaque;
     pub extern fn cubs_shared_get_mut(self: *Self) callconv(.C) *anyopaque;
     pub extern fn cubs_shared_clone(self: *const Self) callconv(.C) Self;
+    pub extern fn cubs_shared_eql(self: *const Self, other: *const Self) callconv(.C) bool;
 };
 
 test "unique init" {
@@ -432,4 +437,34 @@ test "shared exclusive lock clones" {
     t4.join();
 
     try expect(shared.get().* == 400010);
+}
+
+test "shared eql" {
+    { // clones equal
+        var shared = Shared(i64).init(10);
+        defer shared.deinit();
+
+        var clone = shared.clone();
+        defer clone.deinit();
+
+        try expect(shared.eql(clone));
+    }
+    { // different pointers, different value, not equal
+        var s1 = Shared(i64).init(10);
+        defer s1.deinit();
+
+        var s2 = Shared(i64).init(11);
+        defer s2.deinit();
+
+        try expect(!s1.eql(s2));
+    }
+    { // different pointers, same value, not equal
+        var s1 = Shared(i64).init(10);
+        defer s1.deinit();
+
+        var s2 = Shared(i64).init(10);
+        defer s2.deinit();
+
+        try expect(!s1.eql(s2));
+    }
 }
