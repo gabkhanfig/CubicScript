@@ -4,6 +4,7 @@
 #include "../primitives/set/set.h"
 #include "../primitives/map/map.h"
 #include "../primitives/option/option.h"
+#include "../primitives/sync_ptr/sync_ptr.h"
 #include "../util/panic.h"
 #include <assert.h>
 
@@ -169,6 +170,35 @@ const CubsTypeContext CUBS_OPTION_CONTEXT = {
     .nameLength = 6,
 };
 
+const CubsTypeContext CUBS_UNIQUE_CONTEXT = {
+    .sizeOfType = sizeof(CubsUnique),
+    .powOf8Size = sizeof(CubsUnique),
+    .tag = cubsValueTagUnique,
+    .destructor = (CubsStructDestructorFn)&cubs_unique_deinit,
+    .clone = NULL, // because of requiring locking, unique may not be cloned, only it's inner data may be cloned and then a new unique instantiated from it
+    .eql = NULL, // same reasoning. Cannot do equality check without locking
+    .hash = NULL, // same reasoning. Cannot do hashing without locking
+    .name = "unique",
+    .nameLength = 6,
+};
+
+static void shared_clone(CubsShared* dst, const CubsShared* self) {
+    const CubsShared temp = cubs_shared_clone(self);
+    *dst = temp;
+}
+
+const CubsTypeContext CUBS_SHARED_CONTEXT = {
+    .sizeOfType = sizeof(CubsShared),
+    .powOf8Size = sizeof(CubsShared),
+    .tag = cubsValueTagShared,
+    .destructor = (CubsStructDestructorFn)&cubs_shared_deinit,
+    .clone = (CubsStructCloneFn)&shared_clone, // clone does not require locking, thus is ok
+    .eql = (CubsStructEqlFn)&cubs_shared_eql, // equality does not require locking, so its ok
+    .hash = NULL, // Cannot do hashing without locking
+    .name = "shared",
+    .nameLength = 6,
+};
+
 const CubsTypeContext *cubs_primitive_context_for_tag(CubsValueTag tag)
 {
     assert(tag != cubsValueTagUserClass && "This function is for primitive types only");
@@ -196,6 +226,12 @@ const CubsTypeContext *cubs_primitive_context_for_tag(CubsValueTag tag)
         } break;
         case cubsValueTagOption: {
             return &CUBS_OPTION_CONTEXT;
+        } break;
+        case cubsValueTagUnique: {
+            return &CUBS_UNIQUE_CONTEXT;
+        } break;
+        case cubsValueTagShared: {
+            return &CUBS_SHARED_CONTEXT;
         } break;
         default: {
             cubs_panic("unsupported primitive context type");
