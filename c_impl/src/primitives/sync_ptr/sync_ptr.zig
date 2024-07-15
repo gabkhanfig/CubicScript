@@ -23,6 +23,10 @@ pub fn Unique(comptime T: type) type {
             CubsUnique.cubs_unique_deinit(self.asRawMut());
         }
 
+        pub fn makeWeak(self: *const Self) Weak(T) {
+            return @bitCast(CubsUnique.cubs_unique_make_weak(self.asRaw()));
+        }
+
         pub fn lockShared(self: *const Self) void {
             CubsUnique.cubs_unique_lock_shared(self.asRaw());
         }
@@ -78,6 +82,7 @@ pub const CubsUnique = extern struct {
 
     pub extern fn cubs_unique_init_user_class(value: *anyopaque, context: *const TypeContext) callconv(.C) Self;
     pub extern fn cubs_unique_deinit(self: *Self) callconv(.C) void;
+    pub extern fn cubs_unique_make_weak(self: *const Self) callconv(.C) CubsWeak;
     pub extern fn cubs_unique_lock_shared(self: *const Self) callconv(.C) void;
     pub extern fn cubs_unique_try_lock_shared(self: *const Self) callconv(.C) bool;
     pub extern fn cubs_unique_unlock_shared(self: *const Self) callconv(.C) void;
@@ -106,6 +111,10 @@ pub fn Shared(comptime T: type) type {
 
         pub fn deinit(self: *Self) void {
             CubsShared.cubs_shared_deinit(self.asRawMut());
+        }
+
+        pub fn makeWeak(self: *const Self) Weak(T) {
+            return @bitCast(CubsShared.cubs_shared_make_weak(self.asRaw()));
         }
 
         pub fn lockShared(self: *const Self) void {
@@ -167,6 +176,7 @@ pub const CubsShared = extern struct {
 
     pub extern fn cubs_shared_init(value: *anyopaque, context: *const TypeContext) callconv(.C) Self;
     pub extern fn cubs_shared_deinit(self: *Self) callconv(.C) void;
+    pub extern fn cubs_shared_make_weak(self: *const Self) callconv(.C) CubsWeak;
     pub extern fn cubs_shared_lock_shared(self: *const Self) callconv(.C) void;
     pub extern fn cubs_shared_try_lock_shared(self: *const Self) callconv(.C) bool;
     pub extern fn cubs_shared_unlock_shared(self: *const Self) callconv(.C) void;
@@ -177,6 +187,94 @@ pub const CubsShared = extern struct {
     pub extern fn cubs_shared_get_mut(self: *Self) callconv(.C) *anyopaque;
     pub extern fn cubs_shared_clone(self: *const Self) callconv(.C) Self;
     pub extern fn cubs_shared_eql(self: *const Self, other: *const Self) callconv(.C) bool;
+};
+
+pub fn Weak(comptime T: type) type {
+    return extern struct {
+        _inner: *anyopaque,
+        context: *const TypeContext,
+
+        const Self = @This();
+        pub const SCRIPT_SELF_TAG: ValueTag = .weak;
+        pub const ValueType = T;
+
+        pub fn deinit(self: *Self) void {
+            CubsWeak.cubs_weak_deinit(self.asRawMut());
+        }
+
+        pub fn lockShared(self: *const Self) void {
+            CubsWeak.cubs_weak_lock_shared(self.asRaw());
+        }
+
+        pub fn tryLockShared(self: *const Self) bool {
+            return CubsWeak.cubs_weak_try_lock_shared(self.asRaw());
+        }
+
+        pub fn unlockShared(self: *const Self) void {
+            CubsWeak.cubs_weak_unlock_shared(self.asRaw());
+        }
+
+        pub fn lockExclusive(self: *Self) void {
+            CubsWeak.cubs_weak_lock_exclusive(self.asRawMut());
+        }
+
+        pub fn tryLockExclusive(self: *Self) bool {
+            return CubsWeak.cubs_weak_try_lock_exclusive(self.asRawMut());
+        }
+
+        pub fn unlockExclusive(self: *Self) void {
+            CubsWeak.cubs_weak_unlock_exclusive(self.asRawMut());
+        }
+
+        pub fn expired(self: *const Self) bool {
+            return CubsWeak.cubs_weak_expired(self.asRaw());
+        }
+
+        pub fn get(self: *const Self) *const T {
+            return @ptrCast(@alignCast(CubsWeak.cubs_weak_get(self.asRaw())));
+        }
+
+        pub fn getMut(self: *Self) *T {
+            return @ptrCast(@alignCast(CubsWeak.cubs_weak_get_mut(self.asRawMut())));
+        }
+
+        pub fn clone(self: *const Self) Self {
+            return @bitCast(CubsWeak.cubs_weak_clone(self.asRaw()));
+        }
+
+        pub fn eql(self: *const Self, other: Self) bool {
+            return CubsWeak.cubs_weak_eql(self.asRaw(), other.asRaw());
+        }
+
+        pub fn asRaw(self: *const Self) *const CubsWeak {
+            return @ptrCast(self);
+        }
+
+        pub fn asRawMut(self: *Self) *CubsWeak {
+            return @ptrCast(self);
+        }
+    };
+}
+
+pub const CubsWeak = extern struct {
+    _inner: *anyopaque,
+    context: *const TypeContext,
+
+    const Self = @This();
+    pub const SCRIPT_SELF_TAG: ValueTag = .weak;
+
+    pub extern fn cubs_weak_deinit(self: *Self) callconv(.C) void;
+    pub extern fn cubs_weak_lock_shared(self: *const Self) callconv(.C) void;
+    pub extern fn cubs_weak_try_lock_shared(self: *const Self) callconv(.C) bool;
+    pub extern fn cubs_weak_unlock_shared(self: *const Self) callconv(.C) void;
+    pub extern fn cubs_weak_lock_exclusive(self: *Self) callconv(.C) void;
+    pub extern fn cubs_weak_try_lock_exclusive(self: *Self) callconv(.C) bool;
+    pub extern fn cubs_weak_unlock_exclusive(self: *Self) callconv(.C) void;
+    pub extern fn cubs_weak_expired(self: *const Self) callconv(.C) bool;
+    pub extern fn cubs_weak_get(self: *const Self) callconv(.C) *const anyopaque;
+    pub extern fn cubs_weak_get_mut(self: *Self) callconv(.C) *anyopaque;
+    pub extern fn cubs_weak_clone(self: *const Self) callconv(.C) Self;
+    pub extern fn cubs_weak_eql(self: *const Self, other: *const Self) callconv(.C) bool;
 };
 
 test "unique init" {

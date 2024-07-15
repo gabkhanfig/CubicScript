@@ -109,6 +109,8 @@ void cubs_unique_deinit(CubsUnique *self)
         self->context->destructor(header_value_mut(header));
     }   
     cubs_atomic_flag_store(&header->isExpired, true);
+
+    // If there are no weak references, free here.
     const bool shouldFree = cubs_atomic_load_64(&header->weakCount.count) == 0;
 
     cubs_rwlock_unlock_exclusive(&header->lock);
@@ -118,7 +120,16 @@ void cubs_unique_deinit(CubsUnique *self)
     }
 }
 
-void cubs_unique_lock_shared(const CubsUnique* self) {
+CubsWeak cubs_unique_make_weak(const CubsUnique *self)
+{
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    atomic_ref_count_add_ref((AtomicRefCount*)&header->weakCount); // explicitly const cast
+    const CubsWeak weak = {._inner = self->_inner, .context = self->context};
+    return weak;
+}
+
+void cubs_unique_lock_shared(const CubsUnique *self)
+{
     const RefHeader* header = (const RefHeader*)self->_inner;
     cubs_rwlock_lock_shared(&header->lock);
 }
@@ -243,6 +254,9 @@ void cubs_shared_deinit(CubsShared* self) {
         self->context->destructor(header_value_mut(header));
     }   
     cubs_atomic_flag_store(&header->isExpired, true);
+
+    
+    // If there are no weak references, free here.
     const bool shouldFree = cubs_atomic_load_64(&header->weakCount.count) == 0;
 
     cubs_rwlock_unlock_exclusive(&header->lock);
@@ -252,7 +266,16 @@ void cubs_shared_deinit(CubsShared* self) {
     }
 }
 
-void cubs_shared_lock_shared(const CubsShared* self) {
+CubsWeak cubs_shared_make_weak(const CubsShared *self)
+{
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    atomic_ref_count_add_ref((AtomicRefCount*)&header->weakCount); // explicitly const cast
+    const CubsWeak weak = {._inner = self->_inner, .context = self->context};
+    return weak;
+}
+
+void cubs_shared_lock_shared(const CubsShared *self)
+{
     const RefHeader* header = (const RefHeader*)self->_inner;
     cubs_rwlock_lock_shared(&header->lock);
 }
@@ -303,5 +326,80 @@ CubsShared cubs_shared_clone(const CubsShared* self) {
 
 bool cubs_shared_eql(const CubsShared *self, const CubsShared *other)
 {
+    return self->_inner == other->_inner;
+}
+
+void cubs_weak_deinit(CubsWeak* self) {
+    if(self->_inner == NULL) {
+        return;
+    }
+
+    RefHeader* header = (RefHeader*)self->_inner;
+    self->_inner = NULL;
+
+    const bool isExpired = cubs_weak_expired(self);
+    const bool isLastWeakRef = atomic_ref_count_remove_ref(&header->weakCount);
+    if(!isExpired || !isLastWeakRef) {
+        return;
+    }
+    // is expired and is last weak ref
+    // dont need to lock here since `self` is the only object with access to the memory
+    header_free(header, self->context->sizeOfType);
+}
+
+void cubs_weak_lock_shared(const CubsWeak* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    cubs_rwlock_lock_shared(&header->lock);
+}
+
+bool cubs_weak_try_lock_shared(const CubsWeak* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    return cubs_rwlock_try_lock_shared(&header->lock);
+}
+
+void cubs_weak_unlock_shared(const CubsWeak* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    cubs_rwlock_unlock_shared(&header->lock);
+}
+
+void cubs_weak_lock_exclusive(CubsWeak* self) {
+    RefHeader* header = (RefHeader*)self->_inner;
+    cubs_rwlock_lock_exclusive(&header->lock);
+}
+
+bool cubs_weak_try_lock_exclusive(CubsWeak* self) {
+    RefHeader* header = (RefHeader*)self->_inner;
+    return cubs_rwlock_try_lock_exclusive(&header->lock);
+}
+
+void cubs_weak_unlock_exclusive(CubsWeak* self) {
+    RefHeader* header = (RefHeader*)self->_inner;
+    cubs_rwlock_unlock_exclusive(&header->lock);
+}
+
+bool cubs_weak_expired(const CubsWeak* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    return cubs_atomic_flag_load(&header->isExpired);
+}
+
+const void* cubs_weak_get(const CubsWeak* self) {
+    assert(!cubs_weak_expired(self));
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    return header_value(header);
+}
+
+void* cubs_weak_get_mut(CubsWeak* self) {
+    assert(!cubs_weak_expired(self));
+    RefHeader* header = (RefHeader*)self->_inner;
+    return header_value_mut(header);
+}
+
+CubsWeak cubs_weak_clone(const CubsWeak* self) {
+    const RefHeader* header = (const RefHeader*)self->_inner;
+    atomic_ref_count_add_ref((AtomicRefCount*)&header->weakCount); // explicitly const cast
+    return *self;
+}
+
+bool cubs_weak_eql(const CubsWeak* self, const CubsWeak* other) {
     return self->_inner == other->_inner;
 }
