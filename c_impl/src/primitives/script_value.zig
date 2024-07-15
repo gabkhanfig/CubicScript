@@ -13,6 +13,7 @@ pub const Error = @import("error/error.zig").Error;
 pub const Result = @import("result/result.zig").Result;
 pub const Unique = @import("sync_ptr/sync_ptr.zig").Unique;
 pub const Shared = @import("sync_ptr/sync_ptr.zig").Shared;
+pub const Weak = @import("sync_ptr/sync_ptr.zig").Weak;
 pub const Vec2i = @import("vector/vector.zig").Vec2i;
 pub const Vec3i = @import("vector/vector.zig").Vec3i;
 pub const Vec4i = @import("vector/vector.zig").Vec4i;
@@ -30,6 +31,7 @@ pub const c = struct {
     pub const CubsResult = @import("result/result.zig").CubsResult;
     pub const CubsUnique = @import("sync_ptr/sync_ptr.zig").CubsUnique;
     pub const CubsShared = @import("sync_ptr/sync_ptr.zig").CubsShared;
+    pub const CubsWeak = @import("sync_ptr/sync_ptr.zig").CubsWeak;
 };
 
 pub const ValueTag = enum(c_int) {

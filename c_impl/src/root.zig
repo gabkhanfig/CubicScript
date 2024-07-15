@@ -24,6 +24,7 @@ pub const Error = script_value.Error;
 pub const Result = script_value.Result;
 pub const Unique = script_value.Unique;
 pub const Shared = script_value.Unique;
+pub const Weak = script_value.Weak;
 pub const Vec2i = script_value.Vec2i;
 pub const Vec3i = script_value.Vec3i;
 pub const Vec4i = script_value.Vec4i;
