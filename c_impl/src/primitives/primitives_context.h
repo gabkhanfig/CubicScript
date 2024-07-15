@@ -14,6 +14,7 @@ extern const CubsTypeContext CUBS_MAP_CONTEXT;
 extern const CubsTypeContext CUBS_OPTION_CONTEXT;
 extern const CubsTypeContext CUBS_UNIQUE_CONTEXT;
 extern const CubsTypeContext CUBS_SHARED_CONTEXT;
+extern const CubsTypeContext CUBS_WEAK_CONTEXT;
 
 /// Always returns a valid pointer
 /// # Debug Asserts

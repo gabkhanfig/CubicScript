@@ -199,6 +199,23 @@ const CubsTypeContext CUBS_SHARED_CONTEXT = {
     .nameLength = 6,
 };
 
+static void weak_clone(CubsWeak* dst, const CubsWeak* self) {
+    const CubsWeak temp = cubs_weak_clone(self);
+    *dst = temp;
+}
+
+const CubsTypeContext CUBS_WEAK_CONTEXT = {
+    .sizeOfType = sizeof(CubsWeak),
+    .powOf8Size = sizeof(CubsWeak),
+    .tag = cubsValueTagShared,
+    .destructor = (CubsStructDestructorFn)&cubs_weak_deinit,
+    .clone = (CubsStructCloneFn)&weak_clone, // clone does not require locking, thus is ok
+    .eql = (CubsStructEqlFn)&cubs_weak_eql, // equality does not require locking, so its ok
+    .hash = NULL, // Cannot do hashing without locking
+    .name = "weak",
+    .nameLength = 4,
+};
+
 const CubsTypeContext *cubs_primitive_context_for_tag(CubsValueTag tag)
 {
     assert(tag != cubsValueTagUserClass && "This function is for primitive types only");
