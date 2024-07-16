@@ -566,3 +566,57 @@ test "shared eql" {
         try expect(!s1.eql(s2));
     }
 }
+
+test "weak from unique" {
+    {
+        var unique = Unique(i64).init(10);
+        defer unique.deinit();
+
+        var weak = unique.makeWeak();
+        defer weak.deinit();
+
+        weak.lockShared();
+        defer weak.unlockShared();
+
+        try expect(weak.get().* == 10);
+    }
+    {
+        var unique = Unique(String).init(String.initUnchecked("wuh"));
+        defer unique.deinit();
+
+        var weak = unique.makeWeak();
+        defer weak.deinit();
+
+        weak.lockShared();
+        defer weak.unlockShared();
+
+        try expect(weak.get().eqlSlice("wuh"));
+    }
+}
+
+test "weak from shared" {
+    {
+        var shared = Shared(i64).init(10);
+        defer shared.deinit();
+
+        var weak = shared.makeWeak();
+        defer weak.deinit();
+
+        weak.lockShared();
+        defer weak.unlockShared();
+
+        try expect(weak.get().* == 10);
+    }
+    {
+        var shared = Shared(String).init(String.initUnchecked("wuh"));
+        defer shared.deinit();
+
+        var weak = shared.makeWeak();
+        defer weak.deinit();
+
+        weak.lockShared();
+        defer weak.unlockShared();
+
+        try expect(weak.get().eqlSlice("wuh"));
+    }
+}
