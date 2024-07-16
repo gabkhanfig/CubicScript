@@ -337,8 +337,9 @@ void cubs_weak_deinit(CubsWeak* self) {
     RefHeader* header = (RefHeader*)self->_inner;
     self->_inner = NULL;
 
-    const bool isExpired = cubs_weak_expired(self);
+    const bool isExpired = cubs_atomic_flag_load(&header->isExpired);
     const bool isLastWeakRef = atomic_ref_count_remove_ref(&header->weakCount);
+
     if(!isExpired || !isLastWeakRef) {
         return;
     }
