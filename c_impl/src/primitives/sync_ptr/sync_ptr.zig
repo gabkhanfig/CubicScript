@@ -620,3 +620,37 @@ test "weak from shared" {
         try expect(weak.get().eqlSlice("wuh"));
     }
 }
+
+test "weak deinit before owned deinit" {
+    {
+        var unique = Unique(i64).init(10);
+        var weak = unique.makeWeak();
+
+        weak.deinit();
+        unique.deinit();
+    }
+    {
+        var shared = Shared(i64).init(10);
+        var weak = shared.makeWeak();
+
+        weak.deinit();
+        shared.deinit();
+    }
+}
+
+test "weak deinit after owned deinit" {
+    {
+        var unique = Unique(i64).init(10);
+        var weak = unique.makeWeak();
+
+        unique.deinit();
+        weak.deinit();
+    }
+    {
+        var shared = Shared(i64).init(10);
+        var weak = shared.makeWeak();
+
+        shared.deinit();
+        weak.deinit();
+    }
+}
