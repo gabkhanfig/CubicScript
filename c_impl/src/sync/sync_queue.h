@@ -32,3 +32,19 @@ void cubs_sync_queue_unlock();
 void cubs_sync_queue_add_exclusive(CubsSyncObject object);
 
 void cubs_sync_queue_add_shared(CubsSyncObject object);
+
+typedef struct CubsUnique;
+typedef struct CubsShared;
+typedef struct CubsWeak;
+
+void cubs_sync_queue_unique_add_exclusive(struct CubsUnique* unique);
+
+void cubs_sync_queue_unique_add_shared(const struct CubsUnique* unique);
+
+void cubs_sync_queue_shared_add_exclusive(struct CubsShared* shared);
+
+void cubs_sync_queue_shared_add_shared(const struct CubsShared* shared);
+
+void cubs_sync_queue_weak_add_exclusive(struct CubsWeak* weak);
+
+void cubs_sync_queue_weak_add_shared(const struct CubsWeak* weak);
