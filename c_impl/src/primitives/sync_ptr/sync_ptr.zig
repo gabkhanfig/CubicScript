@@ -704,3 +704,78 @@ test "weak expired" {
         weak.deinit();
     }
 }
+
+test "weak lock exclusive" {
+    const Validate = struct {
+        fn lockUnique(u: *Unique(i64), out: *std.atomic.Value(i64)) void {
+            for (0..100000) |_| {
+                u.lockExclusive();
+                defer u.unlockExclusive();
+
+                u.getMut().* += 1;
+            }
+            u.lockExclusive();
+            out.store(u.get().*, .seq_cst);
+            u.unlockExclusive();
+            u.deinit();
+        }
+
+        fn lockWeak(w: *Weak(i64)) void {
+            for (0..500000) |_| {
+                w.lockExclusive();
+                defer w.unlockExclusive();
+
+                if (w.expired()) {
+                    return;
+                }
+
+                w.getMut().* += 1;
+            }
+        }
+
+        fn tryLockWeak(w: *Weak(i64)) void {
+            for (0..500000) |_| {
+                while (true) {
+                    if (!w.tryLockExclusive()) { // keep trying until success
+                        Thread.yield() catch unreachable;
+                        continue;
+                    }
+                    defer w.unlockExclusive();
+                    if (w.expired()) {
+                        return;
+                    }
+                    w.getMut().* += 1;
+                    break;
+                }
+            }
+        }
+    };
+
+    var val = std.atomic.Value(i64).init(10);
+
+    {
+        var unique = Unique(i64).init(val.load(.seq_cst));
+        //defer unique.deinit();
+
+        var weak1 = unique.makeWeak();
+        defer weak1.deinit();
+        var weak2 = unique.makeWeak();
+        defer weak2.deinit();
+
+        const t1 = try Thread.spawn(.{}, Validate.lockUnique, .{ &unique, &val });
+        const t2 = try Thread.spawn(.{}, Validate.lockWeak, .{&weak1});
+        const t3 = try Thread.spawn(.{}, Validate.tryLockWeak, .{&weak2});
+
+        t1.join();
+        t2.join();
+        t3.join();
+    }
+
+    // 100k + 500k + 500k + 10. It must be less than this.
+    const result = val.load(.seq_cst);
+    try expect(result >= 100010);
+    try expect(result <= 1100010);
+    if (val.load(.seq_cst) == 1100010) {
+        return error.SkipZigTest;
+    }
+}
