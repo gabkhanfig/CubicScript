@@ -654,3 +654,53 @@ test "weak deinit after owned deinit" {
         weak.deinit();
     }
 }
+
+test "weak clone" {
+    {
+        var unique = Unique(i64).init(10);
+        defer unique.deinit();
+
+        var weak = unique.makeWeak();
+        defer weak.deinit();
+
+        var clone = weak.clone();
+        defer clone.deinit();
+    }
+    {
+        var shared = Shared(i64).init(10);
+        defer shared.deinit();
+
+        var weak = shared.makeWeak();
+        defer weak.deinit();
+
+        var clone = weak.clone();
+        defer clone.deinit();
+    }
+}
+
+test "weak expired" {
+    {
+        var unique = Unique(i64).init(10);
+        var weak = unique.makeWeak();
+
+        try expect(!weak.expired());
+
+        unique.deinit();
+
+        try expect(weak.expired());
+
+        weak.deinit();
+    }
+    {
+        var shared = Shared(i64).init(10);
+        var weak = shared.makeWeak();
+
+        try expect(!weak.expired());
+
+        shared.deinit();
+
+        try expect(weak.expired());
+
+        weak.deinit();
+    }
+}
