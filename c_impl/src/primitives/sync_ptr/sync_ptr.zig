@@ -779,3 +779,61 @@ test "weak lock exclusive" {
         return error.SkipZigTest;
     }
 }
+
+test "weak lock shared" {
+    const Validate = struct {
+        fn lockUnique(u: *Unique(i64)) void {
+            for (0..100000) |_| {
+                u.lockExclusive();
+                defer u.unlockExclusive();
+            }
+            u.deinit();
+        }
+
+        fn lockWeak(w: *const Weak(i64)) void {
+            for (0..500000) |_| {
+                w.lockShared();
+                defer w.unlockShared();
+
+                if (w.expired()) {
+                    return;
+                }
+            }
+        }
+
+        fn tryLockWeak(w: *const Weak(i64)) void {
+            for (0..500000) |_| {
+                while (true) {
+                    if (!w.tryLockShared()) { // keep trying until success
+                        Thread.yield() catch unreachable;
+                        continue;
+                    }
+                    defer w.unlockShared();
+                    if (w.expired()) {
+                        return;
+                    }
+                    break;
+                }
+            }
+        }
+    };
+
+    var unique = Unique(i64).init(10);
+    //defer unique.deinit();
+
+    var weak1 = unique.makeWeak();
+    defer weak1.deinit();
+    var weak2 = unique.makeWeak();
+    defer weak2.deinit();
+
+    const t1 = try Thread.spawn(.{}, Validate.lockUnique, .{&unique});
+    const t2 = try Thread.spawn(.{}, Validate.lockWeak, .{&weak1});
+    const t3 = try Thread.spawn(.{}, Validate.tryLockWeak, .{&weak2});
+
+    t1.join();
+    t2.join();
+    t3.join();
+
+    try expect(weak1.expired());
+    try expect(weak2.expired());
+}
