@@ -3,7 +3,7 @@
 #include "../script_value.h"
 
 /// Copies the memory at `value`.
-CubsUnique cubs_unique_init_user_class(void* value, const CubsTypeContext* context);
+CubsUnique cubs_unique_init(void* value, const CubsTypeContext* context);
 
 /// Mustn't be locked
 void cubs_unique_deinit(CubsUnique* self);

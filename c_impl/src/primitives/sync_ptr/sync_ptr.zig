@@ -16,7 +16,7 @@ pub fn Unique(comptime T: type) type {
 
         pub fn init(value: T) Self {
             var mutValue = value;
-            return @bitCast(CubsUnique.cubs_unique_init_user_class(@ptrCast(&mutValue), TypeContext.auto(T)));
+            return @bitCast(CubsUnique.cubs_unique_init(@ptrCast(&mutValue), TypeContext.auto(T)));
         }
 
         pub fn deinit(self: *Self) void {
@@ -80,7 +80,7 @@ pub const CubsUnique = extern struct {
     const Self = @This();
     pub const SCRIPT_SELF_TAG: ValueTag = .unique;
 
-    pub extern fn cubs_unique_init_user_class(value: *anyopaque, context: *const TypeContext) callconv(.C) Self;
+    pub extern fn cubs_unique_init(value: *anyopaque, context: *const TypeContext) callconv(.C) Self;
     pub extern fn cubs_unique_deinit(self: *Self) callconv(.C) void;
     pub extern fn cubs_unique_make_weak(self: *const Self) callconv(.C) CubsWeak;
     pub extern fn cubs_unique_lock_shared(self: *const Self) callconv(.C) void;

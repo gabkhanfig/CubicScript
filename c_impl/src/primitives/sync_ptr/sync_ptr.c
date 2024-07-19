@@ -83,7 +83,7 @@ static void header_free(RefHeader* header, size_t sizeOfType) {
     }
 }
 
-CubsUnique cubs_unique_init_user_class(void *value, const CubsTypeContext *context)
+CubsUnique cubs_unique_init(void *value, const CubsTypeContext *context)
 {
     assert(context != NULL);
     assert(value != NULL);
