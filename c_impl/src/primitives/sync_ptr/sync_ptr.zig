@@ -721,7 +721,7 @@ test "weak lock exclusive" {
         }
 
         fn lockWeak(w: *Weak(i64)) void {
-            for (0..500000) |_| {
+            for (0..900000) |_| {
                 w.lockExclusive();
                 defer w.unlockExclusive();
 
@@ -734,7 +734,7 @@ test "weak lock exclusive" {
         }
 
         fn tryLockWeak(w: *Weak(i64)) void {
-            for (0..500000) |_| {
+            for (0..900000) |_| {
                 while (true) {
                     if (!w.tryLockExclusive()) { // keep trying until success
                         Thread.yield() catch unreachable;
@@ -774,8 +774,8 @@ test "weak lock exclusive" {
     // 100k + 500k + 500k + 10. It must be less than this.
     const result = val.load(.seq_cst);
     try expect(result >= 100010);
-    try expect(result <= 1100010);
-    if (val.load(.seq_cst) == 1100010) {
+    try expect(result <= (100010 + 900000 + 900000));
+    if (val.load(.seq_cst) == (100010 + 900000 + 900000)) {
         return error.SkipZigTest;
     }
 }
@@ -791,7 +791,7 @@ test "weak lock shared" {
         }
 
         fn lockWeak(w: *const Weak(i64)) void {
-            for (0..500000) |_| {
+            for (0..900000) |_| {
                 w.lockShared();
                 defer w.unlockShared();
 
@@ -802,7 +802,7 @@ test "weak lock shared" {
         }
 
         fn tryLockWeak(w: *const Weak(i64)) void {
-            for (0..500000) |_| {
+            for (0..900000) |_| {
                 while (true) {
                     if (!w.tryLockShared()) { // keep trying until success
                         Thread.yield() catch unreachable;
@@ -836,4 +836,73 @@ test "weak lock shared" {
 
     try expect(weak1.expired());
     try expect(weak2.expired());
+}
+
+test "weak eql" {
+    { // make is eql
+        var unique = Unique(i64).init(10);
+        defer unique.deinit();
+
+        var weak1 = unique.makeWeak();
+        defer weak1.deinit();
+        var weak2 = unique.makeWeak();
+        defer weak2.deinit();
+
+        try expect(weak1.eql(weak2));
+    }
+    { // clone is eql
+        var unique = Unique(i64).init(10);
+        defer unique.deinit();
+
+        var weak1 = unique.makeWeak();
+        defer weak1.deinit();
+        var weak2 = weak1.clone();
+        defer weak2.deinit();
+
+        try expect(weak1.eql(weak2));
+    }
+    { // shared clones each make eql
+        var s1 = Shared(i64).init(10);
+        defer s1.deinit();
+        var s2 = s1.clone();
+        defer s2.deinit();
+
+        var weak1 = s1.makeWeak();
+        defer weak1.deinit();
+
+        var weak2 = s2.makeWeak();
+        defer weak2.deinit();
+
+        try expect(weak1.eql(weak2));
+    }
+    { // different instance with same value not eql
+        var unique1 = Unique(i64).init(10);
+        defer unique1.deinit();
+
+        var unique2 = Unique(i64).init(10);
+        defer unique2.deinit();
+
+        var weak1 = unique1.makeWeak();
+        defer weak1.deinit();
+
+        var weak2 = unique2.makeWeak();
+        defer weak2.deinit();
+
+        try expect(!weak1.eql(weak2));
+    }
+    { // different instance with different value not eql
+        var unique1 = Unique(i64).init(10);
+        defer unique1.deinit();
+
+        var unique2 = Unique(i64).init(20);
+        defer unique2.deinit();
+
+        var weak1 = unique1.makeWeak();
+        defer weak1.deinit();
+
+        var weak2 = unique2.makeWeak();
+        defer weak2.deinit();
+
+        try expect(!weak1.eql(weak2));
+    }
 }
