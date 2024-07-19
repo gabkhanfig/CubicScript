@@ -227,68 +227,76 @@ void cubs_sync_queue_add_shared(CubsSyncObject object)
     add_sync_object(&threadLocalQueues.queues[threadLocalQueues.current], object, Shared);
 }
 
-// static const CubsSyncObjectVTable CUBS_RWLOCK_VTABLE = {
-//     .lockExclusive = &cubs_rwlock_lock_exclusive,
-//     .tryLockExclusive = &cubs_rwlock_try_lock_exclusive,
-//     .unlockExclusive = &cubs_rwlock_unlock_exclusive,
-//     .lockShared = &cubs_rwlock_lock_shared,
-//     .tryLockShared = &cubs_rwlock_try_lock_shared,
-//     .unlockShared = &cubs_rwlock_unlock_shared,
+static const CubsSyncObjectVTable CUBS_RWLOCK_VTABLE = {
+    .lockExclusive = (CubsSyncQueueLockExclusive)&cubs_rwlock_lock_exclusive,
+    .tryLockExclusive = (CubsSyncQueueTryLockExclusive)&cubs_rwlock_try_lock_exclusive,
+    .unlockExclusive = (CubsSyncQueueUnlockExclusive)&cubs_rwlock_unlock_exclusive,
+    .lockShared = (CubsSyncQueueLockShared)&cubs_rwlock_lock_shared,
+    .tryLockShared = (CubsSyncQueueTryLockShared)&cubs_rwlock_try_lock_shared,
+    .unlockShared = (CubsSyncQueueUnlockShared)&cubs_rwlock_unlock_shared,
+};
+
+extern CubsRwLock* _cubs_internal_sync_ptr_get_lock(void* syncPtr);
+
+// static const CubsSyncObjectVTable CUBS_UNIQUE_VTABLE = {
+//     .lockExclusive = (CubsSyncQueueLockExclusive)&cubs_unique_lock_exclusive,
+//     .tryLockExclusive = (CubsSyncQueueTryLockExclusive)&cubs_unique_try_lock_exclusive,
+//     .unlockExclusive = (CubsSyncQueueUnlockExclusive)&cubs_unique_unlock_exclusive,
+//     .lockShared = (CubsSyncQueueLockShared)&cubs_unique_lock_shared,
+//     .tryLockShared = (CubsSyncQueueTryLockShared)&cubs_unique_try_lock_shared,
+//     .unlockShared = (CubsSyncQueueUnlockShared)&cubs_unique_unlock_shared,
 // };
 
-static const CubsSyncObjectVTable CUBS_UNIQUE_VTABLE = {
-    .lockExclusive = (CubsSyncQueueLockExclusive)&cubs_unique_lock_exclusive,
-    .tryLockExclusive = (CubsSyncQueueTryLockExclusive)&cubs_unique_try_lock_exclusive,
-    .unlockExclusive = (CubsSyncQueueUnlockExclusive)&cubs_unique_unlock_exclusive,
-    .lockShared = (CubsSyncQueueLockShared)&cubs_unique_lock_shared,
-    .tryLockShared = (CubsSyncQueueTryLockShared)&cubs_unique_try_lock_shared,
-    .unlockShared = (CubsSyncQueueUnlockShared)&cubs_unique_unlock_shared,
-};
+// static const CubsSyncObjectVTable CUBS_SHARED_VTABLE = {
+//     .lockExclusive = (CubsSyncQueueLockExclusive)&cubs_shared_lock_exclusive,
+//     .tryLockExclusive = (CubsSyncQueueTryLockExclusive)&cubs_shared_try_lock_exclusive,
+//     .unlockExclusive = (CubsSyncQueueUnlockExclusive)&cubs_shared_unlock_exclusive,
+//     .lockShared = (CubsSyncQueueLockShared)&cubs_shared_lock_shared,
+//     .tryLockShared = (CubsSyncQueueTryLockShared)&cubs_shared_try_lock_shared,
+//     .unlockShared = (CubsSyncQueueUnlockShared)&cubs_shared_unlock_shared,
+// };
 
-static const CubsSyncObjectVTable CUBS_SHARED_VTABLE = {
-    .lockExclusive = (CubsSyncQueueLockExclusive)&cubs_shared_lock_exclusive,
-    .tryLockExclusive = (CubsSyncQueueTryLockExclusive)&cubs_shared_try_lock_exclusive,
-    .unlockExclusive = (CubsSyncQueueUnlockExclusive)&cubs_shared_unlock_exclusive,
-    .lockShared = (CubsSyncQueueLockShared)&cubs_shared_lock_shared,
-    .tryLockShared = (CubsSyncQueueTryLockShared)&cubs_shared_try_lock_shared,
-    .unlockShared = (CubsSyncQueueUnlockShared)&cubs_shared_unlock_shared,
-};
-
-static const CubsSyncObjectVTable CUBS_WEAK_VTABLE = {
-    .lockExclusive = (CubsSyncQueueLockExclusive)&cubs_weak_lock_exclusive,
-    .tryLockExclusive = (CubsSyncQueueTryLockExclusive)&cubs_weak_try_lock_exclusive,
-    .unlockExclusive = (CubsSyncQueueUnlockExclusive)&cubs_weak_unlock_exclusive,
-    .lockShared = (CubsSyncQueueLockShared)&cubs_weak_lock_shared,
-    .tryLockShared = (CubsSyncQueueTryLockShared)&cubs_weak_try_lock_shared,
-    .unlockShared = (CubsSyncQueueUnlockShared)&cubs_weak_unlock_shared,
-};
+// static const CubsSyncObjectVTable CUBS_WEAK_VTABLE = {
+//     .lockExclusive = (CubsSyncQueueLockExclusive)&cubs_weak_lock_exclusive,
+//     .tryLockExclusive = (CubsSyncQueueTryLockExclusive)&cubs_weak_try_lock_exclusive,
+//     .unlockExclusive = (CubsSyncQueueUnlockExclusive)&cubs_weak_unlock_exclusive,
+//     .lockShared = (CubsSyncQueueLockShared)&cubs_weak_lock_shared,
+//     .tryLockShared = (CubsSyncQueueTryLockShared)&cubs_weak_try_lock_shared,
+//     .unlockShared = (CubsSyncQueueUnlockShared)&cubs_weak_unlock_shared,
+// };
 
 void cubs_sync_queue_unique_add_exclusive(struct CubsUnique* unique) {
-    const CubsSyncObject syncObj = {.ptr = (void*)unique, .vtable = &CUBS_UNIQUE_VTABLE};
+    CubsRwLock* lock = _cubs_internal_sync_ptr_get_lock((void*)unique);
+    const CubsSyncObject syncObj = {.ptr = (void*)lock, .vtable = &CUBS_RWLOCK_VTABLE};
     cubs_sync_queue_add_exclusive(syncObj);
 }
 
 void cubs_sync_queue_unique_add_shared(const struct CubsUnique* unique) {
-    const CubsSyncObject syncObj = {.ptr = (void*)unique, .vtable = &CUBS_UNIQUE_VTABLE};
+    CubsRwLock* lock = _cubs_internal_sync_ptr_get_lock((void*)unique);
+    const CubsSyncObject syncObj = {.ptr = (void*)lock, .vtable = &CUBS_RWLOCK_VTABLE};
     cubs_sync_queue_add_shared(syncObj);
 }
 
 void cubs_sync_queue_shared_add_exclusive(struct CubsShared* shared) {
-    const CubsSyncObject syncObj = {.ptr = (void*)shared, .vtable = &CUBS_SHARED_VTABLE};
+    CubsRwLock* lock = _cubs_internal_sync_ptr_get_lock((void*)shared);
+    const CubsSyncObject syncObj = {.ptr = (void*)lock, .vtable = &CUBS_RWLOCK_VTABLE};
     cubs_sync_queue_add_exclusive(syncObj);
 }
 
 void cubs_sync_queue_shared_add_shared(const struct CubsShared* shared) {
-    const CubsSyncObject syncObj = {.ptr = (void*)shared, .vtable = &CUBS_SHARED_VTABLE};
+    CubsRwLock* lock = _cubs_internal_sync_ptr_get_lock((void*)shared);
+    const CubsSyncObject syncObj = {.ptr = (void*)lock, .vtable = &CUBS_RWLOCK_VTABLE};
     cubs_sync_queue_add_shared(syncObj);
 }
 
 void cubs_sync_queue_weak_add_exclusive(struct CubsWeak* weak) {
-    const CubsSyncObject syncObj = {.ptr = (void*)weak, .vtable = &CUBS_WEAK_VTABLE};
+    CubsRwLock* lock = _cubs_internal_sync_ptr_get_lock((void*)weak);
+    const CubsSyncObject syncObj = {.ptr = (void*)lock, .vtable = &CUBS_RWLOCK_VTABLE};
     cubs_sync_queue_add_exclusive(syncObj);
 }
 
 void cubs_sync_queue_weak_add_shared(const struct CubsWeak* weak) {
-    const CubsSyncObject syncObj = {.ptr = (void*)weak, .vtable = &CUBS_WEAK_VTABLE};
+    CubsRwLock* lock = _cubs_internal_sync_ptr_get_lock((void*)weak);
+    const CubsSyncObject syncObj = {.ptr = (void*)lock, .vtable = &CUBS_RWLOCK_VTABLE};
     cubs_sync_queue_add_shared(syncObj);
 }

@@ -16,6 +16,14 @@ typedef struct {
     bool isShared; // If its shared, then the ref count is also part of the allocation
 } RefHeader;
 
+/// Works with unique, shared, and weak ptrs.
+CubsRwLock* _cubs_internal_sync_ptr_get_lock(void* syncPtr) {
+    /// unique, shared, and weak all have the same memory layout, so this is ok to get the "first" element.
+    uintptr_t* nestedPtr = (uintptr_t*)syncPtr;
+    RefHeader* header = (RefHeader*)(*nestedPtr);
+    return &header->lock;
+}
+
 /// Always returns a multiple of 64. This guarantees no false sharing.
 static size_t header_and_data_alloc_size(bool isShared, size_t sizeOfType) {
     size_t sum;
