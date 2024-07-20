@@ -254,3 +254,39 @@ test tryLock {
         defer unlock();
     }
 }
+
+test addSyncPtrExclusive {
+    {
+        var unique = Unique(i64).init(10);
+        defer unique.deinit();
+
+        addSyncPtrExclusive(&unique);
+        lock();
+        defer unlock();
+
+        unique.getMut().* = 11;
+    }
+    {
+        var shared = Shared(i64).init(10);
+        defer shared.deinit();
+
+        addSyncPtrExclusive(&shared);
+        lock();
+        defer unlock();
+
+        shared.getMut().* = 11;
+    }
+    {
+        var unique = Unique(i64).init(10);
+        defer unique.deinit();
+
+        var weak = unique.makeWeak();
+        defer weak.deinit();
+
+        addSyncPtrExclusive(&weak);
+        lock();
+        defer unlock();
+
+        weak.getMut().* = 11;
+    }
+}
