@@ -330,7 +330,7 @@ test addSyncPtrShared {
     }
 }
 
-test "fully thread safe" {
+test "no deadlocks" {
     const Thread = std.Thread;
 
     const Validate = struct {
