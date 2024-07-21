@@ -103,7 +103,7 @@ pub fn addSyncPtrExclusive(ptr: anytype) void {
 pub fn addSyncPtrShared(ptr: anytype) void {
     const ptrType = @TypeOf(ptr);
     const typeInfo = @typeInfo(ptrType);
-    if (typeInfo == .Pointer) {
+    if (typeInfo != .Pointer) {
         @compileError("Expected pointer type");
     }
     const ptrInfo = typeInfo.Pointer;
@@ -264,6 +264,7 @@ test addSyncPtrExclusive {
         lock();
         defer unlock();
 
+        try expect(unique.get().* == 10);
         unique.getMut().* = 11;
     }
     {
@@ -274,6 +275,7 @@ test addSyncPtrExclusive {
         lock();
         defer unlock();
 
+        try expect(shared.get().* == 10);
         shared.getMut().* = 11;
     }
     {
@@ -287,6 +289,43 @@ test addSyncPtrExclusive {
         lock();
         defer unlock();
 
+        try expect(weak.get().* == 10);
         weak.getMut().* = 11;
+    }
+}
+
+test addSyncPtrShared {
+    {
+        var unique = Unique(i64).init(10);
+        defer unique.deinit();
+
+        addSyncPtrShared(&unique);
+        lock();
+        defer unlock();
+
+        try expect(unique.get().* == 10);
+    }
+    {
+        var shared = Shared(i64).init(10);
+        defer shared.deinit();
+
+        addSyncPtrShared(&shared);
+        lock();
+        defer unlock();
+
+        try expect(shared.get().* == 10);
+    }
+    {
+        var unique = Unique(i64).init(10);
+        defer unique.deinit();
+
+        var weak = unique.makeWeak();
+        defer weak.deinit();
+
+        addSyncPtrShared(&weak);
+        lock();
+        defer unlock();
+
+        try expect(weak.get().* == 10);
     }
 }
