@@ -334,7 +334,7 @@ test "fully thread safe" {
     const Thread = std.Thread;
 
     const Validate = struct {
-        const LOOPS = 500;
+        const LOOPS = 5000;
 
         fn order1(
             m: *Mutex,
