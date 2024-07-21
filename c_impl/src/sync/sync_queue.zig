@@ -329,3 +329,110 @@ test addSyncPtrShared {
         try expect(weak.get().* == 10);
     }
 }
+
+test "fully thread safe" {
+    const Thread = std.Thread;
+
+    const Validate = struct {
+        const LOOPS = 500;
+
+        fn order1(
+            m: *Mutex,
+            r: *RwLock,
+            sm: *ScriptMutex,
+            sr: *ScriptRwLock,
+            u: *Unique(i64),
+            s: *Shared(i64),
+            w1: *Weak(i64),
+            w2: *Weak(i64),
+        ) void {
+            for (0..LOOPS) |_| {
+                addStdMutex(m);
+                addStdRwLockExclusive(r);
+                addScriptMutex(sm);
+                addScriptRwLockExclusive(sr);
+                addSyncPtrExclusive(u);
+                addSyncPtrExclusive(s);
+                addSyncPtrExclusive(w1);
+                addSyncPtrExclusive(w2);
+
+                lock();
+                defer unlock();
+
+                u.getMut().* += 1;
+            }
+        }
+
+        fn order2(
+            m: *Mutex,
+            r: *RwLock,
+            sm: *ScriptMutex,
+            sr: *ScriptRwLock,
+            u: *Unique(i64),
+            s: *Shared(i64),
+            w1: *Weak(i64),
+            w2: *Weak(i64),
+        ) void {
+            for (0..LOOPS) |_| {
+                addSyncPtrExclusive(w2);
+                addSyncPtrExclusive(w1);
+                addSyncPtrExclusive(s);
+                addSyncPtrExclusive(u);
+                addScriptRwLockExclusive(sr);
+                addScriptMutex(sm);
+                addStdRwLockExclusive(r);
+                addStdMutex(m);
+
+                lock();
+                defer unlock();
+
+                u.getMut().* += 1;
+            }
+        }
+    };
+
+    var mutex = Mutex{};
+    var rwlock = RwLock{};
+    var scriptMutex = ScriptMutex{};
+    var scriptRwLock = ScriptRwLock{};
+    var unique = Unique(i64).init(0);
+    var shared = Shared(i64).init(0);
+    var weak1 = unique.makeWeak();
+
+    var unusedUnique = Unique(i64).init(-1);
+    defer unusedUnique.deinit();
+
+    var weak2 = unusedUnique.makeWeak();
+
+    defer unique.deinit();
+    defer shared.deinit();
+    defer weak1.deinit();
+    defer weak2.deinit();
+
+    const t1 = try Thread.spawn(.{}, Validate.order1, .{
+        &mutex,
+        &rwlock,
+        &scriptMutex,
+        &scriptRwLock,
+        &unique,
+        &shared,
+        &weak1,
+        &weak2,
+    });
+
+    const t2 = try Thread.spawn(.{}, Validate.order2, .{
+        &mutex,
+        &rwlock,
+        &scriptMutex,
+        &scriptRwLock,
+        &unique,
+        &shared,
+        &weak1,
+        &weak2,
+    });
+
+    t1.join();
+    t2.join();
+
+    try expect(unique.get().* == (Validate.LOOPS * 2));
+}
