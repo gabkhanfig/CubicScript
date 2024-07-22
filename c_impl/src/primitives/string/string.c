@@ -345,6 +345,8 @@ size_t cubs_string_find(const CubsString *self, CubsStringSlice slice, size_t st
 
 size_t cubs_string_rfind(const CubsString *self, CubsStringSlice slice, size_t startIndex)
 {
+    /// TODO start index could be npos to start at the end?
+
   const CubsStringSlice selfSlice = cubs_string_as_slice(self);
   /// startIndex - slice.len may overflow. This is fine.
   if((slice.len > selfSlice.len) || (startIndex - slice.len >= selfSlice.len)) {
