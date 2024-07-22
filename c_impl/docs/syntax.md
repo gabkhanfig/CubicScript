@@ -73,3 +73,17 @@ const refExample = &example
 // Since it's an immutable reference, cannot assign to it
 refExample = 2 // <- compilation error cannot assign to immutable reference
 ```
+
+It also works with mutable values
+
+```txt
+mut example = 1
+
+// Take an immutable reference and assign it to `refExample`, even though `example` is mutable
+const refExample = &example
+// The same as `const refExample :&int = &example
+
+// Since it's an immutable reference, cannot assign to it
+refExample = 2 // <- compilation error cannot assign to immutable reference
+
+```
