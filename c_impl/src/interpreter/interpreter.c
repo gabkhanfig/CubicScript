@@ -13,9 +13,6 @@
 #include "../primitives/set/set.h"
 #include "../primitives/map/map.h"
 
-extern void* _cubs_os_aligned_malloc(size_t len, size_t align);
-extern void* _cubs_os_aligned_free(void *buf, size_t len, size_t align);
-
 static const size_t OLD_INSTRUCTION_POINTER = 0;
 static const size_t OLD_FRAME_LENGTH = 1;
 static const size_t OLD_RETURN_VALUE_DST = 2;
