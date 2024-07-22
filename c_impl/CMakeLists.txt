@@ -9,6 +9,7 @@ project("CubicScript")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_STANDARD 17)
 
 add_library(CubicScript STATIC 
     "src/program/program.c"
@@ -35,6 +36,13 @@ add_library(CubicScript STATIC
     "src/primitives/sync_ptr/sync_ptr.c"
     "src/primitives/vector/vector.c"
 )
+
+add_executable(CubicScriptCppTests
+    "src/cpp_tests.cpp"
+    "src/primitives/string/string_tests.cpp"
+)
+
+target_link_libraries(CubicScriptCppTests CubicScript)
 
 target_include_directories(CubicScript PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

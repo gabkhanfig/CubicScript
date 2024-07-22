@@ -1,6 +1,8 @@
 const std = @import("std");
 const Build = std.Build;
 
+const CUBS_USING_ZIG_ALLOCATOR = "CUBS_USING_ZIG_ALLOCATOR";
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -8,7 +10,7 @@ pub fn build(b: *std.Build) void {
     const cubic_script = b.addModule("cubic_script", .{ .root_source_file = .{ .path = "src/root.zig" } });
     cubic_script.link_libc = true;
 
-    cubic_script.addCMacro("CUBS_USING_ZIG_ALLOCATOR", "1");
+    cubic_script.addCMacro(CUBS_USING_ZIG_ALLOCATOR, "1");
     cubic_script.addIncludePath(b.path("src"));
 
     if (target.result.cpu.arch.isX86()) {
@@ -20,52 +22,71 @@ pub fn build(b: *std.Build) void {
         cubic_script.addCSourceFile(.{ .file = b.path(c_file), .flags = &c_flags });
     }
 
-    const lib = b.addSharedLibrary(.{
-        .name = "CubicScript",
-        .root_source_file = .{ .path = "src/lib.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-    lib.root_module.addImport("cubic_script", cubic_script);
+    { //* static/shared library
+        const lib = b.addSharedLibrary(.{
+            .name = "CubicScript",
+            .root_source_file = .{ .path = "src/lib.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+        lib.root_module.addImport("cubic_script", cubic_script);
 
-    b.installArtifact(lib);
-
-    const lib_unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/tests.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-    // Explicitly DON'T import the cubic script module for the tests, as including the same file twice in two different modules leads to a compilations error
-    //lib_unit_tests.root_module.addImport("cubic_script", cubic_script);
-    lib_unit_tests.addIncludePath(b.path("src"));
-    lib_unit_tests.linkLibC();
-    lib_unit_tests.defineCMacro("CUBS_USING_ZIG_ALLOCATOR", "1");
-
-    for (cubic_script_c_sources) |c_file| {
-        lib_unit_tests.addCSourceFile(.{ .file = b.path(c_file), .flags = &c_flags });
+        b.installArtifact(lib);
     }
 
-    const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
-    const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&run_lib_unit_tests.step);
+    { //* tests
+        const lib_unit_tests = b.addTest(.{
+            .root_source_file = .{ .path = "src/tests.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+        // Explicitly DON'T import the cubic script module for the tests, as including the same file twice in two different modules leads to a compilations error
+        //lib_unit_tests.root_module.addImport("cubic_script", cubic_script);
+        lib_unit_tests.addIncludePath(b.path("src"));
+        lib_unit_tests.linkLibC();
+        lib_unit_tests.defineCMacro(CUBS_USING_ZIG_ALLOCATOR, "1");
 
-    const exe = b.addExecutable(.{
-        .name = "CubicScript",
-        .root_source_file = .{ .path = "src/main.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-    exe.root_module.addImport("cubic_script", cubic_script);
-    b.installArtifact(exe);
+        const cpp_unit_tests = b.addExecutable(.{ .name = "cpp unit tests", .target = target, .optimize = optimize });
+        cpp_unit_tests.addIncludePath(b.path("src"));
+        cpp_unit_tests.linkLibC();
+        cpp_unit_tests.linkLibCpp();
 
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
+        for (cubic_script_c_sources) |c_file| {
+            lib_unit_tests.addCSourceFile(.{ .file = b.path(c_file), .flags = &c_flags });
+            cpp_unit_tests.addCSourceFile(.{ .file = b.path(c_file), .flags = &c_flags });
+        }
 
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
+        for (cubic_script_cpp_test_sources) |c_file| {
+            cpp_unit_tests.addCSourceFile(.{ .file = b.path(c_file), .flags = &c_flags });
+        }
+
+        // On running "zig build test" on the command line, it will build both the zig tests, and c++ tests
+        const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
+        const run_cpp_unit_tests = b.addRunArtifact(cpp_unit_tests);
+        const test_step = b.step("test", "Run unit tests");
+        test_step.dependOn(&run_lib_unit_tests.step);
+        test_step.dependOn(&run_cpp_unit_tests.step);
     }
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
+
+    { //* executable for debug purposes
+        const exe = b.addExecutable(.{
+            .name = "CubicScript",
+            .root_source_file = .{ .path = "src/main.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+        exe.root_module.addImport("cubic_script", cubic_script);
+        b.installArtifact(exe);
+
+        const run_cmd = b.addRunArtifact(exe);
+        run_cmd.step.dependOn(b.getInstallStep());
+
+        if (b.args) |args| {
+            run_cmd.addArgs(args);
+        }
+        const run_step = b.step("run", "Run the app");
+        run_step.dependOn(&run_cmd.step);
+    }
 }
 
 pub const cubic_script_c_sources = [_][]const u8{
@@ -95,4 +116,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/primitives/vector/vector.c",
 };
 
-pub const cubic_script_x86_sources = [_][]const u8{};
+pub const cubic_script_cpp_test_sources = [_][]const u8{
+    "src/cpp_tests.cpp",
+    "src/primitives/string/string_tests.cpp",
+};
