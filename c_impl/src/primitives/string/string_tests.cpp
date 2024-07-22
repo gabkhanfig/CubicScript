@@ -10,10 +10,12 @@ TEST_CASE("default constructor") {
 
 TEST_CASE("string view constructor") {
     String s = std::string_view("hello world!");
+    CHECK_EQ(s.len(), 12);
     CHECK_EQ(s, std::string_view("hello world!"));
 }
 
 TEST_CASE("const char* constructor") {
     String s = "hello world!";
+    CHECK_EQ(s.len(), 12);
     CHECK_EQ(s, "hello world!");
 }
