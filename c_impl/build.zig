@@ -118,4 +118,5 @@ pub const cubic_script_c_sources = [_][]const u8{
 
 pub const cubic_script_cpp_test_sources = [_][]const u8{
     "src/cpp_tests.cpp",
+    "src/primitives/string/string_tests.cpp",
 };
