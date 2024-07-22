@@ -19,6 +19,6 @@ namespace cubs {
         Less = cubsOrderingLess,
         Equal = cubsOrderingEqual,
         Greater = cubsOrderingGreater,
-    }
+    };
 }
 #endif
