@@ -1,6 +1,6 @@
 # Cubic Script Syntax
 
-Here are examples of the syntax
+Fundamentally, the syntax should feel "natural" to write, taking inspiration from multiple languages such as C, Rust, Zig, Go, Lua, and others. Explicitness is also preferred over implicitness, in which simply reading the code should be able to largely convey intention.
 
 ## Variables
 
