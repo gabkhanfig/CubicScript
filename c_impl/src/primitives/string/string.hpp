@@ -10,8 +10,6 @@ extern "C" {
 }
 
 namespace cubs {
-    namespace detail {
-    }
 
     class String {
     public:
