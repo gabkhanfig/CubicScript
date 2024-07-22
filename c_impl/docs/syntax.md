@@ -61,6 +61,13 @@ refExample = 2 // Assign the referenced memory to something else
 assert(example == 2)
 ```
 
+You are not allowed to take a mutable reference to immutable data.
+
+```txt
+const example = 1;
+const refExample = &mut example // <- compilation error cannot take mutable reference to immutable data
+```
+
 ### Immutable References
 
 ```txt
