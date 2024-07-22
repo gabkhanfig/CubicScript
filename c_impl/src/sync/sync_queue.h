@@ -33,9 +33,9 @@ void cubs_sync_queue_add_exclusive(CubsSyncObject object);
 
 void cubs_sync_queue_add_shared(CubsSyncObject object);
 
-typedef struct CubsUnique;
-typedef struct CubsShared;
-typedef struct CubsWeak;
+typedef struct CubsUnique CubsUnique;
+typedef struct CubsShared CubsShared;
+typedef struct CubsWeak CubsWeak;
 
 void cubs_sync_queue_unique_add_exclusive(struct CubsUnique* unique);
 
