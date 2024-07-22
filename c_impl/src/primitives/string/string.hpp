@@ -2,37 +2,38 @@
 
 #include "../script_value.hpp"
 #include <assert.h>
+#include "string.h"
+#include <string_view>
 
 namespace cubs {
     namespace detail {
-        #include "string.h"
-        #include <string_view>
+        
     }
 
     class String {
     public:
 
-        using string_view = detail::std::string_view;
-        using int64_t = detail::int64_t;
+        using string_view = std::string_view;
+        using int64_t = std::int64_t;
 
         enum class Error : int {
-            None = detail::newStringErrorNone,
-            InvalidUtf8 = detail::newStringErrorInvalidUtf8,
-            IndexOutOfBounds = detail::newStringErrorIndexOutOfBounds,
-            ParseBool = detail::newStringErrorParseBool,
-            ParseInt = detail::newStringErrorParseInt,
-            ParseFloat = detail::newStringErrorParseFloat,
+            None = newStringErrorNone,
+            InvalidUtf8 = newStringErrorInvalidUtf8,
+            IndexOutOfBounds = newStringErrorIndexOutOfBounds,
+            ParseBool = newStringErrorParseBool,
+            ParseInt = newStringErrorParseInt,
+            ParseFloat = newStringErrorParseFloat,
         };
 
-        constexpr static size_t npos = detail::CUBS_STRING_N_POS;
+        constexpr static size_t npos = CUBS_STRING_N_POS;
 
         String() : string{0} {}
 
         String(string_view str) {
-            detail::CubsStringSlice slice;
+            CubsStringSlice slice;
             slice.str = str.data();
             slice.len = str.size();
-            this->string = detail::cubs_string_init_unchecked(slice);
+            this->string = cubs_string_init_unchecked(slice);
         }
 
         String(const char* str) {
@@ -40,7 +41,7 @@ namespace cubs {
         }
 
         String(const String& other) {
-            this->string = detail::cubs_string_clone(&other.string);
+            this->string = cubs_string_clone(&other.string);
         }
 
         String(String&& other) noexcept {
@@ -49,39 +50,39 @@ namespace cubs {
         }
 
         ~String() noexcept {
-            detail::cubs_string_deinit(&this->string);
+            cubs_string_deinit(&this->string);
         }
 
         static const TypeContext* scriptTypeContext() {
-            return &detail::CUBS_STRING_CONTEXT;
+            return &CUBS_STRING_CONTEXT;
         }
 
         String& operator= (const String& other) {
-            detail::cubs_string_deinit(&this->string);
-            this->string = detail::cubs_string_clone(&other.string);
+            cubs_string_deinit(&this->string);
+            this->string = cubs_string_clone(&other.string);
         }
 
         String& operator= (String&& other) {
-            detail::cubs_string_deinit(&this->string);
+            cubs_string_deinit(&this->string);
             this->string = other.string;
             other.string = {0};
         }
 
         [[nodiscard]] string_view asStringView() const {
-            const detail::CubsStringSlice slice = detail::cubs_string_as_slice(&this->string);
+            const CubsStringSlice slice = cubs_string_as_slice(&this->string);
             const string_view view(slice.str, slice.len);
             return view;
         }
 
         [[nodiscard]] bool operator==(const String& other) const {
-            return detail::cubs_string_eql(&this->string, &other.string);
+            return cubs_string_eql(&this->string, &other.string);
         }
 
         [[nodiscard]] bool operator==(string_view view) const { 
-            detail::CubsStringSlice slice;
+            CubsStringSlice slice;
             slice.str = view.data();
             slice.len = view.size();
-            return detail::cubs_string_eql_slice(&this->string, slice);
+            return cubs_string_eql_slice(&this->string, slice);
         }
 
         [[nodiscard]] bool operator==(const char* str) const {
@@ -89,37 +90,37 @@ namespace cubs {
         }
 
         [[nodiscard]] bool operator<(const String& other) const {
-            return detail::cubs_string_cmp(&this->string, &other.string) == detail::cubsOrderingLess;
+            return cubs_string_cmp(&this->string, &other.string) == cubsOrderingLess;
         }
 
         [[nodiscard]] bool operator>(const String& other) const {
-            return detail::cubs_string_cmp(&this->string, &other.string) == detail::cubsOrderingGreater;
+            return cubs_string_cmp(&this->string, &other.string) == cubsOrderingGreater;
         }
 
         [[nodiscard]] bool operator<=(const String& other) const {
-            const bool result = detail::cubs_string_cmp(&this->string, &other.string);
-            return (result == detail::cubsOrderingLess) || (result == detail::cubsOrderingEqual);
+            const CubsOrdering result = cubs_string_cmp(&this->string, &other.string);
+            return (result == cubsOrderingLess) || (result == cubsOrderingEqual);
         }
 
         [[nodiscard]] bool operator>=(const String& other) const {
-            const bool result = detail::cubs_string_cmp(&this->string, &other.string);
-            return (result == detail::cubsOrderingGreater) || (result == detail::cubsOrderingEqual);
+            const bool result = cubs_string_cmp(&this->string, &other.string);
+            return (result == cubsOrderingGreater) || (result == cubsOrderingEqual);
         }
 
         [[nodiscard]] size_t hash() const {
-            return detail::cubs_string_hash(&this->string);
+            return cubs_string_hash(&this->string);
         }
 
         [[nodiscard]] size_t find(const String& other, size_t startIndex = 0) const {
-            const detail::CubsStringSlice slice = detail::cubs_string_as_slice(&other.string);
-            return detail::cubs_string_find(&this->string, slice, startIndex);
+            const CubsStringSlice slice = cubs_string_as_slice(&other.string);
+            return cubs_string_find(&this->string, slice, startIndex);
         }
 
         [[nodiscard]] size_t find(string_view view, size_t startIndex = 0) const {   
-            detail::CubsStringSlice slice;
+            CubsStringSlice slice;
             slice.str = view.data();
             slice.len = view.size();
-            return detail::cubs_string_find(&this->string, slice, startIndex);
+            return cubs_string_find(&this->string, slice, startIndex);
         }
 
         [[nodiscard]] size_t find(const char* str, size_t startIndex = 0) const {
@@ -127,15 +128,15 @@ namespace cubs {
         }
 
         [[nodiscard]] size_t rfind(const String& other, size_t startIndex) const {
-            const detail::CubsStringSlice slice = detail::cubs_string_as_slice(&other.string);
-            return detail::cubs_string_rfind(&this->string, slice, startIndex);
+            const CubsStringSlice slice = cubs_string_as_slice(&other.string);
+            return cubs_string_rfind(&this->string, slice, startIndex);
         }
 
         [[nodiscard]] size_t rfind(string_view view, size_t startIndex) const {   
-            detail::CubsStringSlice slice;
+            CubsStringSlice slice;
             slice.str = view.data();
             slice.len = view.size();
-            return detail::cubs_string_rfind(&this->string, slice, startIndex);
+            return cubs_string_rfind(&this->string, slice, startIndex);
         }
 
         [[nodiscard]] size_t rfind(const char* str, size_t startIndex) const {
@@ -144,16 +145,16 @@ namespace cubs {
 
         [[nodiscard]] String operator+ (const String& other) const {
             String out;
-            out.string = detail::cubs_string_concat(&this->string, &other.string);
+            out.string = cubs_string_concat(&this->string, &other.string);
             return out;
         }
 
         [[nodiscard]] String operator+ (string_view view) const {
             String out;
-            detail::CubsStringSlice slice;
+            CubsStringSlice slice;
             slice.str = view.data();
             slice.len = view.size();
-            out.string = detail::cubs_string_concat_slice_unchecked(&this->string, slice);
+            out.string = cubs_string_concat_slice_unchecked(&this->string, slice);
             return out;
         }
 
@@ -162,39 +163,40 @@ namespace cubs {
         }
 
         [[nodiscard]] Error substr(String& out, size_t startInclusive, size_t endExclusive) const {
-            const Error result = static_cast<Error>(detail::cubs_string_substr(&out.string, &this->string, startInclusive, endExclusive));
+            const Error result = static_cast<Error>(cubs_string_substr(&out.string, &this->string, startInclusive, endExclusive));
             return result;
         }
 
         [[nodiscard]] static String fromBool(bool b) {
             String out;
-            out.string = detail::cubs_string_from_bool(b);
+            out.string = cubs_string_from_bool(b);
             return out;
         }
 
         [[nodiscard]] static String fromInt(int64_t b) {
             String out;
-            out.string = detail::cubs_string_from_int(b);
+            out.string = cubs_string_from_int(b);
             return out;
         }
 
         [[nodiscard]] static String fromFloat(double b) {
             String out;
-            out.string = detail::cubs_string_from_float(b);
+            out.string = cubs_string_from_float(b);
             return out;
         }
 
         [[nodiscard]] Error toBool(bool& out) const {
-            const Error result = static_cast<Error>(detail::cubs_string_to_bool(reinterpret_cast<bool*>(out), &this->string));
+            const Error result = static_cast<Error>(cubs_string_to_bool(reinterpret_cast<bool*>(out), &this->string));
             return result;
         }
 
     private:
-        detail::CubsString string;
+        CubsString string;
     };
 }
 
 namespace std {
+    template <>
     struct hash<cubs::String> {
         size_t operator()(const cubs::String& str) const noexcept {
             return str.hash();
