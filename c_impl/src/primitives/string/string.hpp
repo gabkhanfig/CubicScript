@@ -2,7 +2,8 @@
 
 #include <string_view> 
 #include "../script_value.hpp"
-#include <assert.h>   
+#include <assert.h>
+#include <iostream>
 
 extern "C" {  
     #include "string.h"
@@ -39,7 +40,11 @@ namespace cubs {
         }
 
         String(const char* str) {
-            *this = String(string_view(str));
+            const string_view sv{str};         
+            CubsStringSlice slice;
+            slice.str = sv.data();
+            slice.len = sv.size();
+            this->string = cubs_string_init_unchecked(slice);
         }
 
         String(const String& other) {
@@ -57,6 +62,10 @@ namespace cubs {
 
         static const TypeContext* scriptTypeContext() {
             return &CUBS_STRING_CONTEXT;
+        }
+
+        size_t len() const {
+            return this->string.len;
         }
 
         String& operator= (const String& other) {
@@ -88,7 +97,8 @@ namespace cubs {
         }
 
         [[nodiscard]] bool operator==(const char* str) const {
-            return *this == string_view(str);
+            const string_view sv{str};
+            return *this == sv;
         }
 
         [[nodiscard]] bool operator<(const String& other) const {
