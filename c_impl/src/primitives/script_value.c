@@ -6,6 +6,7 @@
 #include "map/map.h"
 #include "set/set.h"
 
+_Static_assert(sizeof(int64_t) == 8, "64 bit integer must occupy 64 bits");
 _Static_assert(sizeof(size_t) == sizeof(void*), "CubicScript requires a system with non-segmented addressing");
 _Static_assert(sizeof(void*) == 8, "CubicScript is not compatible with non-64 bit architectures");
 
