@@ -2,14 +2,8 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "value_tag.h"
-
-#if defined(_WIN32) || defined(WIN32)
-typedef long long int64_t;
-#else
-typedef long int64_t;
-#endif
-
 
 typedef void (*CubsStructDestructorFn)(void* self);
 typedef void (*CubsStructCloneFn)(void* dst, const void* self);

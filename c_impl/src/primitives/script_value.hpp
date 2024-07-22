@@ -1,12 +1,11 @@
 #pragma once
 
-#include "script_value.h"
-#include "primitives_context.h"
+extern "C"  {
+    #include "script_value.h"
+    #include "primitives_context.h"
+}
 
 namespace cubs {
-    namespace detail {
-    }
-
     enum class ValueTag : int {
         Bool = cubsValueTagBool,
         Int = cubsValueTagInt,

@@ -1,13 +1,15 @@
 #pragma once
 
+#include <string_view> 
 #include "../script_value.hpp"
-#include <assert.h>
-#include "string.h"
-#include <string_view>
+#include <assert.h>   
+
+extern "C" {  
+    #include "string.h"
+}
 
 namespace cubs {
     namespace detail {
-        
     }
 
     class String {
