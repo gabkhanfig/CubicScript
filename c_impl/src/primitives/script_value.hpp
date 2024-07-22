@@ -5,7 +5,7 @@ namespace cubs {
         #include "script_value.h"
     }
 
-    enum ValueTag : int {
+    enum class ValueTag : int {
         Bool = detail::cubsValueTagBool,
         Int = detail::cubsValueTagInt,
         Float = detail::cubsValueTagFloat,
