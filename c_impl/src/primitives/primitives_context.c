@@ -4,6 +4,8 @@
 #include "../primitives/set/set.h"
 #include "../primitives/map/map.h"
 #include "../primitives/option/option.h"
+#include "../primitives/error/error.h"
+#include "../primitives/result/result.h"
 #include "../primitives/sync_ptr/sync_ptr.h"
 #include "../util/panic.h"
 #include <assert.h>
@@ -167,6 +169,40 @@ const CubsTypeContext CUBS_OPTION_CONTEXT = {
     .eql = (CubsStructEqlFn)&cubs_option_eql,
     .hash = (CubsStructHashFn)&cubs_option_hash,
     .name = "option",
+    .nameLength = 6,
+};
+
+static void error_clone(CubsError* dst, const CubsError* self) {
+    const CubsError temp = cubs_error_clone(self);
+    *dst = temp;
+}
+
+const CubsTypeContext CUBS_ERROR_CONTEXT = {
+    .sizeOfType = sizeof(CubsOption),
+    .powOf8Size = sizeof(CubsOption),
+    .tag = cubsValueTagError,
+    .destructor = (CubsStructDestructorFn)&cubs_error_deinit,
+    .clone = (CubsStructCloneFn)&error_clone,
+    .eql = (CubsStructEqlFn)&cubs_error_eql,
+    .hash = (CubsStructHashFn)&cubs_error_hash,
+    .name = "error",
+    .nameLength = 5,
+};
+
+// static void result_clone(CubsResult* dst, const CubsResult* self) {
+//     const CubsResult temp = cubs_result_clone(self);
+//     *dst = temp;
+// }
+
+const CubsTypeContext CUBS_RESULT_CONTEXT = {
+    .sizeOfType = sizeof(CubsResult),
+    .powOf8Size = sizeof(CubsResult),
+    .tag = cubsValueTagResult,
+    .destructor = (CubsStructDestructorFn)&cubs_result_deinit,
+    .clone = NULL,
+    .eql = NULL,
+    .hash = NULL,
+    .name = "result",
     .nameLength = 6,
 };
 
