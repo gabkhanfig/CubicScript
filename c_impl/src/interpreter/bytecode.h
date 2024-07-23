@@ -17,7 +17,7 @@ typedef enum {
     /// - Immediate -> `OperandsLoadImmediate` Loads some small immediate data 
     /// - Immediate long -> `OperandsLoadImmediateLong` Loads some large data. Is a multibyte instruction
     /// - Default -> `OperandsLoadDefault` loads the default representation of a type if it has one. May be a multibyte instruction
-    /// - Clone from ptr -> Clones some data held at a given immediate pointer, using an immediate context. Is a 3 bytecode wide multibyte instruction
+    /// - Clone from ptr -> `OperandsLoadCloneFromPtr` Clones some data held at a given immediate pointer, using an immediate context. Is a 3 bytecode wide multibyte instruction
     OpCodeLoad = 1,
 
     OPCODE_USED_BITS = 8,
@@ -102,3 +102,10 @@ VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadDefault);
 /// If `tag == cubsValueTagMap`, `multiBytecode` must be a pointer to at least 3 bytecodes. 
 /// Otherwise, `multiBytecode` is treated as a single pointer.
 void operands_make_load_default(Bytecode* multiBytecode, CubsValueTag tag, uint16_t dst, const CubsTypeContext* optKeyContext, const CubsTypeContext* optValueContext);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t reserveLoadType: RESERVE_LOAD_TYPE;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+} OperandsLoadCloneFromPtr;
+void operands_make_load_clone_from_ptr(Bytecode* tripleBytecode, uint16_t dst, const void* immediatePtr, const CubsTypeContext* context);

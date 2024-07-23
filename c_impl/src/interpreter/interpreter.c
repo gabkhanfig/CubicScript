@@ -278,11 +278,14 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
             }
         } break;
         case LOAD_TYPE_CLONE_FROM_PTR: {
-            const OperandsLoadImmediateLong operands = *(const OperandsLoadImmediateLong*)bytecode;
-            assert(operands.immediateValueTag != _CUBS_VALUE_TAG_NONE);
+            const OperandsLoadCloneFromPtr operands = *(const OperandsLoadCloneFromPtr*)bytecode;
 
             const void* immediate = (const void*)(uintptr_t)threadLocalStack.instructionPointer[1].value;
             const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[2].value;
+
+            assert(immediate != NULL);
+            assert(context != NULL);
+
             void* dst = cubs_interpreter_stack_value_at(operands.dst);
 
             assert(context->clone != NULL);

@@ -78,3 +78,12 @@ void operands_make_load_default(Bytecode* multiBytecode, CubsValueTag tag, uint1
         multiBytecode[2] = *(const Bytecode*)optValueContext;
     }
 }
+
+void operands_make_load_clone_from_ptr(Bytecode *tripleBytecode, uint16_t dst, const void *immediatePtr, const CubsTypeContext *context)
+{
+    assert(dst <= MAX_FRAME_LENGTH);
+    _Alignas(_Alignof(Bytecode)) const OperandsLoadCloneFromPtr operands = {.reserveOpcode = OpCodeLoad, .reserveLoadType = LOAD_TYPE_CLONE_FROM_PTR, .dst = dst};
+    tripleBytecode[0] = *(const Bytecode*)&operands;
+    tripleBytecode[1].value = (size_t)immediatePtr;
+    tripleBytecode[2].value = (size_t)context;
+}

@@ -185,3 +185,26 @@ test "load default" {
         try expect(c.cubs_string_eql_slice(string, c.CubsStringSlice{ .str = "".ptr, .len = "".len }));
     }
 }
+
+test "load clone" {
+    c.cubs_interpreter_push_frame(10, null, null, null);
+    defer c.cubs_interpreter_pop_frame();
+    {
+        var bytecode = [3]c.Bytecode{ undefined, undefined, undefined };
+
+        var immediateString = c.cubs_string_init_unchecked(.{ .str = "hello world!".ptr, .len = "hello world!".len });
+        defer c.cubs_string_deinit(&immediateString);
+
+        c.operands_make_load_clone_from_ptr(&bytecode, 0, @ptrCast(&immediateString), &c.CUBS_STRING_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_STRING_CONTEXT);
+        const stackString: *c.CubsString = @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)));
+        try expect(stackString.len == "hello world!".len);
+        try expect(c.cubs_string_eql(stackString, &immediateString));
+
+        c.cubs_string_deinit(stackString);
+    }
+}
