@@ -11,7 +11,13 @@
 // https://azeria-labs.com/memory-instructions-load-and-store-part-4/
 
 typedef enum {
+    /// No operation. Useful for debugging purposes.
     OpCodeNop = 0,
+    /// Loads a value into the stack. There are 4 types of load operations.
+    /// - Immediate -> `OperandsLoadImmediate` Loads some small immediate data 
+    /// - Immediate long -> `OperandsLoadImmediateLong` Loads some large data. Is a multibyte instruction
+    /// - Default -> `OperandsLoadDefault` loads the default representation of a type if it has one. May be a multibyte instruction
+    /// - Clone from ptr -> Clones some data held at a given pointer. Is a multibyte instruction
     OpCodeLoad = 1,
 
     OPCODE_USED_BITS = 8,
@@ -47,13 +53,18 @@ Bytecode cubs_bytecode_encode_immediate_long_float(double num);
 
 Bytecode cubs_bytecode_encode_immediate_long_ptr(void *ptr);
 
-#define LOAD_TYPE_IMMEDIATE 0
-#define LOAD_TYPE_IMMEDIATE_LONG 1
-#define LOAD_TYPE_DEFAULT 2
-#define LOAD_TYPE_CLONE_FROM_PTR 3
+enum LoadOperationType {
+    LOAD_TYPE_IMMEDIATE = 0,
+    LOAD_TYPE_IMMEDIATE_LONG = 1,
+    LOAD_TYPE_DEFAULT = 2,
+    LOAD_TYPE_CLONE_FROM_PTR = 3,
+
+    RESERVE_LOAD_TYPE = 2,
+};
+
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t loadType: 2;
+    uint64_t loadType: RESERVE_LOAD_TYPE;
 } OperandsLoadUnknown;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadUnknown);
 
@@ -61,7 +72,7 @@ VALIDATE_SIZE_ALIGN_OPERANDS(OperandsLoadUnknown);
 #define LOAD_IMMEDIATE_INT 1
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t reserveLoadType: 2;
+    uint64_t reserveLoadType: RESERVE_LOAD_TYPE;
     uint64_t immediateType: 1;
     uint64_t dst: BITS_PER_STACK_OPERAND;
     int64_t immediate: 40;
@@ -72,7 +83,7 @@ Bytecode operands_make_load_immediate(int immediateType, uint16_t dst, int64_t i
 
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t reserveLoadType: 2;
+    uint64_t reserveLoadType: RESERVE_LOAD_TYPE;
     uint64_t immediateValueTag: 6; // CubsValueTag
     uint64_t dst: BITS_PER_STACK_OPERAND;
 } OperandsLoadImmediateLong;
@@ -82,7 +93,7 @@ void operands_make_load_immediate_long(Bytecode* doubleBytecode, CubsValueTag ta
 
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t reserveLoadType: 2;
+    uint64_t reserveLoadType: RESERVE_LOAD_TYPE;
     uint64_t dst: BITS_PER_STACK_OPERAND;
     uint64_t tag: 6;
 } OperandsLoadDefault;
