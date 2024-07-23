@@ -15,7 +15,7 @@ typedef struct CubsTypeContext CubsTypeContext;
 #endif
 
 #define BITS_PER_STACK_OPERAND 13
-#define MAX_FRAME_LENGTH ((size_t)0b1111111111111)
+#define MAX_FRAME_LENGTH ((1 << BITS_PER_STACK_OPERAND) - 1)
 
 typedef struct {
     size_t basePointerOffset;
