@@ -12,6 +12,9 @@
 #include "../primitives/array/array.h"
 #include "../primitives/set/set.h"
 #include "../primitives/map/map.h"
+#include "../primitives/option/option.h"
+#include "../primitives/error/error.h"
+#include "../primitives/result/result.h"
 
 static const size_t OLD_INSTRUCTION_POINTER = 0;
 static const size_t OLD_FRAME_LENGTH = 1;
@@ -171,7 +174,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_FLOAT_CONTEXT);
                 } break;
                 case cubsValueTagChar: {
-                    *(size_t*)dst = 0;
+                    cubs_panic("TODO char");
                 } break;
                 case cubsValueTagString: {
                     const CubsString defaultString = {0};
@@ -185,11 +188,10 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                     (*ipIncrement) += 1; // move instruction pointer further into the bytecode
                 } break;
                 case cubsValueTagSet: {
-                    cubs_panic("TODO set");
-                    // assert(operands.keyTag != _CUBS_VALUE_TAG_NONE);
-                    // assert(operands.keyTag != cubsValueTagUserStruct);
-                    // *(CubsSet*)dst = cubs_set_init(operands.keyTag);
-                    //cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_MAP_CONTEXT);
+                    const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
+                    *(CubsSet*)dst = cubs_set_init_user_struct(context);
+                    cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_SET_CONTEXT);
+                    (*ipIncrement) += 1; // move instruction pointer further into the bytecode
                 } break;
                 case cubsValueTagMap: {
                     const CubsTypeContext* keyContext = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
@@ -199,26 +201,16 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                     (*ipIncrement) += 2; // move instruction pointer further into the bytecode
                 } break;
                 case cubsValueTagOption: {
-                    cubs_panic("TODO option");
-                    // const CubsOption nullOption = {0};
-                    // *(CubsOption*)dst = nullOption;
-                    // _Static_assert(sizeof(CubsOption) == (5 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the string uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
+                    const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
+                    *(CubsOption*)dst = cubs_option_init_user_class(context, NULL);
+                    cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_SET_CONTEXT);
+                    (*ipIncrement) += 1; // move instruction pointer further into the bytecode
                 } break;
                 case cubsValueTagError: {
-                    cubs_panic("TODO error");
-                    // const CubsError defaultError = {0};
-                    // *(CubsError*)dst = defaultError;
-                    // _Static_assert(sizeof(CubsError) == (5 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the string uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
+                    cubs_panic("Errors do not have a default value");
+                } break;
+                case cubsValueTagResult: {
+                    cubs_panic("Results do not have a default value");
                 } break;
                 case cubsValueTagVec2i: {
                     cubs_panic("TODO vec2i");
