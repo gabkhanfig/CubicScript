@@ -17,7 +17,7 @@ typedef enum {
     /// - Immediate -> `OperandsLoadImmediate` Loads some small immediate data 
     /// - Immediate long -> `OperandsLoadImmediateLong` Loads some large data. Is a multibyte instruction
     /// - Default -> `OperandsLoadDefault` loads the default representation of a type if it has one. May be a multibyte instruction
-    /// - Clone from ptr -> Clones some data held at a given pointer. Is a multibyte instruction
+    /// - Clone from ptr -> Clones some data held at a given immediate pointer, using an immediate context. Is a 3 bytecode wide multibyte instruction
     OpCodeLoad = 1,
 
     OPCODE_USED_BITS = 8,
