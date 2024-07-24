@@ -1,8 +1,6 @@
 #pragma once
 
 #include "script_value.h"
-#include "../primitives/string/string.h"
-#include "../primitives/array/array.h"
 
 extern const CubsTypeContext CUBS_BOOL_CONTEXT;
 extern const CubsTypeContext CUBS_INT_CONTEXT;
