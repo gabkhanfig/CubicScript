@@ -156,7 +156,6 @@ bool cubs_array_eql(const CubsArray *self, const CubsArray *other)
     assert(other->context->eql != NULL);
     assert(self->context->eql == other->context->eql);
     assert(self->context->sizeOfType == other->context->sizeOfType);
-    assert(self->context->tag == other->context->tag);
 
     if(self->len != other->len) {
         return false;

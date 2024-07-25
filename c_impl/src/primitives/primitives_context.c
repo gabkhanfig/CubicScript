@@ -25,7 +25,6 @@ static size_t bool_hash(const bool* self) {
 const CubsTypeContext CUBS_BOOL_CONTEXT = {
     .sizeOfType = 1,
     .powOf8Size = sizeof(size_t),
-    .tag = cubsValueTagBool,
     .destructor = NULL,
     .clone = (CubsStructCloneFn)&bool_clone,
     .eql = (CubsStructEqlFn)&bool_eql,
@@ -50,7 +49,6 @@ static size_t int_hash(const int64_t* self) {
 const CubsTypeContext CUBS_INT_CONTEXT = {
     .sizeOfType = sizeof(int64_t),
     .powOf8Size = sizeof(int64_t),
-    .tag = cubsValueTagInt,
     .destructor = NULL, 
     .clone = (CubsStructCloneFn)&int_clone,
     .eql = (CubsStructEqlFn)&int_eql,
@@ -78,7 +76,6 @@ static size_t float_hash(const double* self) {
 const CubsTypeContext CUBS_FLOAT_CONTEXT = {
     .sizeOfType = sizeof(double),
     .powOf8Size = sizeof(double),
-    .tag = cubsValueTagFloat,
     .destructor = NULL, 
     .clone = (CubsStructCloneFn)&float_clone,
     .eql = (CubsStructEqlFn)&float_eql,
@@ -95,7 +92,6 @@ static void string_clone(CubsString* dst, const CubsString* self) {
 const CubsTypeContext CUBS_STRING_CONTEXT = {
     .sizeOfType = sizeof(CubsString),
     .powOf8Size = sizeof(CubsString),
-    .tag = cubsValueTagString,
     .destructor = (CubsStructDestructorFn)&cubs_string_deinit,
     .clone = (CubsStructCloneFn)&string_clone,
     .eql = (CubsStructEqlFn)&cubs_string_eql,
@@ -112,7 +108,6 @@ static void array_clone(CubsArray* dst, const CubsArray* self) {
 const CubsTypeContext CUBS_ARRAY_CONTEXT = {
     .sizeOfType = sizeof(CubsArray),
     .powOf8Size = sizeof(CubsArray),
-    .tag = cubsValueTagArray,
     .destructor = (CubsStructDestructorFn)&cubs_array_deinit,
     .clone = (CubsStructCloneFn)&array_clone,
     .eql = (CubsStructEqlFn)&cubs_array_eql,
@@ -129,7 +124,6 @@ static void set_clone(CubsSet* dst, const CubsSet* self) {
 const CubsTypeContext CUBS_SET_CONTEXT = {  
     .sizeOfType = sizeof(CubsSet),
     .powOf8Size = sizeof(CubsSet),
-    .tag = cubsValueTagSet,
     .destructor = (CubsStructDestructorFn)&cubs_set_deinit,
     .clone = (CubsStructCloneFn)&set_clone,
     .eql = (CubsStructEqlFn)&cubs_set_eql,
@@ -146,7 +140,6 @@ static void map_clone(CubsMap* dst, const CubsMap* self) {
 const CubsTypeContext CUBS_MAP_CONTEXT = {
     .sizeOfType = sizeof(CubsMap),
     .powOf8Size = sizeof(CubsMap),
-    .tag = cubsValueTagMap,
     .destructor = (CubsStructDestructorFn)&cubs_map_deinit,
     .clone = (CubsStructCloneFn)&map_clone,
     .eql = (CubsStructEqlFn)&cubs_map_eql,
@@ -163,7 +156,6 @@ static void option_clone(CubsOption* dst, const CubsOption* self) {
 const CubsTypeContext CUBS_OPTION_CONTEXT = {
     .sizeOfType = sizeof(CubsOption),
     .powOf8Size = sizeof(CubsOption),
-    .tag = cubsValueTagOption,
     .destructor = (CubsStructDestructorFn)&cubs_option_deinit,
     .clone = (CubsStructCloneFn)&option_clone,
     .eql = (CubsStructEqlFn)&cubs_option_eql,
@@ -180,7 +172,6 @@ static void error_clone(CubsError* dst, const CubsError* self) {
 const CubsTypeContext CUBS_ERROR_CONTEXT = {
     .sizeOfType = sizeof(CubsOption),
     .powOf8Size = sizeof(CubsOption),
-    .tag = cubsValueTagError,
     .destructor = (CubsStructDestructorFn)&cubs_error_deinit,
     .clone = (CubsStructCloneFn)&error_clone,
     .eql = (CubsStructEqlFn)&cubs_error_eql,
@@ -197,7 +188,6 @@ const CubsTypeContext CUBS_ERROR_CONTEXT = {
 const CubsTypeContext CUBS_RESULT_CONTEXT = {
     .sizeOfType = sizeof(CubsResult),
     .powOf8Size = sizeof(CubsResult),
-    .tag = cubsValueTagResult,
     .destructor = (CubsStructDestructorFn)&cubs_result_deinit,
     .clone = NULL,
     .eql = NULL,
@@ -209,7 +199,6 @@ const CubsTypeContext CUBS_RESULT_CONTEXT = {
 const CubsTypeContext CUBS_UNIQUE_CONTEXT = {
     .sizeOfType = sizeof(CubsUnique),
     .powOf8Size = sizeof(CubsUnique),
-    .tag = cubsValueTagUnique,
     .destructor = (CubsStructDestructorFn)&cubs_unique_deinit,
     .clone = NULL, // because of requiring locking, unique may not be cloned, only it's inner data may be cloned and then a new unique instantiated from it
     .eql = NULL, // same reasoning. Cannot do equality check without locking
@@ -226,7 +215,6 @@ static void shared_clone(CubsShared* dst, const CubsShared* self) {
 const CubsTypeContext CUBS_SHARED_CONTEXT = {
     .sizeOfType = sizeof(CubsShared),
     .powOf8Size = sizeof(CubsShared),
-    .tag = cubsValueTagShared,
     .destructor = (CubsStructDestructorFn)&cubs_shared_deinit,
     .clone = (CubsStructCloneFn)&shared_clone, // clone does not require locking, thus is ok
     .eql = (CubsStructEqlFn)&cubs_shared_eql, // equality does not require locking, so its ok
@@ -243,7 +231,6 @@ static void weak_clone(CubsWeak* dst, const CubsWeak* self) {
 const CubsTypeContext CUBS_WEAK_CONTEXT = {
     .sizeOfType = sizeof(CubsWeak),
     .powOf8Size = sizeof(CubsWeak),
-    .tag = cubsValueTagShared,
     .destructor = (CubsStructDestructorFn)&cubs_weak_deinit,
     .clone = (CubsStructCloneFn)&weak_clone, // clone does not require locking, thus is ok
     .eql = (CubsStructEqlFn)&cubs_weak_eql, // equality does not require locking, so its ok
