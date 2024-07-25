@@ -16,6 +16,8 @@
 #include "../primitives/error/error.h"
 #include "../primitives/result/result.h"
 
+extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
+
 static const size_t OLD_INSTRUCTION_POINTER = 0;
 static const size_t OLD_FRAME_LENGTH = 1;
 static const size_t OLD_RETURN_VALUE_DST = 2;
