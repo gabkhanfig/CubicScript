@@ -24,6 +24,14 @@ extern struct Example {
 }
 ```
 
+The equivalent C struct would look like the following:
+
+```c
+typedef struct ScriptExample {
+    CubsString someMember;
+} ScriptExample;
+```
+
 Since it would be difficult to draw the line at what can be overridden for the struct's context, `extern struct`'s cannot have any overridden builtins.
 
 ## Builtins
