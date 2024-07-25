@@ -1,18 +1,34 @@
 # Structs
 
-Structs in CubicScript use the C layout. There are two possible types of structs, being `struct` and `extern struct`.
+Structs in CubicScript use the C layout.
 
-## Script Structs
+## Structs Definitions
 
-Normal script `struct`'s are allowed to define methods, and inherit interfaces.
+There are two possible types of structs, being `struct` and `extern struct`. Both types of structs are allowed to have methods and trait definitions.
 
-## Extern Structs
+```txt
+struct Example {
+    someMember: string
+}
+```
 
-There are situations where structs that are compatible with the programming language the scripts are embedded in are needed within the scripts themselves. Since it would be difficult to draw the line at what can be overridden for the struct's context, `extern struct`'s cannot have any overridden behaviour. They cannot implement any interfaces, and can only use `extern fn` methods, which have no declaration, only the definition. Upon compiling the scripts, these extern structs must have their type information passed in.
+Normal script structs are allowed to override builtins. More info on that down below.
+
+### Extern Structs
+
+There are situations where structs that are compatible with the programming language the scripts are embedded in are needed within the scripts themselves.
+
+```txt
+extern struct Example {
+    someMember: string
+}
+```
+
+Since it would be difficult to draw the line at what can be overridden for the struct's context, `extern struct`'s cannot have any overridden builtins.
 
 ## Builtins
 
-A struct can implement some custom builtin behaviour, overridding the default one. Unlike Rust, this is not done through traits, as it's part of the type itself more similar to an interface conceptually. Unlike C++, this is not done through specific function definitions or operator overloading.
+Sometimes, certain "base" behaviour needs to be overridden. For example, custom behaviour on a destructor, or cloning, etc. In Rust for example, this is achieved through simple builtin traits such as [std::ops::Drop](https://doc.rust-lang.org/std/ops/trait.Drop.html). In C++ the compiler can recognize certain function definitions on a given type including operators. Unlike Rust, this is not done through traits, as it's part of the type itself more similar to an interface conceptually. Unlike C++, this is not done through specific function definitions or operator overloading. These builtins match up with the C OR script function pointers found in a type's context.
 
 ```txt
 struct Example {
@@ -33,17 +49,14 @@ struct Example {
 }
 ```
 
-The following builtins are available
+The following builtins are available:
 
 - @destructor
 - @clone
 - @eql
 
+While using Rust style traits for these behaviours would be great, this is a necessary compromise because of the fact that scripts aren't in an isolated environment. They are "owned" by a process, in another language such as C, C++, Zig, or Rust. These processes, will have their own defined behaviour.
+
 ### Extern
 
-Sometimes, certain "base" behaviour needs to be overridden. For example, custom behaviour on a destructor, or cloning, etc. In Rust for example, this is achieved through simple builtin traits such as [std::ops::Drop](https://doc.rust-lang.org/std/ops/trait.Drop.html). In C++ the compiler can recognize certain function definitions on a given type including operators.
-
-Any struct defined within a script is able to implement these builtins for custom behaviour.
-
-The language that the scripts are embedded in can implement some of that behaviour itself, such as a custom C++ destructor for a struct. As such, any struct defined in a script that implements custom behaviour for these builtins may not be used for extern calls, and will emit a compiler error.
-
+Extern structs are not allowed to implement any builtins, as they have that behaviour defined by the host-language at script compile time.
