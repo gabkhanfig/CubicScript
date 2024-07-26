@@ -10,6 +10,7 @@
 #include "../string/string.h"
 #include "../primitives_context.h"
 #include "../../util/simd.h"
+#include "../../util/context_size_round.h"
 
 static const size_t GROUP_ALLOC_SIZE = 32;
 static const size_t ALIGNMENT = 32;
@@ -90,15 +91,18 @@ static void pair_deinit(PairHeader* pair, const CubsTypeContext* keyContext, con
     } else {
         *iterLast = before;
     }
+
+    const size_t keyRound8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(keyContext->sizeOfType);
+    const size_t valueRound8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(valueContext->sizeOfType);
     
     if(keyContext->destructor != NULL) {
         keyContext->destructor(pair_key_mut(pair));
     }
     if(valueContext->destructor != NULL) {
-        valueContext->destructor(pair_value_mut(pair, keyContext->powOf8Size));
+        valueContext->destructor(pair_value_mut(pair, keyRound8Size));
     }
 
-    cubs_free((void*)pair, sizeof(PairHeader) + keyContext->powOf8Size + valueContext->powOf8Size, _Alignof(size_t));
+    cubs_free((void*)pair, sizeof(PairHeader) + keyRound8Size + valueRound8Size, _Alignof(size_t));
 }
 
 static Group group_init() {
@@ -227,7 +231,10 @@ static void group_insert(Group* self, void* key, void* value, const CubsTypeCont
             continue;
         }
 
-        PairHeader* newPair = (PairHeader*)cubs_malloc(sizeof(PairHeader) + keyContext->powOf8Size + valueContext->powOf8Size, _Alignof(size_t));
+        const size_t keyRound8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(keyContext->sizeOfType);
+        const size_t valueRound8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(valueContext->sizeOfType);
+
+        PairHeader* newPair = (PairHeader*)cubs_malloc(sizeof(PairHeader) + keyRound8Size + valueRound8Size, _Alignof(size_t));
         newPair->hashCode = hashCode;
         newPair->iterBefore = *iterLast;
         newPair->iterAfter = NULL;
@@ -242,8 +249,9 @@ static void group_insert(Group* self, void* key, void* value, const CubsTypeCont
             (*iterLast) = newPair;
         }
 
+
         memcpy(pair_key_mut(newPair), key, keyContext->sizeOfType);
-        memcpy(pair_value_mut(newPair, keyContext->powOf8Size), value, valueContext->sizeOfType);
+        memcpy(pair_value_mut(newPair, keyRound8Size), value, valueContext->sizeOfType);
     
         const size_t actualIndex = index + i;
         self->hashMasks[actualIndex] = pairMask.value;
@@ -448,7 +456,9 @@ const void* cubs_map_find(const CubsMap *self, const void *key)
         return NULL;
     }
 
-    return pair_value(group_pair_buf_start(group)[found], self->keyContext->powOf8Size);
+    const size_t round8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(self->keyContext->sizeOfType);
+
+    return pair_value(group_pair_buf_start(group)[found], round8Size);
 }
 
 void* cubs_map_find_mut(CubsMap *self, const void *key)
@@ -469,7 +479,9 @@ void* cubs_map_find_mut(CubsMap *self, const void *key)
         return NULL;
     }
 
-    return pair_value_mut(group_pair_buf_start_mut(group)[found], self->keyContext->powOf8Size);
+    const size_t round8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(self->keyContext->sizeOfType);
+
+    return pair_value_mut(group_pair_buf_start_mut(group)[found], round8Size);
 }
 
 void cubs_map_insert(CubsMap *self, void* key, void* value)
@@ -652,6 +664,8 @@ bool cubs_map_mut_iter_next(CubsMapMutIter *iter)
         iter->value = NULL;
         return false;
     }
+    
+    const size_t round8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(iter->_map->keyContext->sizeOfType);
 
     Metadata* metadata = map_metadata_mut(iter->_map);
     PairHeader* currentPair = ((PairHeader*)iter->_nextIter);
@@ -660,7 +674,7 @@ bool cubs_map_mut_iter_next(CubsMapMutIter *iter)
             ._map = iter->_map,
             ._nextIter = NULL,
             .key = pair_key(currentPair),
-            .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
+            .value = pair_value_mut(currentPair, round8Size),
         };
         *iter = newIter;
     } else {
@@ -669,7 +683,7 @@ bool cubs_map_mut_iter_next(CubsMapMutIter *iter)
             ._map = iter->_map,
             ._nextIter = (void*)currentPair->iterAfter,
             .key = pair_key(currentPair),
-            .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
+            .value = pair_value_mut(currentPair, round8Size),
         };
         *iter = newIter;
     }    
@@ -758,6 +772,8 @@ bool cubs_map_reverse_mut_iter_next(CubsMapReverseMutIter* iter) {
         return false;
     }
 
+    const size_t round8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(iter->_map->keyContext->sizeOfType);
+
     Metadata* metadata = map_metadata_mut(iter->_map);
     PairHeader* currentPair = ((PairHeader*)iter->_nextIter);
     if(currentPair == metadata->iterFirst) {
@@ -765,7 +781,7 @@ bool cubs_map_reverse_mut_iter_next(CubsMapReverseMutIter* iter) {
             ._map = iter->_map,
             ._nextIter = NULL,
             .key = pair_key(currentPair),
-            .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
+            .value = pair_value_mut(currentPair, round8Size),
         };
         *iter = newIter;
     } else {
@@ -774,7 +790,7 @@ bool cubs_map_reverse_mut_iter_next(CubsMapReverseMutIter* iter) {
             ._map = iter->_map,
             ._nextIter = (void*)currentPair->iterBefore,
             .key = pair_key(currentPair),
-            .value = pair_value_mut(currentPair, iter->_map->keyContext->powOf8Size),
+            .value = pair_value_mut(currentPair, round8Size),
         };
         *iter = newIter;
     }    

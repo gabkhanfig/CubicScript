@@ -75,7 +75,6 @@ pub const ValueTag = enum(c_int) {
 
 pub const TypeContext = extern struct {
     sizeOfType: usize,
-    powOf8Size: usize,
     onDeinit: ?*const fn (self: *anyopaque) callconv(.C) void = null,
     clone: ?*const fn (dst: *anyopaque, self: *const anyopaque) callconv(.C) void = null,
     eql: ?*const fn (self: *const anyopaque, other: *const anyopaque) callconv(.C) bool = null,
@@ -116,13 +115,6 @@ pub const TypeContext = extern struct {
     fn generate(comptime T: type) TypeContext {
         var context: TypeContext = undefined;
         context.sizeOfType = @sizeOf(T);
-        context.powOf8Size = blk: {
-            if (@sizeOf(T) & 7 != 0) {
-                break :blk @sizeOf(T) + (@sizeOf(usize) - @mod(@sizeOf(T), @sizeOf(usize)));
-            } else {
-                break :blk @sizeOf(T);
-            }
-        };
 
         context.onDeinit = null;
         if (std.meta.hasFn(T, "deinit")) {

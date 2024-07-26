@@ -10,6 +10,7 @@
 #include "../string/string.h"
 #include "../primitives_context.h"
 #include "../../util/simd.h"
+#include "../../util/context_size_round.h"
 
 static const size_t GROUP_ALLOC_SIZE = 32;
 static const size_t ALIGNMENT = 32;
@@ -82,8 +83,10 @@ static void key_header_deinit(KeyHeader* header, const CubsTypeContext* keyConte
     if(keyContext->destructor != NULL) {
         keyContext->destructor(key_of_header_mut(header));
     }
+    
+    const size_t round8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(keyContext->sizeOfType);
 
-    cubs_free((void*)header, sizeof(KeyHeader) + keyContext->powOf8Size, _Alignof(size_t));
+    cubs_free((void*)header, sizeof(KeyHeader) + round8Size, _Alignof(size_t));
 }
 
 static Group group_init() {
@@ -205,7 +208,9 @@ static void group_insert(Group* self, void* key, const CubsTypeContext* keyConte
             continue;
         }
 
-        KeyHeader* newPair = (KeyHeader*)cubs_malloc(sizeof(KeyHeader) + keyContext->powOf8Size, _Alignof(size_t));
+        const size_t round8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(keyContext->sizeOfType);
+        
+        KeyHeader* newPair = (KeyHeader*)cubs_malloc(sizeof(KeyHeader) + round8Size, _Alignof(size_t));
         newPair->hashCode = hashCode;
         newPair->iterBefore = *iterLast;
         newPair->iterAfter = NULL;

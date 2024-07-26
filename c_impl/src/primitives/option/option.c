@@ -22,7 +22,7 @@ CubsOption cubs_option_init_user_class(const CubsTypeContext *context, void *opt
         if(context->sizeOfType <= sizeof(option._metadata)) {
             memcpy((void*)&option._metadata, optionalValue, context->sizeOfType);
         } else {
-            void* metadataMem = cubs_malloc(context->powOf8Size, _Alignof(size_t));
+            void* metadataMem = cubs_malloc(context->sizeOfType, _Alignof(size_t));
             memcpy(metadataMem, optionalValue, context->sizeOfType);
             option._metadata[0] = metadataMem;
         }
@@ -59,8 +59,8 @@ CubsOption cubs_option_clone(const CubsOption *self)
 
     if(self->context->sizeOfType <= sizeof(self->_metadata)) {
         self->context->clone((void*)&out._metadata, cubs_option_get(self));
-    } else {  
-        void* metadataMem = cubs_malloc(self->context->powOf8Size, _Alignof(size_t));
+    } else {
+        void* metadataMem = cubs_malloc(self->context->sizeOfType, _Alignof(size_t));
         self->context->clone(metadataMem, cubs_option_get(self));
         out._metadata[0] = metadataMem;
     }

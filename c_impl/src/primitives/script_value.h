@@ -20,8 +20,6 @@ typedef size_t (*CubsStructHashFn)(const void* self);
 typedef struct CubsTypeContext {
     /// In bytes.
     size_t sizeOfType;
-    /// The size used in the interpreter. Is nearly always the same as `sizeOfType`, with the exception being booleans.
-    size_t powOf8Size;
     /// Can be NULL
     CubsStructDestructorFn destructor;
     /// Can be NULL
