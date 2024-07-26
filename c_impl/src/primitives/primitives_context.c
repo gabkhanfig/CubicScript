@@ -267,12 +267,21 @@ const CubsTypeContext *cubs_primitive_context_for_tag(CubsValueTag tag)
         case cubsValueTagOption: {
             return &CUBS_OPTION_CONTEXT;
         } break;
+        case cubsValueTagError: {
+            return &CUBS_ERROR_CONTEXT;
+        } break;
+        case cubsValueTagResult: {
+            return &CUBS_RESULT_CONTEXT;
+        } break;
         case cubsValueTagUnique: {
             return &CUBS_UNIQUE_CONTEXT;
         } break;
         case cubsValueTagShared: {
             return &CUBS_SHARED_CONTEXT;
         } break;
+        case cubsValueTagWeak: {
+            return &CUBS_WEAK_CONTEXT;
+        }
         default: {
             cubs_panic("unsupported primitive context type");
         } break;
