@@ -17,31 +17,13 @@ pub fn Option(comptime T: type) type {
 
         isSome: bool = false,
         _metadata: [4]?*anyopaque = std.mem.zeroes([4]?*anyopaque),
-        context: *const TypeContext,
+        context: *const TypeContext = TypeContext.auto(T),
 
-        ///
-        pub fn init(value: ?T) Self {
-            const valueTag = script_value.scriptTypeToTag(T);
-            if (value) |v| {
-                var mutValue = v;
-                const opt = blk: {
-                    if (valueTag != .userClass) {
-                        break :blk CubsOption.cubs_option_init_primitive(valueTag, &mutValue);
-                    } else {
-                        break :blk CubsOption.cubs_option_init_user_class(TypeContext.auto(T), &mutValue);
-                    }
-                };
-                return @bitCast(opt);
-            } else {
-                const opt = blk: {
-                    if (valueTag != .userClass) {
-                        break :blk CubsOption.cubs_option_init_primitive(valueTag, null);
-                    } else {
-                        break :blk CubsOption.cubs_option_init_user_class(TypeContext.auto(T), null);
-                    }
-                };
-                return @bitCast(opt);
-            }
+        /// Initializes a some option.
+        pub fn init(value: T) Self {
+            var mutValue = value;
+            const opt = CubsOption.cubs_option_init(TypeContext.auto(T), &mutValue);
+            return @bitCast(opt);
         }
 
         pub fn deinit(self: *Self) void {
@@ -94,8 +76,7 @@ pub const CubsOption = extern struct {
     const Self = @This();
     pub const SCRIPT_SELF_TAG: ValueTag = .option;
 
-    pub extern fn cubs_option_init_primitive(tag: ValueTag, optionalValue: ?*anyopaque) callconv(.C) Self;
-    pub extern fn cubs_option_init_user_class(context: *const TypeContext, optionalValue: ?*anyopaque) callconv(.C) Self;
+    pub extern fn cubs_option_init(context: *const TypeContext, optionalValue: ?*anyopaque) callconv(.C) Self;
     pub extern fn cubs_option_deinit(self: *Self) callconv(.C) void;
     pub extern fn cubs_option_clone(self: *const Self) callconv(.C) Self;
     pub extern fn cubs_option_get(self: *const Self) callconv(.C) *const anyopaque;
@@ -107,19 +88,19 @@ pub const CubsOption = extern struct {
 
 test "null" {
     {
-        var opt = Option(i64).init(null);
+        var opt = Option(i64){};
         defer opt.deinit();
 
         try expect(opt.isSome == false);
     }
     {
-        var opt = Option(String).init(null);
+        var opt = Option(String){};
         defer opt.deinit();
 
         try expect(opt.isSome == false);
     }
     {
-        var opt = Option(Option(String)).init(null);
+        var opt = Option(Option(String)){};
         defer opt.deinit();
 
         try expect(opt.isSome == false);
@@ -158,7 +139,7 @@ test "take" {
 
 test "clone" {
     {
-        var nullOpt = Option(i64).init(null);
+        var nullOpt = Option(i64){};
         defer nullOpt.deinit();
 
         var clone = nullOpt.clone();
@@ -180,16 +161,16 @@ test "clone" {
 
 test "eql" {
     {
-        var nullOpt1 = Option(i64).init(null);
+        var nullOpt1 = Option(i64){};
         defer nullOpt1.deinit();
 
-        var nullOpt2 = Option(i64).init(null);
+        var nullOpt2 = Option(i64){};
         defer nullOpt2.deinit();
 
         try expect(nullOpt1.eql(&nullOpt2));
     }
     {
-        var nullOpt = Option(i64).init(null);
+        var nullOpt = Option(i64){};
         defer nullOpt.deinit();
 
         var someOpt = Option(i64).init(1);
@@ -221,10 +202,10 @@ test "eql" {
 
 test "hash" {
     {
-        var nullOpt1 = Option(i64).init(null);
+        var nullOpt1 = Option(i64){};
         defer nullOpt1.deinit();
 
-        var nullOpt2 = Option(i64).init(null);
+        var nullOpt2 = Option(i64){};
         defer nullOpt2.deinit();
 
         const h1 = nullOpt1.hash();
@@ -233,7 +214,7 @@ test "hash" {
         try expect(h1 == h2);
     }
     {
-        var nullOpt = Option(i64).init(null);
+        var nullOpt = Option(i64){};
         defer nullOpt.deinit();
 
         var someOpt = Option(i64).init(1);

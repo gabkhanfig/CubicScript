@@ -5,13 +5,13 @@
 #include "../primitives_context.h"
 #include "../../util/hash.h"
 
-CubsOption cubs_option_init_primitive(CubsValueTag tag, void* optionalValue)
-{  
-    assert(tag != cubsValueTagUserClass && "Use cubs_option_init_user_class for user defined classes");
-    return cubs_option_init_user_class(cubs_primitive_context_for_tag(tag), optionalValue);
-}
+// CubsOption cubs_option_init_primitive(CubsValueTag tag, void* optionalValue)
+// {  
+//     assert(tag != cubsValueTagUserClass && "Use cubs_option_init_user_class for user defined classes");
+//     return cubs_option_init_user_class(cubs_primitive_context_for_tag(tag), optionalValue);
+// }
 
-CubsOption cubs_option_init_user_class(const CubsTypeContext *context, void *optionalValue)
+CubsOption cubs_option_init(const CubsTypeContext *context, void *optionalValue)
 {
     assert(context != NULL);
     if(optionalValue == NULL) {
