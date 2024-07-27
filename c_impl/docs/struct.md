@@ -32,7 +32,7 @@ typedef struct ScriptExample {
 } ScriptExample;
 ```
 
-Since it would be difficult to draw the line at what can be overridden for the struct's context, `extern struct`'s cannot override any builtins builtins. More info on that below.
+Since it would be difficult to draw the line at what can be overridden for the struct's context, `extern struct`'s cannot override any builtins. More info on that below.
 
 ## Builtins
 
