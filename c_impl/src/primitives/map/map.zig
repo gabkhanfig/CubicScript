@@ -17,26 +17,8 @@ pub fn Map(comptime K: type, comptime V: type) type {
 
         len: usize = 0,
         _metadata: [5]?*anyopaque = std.mem.zeroes([5]?*anyopaque),
-        keyContext: *const TypeContext,
-        valueContext: *const TypeContext,
-
-        /// For all primitive script types, creates the map.
-        /// For user defined types, attemps to generate one.
-        /// Alternatively, one can be passed in manually through creating a map instance. For example
-        /// ```
-        /// const map = Map(UserStructA, UserStructB){.keyContext = ..., .valueContext = ...};
-        /// ```
-        pub fn init() Self {
-            const kTag = comptime script_value.scriptTypeToTag(K);
-            const vTag = comptime script_value.scriptTypeToTag(V);
-            if (kTag != .userClass and vTag != .userClass) {
-                const raw = CubsMap.cubs_map_init_primitives(kTag, vTag);
-                return @bitCast(raw);
-            } else {
-                const raw = CubsMap.cubs_map_init_user_struct(TypeContext.auto(K), TypeContext.auto(V));
-                return @bitCast(raw);
-            }
-        }
+        keyContext: *const TypeContext = TypeContext.auto(K),
+        valueContext: *const TypeContext = TypeContext.auto(V),
 
         pub fn deinit(self: *Self) void {
             CubsMap.cubs_map_deinit(self.asRawMut());
@@ -166,8 +148,7 @@ pub const CubsMap = extern struct {
 
     pub const SCRIPT_SELF_TAG: ValueTag = .map;
 
-    pub extern fn cubs_map_init_primitives(keyTag: ValueTag, valueTag: ValueTag) callconv(.C) CubsMap;
-    pub extern fn cubs_map_init_user_struct(keyContext: *const TypeContext, valueContext: *const TypeContext) callconv(.C) CubsMap;
+    pub extern fn cubs_map_init(keyContext: *const TypeContext, valueContext: *const TypeContext) callconv(.C) CubsMap;
     pub extern fn cubs_map_deinit(self: *CubsMap) callconv(.C) void;
     pub extern fn cubs_map_clone(self: *const CubsMap) callconv(.C) CubsMap;
     pub extern fn cubs_map_find(self: *const CubsMap, key: *const anyopaque) callconv(.C) ?*const anyopaque;
@@ -224,22 +205,22 @@ pub const CubsMapReverseMutIter = extern struct {
 
 test "init" {
     {
-        var map = Map(i64, f64).init();
+        var map = Map(i64, f64){};
         defer map.deinit();
     }
     {
-        var map = Map(String, bool).init();
+        var map = Map(String, bool){};
         defer map.deinit();
     }
     // {
-    //     var map = Map(Map(i64, i64), String).init();
+    //     var map = Map(Map(i64, i64), String){};
     //     defer map.deinit();
     // }
 }
 
 test "insert" {
     {
-        var map = Map(i64, String).init();
+        var map = Map(i64, String){};
         defer map.deinit();
 
         map.insert(4, String.initUnchecked("hello world!"));
@@ -247,7 +228,7 @@ test "insert" {
         try expect(map.len == 1);
     }
     {
-        var map = Map(String, String).init();
+        var map = Map(String, String){};
         defer map.deinit();
 
         map.insert(String.initUnchecked("erm"), String.initUnchecked("hello world!"));
@@ -255,7 +236,7 @@ test "insert" {
         try expect(map.len == 1);
     }
     {
-        var map = Map(i64, String).init();
+        var map = Map(i64, String){};
         defer map.deinit();
 
         for (0..100) |i| {
@@ -265,7 +246,7 @@ test "insert" {
         try expect(map.len == 100);
     }
     {
-        var map = Map(String, String).init();
+        var map = Map(String, String){};
         defer map.deinit();
 
         for (0..100) |i| {
@@ -276,7 +257,7 @@ test "insert" {
 }
 
 test "find" {
-    var map = Map(String, String).init();
+    var map = Map(String, String){};
     defer map.deinit();
 
     var firstFind = String.initUnchecked("erm");
@@ -328,7 +309,7 @@ test "find" {
 }
 
 test "findMut" {
-    var map = Map(String, String).init();
+    var map = Map(String, String){};
     defer map.deinit();
 
     var firstFind = String.initUnchecked("erm");
@@ -396,7 +377,7 @@ test "findMut" {
 
 test "erase" {
     {
-        var map = Map(String, String).init();
+        var map = Map(String, String){};
         defer map.deinit();
 
         var eraseVal = String.initUnchecked("erm");
@@ -411,7 +392,7 @@ test "erase" {
         try expect(map.len == 0);
     }
     {
-        var map = Map(String, String).init();
+        var map = Map(String, String){};
         defer map.deinit();
 
         for (0..100) |i| {
@@ -447,7 +428,7 @@ test "erase" {
 }
 
 test "iter" {
-    var map = Map(i64, f64).init();
+    var map = Map(i64, f64){};
     defer map.deinit();
 
     {
@@ -498,7 +479,7 @@ test "iter" {
 }
 
 test "mutIter" {
-    var map = Map(i64, f64).init();
+    var map = Map(i64, f64){};
     defer map.deinit();
 
     {
@@ -561,7 +542,7 @@ test "mutIter" {
 }
 
 test "reverseIter" {
-    var map = Map(i64, f64).init();
+    var map = Map(i64, f64){};
     defer map.deinit();
 
     {
@@ -612,7 +593,7 @@ test "reverseIter" {
 }
 
 test "reverseMutIter" {
-    var map = Map(i64, f64).init();
+    var map = Map(i64, f64){};
     defer map.deinit();
 
     {
@@ -675,7 +656,7 @@ test "reverseMutIter" {
 }
 
 test "clone" {
-    var map = Map(i64, f64).init();
+    var map = Map(i64, f64){};
     defer map.deinit();
 
     for (0..100) |i| {
@@ -698,10 +679,10 @@ test "clone" {
 
 test "eql" {
     { // consistent order
-        var m1 = Map(i64, f64).init();
+        var m1 = Map(i64, f64){};
         defer m1.deinit();
 
-        var m2 = Map(i64, f64).init();
+        var m2 = Map(i64, f64){};
         defer m2.deinit();
 
         try expect(m1.eql(&m2)); // both empty
@@ -731,10 +712,10 @@ test "eql" {
         try expect(!m1.eql(&m2)); // same length, different keys in the key-value pair
     }
     {
-        var m1 = Map(i64, f64).init();
+        var m1 = Map(i64, f64){};
         defer m1.deinit();
 
-        var m2 = Map(i64, f64).init();
+        var m2 = Map(i64, f64){};
         defer m2.deinit();
 
         for (0..100) |i| {
@@ -761,21 +742,21 @@ test "eql" {
 
 test "hash" {
     {
-        var emptyMap = Map(i64, f64).init();
+        var emptyMap = Map(i64, f64){};
         defer emptyMap.deinit();
 
-        var oneMap = Map(i64, f64).init();
+        var oneMap = Map(i64, f64){};
         defer oneMap.deinit();
 
         oneMap.insert(1, 1.5);
 
-        var twoMap = Map(i64, f64).init();
+        var twoMap = Map(i64, f64){};
         defer twoMap.deinit();
 
         twoMap.insert(1, 1.5);
         twoMap.insert(1, 1.5);
 
-        var manyMap = Map(i64, f64).init();
+        var manyMap = Map(i64, f64){};
         defer manyMap.deinit();
 
         for (0..100) |i| {
@@ -802,10 +783,10 @@ test "hash" {
         }
     }
     {
-        var m1 = Map(i64, f64).init();
+        var m1 = Map(i64, f64){};
         defer m1.deinit();
 
-        var m2 = Map(i64, f64).init();
+        var m2 = Map(i64, f64){};
         defer m2.deinit();
 
         for (0..100) |i| {

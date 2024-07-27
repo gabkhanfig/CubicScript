@@ -43,9 +43,9 @@ typedef struct CubsMapReverseMutIter {
     void* value;
 } CubsMapReverseMutIter;
 
-CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag);
+//CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag);
 
-CubsMap cubs_map_init_user_struct(const CubsTypeContext* keyContext, const CubsTypeContext* valueContext);
+CubsMap cubs_map_init(const CubsTypeContext* keyContext, const CubsTypeContext* valueContext);
 
 void cubs_map_deinit(CubsMap* self);
 

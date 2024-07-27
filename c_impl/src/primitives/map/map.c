@@ -359,16 +359,18 @@ static void map_ensure_total_capacity(CubsMap* self) {
     }
 }
 
-CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag)
-{
-    assert(keyTag != cubsValueTagUserClass && "Use cubs_map_init_user_struct for user defined structs");
-    assert(valueTag != cubsValueTagUserClass && "Use cubs_map_init_user_struct for user defined structs");
+// CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag)
+// {
+//     assert(keyTag != cubsValueTagUserClass && "Use cubs_map_init_user_struct for user defined structs");
+//     assert(valueTag != cubsValueTagUserClass && "Use cubs_map_init_user_struct for user defined structs");
 
-    return cubs_map_init_user_struct(cubs_primitive_context_for_tag(keyTag), cubs_primitive_context_for_tag(valueTag));
-}
+//     return cubs_map_init_user_struct(cubs_primitive_context_for_tag(keyTag), cubs_primitive_context_for_tag(valueTag));
+// }
 
-CubsMap cubs_map_init_user_struct(const CubsTypeContext *keyContext, const CubsTypeContext *valueContext)
+CubsMap cubs_map_init(const CubsTypeContext *keyContext, const CubsTypeContext *valueContext)
 {
+    assert(keyContext != NULL);
+    assert(valueContext != NULL);
     assert(keyContext->eql != NULL && "Map's keyContext must contain a valid equality function pointer");
     assert(keyContext->hash != NULL && "Map's keyContext must contain a valid hashing function pointer");
     const CubsMap out = {.len = 0, ._metadata = {0}, .keyContext = keyContext, .valueContext = valueContext};
@@ -405,7 +407,7 @@ CubsMap cubs_map_clone(const CubsMap *self)
         newGroups[i] = group_init();
     }
 
-    CubsMap newSelf = cubs_map_init_user_struct(self->keyContext, self->valueContext);
+    CubsMap newSelf = cubs_map_init(self->keyContext, self->valueContext);
     newSelf.len = self->len;
     const Metadata newMetadataData = {
         .available = ((GROUP_ALLOC_SIZE * newGroupCount * 4) / 5) - self->len, // * 0.8 for load factor

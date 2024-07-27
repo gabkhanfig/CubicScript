@@ -198,7 +198,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                 case cubsValueTagMap: {
                     const CubsTypeContext* keyContext = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
                     const CubsTypeContext* valueContext = (const CubsTypeContext*)threadLocalStack.instructionPointer[2].value;
-                    *(CubsMap*)dst = cubs_map_init_user_struct(keyContext, valueContext);
+                    *(CubsMap*)dst = cubs_map_init(keyContext, valueContext);
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_MAP_CONTEXT);
                     (*ipIncrement) += 2; // move instruction pointer further into the bytecode
                 } break;

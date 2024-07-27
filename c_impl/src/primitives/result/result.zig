@@ -146,7 +146,7 @@ test "initOk" {
         try expect(!res.isErr);
     }
     {
-        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64){});
         defer res.deinit();
 
         try expect(!res.isErr);
@@ -197,7 +197,7 @@ test "getOk" {
         try expect(res.getOk().eqlSlice("wuh"));
     }
     {
-        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64){});
         defer res.deinit();
 
         try expect(res.getOk().len == 0);
@@ -239,7 +239,7 @@ test "getOkMut" {
         try expect(res.getOk().eqlSlice("euh"));
     }
     {
-        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64){});
         defer res.deinit();
 
         res.getOkMut().insert(1, 1);
@@ -307,7 +307,7 @@ test "takeOk" {
         try expect(str.eqlSlice("wuh"));
     }
     { // with deinit
-        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64){});
         defer res.deinit();
 
         var map = res.takeOk();
@@ -316,7 +316,7 @@ test "takeOk" {
         try expect(map.len == 0);
     }
     { // without deinit
-        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64).init());
+        var res = Result(Map(i64, i64), void).initOk(Map(i64, i64){});
 
         var map = res.takeOk();
         defer map.deinit();
