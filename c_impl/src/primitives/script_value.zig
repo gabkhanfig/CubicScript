@@ -94,7 +94,7 @@ pub const TypeContext = extern struct {
             return @ptrCast(&primitive_context.CUBS_INT_CONTEXT);
         } else if (T == f64) {
             return @ptrCast(&primitive_context.CUBS_FLOAT_CONTEXT);
-        } else if (T == String) {
+        } else if (T == String or T == c.CubsString) {
             return @ptrCast(&primitive_context.CUBS_STRING_CONTEXT);
         }
         // if (@hasDecl(T, "SCRIPT_SELF_TAG")) {
