@@ -14,9 +14,11 @@ pub fn Error(comptime T: type) type {
         pub const SCRIPT_SELF_TAG: ValueTag = .err;
         pub const ValueType = T;
 
+        const ContextType = if (T == void) ?*anyopaque else *const TypeContext;
+
         name: String,
         metadata: ?*T,
-        context: ?*const TypeContext,
+        context: ContextType,
 
         pub fn init(name: String, metadata: T) Self {
             if (T == void) {
@@ -24,7 +26,7 @@ pub fn Error(comptime T: type) type {
             } else {
                 var mutMetadata = metadata;
                 const context: ?*const TypeContext = if (T == void) null else TypeContext.auto(T);
-                return @bitCast(CubsError.cubs_error_init_user_class(name, @ptrCast(&mutMetadata), context));
+                return @bitCast(CubsError.cubs_error_init(name, @ptrCast(&mutMetadata), context));
             }
         }
 
@@ -73,8 +75,7 @@ pub const CubsError = extern struct {
     const Self = @This();
     pub const SCRIPT_SELF_TAG: ValueTag = .err;
 
-    pub extern fn cubs_error_init_primitive(name: String, optionalMetadata: ?*anyopaque, optionalTag: ValueTag) callconv(.C) Self;
-    pub extern fn cubs_error_init_user_class(name: String, optionalMetadata: ?*anyopaque, optionalContext: ?*const TypeContext) callconv(.C) Self;
+    pub extern fn cubs_error_init(name: String, optionalMetadata: ?*anyopaque, optionalContext: ?*const TypeContext) callconv(.C) Self;
     pub extern fn cubs_error_deinit(self: *Self) callconv(.C) void;
     pub extern fn cubs_error_clone(self: *const Self) callconv(.C) Self;
     pub extern fn cubs_error_take_metadata(out: *anyopaque, self: *Self) callconv(.C) void;

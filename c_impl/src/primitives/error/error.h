@@ -8,13 +8,14 @@
 /// Pass in 0 for `optionalTag` for a NULL metadata value.
 /// Takes ownership of the memory at `optionalMetadata` if non-null.
 /// Creates a buffer to store the memory of `optionalMetadata` in.
-CubsError cubs_error_init_primitive(CubsString name, void* optionalMetadata, CubsValueTag optionalTag);
+//CubsError cubs_error_init_primitive(CubsString name, void* optionalMetadata, CubsValueTag optionalTag);
 
+/// Takes ownership of `name`.
 /// Takes ownership of the memory at `optionalMetadata` if non-null.
 /// Creates a buffer to store the memory of `optionalMetadata` in.
 /// # Debug Assert
 /// If `optionalMetadata != NULL` -> asserts `optionalContext != NULL`
-CubsError cubs_error_init_user_class(CubsString name, void* optionalMetadata, const CubsTypeContext* optionalContext);
+CubsError cubs_error_init(CubsString name, void* optionalMetadata, const CubsTypeContext* optionalContext);
 
 void cubs_error_deinit(CubsError* self);
 

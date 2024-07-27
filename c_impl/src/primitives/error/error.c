@@ -6,16 +6,16 @@
 #include "../string/string.h"
 #include "../../util/hash.h"
 
-CubsError cubs_error_init_primitive(CubsString name, void *optionalMetadata, CubsValueTag optionalTag)
-{
-    if(optionalMetadata == NULL) {
-        return cubs_error_init_user_class(name, NULL, NULL);
-    } else {
-        return cubs_error_init_user_class(name, optionalMetadata, cubs_primitive_context_for_tag(optionalTag));
-    }
-}
+// CubsError cubs_error_init_primitive(CubsString name, void *optionalMetadata, CubsValueTag optionalTag)
+// {
+//     if(optionalMetadata == NULL) {
+//         return cubs_error_init_user_class(name, NULL, NULL);
+//     } else {
+//         return cubs_error_init_user_class(name, optionalMetadata, cubs_primitive_context_for_tag(optionalTag));
+//     }
+// }
 
-CubsError cubs_error_init_user_class(CubsString name, void *optionalMetadata, const CubsTypeContext *optionalContext)
+CubsError cubs_error_init(CubsString name, void *optionalMetadata, const CubsTypeContext *optionalContext)
 {
     if(optionalMetadata == NULL) {
         const CubsError err = {.name = name, .metadata = NULL, .context = NULL};
