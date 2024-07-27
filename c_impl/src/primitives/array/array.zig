@@ -202,8 +202,7 @@ pub const CubsArray = extern struct {
     pub const CUBS_ARRAY_N_POS: usize = @bitCast(@as(i64, -1));
     pub const SCRIPT_SELF_TAG: ValueTag = .array;
 
-    pub extern fn cubs_array_init_primitive(tag: ValueTag) callconv(.C) CubsArray;
-    pub extern fn cubs_array_init_user_struct(rtti: *const TypeContext) callconv(.C) CubsArray;
+    pub extern fn cubs_array_init(rtti: *const TypeContext) callconv(.C) CubsArray;
     pub extern fn cubs_array_deinit(self: *CubsArray) callconv(.C) void;
     pub extern fn cubs_array_clone(self: *const CubsArray) callconv(.C) CubsArray;
     pub extern fn cubs_array_tag(self: *const CubsArray) callconv(.C) ValueTag;

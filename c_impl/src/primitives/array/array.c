@@ -48,13 +48,13 @@ static void ensure_total_capacity(CubsArray* self, size_t minCapacity) {
     }
 }
 
-CubsArray cubs_array_init_primitive(CubsValueTag tag)
-{   
-    assert(tag != cubsValueTagUserClass && "Use cubs_array_init_user_struct for user defined structs");
-    return cubs_array_init_user_struct(cubs_primitive_context_for_tag(tag));
-}
+// CubsArray cubs_array_init_primitive(CubsValueTag tag)
+// {   
+//     assert(tag != cubsValueTagUserClass && "Use cubs_array_init_user_struct for user defined structs");
+//     return cubs_array_init_user_struct(cubs_primitive_context_for_tag(tag));
+// }
 
-CubsArray cubs_array_init_user_struct(const CubsTypeContext *context)
+CubsArray cubs_array_init(const CubsTypeContext *context)
 {
     assert(context != NULL);
     const CubsArray arr = {.len = 0, .buf = NULL, .capacity = 0, .context = context};

@@ -39,10 +39,8 @@ typedef enum CubsArrayError {
 /// https://cplusplus.com/reference/string/string/npos/
 static const size_t CUBS_ARRAY_N_POS = -1;
 
-/// Does not allocate any memory, just sets the correct bitmasks.
-CubsArray cubs_array_init_primitive(CubsValueTag tag);
-
-CubsArray cubs_array_init_user_struct(const CubsTypeContext* context);
+/// Does not allocate any memory, just zeroes and sets the context.
+CubsArray cubs_array_init(const CubsTypeContext* context);
 
 void cubs_array_deinit(CubsArray* self);
 
