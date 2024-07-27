@@ -333,15 +333,16 @@ static void map_ensure_total_capacity(CubsSet* self) {
     }
 }
 
-CubsSet cubs_set_init_primitive(CubsValueTag tag)
-{
-    assert(tag != cubsValueTagUserClass && "Use cubs_set_init_user_class for user defined classes");
+// CubsSet cubs_set_init_primitive(CubsValueTag tag)
+// {
+//     assert(tag != cubsValueTagUserClass && "Use cubs_set_init_user_class for user defined classes");
 
-    return cubs_set_init_user_struct(cubs_primitive_context_for_tag(tag));
-}
+//     return cubs_set_init_user_struct(cubs_primitive_context_for_tag(tag));
+// }
 
-CubsSet cubs_set_init_user_struct(const CubsTypeContext *context)
+CubsSet cubs_set_init(const CubsTypeContext *context)
 {
+    assert(context != NULL);
     assert(context->eql != NULL && "Map's keyContext must contain a valid equality function pointer");
     assert(context->hash != NULL && "Map's keyContext must contain a valid hashing function pointer");
     const CubsSet out = {.len = 0, ._metadata = {0}, .context = context};
@@ -378,7 +379,7 @@ CubsSet cubs_set_clone(const CubsSet *self)
         newGroups[i] = group_init();
     }
 
-    CubsSet newSelf = cubs_set_init_user_struct(self->context);
+    CubsSet newSelf = cubs_set_init(self->context);
     newSelf.len = self->len;
     const Metadata newMetadataData = {
         .available = ((GROUP_ALLOC_SIZE * newGroupCount * 4) / 5) - self->len, // * 0.8 for load factor

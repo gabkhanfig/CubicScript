@@ -19,9 +19,10 @@ typedef struct CubsSetReverseIter {
     const void* key;
 } CubsSetReverseIter;
 
-CubsSet cubs_set_init_primitive(CubsValueTag tag);
+//CubsSet cubs_set_init_primitive(CubsValueTag tag);
 
-CubsSet cubs_set_init_user_struct(const CubsTypeContext* context);
+/// Does not allocate any memory, just zeroes and sets the context.
+CubsSet cubs_set_init(const CubsTypeContext* context);
 
 void cubs_set_deinit(CubsSet* self);
 

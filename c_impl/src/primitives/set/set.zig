@@ -16,18 +16,7 @@ pub fn Set(comptime K: type) type {
 
         len: usize = 0,
         _metadata: [5]?*anyopaque = std.mem.zeroes([5]?*anyopaque),
-        context: *const TypeContext,
-
-        pub fn init() Self {
-            const kTag = script_value.scriptTypeToTag(K);
-            if (kTag != .userClass) {
-                const raw = CubsSet.cubs_set_init_primitive(kTag);
-                return @bitCast(raw);
-            } else {
-                const raw = CubsSet.cubs_set_init_user_struct(TypeContext.auto(K));
-                return @bitCast(raw);
-            }
-        }
+        context: *const TypeContext = TypeContext.auto(K),
 
         pub fn deinit(self: *Self) void {
             CubsSet.cubs_set_deinit(self.asRawMut());
@@ -112,8 +101,7 @@ pub const CubsSet = extern struct {
 
     pub const SCRIPT_SELF_TAG: ValueTag = .set;
 
-    pub extern fn cubs_set_init_primitive(tag: ValueTag) callconv(.C) CubsSet;
-    pub extern fn cubs_set_init_user_struct(context: *const TypeContext) callconv(.C) CubsSet;
+    pub extern fn cubs_set_init(context: *const TypeContext) callconv(.C) CubsSet;
     pub extern fn cubs_set_deinit(self: *CubsSet) callconv(.C) void;
     pub extern fn cubs_set_clone(self: *const CubsSet) callconv(.C) CubsSet;
     pub extern fn cubs_set_contains(self: *const CubsSet, key: *const anyopaque) callconv(.C) bool;
@@ -147,11 +135,11 @@ pub const CubsSetReverseIter = extern struct {
 
 test "init" {
     {
-        var set = Set(i64).init();
+        var set = Set(i64){};
         defer set.deinit();
     }
     {
-        var set = Set(String).init();
+        var set = Set(String){};
         defer set.deinit();
     }
     // {
@@ -162,7 +150,7 @@ test "init" {
 
 test "insert" {
     {
-        var set = Set(i64).init();
+        var set = Set(i64){};
         defer set.deinit();
 
         set.insert(4);
@@ -170,7 +158,7 @@ test "insert" {
         try expect(set.len == 1);
     }
     {
-        var set = Set(String).init();
+        var set = Set(String){};
         defer set.deinit();
 
         set.insert(String.initUnchecked("erm"));
@@ -178,7 +166,7 @@ test "insert" {
         try expect(set.len == 1);
     }
     {
-        var set = Set(i64).init();
+        var set = Set(i64){};
         defer set.deinit();
 
         for (0..100) |i| {
@@ -188,7 +176,7 @@ test "insert" {
         try expect(set.len == 100);
     }
     {
-        var set = Set(String).init();
+        var set = Set(String){};
         defer set.deinit();
 
         for (0..100) |i| {
@@ -199,7 +187,7 @@ test "insert" {
 }
 
 test "contains" {
-    var set = Set(String).init();
+    var set = Set(String){};
     defer set.deinit();
 
     var firstFind = String.initUnchecked("erm");
@@ -236,7 +224,7 @@ test "contains" {
 
 test "erase" {
     {
-        var set = Set(String).init();
+        var set = Set(String){};
         defer set.deinit();
 
         var eraseVal = String.initUnchecked("erm");
@@ -251,7 +239,7 @@ test "erase" {
         try expect(set.len == 0);
     }
     {
-        var set = Set(String).init();
+        var set = Set(String){};
         defer set.deinit();
 
         for (0..100) |i| {
@@ -287,7 +275,7 @@ test "erase" {
 }
 
 test "iter" {
-    var set = Set(i64).init();
+    var set = Set(i64){};
     defer set.deinit();
 
     {
@@ -335,7 +323,7 @@ test "iter" {
 }
 
 test "reverseIter" {
-    var set = Set(i64).init();
+    var set = Set(i64){};
     defer set.deinit();
 
     {
@@ -383,7 +371,7 @@ test "reverseIter" {
 }
 
 test "clone" {
-    var set = Set(i64).init();
+    var set = Set(i64){};
     defer set.deinit();
 
     for (0..100) |i| {
@@ -405,10 +393,10 @@ test "clone" {
 
 test "eql" {
     { // consistent order
-        var m1 = Set(i64).init();
+        var m1 = Set(i64){};
         defer m1.deinit();
 
-        var m2 = Set(i64).init();
+        var m2 = Set(i64){};
         defer m2.deinit();
 
         try expect(m1.eql(&m2)); // both empty
@@ -434,10 +422,10 @@ test "eql" {
         try expect(!m1.eql(&m2)); // same length, different keys in the key-value pair
     }
     { // different order
-        var m1 = Set(i64).init();
+        var m1 = Set(i64){};
         defer m1.deinit();
 
-        var m2 = Set(i64).init();
+        var m2 = Set(i64){};
         defer m2.deinit();
 
         m1.insert(1000);
@@ -456,10 +444,10 @@ test "eql" {
         try expect(!m1.eql(&m2)); // both have the same values in the different order
     }
     {
-        var m1 = Set(i64).init();
+        var m1 = Set(i64){};
         defer m1.deinit();
 
-        var m2 = Set(i64).init();
+        var m2 = Set(i64){};
         defer m2.deinit();
 
         for (0..100) |i| {
@@ -486,21 +474,21 @@ test "eql" {
 
 test "hash" {
     {
-        var emptySet = Set(i64).init();
+        var emptySet = Set(i64){};
         defer emptySet.deinit();
 
-        var oneSet = Set(i64).init();
+        var oneSet = Set(i64){};
         defer oneSet.deinit();
 
         oneSet.insert(1);
 
-        var twoSet = Set(i64).init();
+        var twoSet = Set(i64){};
         defer twoSet.deinit();
 
         twoSet.insert(1);
         twoSet.insert(1);
 
-        var manySet = Set(i64).init();
+        var manySet = Set(i64){};
         defer manySet.deinit();
 
         for (0..100) |i| {
@@ -527,10 +515,10 @@ test "hash" {
         }
     }
     {
-        var m1 = Set(i64).init();
+        var m1 = Set(i64){};
         defer m1.deinit();
 
-        var m2 = Set(i64).init();
+        var m2 = Set(i64){};
         defer m2.deinit();
 
         for (0..100) |i| {

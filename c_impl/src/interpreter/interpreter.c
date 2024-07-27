@@ -191,7 +191,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
                 } break;
                 case cubsValueTagSet: {
                     const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
-                    *(CubsSet*)dst = cubs_set_init_user_struct(context);
+                    *(CubsSet*)dst = cubs_set_init(context);
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_SET_CONTEXT);
                     (*ipIncrement) += 1; // move instruction pointer further into the bytecode
                 } break;
