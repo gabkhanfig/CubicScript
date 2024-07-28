@@ -11,7 +11,6 @@ const TypeContext = script_value.TypeContext;
 pub fn Error(comptime T: type) type {
     return extern struct {
         const Self = @This();
-        pub const SCRIPT_SELF_TAG: ValueTag = .err;
         pub const ValueType = T;
 
         const ContextType = if (T == void) ?*anyopaque else *const TypeContext;
@@ -73,7 +72,6 @@ pub const CubsError = extern struct {
     context: ?*const TypeContext,
 
     const Self = @This();
-    pub const SCRIPT_SELF_TAG: ValueTag = .err;
 
     pub extern fn cubs_error_init(name: String, optionalMetadata: ?*anyopaque, optionalContext: ?*const TypeContext) callconv(.C) Self;
     pub extern fn cubs_error_deinit(self: *Self) callconv(.C) void;

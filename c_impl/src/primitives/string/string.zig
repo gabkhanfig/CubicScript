@@ -5,7 +5,6 @@ const script_value = @import("../script_value.zig");
 
 pub const String = extern struct {
     const Self = @This();
-    pub const SCRIPT_SELF_TAG: script_value.ValueTag = .string;
 
     /// Safe to read, unsafe to write
     len: usize = 0,
@@ -709,7 +708,6 @@ pub const CubsString = extern struct {
     _metadata: [3]?*anyopaque = std.mem.zeroes([3]?*anyopaque),
 
     const Self = @This();
-    pub const SCRIPT_SELF_TAG: script_value.ValueTag = .string;
 
     pub const Err = enum(c_int) {
         None = 0,

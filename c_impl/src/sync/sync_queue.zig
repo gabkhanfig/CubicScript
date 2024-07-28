@@ -80,22 +80,17 @@ pub fn addSyncPtrExclusive(ptr: anytype) void {
     if (ptrInfo.is_const) {
         @compileError("Cannot get exclusive access to a const sync object");
     }
-    if (!@hasDecl(ptrInfo.child, "SCRIPT_SELF_TAG")) {
-        @compileError("Expected script sync ptr type");
-    }
-    const scriptSelfTag: script_value.ValueTag = ptrInfo.child.SCRIPT_SELF_TAG;
-    switch (scriptSelfTag) {
+
+    const syncPtrType = getSyncPtrType(typeInfo.Pointer.child);
+    switch (syncPtrType) {
         .unique => {
-            c.cubs_sync_queue_unique_add_exclusive(ptr.asRawMut());
+            c.cubs_sync_queue_unique_add_exclusive(@ptrCast(ptr.asRawMut()));
         },
         .shared => {
-            c.cubs_sync_queue_shared_add_exclusive(ptr.asRawMut());
+            c.cubs_sync_queue_shared_add_exclusive(@ptrCast(ptr.asRawMut()));
         },
         .weak => {
-            c.cubs_sync_queue_weak_add_exclusive(ptr.asRawMut());
-        },
-        else => {
-            @compileError("Expected Unique, Shared, or Weak ptrs");
+            c.cubs_sync_queue_weak_add_exclusive(@ptrCast(ptr.asRawMut()));
         },
     }
 }
@@ -110,24 +105,46 @@ pub fn addSyncPtrShared(ptr: anytype) void {
     if (ptrInfo.size != .One) {
         @compileError("Expected a one pointer");
     }
-    if (!@hasDecl(ptrInfo.child, "SCRIPT_SELF_TAG")) {
-        @compileError("Expected script sync ptr type");
-    }
-    const scriptSelfTag: script_value.ValueTag = ptrInfo.child.SCRIPT_SELF_TAG;
-    switch (scriptSelfTag) {
+
+    const syncPtrType = getSyncPtrType(typeInfo.Pointer.child);
+    switch (syncPtrType) {
         .unique => {
-            c.cubs_sync_queue_unique_add_shared(ptr.asRawMut());
+            c.cubs_sync_queue_unique_add_shared(@ptrCast(ptr.asRaw()));
         },
         .shared => {
-            c.cubs_sync_queue_shared_add_shared(ptr.asRawMut());
+            c.cubs_sync_queue_shared_add_shared(@ptrCast(ptr.asRaw()));
         },
         .weak => {
-            c.cubs_sync_queue_weak_add_shared(ptr.asRawMut());
-        },
-        else => {
-            @compileError("Expected Unique, Shared, or Weak ptrs");
+            c.cubs_sync_queue_weak_add_shared(@ptrCast(ptr.asRaw()));
         },
     }
+}
+
+const SyncPtrType = enum {
+    unique,
+    shared,
+    weak,
+};
+
+fn getSyncPtrType(comptime T: type) SyncPtrType {
+    if (T == script_value.c.CubsUnique) {
+        return .unique;
+    } else if (T == script_value.c.CubsShared) {
+        return .shared;
+    } else if (T == script_value.c.CubsWeak) {
+        return .weak;
+    } else if (@hasDecl(T, "ValueType")) {
+        if (T == Unique(T.ValueType)) {
+            return .unique;
+        } else if (T == Shared(T.ValueType)) {
+            return .shared;
+        } else if (T == Weak(T.ValueType)) {
+            return .weak;
+        } else {
+            @compileError("Expected Unique, Shared, or Weak ptrs");
+        }
+    }
+    @compileError("Expected Unique, Shared, or Weak ptrs");
 }
 
 pub const SyncObject = extern struct {
@@ -217,6 +234,15 @@ const SCRIPT_MUTEX_VTABLE: *const SyncObject.VTable = &.{
     .tryLockShared = null,
     .unlockShared = null,
 };
+
+test "sync ptr match type" {
+    try expect(getSyncPtrType(script_value.c.CubsUnique) == .unique);
+    try expect(getSyncPtrType(script_value.c.CubsShared) == .shared);
+    try expect(getSyncPtrType(script_value.c.CubsWeak) == .weak);
+    try expect(getSyncPtrType(Unique(i64)) == .unique);
+    try expect(getSyncPtrType(Shared(i64)) == .shared);
+    try expect(getSyncPtrType(Weak(i64)) == .weak);
+}
 
 test lock {
     { // lock one

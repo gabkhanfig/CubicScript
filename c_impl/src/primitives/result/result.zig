@@ -19,7 +19,6 @@ const Map = script_value.Map;
 pub fn Result(comptime OkT: type, comptime ErrMetadataT: type) type {
     return extern struct {
         const Self = @This();
-        pub const SCRIPT_SELF_TAG: ValueTag = .result;
         pub const ValueType = OkT;
         pub const ErrorMetadataType = ErrMetadataT;
 
@@ -111,7 +110,6 @@ pub const CubsResult = extern struct {
     context: ?*const TypeContext,
 
     const Self = @This();
-    pub const SCRIPT_SELF_TAG: ValueTag = .result;
 
     pub extern fn cubs_result_init_ok(okValue: ?*anyopaque, okContext: ?*const TypeContext) callconv(.C) Self;
     pub extern fn cubs_result_init_err(err: CubsError, okContext: ?*const TypeContext) callconv(.C) Self;

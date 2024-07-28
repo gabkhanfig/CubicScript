@@ -12,7 +12,6 @@ const TypeContext = script_value.TypeContext;
 pub fn Option(comptime T: type) type {
     return extern struct {
         const Self = @This();
-        pub const SCRIPT_SELF_TAG: ValueTag = .option;
         pub const ValueType = T;
 
         isSome: bool = false,
@@ -74,7 +73,6 @@ pub const CubsOption = extern struct {
     context: *const TypeContext,
 
     const Self = @This();
-    pub const SCRIPT_SELF_TAG: ValueTag = .option;
 
     pub extern fn cubs_option_init(context: *const TypeContext, optionalValue: ?*anyopaque) callconv(.C) Self;
     pub extern fn cubs_option_deinit(self: *Self) callconv(.C) void;

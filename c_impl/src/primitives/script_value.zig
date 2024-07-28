@@ -34,44 +34,44 @@ pub const c = struct {
     pub const CubsWeak = @import("sync_ptr/sync_ptr.zig").CubsWeak;
 };
 
-pub const ValueTag = enum(c_int) {
-    bool = 1,
-    int = 2,
-    float = 3,
-    char = 4,
-    string = 5,
-    stringIter = 6,
-    array = 7,
-    arrayConstIter = 8,
-    arrayMutIter = 9,
-    set = 10,
-    setIter = 11,
-    map = 12,
-    mapConstIter = 13,
-    mapMutIter = 14,
-    option = 15,
-    err = 16,
-    result = 17,
-    taggedUnion = 18,
-    userClass = 19,
-    ownedInterface = 20,
-    interfaceRef = 21,
-    constRef = 22,
-    mutRef = 23,
-    unique = 24,
-    shared = 25,
-    weak = 26,
-    functionPtr = 27,
-    future = 28,
-    vec2i = 29,
-    vec3i = 30,
-    vec4i = 31,
-    vec2f = 32,
-    vec3f = 33,
-    vec4f = 34,
-    mat3f = 35,
-    mat4f = 36,
-};
+// pub const ValueTag = enum(c_int) {
+//     bool = 1,
+//     int = 2,
+//     float = 3,
+//     char = 4,
+//     string = 5,
+//     stringIter = 6,
+//     array = 7,
+//     arrayConstIter = 8,
+//     arrayMutIter = 9,
+//     set = 10,
+//     setIter = 11,
+//     map = 12,
+//     mapConstIter = 13,
+//     mapMutIter = 14,
+//     option = 15,
+//     err = 16,
+//     result = 17,
+//     taggedUnion = 18,
+//     userClass = 19,
+//     ownedInterface = 20,
+//     interfaceRef = 21,
+//     constRef = 22,
+//     mutRef = 23,
+//     unique = 24,
+//     shared = 25,
+//     weak = 26,
+//     functionPtr = 27,
+//     future = 28,
+//     vec2i = 29,
+//     vec3i = 30,
+//     vec4i = 31,
+//     vec2f = 32,
+//     vec3f = 33,
+//     vec4f = 34,
+//     mat3f = 35,
+//     mat4f = 36,
+// };
 
 pub const TypeContext = extern struct {
     sizeOfType: usize,
@@ -200,33 +200,33 @@ pub const TypeContext = extern struct {
     }
 };
 
-pub fn validateTypeMatchesTag(comptime T: type, tag: ValueTag) void {
-    const assert = std.debug.assert;
-    if (std.debug.runtime_safety) {
-        if (T == bool) {
-            assert(tag == .bool);
-        } else if (T == i64) {
-            assert(tag == .int);
-        } else if (T == f64) {
-            assert(tag == .float);
-        } else {
-            assert(tag == T.SCRIPT_SELF_TAG);
-        }
-    }
-}
+// pub fn validateTypeMatchesTag(comptime T: type, tag: ValueTag) void {
+//     const assert = std.debug.assert;
+//     if (std.debug.runtime_safety) {
+//         if (T == bool) {
+//             assert(tag == .bool);
+//         } else if (T == i64) {
+//             assert(tag == .int);
+//         } else if (T == f64) {
+//             assert(tag == .float);
+//         } else {
+//             assert(tag == T.SCRIPT_SELF_TAG);
+//         }
+//     }
+// }
 
-pub fn scriptTypeToTag(comptime T: type) ValueTag {
-    if (T == bool) {
-        return .bool;
-    } else if (T == i64) {
-        return .int;
-    } else if (T == f64) {
-        return .float;
-    } else if (T == String) {
-        return .string;
-    } else if (@hasDecl(T, "SCRIPT_SELF_TAG")) {
-        return T.SCRIPT_SELF_TAG;
-    } else {
-        return .userStruct;
-    }
-}
+// pub fn scriptTypeToTag(comptime T: type) ValueTag {
+//     if (T == bool) {
+//         return .bool;
+//     } else if (T == i64) {
+//         return .int;
+//     } else if (T == f64) {
+//         return .float;
+//     } else if (T == String) {
+//         return .string;
+//     } else if (@hasDecl(T, "SCRIPT_SELF_TAG")) {
+//         return T.SCRIPT_SELF_TAG;
+//     } else {
+//         return .userStruct;
+//     }
+// }

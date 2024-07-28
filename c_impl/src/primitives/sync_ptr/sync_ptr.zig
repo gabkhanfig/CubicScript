@@ -11,7 +11,6 @@ pub fn Unique(comptime T: type) type {
         context: *const TypeContext,
 
         const Self = @This();
-        pub const SCRIPT_SELF_TAG: ValueTag = .unique;
         pub const ValueType = T;
 
         pub fn init(value: T) Self {
@@ -78,7 +77,6 @@ pub const CubsUnique = extern struct {
     context: *const TypeContext,
 
     const Self = @This();
-    pub const SCRIPT_SELF_TAG: ValueTag = .unique;
 
     pub extern fn cubs_unique_init(value: *anyopaque, context: *const TypeContext) callconv(.C) Self;
     pub extern fn cubs_unique_deinit(self: *Self) callconv(.C) void;
@@ -172,7 +170,6 @@ pub const CubsShared = extern struct {
     context: *const TypeContext,
 
     const Self = @This();
-    pub const SCRIPT_SELF_TAG: ValueTag = .shared;
 
     pub extern fn cubs_shared_init(value: *anyopaque, context: *const TypeContext) callconv(.C) Self;
     pub extern fn cubs_shared_deinit(self: *Self) callconv(.C) void;
@@ -261,7 +258,6 @@ pub const CubsWeak = extern struct {
     context: *const TypeContext,
 
     const Self = @This();
-    pub const SCRIPT_SELF_TAG: ValueTag = .weak;
 
     pub extern fn cubs_weak_deinit(self: *Self) callconv(.C) void;
     pub extern fn cubs_weak_lock_shared(self: *const Self) callconv(.C) void;

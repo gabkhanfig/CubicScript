@@ -11,7 +11,6 @@ const TypeContext = script_value.TypeContext;
 pub fn Set(comptime K: type) type {
     return extern struct {
         const Self = @This();
-        pub const SCRIPT_SELF_TAG: ValueTag = .set;
         pub const KeyType = K;
 
         len: usize = 0,
@@ -98,8 +97,6 @@ pub const CubsSet = extern struct {
     len: usize,
     _metadata: [5]?*anyopaque,
     keyContext: *const TypeContext,
-
-    pub const SCRIPT_SELF_TAG: ValueTag = .set;
 
     pub extern fn cubs_set_init(context: *const TypeContext) callconv(.C) CubsSet;
     pub extern fn cubs_set_deinit(self: *CubsSet) callconv(.C) void;

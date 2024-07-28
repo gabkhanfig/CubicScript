@@ -12,9 +12,6 @@ const TypeContext = script_value.TypeContext;
 pub fn Array(comptime T: type) type {
     return extern struct {
         const Self = @This();
-        /// Helper to generically determine the script value type of `Self`, for example, since this is an `Array`,
-        /// it returns `.array`. This is implemented for all script value that are generic.
-        pub const SCRIPT_SELF_TAG: ValueTag = .array;
         pub const ValueType = T;
 
         len: usize = 0,
@@ -200,7 +197,6 @@ pub const CubsArray = extern struct {
     };
 
     pub const CUBS_ARRAY_N_POS: usize = @bitCast(@as(i64, -1));
-    pub const SCRIPT_SELF_TAG: ValueTag = .array;
 
     pub extern fn cubs_array_init(rtti: *const TypeContext) callconv(.C) CubsArray;
     pub extern fn cubs_array_deinit(self: *CubsArray) callconv(.C) void;
