@@ -8,13 +8,8 @@ typedef void (*CubsStructCloneFn)(void* dst, const void* self);
 typedef bool (*CubsStructEqlFn)(const void* self, const void* other);
 typedef size_t (*CubsStructHashFn)(const void* self);
 /// Is both RTTI, and a VTable for certain *optional* functionality, such as on-destruction,
-/// comparison operations, hashing, etc.
-/// # Script Classes
-/// When making a context for a script compatible class
-/// - `destructor` -> `cubs_class_opaque_deinit(...)`
-/// - `clone` -> `cubs_class_opaque_clone(...)`
-/// - `eql` -> `cubs_class_opaque_eql(...)`
-/// - `hash` -> `cubs_class_opaque_hash(...)`
+/// comparison operations, hashing, etc. 
+// TODO implement for script only structs
 typedef struct CubsTypeContext {
     /// In bytes.
     size_t sizeOfType;
