@@ -9,6 +9,7 @@
 #include "../primitives/sync_ptr/sync_ptr.h"
 #include "../util/panic.h"
 #include <assert.h>
+#include "value_tag.h"
 
 static void bool_clone(bool* dst, const bool* self) {
     *dst = *self;

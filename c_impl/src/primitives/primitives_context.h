@@ -1,6 +1,36 @@
 #pragma once
 
-#include "script_value.h"
+#include <stdbool.h>
+#include <stddef.h>
+
+typedef void (*CubsStructDestructorFn)(void* self);
+typedef void (*CubsStructCloneFn)(void* dst, const void* self);
+typedef bool (*CubsStructEqlFn)(const void* self, const void* other);
+typedef size_t (*CubsStructHashFn)(const void* self);
+/// Is both RTTI, and a VTable for certain *optional* functionality, such as on-destruction,
+/// comparison operations, hashing, etc.
+/// # Script Classes
+/// When making a context for a script compatible class
+/// - `destructor` -> `cubs_class_opaque_deinit(...)`
+/// - `clone` -> `cubs_class_opaque_clone(...)`
+/// - `eql` -> `cubs_class_opaque_eql(...)`
+/// - `hash` -> `cubs_class_opaque_hash(...)`
+typedef struct CubsTypeContext {
+    /// In bytes.
+    size_t sizeOfType;
+    /// Can be NULL
+    CubsStructDestructorFn destructor;
+    /// Can be NULL
+    CubsStructCloneFn clone;
+    /// Can be NULL
+    CubsStructEqlFn eql;
+    /// Can be NULL
+    CubsStructHashFn hash;
+    /// Can be NULL, only used for debugging purposes
+    const char* name;
+    /// Is the length of `name`. Can be 0. Only used for debugging purposes
+    size_t nameLength;
+} CubsTypeContext;
 
 extern const CubsTypeContext CUBS_BOOL_CONTEXT;
 extern const CubsTypeContext CUBS_INT_CONTEXT;
@@ -15,9 +45,3 @@ extern const CubsTypeContext CUBS_RESULT_CONTEXT;
 extern const CubsTypeContext CUBS_UNIQUE_CONTEXT;
 extern const CubsTypeContext CUBS_SHARED_CONTEXT;
 extern const CubsTypeContext CUBS_WEAK_CONTEXT;
-
-/// Always returns a valid pointer
-/// # Debug Asserts
-/// - `tag != cubsValueTagNone`
-/// - `tag != cubsValueTagUserStruct`
-const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);

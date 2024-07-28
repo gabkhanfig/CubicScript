@@ -6,45 +6,6 @@ extern "C"  {
 }
 
 namespace cubs {
-    enum class ValueTag : int {
-        Bool = cubsValueTagBool,
-        Int = cubsValueTagInt,
-        Float = cubsValueTagFloat,
-        Char = cubsValueTagChar,
-        String = cubsValueTagString,
-        StringIter = cubsValueTagStringIter,
-        Array = cubsValueTagArray,
-        ArrayConstIter = cubsValueTagArrayConstIter,
-        ArrayMutIter = cubsValueTagArrayMutIter,
-        Set = cubsValueTagSet,
-        SetIter = cubsValueTagSetIter,
-        Map = cubsValueTagMapConstIter,
-        MapConstIter = cubsValueTagMapConstIter,
-        MapMutIter = cubsValueTagMapMutIter,
-        Option = cubsValueTagOption,
-        Error = cubsValueTagError,
-        Result = cubsValueTagResult,
-        TaggedUnion = cubsValueTagTaggedUnion,
-        UserClass = cubsValueTagUserClass,
-        OwnedInterface = cubsValueTagOwnedInterface,
-        InterfaceRef = cubsValueTagInterfaceRef,
-        ConstRef = cubsValueTagConstRef,
-        MutRef = cubsValueTagMutRef,
-        Unique = cubsValueTagUnique,
-        Shared = cubsValueTagShared,
-        Weak = cubsValueTagWeak,
-        FunctionPtr = cubsValueTagFunctionPtr,
-        Future = cubsValueTagFuture,
-        Vec2i = cubsValueTagVec2i,
-        Vec3i = cubsValueTagVec3i,
-        Vec4i = cubsValueTagVec4i,
-        Vec2f = cubsValueTagVec2f,
-        Vec3f = cubsValueTagVec3f,
-        Vec4f = cubsValueTagVec4f,
-        Mat3f = cubsValueTagMat3f,
-        Mat4f = cubsValueTagMat4f,
-    };
-
     /// See `autoTypeContext<T>()` to automatically create one for a type.
     using TypeContext = CubsTypeContext;
 

@@ -3,36 +3,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "value_tag.h"
-
-typedef void (*CubsStructDestructorFn)(void* self);
-typedef void (*CubsStructCloneFn)(void* dst, const void* self);
-typedef bool (*CubsStructEqlFn)(const void* self, const void* other);
-typedef size_t (*CubsStructHashFn)(const void* self);
-/// Is both RTTI, and a VTable for certain *optional* functionality, such as on-destruction,
-/// comparison operations, hashing, etc.
-/// # Script Classes
-/// When making a context for a script compatible class
-/// - `destructor` -> `cubs_class_opaque_deinit(...)`
-/// - `clone` -> `cubs_class_opaque_clone(...)`
-/// - `eql` -> `cubs_class_opaque_eql(...)`
-/// - `hash` -> `cubs_class_opaque_hash(...)`
-typedef struct CubsTypeContext {
-    /// In bytes.
-    size_t sizeOfType;
-    /// Can be NULL
-    CubsStructDestructorFn destructor;
-    /// Can be NULL
-    CubsStructCloneFn clone;
-    /// Can be NULL
-    CubsStructEqlFn eql;
-    /// Can be NULL
-    CubsStructHashFn hash;
-    /// Can be NULL, only used for debugging purposes
-    const char* name;
-    /// Is the length of `name`. Can be 0. Only used for debugging purposes
-    size_t nameLength;
-} CubsTypeContext;
+#include "primitives_context.h"
 
 /// 0 / null intialization makes it an empty string.
 typedef struct CubsString {
