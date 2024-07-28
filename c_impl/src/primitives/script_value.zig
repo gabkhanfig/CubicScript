@@ -96,20 +96,56 @@ pub const TypeContext = extern struct {
             return @ptrCast(&primitive_context.CUBS_FLOAT_CONTEXT);
         } else if (T == String or T == c.CubsString) {
             return @ptrCast(&primitive_context.CUBS_STRING_CONTEXT);
+        } else if (T == c.CubsArray) {
+            return @ptrCast(&primitive_context.CUBS_ARRAY_CONTEXT);
+        } else if (T == c.CubsSet) {
+            return @ptrCast(&primitive_context.CUBS_SET_CONTEXT);
+        } else if (T == c.CubsMap) {
+            return @ptrCast(&primitive_context.CUBS_MAP_CONTEXT);
+        } else if (T == c.CubsOption) {
+            return @ptrCast(&primitive_context.CUBS_OPTION_CONTEXT);
+        } else if (T == c.CubsError) {
+            return @ptrCast(&primitive_context.CUBS_ERROR_CONTEXT);
+        } else if (T == c.CubsResult) {
+            return @ptrCast(&primitive_context.CUBS_RESULT_CONTEXT);
+        } else if (T == c.CubsUnique) {
+            return @ptrCast(&primitive_context.CUBS_UNIQUE_CONTEXT);
+        } else if (T == c.CubsShared) {
+            return @ptrCast(&primitive_context.CUBS_SHARED_CONTEXT);
+        } else if (T == c.CubsWeak) {
+            return @ptrCast(&primitive_context.CUBS_WEAK_CONTEXT);
+        } else if (@hasDecl(T, "ValueType")) {
+            if (T == Array(T.ValueType)) {
+                return @ptrCast(&primitive_context.CUBS_ARRAY_CONTEXT);
+            } else if (T == Option(T.ValueType)) {
+                return @ptrCast(&primitive_context.CUBS_OPTION_CONTEXT);
+            } else if (T == Error(T.ValueType)) {
+                return @ptrCast(&primitive_context.CUBS_ERROR_CONTEXT);
+            } else if (T == Unique(T.ValueType)) {
+                return @ptrCast(&primitive_context.CUBS_UNIQUE_CONTEXT);
+            } else if (T == Shared(T.ValueType)) {
+                return @ptrCast(&primitive_context.CUBS_SHARED_CONTEXT);
+            } else if (T == Weak(T.ValueType)) {
+                return @ptrCast(&primitive_context.CUBS_WEAK_CONTEXT);
+            } else {
+                if (@hasDecl(T, "ErrorMetadataType")) {
+                    if (T == Result(T.ValueType, T.ErrorMetadataType)) {
+                        return @ptrCast(&primitive_context.CUBS_RESULT_CONTEXT);
+                    }
+                } else if (@hasDecl(T, "KeyType")) {
+                    if (T == Map(T.KeyType, T.ValueType)) {
+                        return @ptrCast(&primitive_context.CUBS_MAP_CONTEXT);
+                    }
+                }
+            }
+        } else if (@hasDecl(T, "KeyType")) {
+            if (T == Set(T.ValueType)) {
+                return @ptrCast(&primitive_context.CUBS_SET_CONTEXT);
+            }
+        } else {
+            const context = comptime generate(T);
+            return &context;
         }
-        // if (@hasDecl(T, "SCRIPT_SELF_TAG")) {
-        // comptime {
-        //     const tag: ValueTag = T.SCRIPT_SELF_TAG;
-        //     switch (tag) {
-        //         else => {
-        //             @compileError("Unsupported primitive context type");
-        //         },
-        //     }
-        // }
-        // } else {
-        const context = comptime generate(T);
-        return &context;
-        // }
     }
 
     fn generate(comptime T: type) TypeContext {
