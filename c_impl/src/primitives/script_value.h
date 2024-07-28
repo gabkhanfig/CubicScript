@@ -145,9 +145,3 @@ typedef struct CubsMat3 {
 typedef struct CubsMat4 {
   void* _inner;
 } CubsMat4;
-
-void cubs_class_opaque_deinit(void* self);
-
-bool cubs_class_opaque_eql(const void* self, const void* other);
-
-size_t cubs_class_opaque_hash(const void* self);
