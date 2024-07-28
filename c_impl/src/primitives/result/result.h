@@ -6,16 +6,16 @@
 #include "../script_value.h"
 
 /// If `okValue == NULL`, is an empty ok value. Pass in `0` for `okTag`.
-CubsResult cubs_result_init_ok_primitive(void* okValue, CubsValueTag okTag);
+//CubsResult cubs_result_init_ok_primitive(void* okValue, CubsValueTag okTag);
 
 /// If `okValue == NULL`, is an empty ok value. Pass in `NULL` for `okContext`.
-CubsResult cubs_result_init_ok_user_class(void* okValue, const CubsTypeContext* okContext);
+CubsResult cubs_result_init_ok(void* okValue, const CubsTypeContext* okContext);
 
 /// If `okTag == 0`, is an empty ok value.
-CubsResult cubs_result_init_err_primitive(CubsError errValue, CubsValueTag okTag);
+//CubsResult cubs_result_init_err_primitive(CubsError errValue, CubsValueTag okTag);
 
 /// If `okContext == NULL`, is an empty ok value.
-CubsResult cubs_result_init_err_user_class(CubsError errValue, const CubsTypeContext* okContext);
+CubsResult cubs_result_init_err(CubsError errValue, const CubsTypeContext* okContext);
 
 void cubs_result_deinit(CubsResult* self);
 

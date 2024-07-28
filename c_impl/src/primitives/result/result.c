@@ -5,17 +5,17 @@
 #include <string.h>
 #include "../error/error.h"
 
-CubsResult cubs_result_init_ok_primitive(void *okValue, CubsValueTag okTag)
-{
-    if(okValue == NULL) {
-        assert(okTag == 0);
-        return cubs_result_init_ok_user_class(NULL, NULL);
-    } else {
-        return cubs_result_init_ok_user_class(okValue, cubs_primitive_context_for_tag(okTag));
-    }
-}
+// CubsResult cubs_result_init_ok_primitive(void *okValue, CubsValueTag okTag)
+// {
+//     if(okValue == NULL) {
+//         assert(okTag == 0);
+//         return cubs_result_init_ok_user_class(NULL, NULL);
+//     } else {
+//         return cubs_result_init_ok_user_class(okValue, cubs_primitive_context_for_tag(okTag));
+//     }
+// }
 
-CubsResult cubs_result_init_ok_user_class(void *okValue, const CubsTypeContext *okContext)
+CubsResult cubs_result_init_ok(void *okValue, const CubsTypeContext *okContext)
 {
     if(okValue == NULL) {
         const CubsResult result = {.metadata = {0}, .isErr = false, .context = NULL};
@@ -34,16 +34,16 @@ CubsResult cubs_result_init_ok_user_class(void *okValue, const CubsTypeContext *
     }
 }
 
-CubsResult cubs_result_init_err_primitive(CubsError errValue, CubsValueTag okTag)
-{
-    if(okTag == 0) {
-        return cubs_result_init_err_user_class(errValue, NULL);
-    } else {        
-        return cubs_result_init_err_user_class(errValue, cubs_primitive_context_for_tag(okTag));
-    }
-}
+// CubsResult cubs_result_init_err_primitive(CubsError errValue, CubsValueTag okTag)
+// {
+//     if(okTag == 0) {
+//         return cubs_result_init_err_user_class(errValue, NULL);
+//     } else {        
+//         return cubs_result_init_err_user_class(errValue, cubs_primitive_context_for_tag(okTag));
+//     }
+// }
 
-CubsResult cubs_result_init_err_user_class(CubsError errValue, const CubsTypeContext *okContext)
+CubsResult cubs_result_init_err(CubsError errValue, const CubsTypeContext *okContext)
 {
     CubsResult result = {.metadata = {0}, .isErr = true, .context = okContext};
     memcpy((void*)&result.metadata, (const void*)&errValue, sizeof(CubsError));

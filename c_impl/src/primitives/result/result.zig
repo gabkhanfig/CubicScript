@@ -47,20 +47,20 @@ pub fn Result(comptime OkT: type, comptime ErrMetadataT: type) type {
 
         pub fn initOk(inOk: OkT) Self {
             if (OkT == void) {
-                return @bitCast(CubsResult.cubs_result_init_ok_user_class(null, null));
+                return @bitCast(CubsResult.cubs_result_init_ok(null, null));
             } else {
                 var mutValue = inOk;
                 const context = TypeContext.auto(OkT);
-                return @bitCast(CubsResult.cubs_result_init_ok_user_class(@ptrCast(&mutValue), context));
+                return @bitCast(CubsResult.cubs_result_init_ok(@ptrCast(&mutValue), context));
             }
         }
 
         pub fn initErr(inErr: Error(ErrMetadataT)) Self {
             if (OkT == void) {
-                return @bitCast(CubsResult.cubs_result_init_err_user_class(@bitCast(inErr), null));
+                return @bitCast(CubsResult.cubs_result_init_err(@bitCast(inErr), null));
             } else {
                 const context = TypeContext.auto(OkT);
-                return @bitCast(CubsResult.cubs_result_init_err_user_class(@bitCast(inErr), context));
+                return @bitCast(CubsResult.cubs_result_init_err(@bitCast(inErr), context));
             }
         }
 
@@ -113,10 +113,8 @@ pub const CubsResult = extern struct {
     const Self = @This();
     pub const SCRIPT_SELF_TAG: ValueTag = .result;
 
-    pub extern fn cubs_result_init_ok_primitive(okValue: ?*anyopaque, okTag: ValueTag) callconv(.C) Self;
-    pub extern fn cubs_result_init_ok_user_class(okValue: ?*anyopaque, okContext: ?*const TypeContext) callconv(.C) Self;
-    pub extern fn cubs_result_init_err_primitive(err: CubsError, okTag: ValueTag) callconv(.C) Self;
-    pub extern fn cubs_result_init_err_user_class(err: CubsError, okContext: ?*const TypeContext) callconv(.C) Self;
+    pub extern fn cubs_result_init_ok(okValue: ?*anyopaque, okContext: ?*const TypeContext) callconv(.C) Self;
+    pub extern fn cubs_result_init_err(err: CubsError, okContext: ?*const TypeContext) callconv(.C) Self;
     pub extern fn cubs_result_deinit(self: *Self) callconv(.C) void;
     pub extern fn cubs_result_get_ok(self: *const Self) callconv(.C) *const anyopaque;
     pub extern fn cubs_result_get_ok_mut(self: *Self) callconv(.C) *anyopaque;
