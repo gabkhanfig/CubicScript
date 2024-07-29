@@ -3,7 +3,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "primitives_context.h"
+
+typedef struct CubsTypeContext CubsTypeContext;
 
 /// 0 / null intialization makes it an empty string.
 typedef struct CubsString {
