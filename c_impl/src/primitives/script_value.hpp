@@ -1,13 +1,12 @@
 #pragma once
 
-extern "C"  {
-    #include "script_value.h"
-    #include "primitives_context.h"
-}
-
 namespace cubs {
+    namespace detail {
+        #include "script_value.h"
+        #include "primitives_context.h"
+    }
     /// See `autoTypeContext<T>()` to automatically create one for a type.
-    using TypeContext = CubsTypeContext;
+    using TypeContext = detail::CubsTypeContext;
 
     // namespace detail {
     //     template<typename T, typename = void>

@@ -5,12 +5,7 @@
 #include <assert.h>
 #include <iostream>
 
-// extern "C" {  
-//     #include "string.h"
-// }
-
 namespace cubs {
-
     namespace detail {
         #include "string.h"
     }
@@ -63,7 +58,7 @@ namespace cubs {
         }
 
         static const TypeContext* scriptTypeContext() {
-            return &CUBS_STRING_CONTEXT;
+            return &detail::CUBS_STRING_CONTEXT;
         }
 
         size_t len() const {
@@ -205,7 +200,7 @@ namespace cubs {
         }
 
     private:
-        CubsString string;
+        detail::CubsString string;
     };
 }
 
