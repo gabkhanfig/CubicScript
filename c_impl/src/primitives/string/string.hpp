@@ -82,6 +82,16 @@ namespace cubs {
             return view;
         }
 
+        [[nodiscard]] const char* cstr() const {
+            const detail::CubsStringSlice slice = detail::cubs_string_as_slice(&this->string);
+            return slice.str;
+        }
+
+        friend std::ostream& operator << (std::ostream& os, const String& inString) {
+            const std::string_view view = inString.asStringView();
+			return os.write(view.data(), view.size());
+		}
+
         [[nodiscard]] bool operator==(const String& other) const {
             return detail::cubs_string_eql(&this->string, &other.string);
         }
