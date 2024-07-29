@@ -12,13 +12,3 @@ typedef enum CubsOrdering {
     // Enforce enum size is at least 32 bits, which is `int` on most platforms
     _CUBS_ORDERING_MAX_VALUE = 0x7FFFFFFF,
 } CubsOrdering;
-
-#if __cplusplus
-namespace cubs {
-    enum Ordering : int {
-        Less = cubsOrderingLess,
-        Equal = cubsOrderingEqual,
-        Greater = cubsOrderingGreater,
-    };
-}
-#endif
