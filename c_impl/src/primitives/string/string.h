@@ -1,8 +1,13 @@
 #pragma once
 
-#include <stdbool.h>
+#ifndef __cplusplus
+
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
+
+#endif
+
 #include "../script_value.h"
 #include "../../util/ordering.h"
 
@@ -28,6 +33,10 @@ typedef struct CubsStringSlice {
 
 /// https://cplusplus.com/reference/string/string/npos/
 static const size_t CUBS_STRING_N_POS = -1;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /// In `_DEBUG`:
 /// - Asserts that a null terminator does not exist before `slice.len`.
@@ -120,3 +129,7 @@ CubsString cubs_string_from_float(double num);
 
 /// Parses a bool from this string, returning an error if `self` isn't "true" or "false".
 NewStringError cubs_string_to_bool(bool* out, const CubsString* self);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

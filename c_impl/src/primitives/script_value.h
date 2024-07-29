@@ -1,8 +1,12 @@
 #pragma once
 
+#ifndef __cplusplus
+
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#endif
 
 typedef struct CubsTypeContext CubsTypeContext;
 
