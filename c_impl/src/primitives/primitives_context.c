@@ -9,7 +9,6 @@
 #include "../primitives/sync_ptr/sync_ptr.h"
 #include "../util/panic.h"
 #include <assert.h>
-#include "value_tag.h"
 
 static void bool_clone(bool* dst, const bool* self) {
     *dst = *self;
@@ -226,52 +225,3 @@ const CubsTypeContext CUBS_WEAK_CONTEXT = {
     .name = "weak",
     .nameLength = 4,
 };
-
-const CubsTypeContext *cubs_primitive_context_for_tag(CubsValueTag tag)
-{
-    assert(tag != cubsValueTagUserClass && "This function is for primitive types only");
-    switch(tag) {
-        case cubsValueTagBool: {
-            return &CUBS_BOOL_CONTEXT;
-        } break;
-        case cubsValueTagInt: {
-            return &CUBS_INT_CONTEXT;
-        } break;
-        case cubsValueTagFloat: {
-            return &CUBS_FLOAT_CONTEXT;
-        } break;
-        case cubsValueTagString: {
-            return &CUBS_STRING_CONTEXT;
-        } break;
-        case cubsValueTagArray: {
-            return &CUBS_ARRAY_CONTEXT;
-        } break;
-        case cubsValueTagSet: {
-            return &CUBS_SET_CONTEXT;
-        } break;
-        case cubsValueTagMap: {
-            return &CUBS_MAP_CONTEXT;
-        } break;
-        case cubsValueTagOption: {
-            return &CUBS_OPTION_CONTEXT;
-        } break;
-        case cubsValueTagError: {
-            return &CUBS_ERROR_CONTEXT;
-        } break;
-        case cubsValueTagResult: {
-            return &CUBS_RESULT_CONTEXT;
-        } break;
-        case cubsValueTagUnique: {
-            return &CUBS_UNIQUE_CONTEXT;
-        } break;
-        case cubsValueTagShared: {
-            return &CUBS_SHARED_CONTEXT;
-        } break;
-        case cubsValueTagWeak: {
-            return &CUBS_WEAK_CONTEXT;
-        }
-        default: {
-            cubs_panic("unsupported primitive context type");
-        } break;
-    }
-}

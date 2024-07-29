@@ -4,7 +4,7 @@
 #include "../util/unreachable.h"
 #include <assert.h>
 #include "../program/program.h"
-#include "../primitives/value_tag.h"
+#include "value_tag.h"
 #include <string.h>
 #include "../primitives/script_value.h"
 #include "../primitives/primitives_context.h"

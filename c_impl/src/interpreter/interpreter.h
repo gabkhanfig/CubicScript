@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "../primitives/value_tag.h"
+#include "value_tag.h"
 
 typedef struct Bytecode Bytecode;
 typedef struct CubsProgram CubsProgram;
