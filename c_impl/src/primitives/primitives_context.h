@@ -1,7 +1,16 @@
 #pragma once
 
+#ifndef __cplusplus
+
 #include <stdbool.h>
 #include <stddef.h>
+
+#else
+
+#include <cstddef>
+using std::size_t;
+
+#endif
 
 typedef void (*CubsStructDestructorFn)(void* self);
 typedef void (*CubsStructCloneFn)(void* dst, const void* self);

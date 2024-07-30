@@ -1,8 +1,13 @@
 #pragma once
 
-#include <stdbool.h>
+#ifndef __cplusplus
+
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
+
+#endif
+
 #include "../script_value.h"
 
 typedef struct CubsArrayConstIter {
@@ -38,6 +43,10 @@ typedef enum CubsArrayError {
 
 /// https://cplusplus.com/reference/string/string/npos/
 static const size_t CUBS_ARRAY_N_POS = -1;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /// Does not allocate any memory, just zeroes and sets the context.
 CubsArray cubs_array_init(const CubsTypeContext* context);
@@ -111,3 +120,7 @@ CubsArrayReverseMutIter cubs_array_reverse_mut_iter_begin(CubsArray* self);
 CubsArrayReverseMutIter cubs_array_reverse_mut_iter_end(CubsArray* self);
 
 bool cubs_array_reverse_mut_iter_next(CubsArrayReverseMutIter* iter);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

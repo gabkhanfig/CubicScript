@@ -40,6 +40,7 @@ add_library(CubicScript STATIC
 add_executable(CubicScriptCppTests
     "src/cpp_tests.cpp"
     "src/primitives/string/string_tests.cpp"
+    "src/primitives/array/array_tests.cpp"
 )
 
 target_link_libraries(CubicScriptCppTests CubicScript)
