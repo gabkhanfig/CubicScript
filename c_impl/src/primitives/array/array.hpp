@@ -15,6 +15,10 @@ namespace cubs {
         
         Array();
 
+        ~Array() {
+            detail::cubs_array_deinit(&this->arr);
+        }
+
         static const TypeContext* scriptTypeContext();
 
     private:
