@@ -16,7 +16,7 @@ namespace cubs {
         Array();
 
         static const TypeContext* scriptTypeContext();
-        
+
     private:
         detail::CubsArray arr;
     };
@@ -32,5 +32,5 @@ inline cubs::Array<T>::Array() {
 
 template<typename T>
 inline const cubs::TypeContext* cubs::Array<T>::scriptTypeContext() {   
-    return reinterpret_cast<const TypeContext*>(&CUBS_ARRAY_CONTEXT);
+    return &CUBS_ARRAY_CONTEXT;
 }

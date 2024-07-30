@@ -1,6 +1,5 @@
 #pragma once
 
-#include "primitives_context.h"
 #include "script_value.hpp"
 
 namespace cubs {
@@ -28,23 +27,16 @@ template <template <class...> class Template, class... Args>
 struct _is_specialization<Template<Args...>, Template> : std::true_type {};
 
 namespace cubs {
-    namespace detail {
-        template<typename T>
-        const TypeContext* getUserDefinedTypeContext() {
-            return T::scriptTypeContext();
-        }
-    } // namespace detail
-
     template<typename T>
     inline const TypeContext* autoTypeContext() {
         if constexpr (std::is_same<T, bool>::value) {
-            return reinterpret_cast<const TypeContext*>(&CUBS_BOOL_CONTEXT);
+            return &CUBS_BOOL_CONTEXT;
         } else if constexpr (std::is_same<T, int64_t>::value) {
-            return reinterpret_cast<const TypeContext*>(&CUBS_INT_CONTEXT);
+            return &CUBS_INT_CONTEXT;
         } else if constexpr (std::is_same<T, double>::value) {
-            return reinterpret_cast<const TypeContext*>(&CUBS_FLOAT_CONTEXT);
+            return &CUBS_FLOAT_CONTEXT;
         } else if constexpr (_has_user_defined_context_v<T>) {
-            return detail::getUserDefinedTypeContext<T>();
+            return T::scriptTypeContext();
         }
     }
 } // namespace cubs
