@@ -15,6 +15,7 @@
 #include "../primitives/option/option.h"
 #include "../primitives/error/error.h"
 #include "../primitives/result/result.h"
+#include "../util/math.h"
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 
@@ -302,6 +303,37 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
     }
 }
 
+static void execute_add(const CubsProgram *program, const Bytecode* bytecode) {
+    const OperandsAddUnknown unknownOperands = *(const OperandsAddUnknown*)bytecode;
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src1);
+    assert(cubs_interpreter_stack_context_at(unknownOperands.src2) == context);
+
+    void* src1 = cubs_interpreter_stack_value_at(unknownOperands.src1);
+    const void* src2 = cubs_interpreter_stack_value_at(unknownOperands.src2);
+
+    if(context == &CUBS_INT_CONTEXT) {
+        const int64_t a = *(const int64_t*)src1;
+        const int64_t b = *(const int64_t*)src2;
+        const int64_t result = a + b;
+        if(!unknownOperands.canOverflow) {
+            const bool wouldOverflow = cubs_math_would_add_overflow(a, b);
+            if(wouldOverflow) {
+                // TODO handle overflow in program
+                cubs_panic("integer overflow");
+            } 
+        }
+        if(unknownOperands.opType == MATH_TYPE_DST) {
+            const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
+            *(int64_t*)(cubs_interpreter_stack_value_at(dstOperands.dst)) = result;
+            cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_INT_CONTEXT);
+        } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
+            *(int64_t*)src1 = result;
+        }
+    } else {
+        unreachable();
+    }
+}
+
 CubsFatalScriptError cubs_interpreter_execute_operation(const CubsProgram *program)
 {
     size_t ipIncrement = 1;
@@ -313,6 +345,9 @@ CubsFatalScriptError cubs_interpreter_execute_operation(const CubsProgram *progr
         } break;
         case OpCodeLoad: {
             execute_load(&ipIncrement, &bytecode);
+        } break;
+        case OpCodeAdd: {
+            execute_add(program, &bytecode);
         } break;
         default: {
             unreachable();

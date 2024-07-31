@@ -19,6 +19,8 @@ typedef enum {
     /// - Default -> `OperandsLoadDefault` loads the default representation of a type if it has one. May be a multibyte instruction
     /// - Clone from ptr -> `OperandsLoadCloneFromPtr` Clones some data held at a given immediate pointer, using an immediate context. Is a 3 bytecode wide multibyte instruction
     OpCodeLoad = 1,
+    /// 
+    OpCodeAdd,
 
     OPCODE_USED_BITS = 8,
     OPCODE_USED_BITMASK = 0b11111111,
@@ -53,14 +55,14 @@ Bytecode cubs_bytecode_encode_immediate_long_float(double num);
 
 Bytecode cubs_bytecode_encode_immediate_long_ptr(void *ptr);
 
-enum LoadOperationType {
+typedef enum {
     LOAD_TYPE_IMMEDIATE = 0,
     LOAD_TYPE_IMMEDIATE_LONG = 1,
     LOAD_TYPE_DEFAULT = 2,
     LOAD_TYPE_CLONE_FROM_PTR = 3,
 
     RESERVE_LOAD_TYPE = 2,
-};
+} LoadOperationType;
 
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
@@ -109,3 +111,40 @@ typedef struct {
     uint64_t dst: BITS_PER_STACK_OPERAND;
 } OperandsLoadCloneFromPtr;
 void operands_make_load_clone_from_ptr(Bytecode* tripleBytecode, uint16_t dst, const void* immediatePtr, const CubsTypeContext* context);
+
+typedef enum  {
+    MATH_TYPE_DST,
+    MATH_TYPE_SRC_ASSIGN,
+    
+    RESERVE_MATH_OP_TYPE = 1,
+} MathOperationType;
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_MATH_OP_TYPE;
+    uint64_t canOverflow: 1;
+    uint64_t src1: BITS_PER_STACK_OPERAND;
+    uint64_t src2: BITS_PER_STACK_OPERAND;
+} OperandsAddUnknown;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsAddUnknown);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_MATH_OP_TYPE;
+    uint64_t canOverflow: 1;
+    uint64_t src1: BITS_PER_STACK_OPERAND;
+    uint64_t src2: BITS_PER_STACK_OPERAND;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+} OperandsAddDst;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsAddDst);
+Bytecode operands_make_add_dst(bool canOverflow, uint16_t dst, uint16_t src1, uint16_t src2);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_MATH_OP_TYPE;
+    uint64_t canOverflow: 1;
+    uint64_t src1: BITS_PER_STACK_OPERAND;
+    uint64_t src2: BITS_PER_STACK_OPERAND;
+} OperandsAddAssign;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsAddAssign);
+Bytecode operands_make_add_assign(bool canOverflow, uint16_t src1, uint16_t src2);
