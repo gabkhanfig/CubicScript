@@ -95,4 +95,5 @@ static inline const CubsTypeContext *cubs_primitive_context_for_tag(CubsValueTag
             cubs_panic("unsupported primitive context type");
         } break;
     }
+    return NULL;
 }
