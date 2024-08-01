@@ -261,7 +261,7 @@ test "add dst overflow" {
     @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* = 1;
 
     c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
-    try expect(c.cubs_interpreter_execute_operation(&program) == c.cubsFatalScriptErrorIntegerOverflow);
+    try expect(c.cubs_interpreter_execute_operation(&program) == c.cubsProgramRuntimeErrorAdditionIntegerOverflow);
 }
 
 test "add assign overflow" {
@@ -279,5 +279,5 @@ test "add assign overflow" {
     @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* = 1;
 
     c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
-    try expect(c.cubs_interpreter_execute_operation(&program) == c.cubsFatalScriptErrorIntegerOverflow);
+    try expect(c.cubs_interpreter_execute_operation(&program) == c.cubsProgramRuntimeErrorAdditionIntegerOverflow);
 }
