@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "value_tag.h"
+#include "../program/program_runtime_error.h"
 
 typedef struct Bytecode Bytecode;
 typedef struct CubsProgram CubsProgram;
@@ -41,14 +42,7 @@ const struct CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset);
 /// If `context->sizeOfType > sizeof(size_t)`, fills the following contexts to NULL.
 void cubs_interpreter_stack_set_context_at(size_t offset, const struct CubsTypeContext* context);
 
-typedef enum CubsFatalScriptError {
-    cubsFatalScriptErrorNone = 0,
-    cubsFatalScriptErrorIntegerOverflow = 1,
-
-    _CUBS_FATAL_SCRIPT_ERROR_MAX_VALUE = 0x7FFFFFFF,
-} CubsFatalScriptError;
-
 void cubs_interpreter_set_instruction_pointer(const struct Bytecode* newIp);
 
 /// Executes the operation at this thread's instruction pointer
-CubsFatalScriptError cubs_interpreter_execute_operation(const struct CubsProgram* program);
+CubsProgramRuntimeError cubs_interpreter_execute_operation(const struct CubsProgram* program);

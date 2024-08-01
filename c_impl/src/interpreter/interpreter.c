@@ -304,7 +304,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
     }
 }
 
-static CubsFatalScriptError execute_add(const CubsProgram *program, const Bytecode* bytecode) {
+static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Bytecode* bytecode) {
     const OperandsAddUnknown unknownOperands = *(const OperandsAddUnknown*)bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src1);
     assert(cubs_interpreter_stack_context_at(unknownOperands.src2) == context);
@@ -328,7 +328,7 @@ static CubsFatalScriptError execute_add(const CubsProgram *program, const Byteco
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorAdditionIntegerOverflow, errBuf, len);             
-                return cubsFatalScriptErrorIntegerOverflow;
+                return cubsProgramRuntimeErrorAdditionIntegerOverflow;
             }
             result = a + b;
         } else { // is allowed to overflow
@@ -344,16 +344,16 @@ static CubsFatalScriptError execute_add(const CubsProgram *program, const Byteco
     } else {
         unreachable();
     }
-    return cubsFatalScriptErrorNone;
+    return cubsProgramRuntimeErrorNone;
 }
 
-CubsFatalScriptError cubs_interpreter_execute_operation(const CubsProgram *program)
+CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *program)
 {
     size_t ipIncrement = 1;
     const Bytecode bytecode = *threadLocalStack.instructionPointer;
     const OpCode opcode = cubs_bytecode_get_opcode(bytecode);
 
-    CubsFatalScriptError potentialErr = cubsFatalScriptErrorNone;
+    CubsProgramRuntimeError potentialErr = cubsProgramRuntimeErrorNone;
     switch(opcode) {
         case OpCodeNop: {
             fprintf(stderr, "nop :)\n");
