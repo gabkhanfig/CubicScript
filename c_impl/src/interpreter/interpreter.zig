@@ -9,6 +9,7 @@ const c = @cImport({
     @cInclude("primitives/array/array.h");
     @cInclude("primitives/set/set.h");
     @cInclude("primitives/map/map.h");
+    @cInclude("program/program.h");
 });
 
 test "push frame no return" {
@@ -243,4 +244,40 @@ test "add assign int" {
 
     try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_INT_CONTEXT);
     try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 6);
+}
+
+test "add dst overflow" {
+    c.cubs_interpreter_push_frame(3, null, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    var program = c.cubs_program_init(.{ .context = null });
+    defer c.cubs_program_deinit(&program);
+
+    var bytecode = c.operands_make_add_dst(false, 2, 0, 1);
+
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+    @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = std.math.maxInt(i64);
+    c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+    @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* = 1;
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(&program) == c.cubsFatalScriptErrorIntegerOverflow);
+}
+
+test "add assign overflow" {
+    c.cubs_interpreter_push_frame(2, null, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    var program = c.cubs_program_init(.{ .context = null });
+    defer c.cubs_program_deinit(&program);
+
+    var bytecode = c.operands_make_add_assign(false, 0, 1);
+
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+    @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = std.math.maxInt(i64);
+    c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+    @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* = 1;
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(&program) == c.cubsFatalScriptErrorIntegerOverflow);
 }
