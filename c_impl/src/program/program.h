@@ -63,4 +63,4 @@ typedef struct CubsProgramInitParams {
 /// and setting the original reference to `NULL`, ie. `params.context->ptr = NULL`.
 CubsProgram cubs_program_init(CubsProgramInitParams params);
 
-CubsProgram cubs_program_deinit(CubsProgram* self);
+void cubs_program_deinit(CubsProgram* self);

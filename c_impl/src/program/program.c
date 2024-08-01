@@ -65,7 +65,7 @@ CubsProgram cubs_program_init(CubsProgramInitParams params)
     return program;
 }
 
-CubsProgram cubs_program_deinit(CubsProgram *self)
+void cubs_program_deinit(CubsProgram *self)
 {
     Inner* inner = as_inner_mut(self);
     if(!cubs_mutex_try_lock(&inner->contextMutex)) {
