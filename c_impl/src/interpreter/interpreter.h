@@ -43,6 +43,7 @@ void cubs_interpreter_stack_set_context_at(size_t offset, const struct CubsTypeC
 
 typedef enum CubsFatalScriptError {
     cubsFatalScriptErrorNone = 0,
+    cubsFatalScriptErrorIntegerOverflow = 1,
 
     _CUBS_FATAL_SCRIPT_ERROR_MAX_VALUE = 0x7FFFFFFF,
 } CubsFatalScriptError;
