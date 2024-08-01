@@ -315,21 +315,24 @@ static CubsFatalScriptError execute_add(const CubsProgram *program, const Byteco
     if(context == &CUBS_INT_CONTEXT) {
         const int64_t a = *(const int64_t*)src1;
         const int64_t b = *(const int64_t*)src2;
-        const int64_t result = a + b;
+        int64_t result;
         if(!unknownOperands.canOverflow) {
             const bool wouldOverflow = cubs_math_would_add_overflow(a, b);
             if(wouldOverflow) {
                 assert(program != NULL);
                 char errBuf[256];
                 #if defined(_WIN32) || defined(WIN32)
-                const int len = sprintf_s(errBuf, 256, "Integer overflow detected -> %lld + %lld", a, b);
+                const int len = sprintf_s(errBuf, 256, "Integer overflow detected -> %lld + %lld\n", a, b);
                 #else
-                const int len = sprintf(errBuf, "Integer overflow detected -> %ld + %ld", a, b);
+                const int len = sprintf(errBuf, "Integer overflow detected -> %ld + %ld\n", a, b);
                 #endif
-                assert(len < 0);           
+                assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorAdditionIntegerOverflow, errBuf, len);             
                 return cubsFatalScriptErrorIntegerOverflow;
-            } 
+            }
+            result = a + b;
+        } else { // is allowed to overflow
+            cubs_panic("overflow-abled addition not yet implemented");
         }
         if(unknownOperands.opType == MATH_TYPE_DST) {
             const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
