@@ -41,6 +41,48 @@ test "nested push frame" {
     }
 }
 
+fn ScriptContextTestRuntimeError(comptime errTag: c.CubsProgramRuntimeError) type {
+    return struct {
+        fn init(shouldExpectError: bool) c.CubsProgramContext {
+            const ptr = std.heap.c_allocator.create(@This()) catch unreachable;
+            ptr.* = .{ .shouldExpectError = shouldExpectError };
+            return c.CubsProgramContext{
+                .ptr = @ptrCast(ptr),
+                .vtable = &.{
+                    .errorCallback = @ptrCast(&@This().errorCallback),
+                    .deinit = @ptrCast(&@This().deinit),
+                },
+            };
+        }
+
+        fn deinit(self: *@This()) callconv(.C) void {
+            if (self.shouldExpectError) {
+                expect(self.didErrorHappen) catch {
+                    const message = std.fmt.allocPrint(std.heap.c_allocator, "Expected an instance of CubsProgramRuntimeError error {}, found no error", .{errTag}) catch unreachable;
+                    @panic(message);
+                };
+            } else {
+                expect(!self.didErrorHappen) catch {
+                    const message = std.fmt.allocPrint(std.heap.c_allocator, "Expected no CubsProgramRuntimeError error, instead found {}", .{errTag}) catch unreachable;
+                    @panic(message);
+                };
+            }
+            std.heap.c_allocator.destroy(self);
+        }
+
+        fn errorCallback(self: *@This(), _: *const c.CubsProgram, _: *anyopaque, err: c.CubsProgramRuntimeError, _: [*c]const u8, _: usize) void {
+            if (err == errTag) {
+                self.didErrorHappen = true;
+            } else {
+                @panic("unexpected error");
+            }
+        }
+
+        shouldExpectError: bool,
+        didErrorHappen: bool = false,
+    };
+}
+
 test "nop" {
     c.cubs_interpreter_push_frame(1, null, null, null);
     defer c.cubs_interpreter_pop_frame();
@@ -250,7 +292,9 @@ test "add dst overflow" {
     c.cubs_interpreter_push_frame(3, null, null, null);
     defer c.cubs_interpreter_pop_frame();
 
-    var program = c.cubs_program_init(.{ .context = null });
+    var context = ScriptContextTestRuntimeError(c.cubsProgramRuntimeErrorAdditionIntegerOverflow).init(true);
+
+    var program = c.cubs_program_init(.{ .context = &context });
     defer c.cubs_program_deinit(&program);
 
     var bytecode = c.operands_make_add_dst(false, 2, 0, 1);
@@ -268,7 +312,9 @@ test "add assign overflow" {
     c.cubs_interpreter_push_frame(2, null, null, null);
     defer c.cubs_interpreter_pop_frame();
 
-    var program = c.cubs_program_init(.{ .context = null });
+    var context = ScriptContextTestRuntimeError(c.cubsProgramRuntimeErrorAdditionIntegerOverflow).init(true);
+
+    var program = c.cubs_program_init(.{ .context = &context });
     defer c.cubs_program_deinit(&program);
 
     var bytecode = c.operands_make_add_assign(false, 0, 1);
