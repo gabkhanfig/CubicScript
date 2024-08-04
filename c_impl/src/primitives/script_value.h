@@ -88,11 +88,17 @@ typedef struct CubsInterfaceRef {
 } CubsInterfaceRef;
 
 typedef struct CubsConstRef {
-  void* _inner;
+    /// Safe to access. Should be cast to the appropriate type.
+    /// Should never be NULL. Nullable references must be wrapped in a `CubsOption`.
+    const void* ref;
+    const CubsTypeContext* context;
 } CubsConstRef;
 
 typedef struct CubsMutRef {
-  void* _inner;
+    /// Safe to access. Should be cast to the appropriate type.
+    /// Should never be NULL. Nullable references must be wrapped in a `CubsOption`.
+    void* ref;
+    const CubsTypeContext* context;
 } CubsMutRef;
 
 typedef struct CubsUnique {
