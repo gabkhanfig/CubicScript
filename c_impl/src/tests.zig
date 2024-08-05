@@ -21,6 +21,7 @@ comptime {
     _ = @import("primitives/error/error.zig");
     _ = @import("primitives/result/result.zig");
     _ = @import("primitives/sync_ptr/sync_ptr.zig");
+    _ = @import("primitives/reference/reference.zig");
     _ = @import("primitives/vector/vector.zig").Vec2i;
     _ = @import("primitives/vector/vector.zig").Vec3i;
     _ = @import("primitives/vector/vector.zig").Vec4i;
