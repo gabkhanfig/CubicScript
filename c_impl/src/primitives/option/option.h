@@ -1,8 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "../../c_basic_types.h"
 #include "../script_value.h"
 
 /// If `optionalValue != NULL`, takes ownership. Otherwise, this is a none option.

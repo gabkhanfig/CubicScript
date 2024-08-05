@@ -1,8 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "../../c_basic_types.h"
 #include "../script_value.h"
 
 /// Pass in 0 for `optionalTag` for a NULL metadata value.

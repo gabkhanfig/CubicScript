@@ -1,19 +1,6 @@
 #pragma once
 
-#ifndef __cplusplus
-
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
-
-#else
-
-#include <cstddef>
-#include <cstdint>
-using std::size_t;
-using std::int64_t;
-
-#endif
+#include "../c_basic_types.h"
 
 typedef struct CubsTypeContext CubsTypeContext;
 

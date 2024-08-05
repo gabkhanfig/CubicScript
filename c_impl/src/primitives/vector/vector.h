@@ -1,8 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "../../c_basic_types.h"
 #include "../script_value.h"
 
 CubsVec2i cubs_vec2i_add(const CubsVec2i* self, const CubsVec2i* vec);

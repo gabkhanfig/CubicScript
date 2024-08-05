@@ -1,13 +1,6 @@
 #pragma once
 
-#ifndef __cplusplus
-
-#include <stddef.h>
-#include <stdbool.h>
-#include <stdint.h>
-
-#endif
-
+#include "../../c_basic_types.h"
 #include "../script_value.h"
 
 /// Is true if they share the same reference, or the different references hold the same value.
