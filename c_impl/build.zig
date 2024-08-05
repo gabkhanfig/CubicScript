@@ -113,6 +113,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/primitives/error/error.c",
     "src/primitives/result/result.c",
     "src/primitives/sync_ptr/sync_ptr.c",
+    "src/primitives/reference/reference.c",
     "src/primitives/vector/vector.c",
 };
 
