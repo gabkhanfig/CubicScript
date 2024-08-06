@@ -2,6 +2,10 @@
 
 #include "../script_value.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// Copies the memory at `value`.
 CubsUnique cubs_unique_init(void* value, const CubsTypeContext* context);
 
@@ -125,3 +129,7 @@ CubsWeak cubs_weak_clone(const CubsWeak* self);
 /// Checks if `self` and `other` hold the same weak reference. If the two
 /// have the same value, but different weak references, this returns false.
 bool cubs_weak_eql(const CubsWeak* self, const CubsWeak* other);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

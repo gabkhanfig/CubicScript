@@ -5,6 +5,10 @@
 #include <stddef.h>
 #include "program_runtime_error.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct CubsProgram {
     void* _inner;
 } CubsProgram;
@@ -41,3 +45,7 @@ typedef struct CubsProgramInitParams {
 CubsProgram cubs_program_init(CubsProgramInitParams params);
 
 void cubs_program_deinit(CubsProgram* self);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

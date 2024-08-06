@@ -3,6 +3,10 @@
 #include "../../c_basic_types.h"
 #include "../script_value.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 CubsVec2i cubs_vec2i_add(const CubsVec2i* self, const CubsVec2i* vec);
 
 CubsVec2i cubs_vec2i_add_scalar(const CubsVec2i* self, int64_t scalar);
@@ -111,3 +115,7 @@ CubsVec4f cubs_vec4f_div(const CubsVec4f* self, const CubsVec4f* vec);
 CubsVec4f cubs_vec4f_div_scalar(const CubsVec4f* self, double scalar);
 
 double cubs_vec4f_dot(const CubsVec4f* self, const CubsVec4f* vec);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

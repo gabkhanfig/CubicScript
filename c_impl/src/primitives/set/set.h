@@ -19,6 +19,10 @@ typedef struct CubsSetReverseIter {
 
 //CubsSet cubs_set_init_primitive(CubsValueTag tag);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// Does not allocate any memory, just zeroes and sets the context.
 CubsSet cubs_set_init(const CubsTypeContext* context);
 
@@ -51,3 +55,7 @@ CubsSetReverseIter cubs_set_reverse_iter_begin(const CubsSet* self);
 CubsSetReverseIter cubs_set_reverse_iter_end(const CubsSet* self);
 
 bool cubs_set_reverse_iter_next(CubsSetReverseIter* iter);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

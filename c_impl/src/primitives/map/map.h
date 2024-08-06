@@ -41,6 +41,10 @@ typedef struct CubsMapReverseMutIter {
     void* value;
 } CubsMapReverseMutIter;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag);
 
 CubsMap cubs_map_init(const CubsTypeContext* keyContext, const CubsTypeContext* valueContext);
@@ -101,3 +105,7 @@ CubsMapReverseMutIter cubs_map_reverse_mut_iter_begin(CubsMap* self);
 CubsMapReverseMutIter cubs_map_reverse_mut_iter_end(CubsMap* self);
 
 bool cubs_map_reverse_mut_iter_next(CubsMapReverseMutIter* iter);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

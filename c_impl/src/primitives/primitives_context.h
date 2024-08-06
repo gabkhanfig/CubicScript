@@ -2,6 +2,10 @@
 
 #include "context.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern const CubsTypeContext CUBS_BOOL_CONTEXT;
 extern const CubsTypeContext CUBS_INT_CONTEXT;
 extern const CubsTypeContext CUBS_FLOAT_CONTEXT;
@@ -15,3 +19,7 @@ extern const CubsTypeContext CUBS_RESULT_CONTEXT;
 extern const CubsTypeContext CUBS_UNIQUE_CONTEXT;
 extern const CubsTypeContext CUBS_SHARED_CONTEXT;
 extern const CubsTypeContext CUBS_WEAK_CONTEXT;
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

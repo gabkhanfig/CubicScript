@@ -3,6 +3,10 @@
 #include "../../c_basic_types.h"
 #include "../script_value.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// If `optionalValue != NULL`, takes ownership. Otherwise, this is a none option.
 //CubsOption cubs_option_init_primitive(CubsValueTag tag, void* optionalValue);
 
@@ -31,3 +35,7 @@ void cubs_option_take(void* out, CubsOption* self);
 bool cubs_option_eql(const CubsOption* self, const CubsOption* other);
 
 size_t cubs_option_hash(const CubsOption* self);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

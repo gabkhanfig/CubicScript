@@ -3,6 +3,10 @@
 #include "../../c_basic_types.h"
 #include "../script_value.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// Pass in 0 for `optionalTag` for a NULL metadata value.
 /// Takes ownership of the memory at `optionalMetadata` if non-null.
 /// Creates a buffer to store the memory of `optionalMetadata` in.
@@ -27,3 +31,7 @@ void cubs_error_take_metadata(void* out, CubsError* self);
 bool cubs_error_eql(const CubsError* self, const CubsError* other); // TODO should equality comparison take into account metadata, or just error name?
 
 size_t cubs_error_hash(const CubsError* self); // TODO should hash take into account metadata, or just error name?
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
