@@ -8,7 +8,6 @@ namespace cubs {
 }
 
 #include <type_traits>
-#include "array/array.hpp"
 
 namespace cubs {
     namespace detail {
@@ -30,15 +29,17 @@ namespace cubs {
     }
 
     template<typename T>
-    inline const TypeContext* autoTypeContext() {
+    inline const TypeContext* autoTypeContext() {      
         if constexpr (std::is_same<T, bool>::value) {
-            return &CUBS_BOOL_CONTEXT;
+            return &detail::CUBS_BOOL_CONTEXT;
         } else if constexpr (std::is_same<T, int64_t>::value) {
-            return &CUBS_INT_CONTEXT;
+            return &detail::CUBS_INT_CONTEXT;
         } else if constexpr (std::is_same<T, double>::value) {
-            return &CUBS_FLOAT_CONTEXT;
+            return &detail::CUBS_FLOAT_CONTEXT;
         } else if constexpr (detail::_has_user_defined_context_v<T>) {
             return T::scriptTypeContext();
         }
+        
+        
     }
 } // namespace cubs

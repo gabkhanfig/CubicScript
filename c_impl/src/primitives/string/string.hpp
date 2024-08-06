@@ -4,7 +4,6 @@
 #include "../script_value.hpp"
 #include <assert.h>
 #include <iostream>
-#include "../context.hpp"
 
 namespace cubs {
     namespace detail {
@@ -59,7 +58,7 @@ namespace cubs {
         }
 
         static const TypeContext* scriptTypeContext() {
-            return reinterpret_cast<const TypeContext*>(&CUBS_STRING_CONTEXT);
+            return &detail::CUBS_STRING_CONTEXT;
         }
 
         size_t len() const {

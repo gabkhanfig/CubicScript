@@ -2,15 +2,17 @@
 
 #include <cstddef>
 #include <cstdint>
-#include "primitives_context.h"
-
 namespace cubs {
     namespace detail {
+        #include "context.h"
         #include "script_value.h"
+        extern "C" {
+            #include "primitives_context.h"
+        }
     }
     /// See `autoTypeContext<T>()` to automatically create one for a type.
     
-    typedef ::CubsTypeContext TypeContext;
+    typedef detail::CubsTypeContext TypeContext;
 
     // template<typename T>
     // const TypeContext* autoTypeContext();
