@@ -23,6 +23,10 @@ typedef struct CubsSyncObject {
     const CubsSyncObjectVTable* vtable;
 } CubsSyncObject;
 
+#if __cplusplus
+extern "C" {
+#endif
+
 void cubs_sync_queue_lock();
 
 bool cubs_sync_queue_try_lock();
@@ -48,3 +52,7 @@ void cubs_sync_queue_shared_add_shared(const struct CubsShared* shared);
 void cubs_sync_queue_weak_add_exclusive(struct CubsWeak* weak);
 
 void cubs_sync_queue_weak_add_shared(const struct CubsWeak* weak);
+
+#if __cplusplus
+}
+#endif
