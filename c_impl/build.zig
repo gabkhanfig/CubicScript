@@ -7,7 +7,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const cubic_script = b.addModule("cubic_script", .{ .root_source_file = .{ .path = "src/root.zig" } });
+    const cubic_script = b.addModule("cubic_script", .{ .root_source_file = .{ .cwd_relative = "src/root.zig" } });
     cubic_script.link_libc = true;
 
     cubic_script.addCMacro(CUBS_USING_ZIG_ALLOCATOR, "1");
@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) void {
     { //* static/shared library
         const lib = b.addSharedLibrary(.{
             .name = "CubicScript",
-            .root_source_file = .{ .path = "src/lib.zig" },
+            .root_source_file = .{ .cwd_relative = "src/lib.zig" },
             .target = target,
             .optimize = optimize,
         });
@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) void {
 
     { //* tests
         const lib_unit_tests = b.addTest(.{
-            .root_source_file = .{ .path = "src/tests.zig" },
+            .root_source_file = .{ .cwd_relative = "src/tests.zig" },
             .target = target,
             .optimize = optimize,
         });
@@ -71,7 +71,7 @@ pub fn build(b: *std.Build) void {
     { //* executable for debug purposes
         const exe = b.addExecutable(.{
             .name = "CubicScript",
-            .root_source_file = .{ .path = "src/main.zig" },
+            .root_source_file = .{ .cwd_relative = "src/main.zig" },
             .target = target,
             .optimize = optimize,
         });

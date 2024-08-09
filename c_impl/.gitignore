@@ -1,6 +1,6 @@
 .vs
 .vscode
-zig-cache
+.zig-cache
 zig-out
 out
 CMakeFiles
