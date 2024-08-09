@@ -27,7 +27,8 @@ bool _cubs_simd_index_of_first_zero_8bit_32wide_aligned(size_t *out, const uint8
     *out = (size_t)index;
     return true;
     #else
-    _Static_assert(false, "first zero not implemented for target architecture");
+    //_Static_assert(false, "first zero not implemented for target architecture");
+    return false;
     #endif
     return false;
 }
@@ -43,7 +44,8 @@ uint32_t _cubs_simd_cmpeq_mask_8bit_32wide_aligned(uint8_t value, const uint8_t 
     int mask = _mm256_movemask_epi8(result);
     return (uint32_t)mask;
     #else
-    _Static_assert(false, "cmpeq mask not implemented for target architecture");
+    //_Static_assert(false, "cmpeq mask not implemented for target architecture");
+    return 0;
     #endif
 }
 
@@ -71,7 +73,10 @@ bool _cubs_simd_cmpeq_strings(const char *buffer, const char *otherBuffer, size_
     }
     return true;
     #else
-    _Static_assert(false, "string equality not implemented for target architecture");
+    for(size_t i = 0; i < len; i++) {
+        if(buffer[i] != otherBuffer[i]) return false;
+    }
+    return true;
     #endif
 }
 
@@ -103,7 +108,10 @@ bool _cubs_simd_cmpeq_string_slice(const char *buffer, const char *slicePtr, siz
     }
     return true;
     #else
-    _Static_assert(false, "string and slice equality not implemented for target architecture");
+    for(size_t i = 0; i < sliceLen; i++) {
+        if(buffer[i] != slicePtr[i]) return false;
+    }
+    return true;
     #endif
 }
 
@@ -121,7 +129,7 @@ static __m256i string_hash_iteration(const __m256i* vec, char num) {
 	return _mm256_add_epi8(partial, numVec);
 }
 #else
-_Static_assert(false, "string hash not implemented for target architecture");
+//_Static_assert(false, "string hash not implemented for target architecture");
 #endif
 
 
@@ -146,8 +154,10 @@ h ^= h >> HASH_SHIFT;\
 h *= HASH_MODIFIER;\
 h ^= h >> HASH_SHIFT
 
+#include <stdio.h>
+
 size_t _cubs_simd_string_hash_sso(const char *ssoBuffer, size_t len)
-{  
+{
     HASH_INIT();
 
     #if __AVX2__
@@ -161,7 +171,12 @@ size_t _cubs_simd_string_hash_sso(const char *ssoBuffer, size_t len)
     HASH_MERGE();
 
     #else
-    _Static_assert(false, "string hash not implemented for target architecture");
+    // TODO actual hash
+    h = cubs_combine_hash(h, len);
+    for(size_t i = 0; i < len; i++) {
+        const size_t modify = (size_t)ssoBuffer[i];
+        h = cubs_combine_hash(modify << (8 * (i & 7)), h);
+    }
     #endif
 	
     HASH_END();
@@ -191,7 +206,12 @@ size_t _cubs_simd_string_hash_heap(const char *heapBuffer, size_t len)
 	}
 
     #else
-    _Static_assert(false, "string hash not implemented for target architecture");
+    // TODO actual hash
+    h = cubs_combine_hash(h, len);
+    for(size_t i = 0; i < len; i++) {
+        const size_t modify = (size_t)heapBuffer[i];
+        h = cubs_combine_hash(modify << (8 * (i & 7)), h);
+    }
     #endif
 
     HASH_END();
