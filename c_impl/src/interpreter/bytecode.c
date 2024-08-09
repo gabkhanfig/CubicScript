@@ -104,7 +104,7 @@ Bytecode operands_make_add_assign(bool canOverflow, uint16_t src1, uint16_t src2
     assert(src1 <= MAX_FRAME_LENGTH);
     assert(src2 <= MAX_FRAME_LENGTH);
 
-    _Alignas(_Alignof(Bytecode)) const OperandsAddAssign operands = {.reserveOpcode = OpCodeAdd, .opType = MATH_TYPE_DST, .canOverflow = canOverflow, .src1 = src1, .src2 = src2};    
+    _Alignas(_Alignof(Bytecode)) const OperandsAddAssign operands = {.reserveOpcode = OpCodeAdd, .opType = MATH_TYPE_SRC_ASSIGN, .canOverflow = canOverflow, .src1 = src1, .src2 = src2};    
     const Bytecode b = *(const Bytecode*)&operands;
     return b;
 }
