@@ -72,10 +72,17 @@ void cubs_rwlock_unlock_exclusive(CubsRwLock* self)
 
 #include <pthread.h>
 
-void cubs_mutex_init(CubsMutex* rwlockToInit)
+_Static_assert(sizeof(CubsMutex) == sizeof(pthread_mutex_t), "The size of pthread_rwlock_t must be the same size as CubsRwLock");
+_Static_assert(_Alignof(CubsMutex) == _Alignof(pthread_mutex_t), "The alignment of pthread_rwlock_t must be the same as CubsRwLock");
+
+void cubs_mutex_init(CubsMutex* mutexToInit)
 {
-	assert(pthread_mutex_init((pthread_mutex_t*)rwlockToInit, NULL) == 0);
+	*mutexToInit = CUBS_MUTEX_INITIALIZER;
 }
+
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
 
 void cubs_mutex_lock(CubsMutex* self)
 {
@@ -92,8 +99,8 @@ void cubs_mutex_unlock(CubsMutex* self)
 	assert(pthread_mutex_unlock((pthread_mutex_t*)self) == 0);
 }
 
-_Static_assert(sizeof(CubsRwLock) == sizeof(pthread_rwlock_t), "For GCC, the size of pthread_rwlock_t must be the same size as CubsRwLock");
-_Static_assert(_Alignof(CubsRwLock) == _Alignof(pthread_rwlock_t), "For GCC, the alignment of pthread_rwlock_t must be the same as CubsRwLock");
+_Static_assert(sizeof(CubsRwLock) == sizeof(pthread_rwlock_t), "The size of pthread_rwlock_t must be the same size as CubsRwLock");
+_Static_assert(_Alignof(CubsRwLock) == _Alignof(pthread_rwlock_t), "The alignment of pthread_rwlock_t must be the same as CubsRwLock");
 
 void cubs_rwlock_init(CubsRwLock* rwlockToInit)
 {

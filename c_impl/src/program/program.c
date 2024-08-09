@@ -60,6 +60,7 @@ CubsProgram cubs_program_init(CubsProgramInitParams params)
     const Inner innerData = {.context = context, .contextMutex = {0}};
     Inner* inner = cubs_malloc(INNER_ALLOC_SIZE, INNER_ALLOC_ALIGN);
     *inner = innerData;
+    inner->contextMutex = CUBS_MUTEX_INITIALIZER;
 
     const CubsProgram program = {._inner = (void*)inner};
     return program;

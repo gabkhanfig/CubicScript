@@ -14,12 +14,19 @@ typedef union CubsRwLock {
 
 #elif __GNUC__
 
-#include <bits/pthreadtypes-arch.h>
+#if __APPLE__
+
+#include <pthread.h>
+
+typedef union CubsMutex {
+    struct _opaque_pthread_mutex_t mutex;
+} CubsMutex;
 
 typedef union CubsRwLock {
-    char __size[__SIZEOF_PTHREAD_RWLOCK_T]; // copied directly from pthread_rwlock_t
-    long int __align;
+    struct _opaque_pthread_rwlock_t rwlock;
 } CubsRwLock;
+
+#else // __APPLE__
 
 #include <bits/pthreadtypes-arch.h>
 
@@ -28,6 +35,20 @@ typedef union CubsMutex {
     long int __align;
 } CubsMutex;
 
+typedef union CubsRwLock {
+    char __size[__SIZEOF_PTHREAD_RWLOCK_T]; // copied directly from pthread_rwlock_t
+    long int __align;
+} CubsRwLock;
+
+#endif // APPLE
+#endif // WIN32 / GNUC
+
+#if __APPLE__
+static const CubsMutex CUBS_MUTEX_INITIALIZER = {PTHREAD_MUTEX_INITIALIZER}; 
+static const CubsRwLock CUBS_RWLOCK_INITIALIZER = {PTHREAD_RWLOCK_INITIALIZER};
+#else
+static const CubsMutex CUBS_MUTEX_INITIALIZER = {0}; 
+static const CubsRwLock CUBS_RWLOCK_INITIALIZER = {0}; 
 #endif
 
 void cubs_mutex_init(CubsMutex* mutexToInit);

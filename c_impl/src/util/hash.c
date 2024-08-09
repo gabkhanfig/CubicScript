@@ -16,8 +16,9 @@ typedef struct {
     CubsMutex mutex;
 } AtomicSeedData;
 
+
 /// Aligned for cache line
-_Alignas(64) AtomicSeedData ATOMIC_SEED = {0};
+_Alignas(64) AtomicSeedData ATOMIC_SEED = { 0, CUBS_MUTEX_INITIALIZER};
 
 size_t cubs_hash_seed()
 {

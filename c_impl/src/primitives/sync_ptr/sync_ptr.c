@@ -59,7 +59,7 @@ static RefHeader* header_init(bool isShared, size_t sizeOfType) {
     headerData.isExpired.flag = false;
     headerData.isShared = isShared;
     *header = headerData;
-    cubs_rwlock_init(&header->lock);
+    header->lock = CUBS_RWLOCK_INITIALIZER;
     return header;
 }
 
