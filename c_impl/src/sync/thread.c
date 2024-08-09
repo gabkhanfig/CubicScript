@@ -88,7 +88,7 @@ CubsThread cubs_thread_spawn(bool closeWithScript)
 
 #endif // WIN32
 
-#if __unix__
+#if (defined __unix__) || (defined __APPLE__)
 
 #include <pthread.h>
 #include <sched.h>
