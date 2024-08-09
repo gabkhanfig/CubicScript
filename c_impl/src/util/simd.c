@@ -27,10 +27,14 @@ bool _cubs_simd_index_of_first_zero_8bit_32wide_aligned(size_t *out, const uint8
     *out = (size_t)index;
     return true;
     #else
-    //_Static_assert(false, "first zero not implemented for target architecture");
+    for(size_t i = 0; i < 32; i++) {
+        if(alignedPtr[i] == 0) {
+            *out = i;
+            return true;
+        }
+    }
     return false;
     #endif
-    return false;
 }
 
 uint32_t _cubs_simd_cmpeq_mask_8bit_32wide_aligned(uint8_t value, const uint8_t *alignedCompare)
@@ -44,8 +48,13 @@ uint32_t _cubs_simd_cmpeq_mask_8bit_32wide_aligned(uint8_t value, const uint8_t 
     int mask = _mm256_movemask_epi8(result);
     return (uint32_t)mask;
     #else
-    //_Static_assert(false, "cmpeq mask not implemented for target architecture");
-    return 0;
+    uint32_t out = 0;
+    for(size_t i = 0; i < 32; i++) {
+        if(alignedCompare[i] == value) {
+            out |= (1U << i);
+        }
+    }
+    return out;
     #endif
 }
 
