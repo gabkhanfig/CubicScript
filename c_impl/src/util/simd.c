@@ -7,6 +7,8 @@
 
 #if __AVX2__
 #include <immintrin.h>
+#elif __ARM_NEON__
+#include <arm_neon.h>
 #endif
 
 #define assert_aligned(ptr, alignment) assert((((uintptr_t)ptr) % alignment == 0) && "Pointer not properly aligned");
@@ -20,6 +22,24 @@ bool _cubs_simd_index_of_first_zero_8bit_32wide_aligned(size_t *out, const uint8
     const __m256i buf = *(const __m256i*)alignedPtr;
     const __m256i result = _mm256_cmpeq_epi8(zeroVec, buf);
     int resultMask = _mm256_movemask_epi8(result);
+    uint32_t index;
+    if(!countTrailingZeroes32(&index, resultMask)) {
+        return false;
+    }
+    *out = (size_t)index;
+    return true;
+    #elif __ARM_NEON__
+    uint32_t resultMask = 0;
+    for(int i = 0; i < 2; i++) {
+        const uint8x16_t zeroVec = {0};
+        const uint8x16_t buf = *(const uint8x16_t*)(&alignedPtr[i * 16]);
+        const uint8x16_t result = vceqq_u8(zeroVec, buf);
+        for(int n = 0; n < 16; n++) { // TODO non scalar mask
+            const int offset = (i * 16) + n;
+            const bool isSet = (bool)(((const uint8_t*)&result)[n]);
+            resultMask |= (((uint32_t)isSet) << offset); 
+        }
+    } 
     uint32_t index;
     if(!countTrailingZeroes32(&index, resultMask)) {
         return false;
