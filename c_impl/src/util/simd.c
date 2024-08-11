@@ -67,7 +67,7 @@ uint32_t _cubs_simd_cmpeq_mask_8bit_32wide_aligned(uint8_t value, const uint8_t 
     const __m256i result = _mm256_cmpeq_epi8(valueToFind, bufferToSearch);
     int mask = _mm256_movemask_epi8(result);
     return (uint32_t)mask;
-    #else
+    #else // good enough for ARM for now
     uint32_t out = 0;
     for(size_t i = 0; i < 32; i++) {
         if(alignedCompare[i] == value) {
@@ -94,9 +94,30 @@ bool _cubs_simd_cmpeq_strings(const char *buffer, const char *otherBuffer, size_
         const __m256i result = _mm256_cmpeq_epi8(*thisVec, *otherVec);
         const int mask = _mm256_movemask_epi8(result);
         if(mask == (int)~0) {
-        thisVec++;
-        otherVec++;
-        continue;
+            thisVec++;
+            otherVec++;
+            continue;
+        }
+        return false;
+    }
+    return true;
+    #elif __ARM_NEON__
+    const uint8x16_t* thisVec = (const uint8x16_t*)buffer;
+    const uint8x16_t* otherVec = (const uint8x16_t*)otherBuffer;
+
+    const size_t remainder = (len + 1) % 16;
+    const size_t bytesToCheck = remainder ? ((len + 1) + (16 - remainder)) : len + 1;
+    for(size_t i = 0; i < bytesToCheck; i += 16) {
+        const uint8x16_t result = vceqq_u8(*thisVec, *otherVec);
+        int resultMask = 0;
+        for(int n = 0; n < 16; n++) { // TODO non scalar mask
+            const bool isSet = (bool)(((const uint8_t*)&result)[n]);
+            resultMask |= (((uint32_t)isSet) << n); 
+        }
+        if(resultMask == 0xFFFF) { // 16 bits at a time
+            thisVec++;
+            otherVec++;
+            continue;    
         }
         return false;
     }
