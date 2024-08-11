@@ -231,10 +231,57 @@ h ^= h >> HASH_SHIFT;\
 h *= HASH_MODIFIER;\
 h ^= h >> HASH_SHIFT
 
-#include <stdio.h>
+static size_t murmurHash64A(const char* key, size_t len, size_t seed)
+{
+  const uint64_t m = 0xc6a4a7935bd1e995LLU;
+  const int r = 47;
 
+  uint64_t h = seed ^ (len * m);
+
+  const uint64_t * data = (const uint64_t *)key;
+  const uint64_t * end = (len >> 3) + data;
+
+  while(data != end)
+  {
+    uint64_t k = *data++;
+
+    k *= m; 
+    k ^= k >> r; 
+    k *= m; 
+    
+    h ^= k;
+    h *= m; 
+  }
+
+  const unsigned char * data2 = (const unsigned char *)data;
+
+  switch(len & 7)
+  {
+  case 7: h ^= (uint64_t)(data2[6]) << 48;
+  case 6: h ^= (uint64_t)(data2[5]) << 40;
+  case 5: h ^= (uint64_t)(data2[4]) << 32;
+  case 4: h ^= (uint64_t)(data2[3]) << 24;
+  case 3: h ^= (uint64_t)(data2[2]) << 16;
+  case 2: h ^= (uint64_t)(data2[1]) << 8;
+  case 1: h ^= (uint64_t)(data2[0]);
+          h *= m;
+  };
+ 
+  h ^= h >> r;
+  h *= m;
+  h ^= h >> r;
+
+  return h;
+}
+
+#if __ARM_NEON__
+size_t _cubs_simd_string_hash_sso(const char *ssoBuffer, size_t len) {
+    return murmurHash64A(ssoBuffer, len, cubs_hash_seed());
+}
+#else
 size_t _cubs_simd_string_hash_sso(const char *ssoBuffer, size_t len)
 {
+    
     HASH_INIT();
 
     #if __AVX2__
@@ -260,7 +307,13 @@ size_t _cubs_simd_string_hash_sso(const char *ssoBuffer, size_t len)
 
     return h;
 }
+#endif
 
+#if __ARM_NEON__
+size_t _cubs_simd_string_hash_heap(const char *heapBuffer, size_t len) {
+    return murmurHash64A(heapBuffer, len, cubs_hash_seed());
+}
+#else
 size_t _cubs_simd_string_hash_heap(const char *heapBuffer, size_t len)
 {
     assert_aligned(heapBuffer, 32);
@@ -294,3 +347,4 @@ size_t _cubs_simd_string_hash_heap(const char *heapBuffer, size_t len)
     HASH_END();
     return h;
 }
+#endif
