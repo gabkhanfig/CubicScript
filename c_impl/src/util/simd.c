@@ -157,6 +157,33 @@ bool _cubs_simd_cmpeq_string_slice(const char *buffer, const char *slicePtr, siz
         if(buffer[i] != slicePtr[i]) return false;
     }
     return true;
+    #elif __ARM_NEON__
+    const uint8x16_t* thisVec = (const uint8x16_t*)buffer;
+    uint8x16_t otherVec;
+
+    size_t i = 0;
+    if(sliceLen >= 16) {
+        for(; i <= (sliceLen - 16); i += 16) {
+            memcpy(&otherVec, slicePtr + i, 16);
+            const uint8x16_t result = vceqq_u8(*thisVec, otherVec);
+            int resultMask = 0;
+            for(int n = 0; n < 16; n++) { // TODO non scalar mask
+                const bool isSet = (bool)(((const uint8_t*)&result)[n]);
+                resultMask |= (((uint32_t)isSet) << n); 
+            }
+            if(resultMask == 0xFFFF) { // 16 bits at a time
+                thisVec++;
+                continue;    
+            }
+            return false;
+        }
+    }
+
+    for(; i < sliceLen; i++) {
+        if(buffer[i] != slicePtr[i]) return false;
+    }
+    return true;
+
     #else
     for(size_t i = 0; i < sliceLen; i++) {
         if(buffer[i] != slicePtr[i]) return false;
