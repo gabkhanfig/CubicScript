@@ -36,7 +36,7 @@ typedef struct InterpreterStackState {
     size_t nextBaseOffset;
     InterpreterStackFrame frame;
     size_t stack[CUBS_STACK_SLOTS];
-    const CubsTypeContext* contexts[CUBS_STACK_SLOTS];
+    uintptr_t contexts[CUBS_STACK_SLOTS];
 } InterpreterStackState;
 
 static _Thread_local InterpreterStackState threadLocalStack = {0};
@@ -108,10 +108,17 @@ void *cubs_interpreter_stack_value_at(size_t offset)
 const CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset)
 {
     assert(offset < threadLocalStack.frame.frameLength);
-    uintptr_t contextPtr = (uintptr_t)threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
+    uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
     // Mask away the ref tag bit
     const CubsTypeContext* context = (const CubsTypeContext*)(contextPtr & ~(1ULL));
     return context;
+}
+
+static bool is_owning_context_at(size_t offset) {
+    assert(offset < threadLocalStack.frame.frameLength);
+    uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
+
+    return (contextPtr & 1ULL) == 0;
 }
 
 static void stack_set_context_at(size_t offset, const CubsTypeContext* context, bool isReference) {
@@ -123,10 +130,10 @@ static void stack_set_context_at(size_t offset, const CubsTypeContext* context, 
     uintptr_t contextPtr = (uintptr_t)context;
     uintptr_t refTag = (uintptr_t)isReference;
     
-    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset] = (const CubsTypeContext*)(contextPtr | refTag);
+    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset] = contextPtr | refTag;
     if(context->sizeOfType > 8) {
         for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + i] = NULL;
+            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + i] = 0; // (uintptr_t)NULL
         }
     }
 }
