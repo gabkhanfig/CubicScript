@@ -41,6 +41,48 @@ test "nested push frame" {
     }
 }
 
+test "unwind" {
+    const frameLength = 10;
+    { // all null
+        c.cubs_interpreter_push_frame(frameLength, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        for (0..frameLength) |i| {
+            c.cubs_interpreter_stack_set_null_context_at(i);
+        }
+
+        c.cubs_interpreter_stack_unwind_frame();
+    }
+    { // one int
+        c.cubs_interpreter_push_frame(frameLength, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        for (0..frameLength) |i| {
+            c.cubs_interpreter_stack_set_null_context_at(i);
+        }
+
+        @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = 10;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+
+        c.cubs_interpreter_stack_unwind_frame();
+    }
+    { // one heap string (must explicitly deallocate)
+        c.cubs_interpreter_push_frame(frameLength, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        for (0..frameLength) |i| {
+            c.cubs_interpreter_stack_set_null_context_at(i);
+        }
+
+        const str = "holy guacamole i am a decently long string on the heap";
+        @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = c.cubs_string_init_unchecked(.{ .str = str.ptr, .len = str.len });
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+
+        // If unwinding doesn't work properly, a memory leak will be detected by the test runner
+        c.cubs_interpreter_stack_unwind_frame();
+    }
+}
+
 fn ScriptContextTestRuntimeError(comptime errTag: c.CubsProgramRuntimeError) type {
     return struct {
         fn init(shouldExpectError: bool) c.CubsProgramContext {

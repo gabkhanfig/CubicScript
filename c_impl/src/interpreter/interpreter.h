@@ -31,6 +31,10 @@ void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldI
 /// Operates on the calling thread's interpreter stack.
 void cubs_interpreter_pop_frame();
 
+/// Unwinds the current stack frame, deinitializing all objects.
+/// Does not pop the frame.
+void cubs_interpreter_stack_unwind_frame();
+
 InterpreterStackFrame cubs_interpreter_current_stack_frame();
  
 /// `offset` is an offset from the start of the current stack frame (excluding reserved slots) from as intervals of 8 bytes
@@ -46,6 +50,8 @@ void cubs_interpreter_stack_set_context_at(size_t offset, const struct CubsTypeC
 /// This is mostly for dereferencing temporaries, as when the stack unwinds, the value will not be deinitialized.
 /// If `context->sizeOfType > sizeof(size_t)`, fills the following contexts to NULL.
 void cubs_interpreter_stack_set_reference_context_at(size_t offset, const struct CubsTypeContext* context);
+
+void cubs_interpreter_stack_set_null_context_at(size_t offset);
 
 void cubs_interpreter_set_instruction_pointer(const struct Bytecode* newIp);
 

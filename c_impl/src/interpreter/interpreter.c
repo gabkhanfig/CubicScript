@@ -20,7 +20,7 @@
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
 
-static size_t ptr_is_aligned(const void* p, size_t alignment) {
+static bool ptr_is_aligned(const void* p, size_t alignment) {
     return (((uintptr_t)p) % alignment) == 0;
 }
 
@@ -138,6 +138,24 @@ static void stack_set_context_at(size_t offset, const CubsTypeContext* context, 
     }
 }
 
+void cubs_interpreter_stack_unwind_frame() {
+    uintptr_t* start = &threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + RESERVED_SLOTS];
+    for(size_t i = 0; i < threadLocalStack.frame.frameLength; i++) {
+        const CubsTypeContext* context = cubs_interpreter_stack_context_at(i);
+        const bool isOwningContext = is_owning_context_at(i);
+        if(context == NULL || !isOwningContext) {
+            continue;
+        }
+        if(context->destructor == NULL) {
+            continue;
+        }
+        context->destructor(cubs_interpreter_stack_value_at(i));
+        // While technically it makes the most sense to set to NULL earlier, since nothing gets executed if the type has no destructor,
+        // leaving a previous context for a "dumb" type, such as an integer, is fine.
+        cubs_interpreter_stack_set_null_context_at(i); // set context to NULL
+    }
+}
+
 void cubs_interpreter_stack_set_context_at(size_t offset, const CubsTypeContext* context)
 {
     stack_set_context_at(offset, context, false);
@@ -146,6 +164,11 @@ void cubs_interpreter_stack_set_context_at(size_t offset, const CubsTypeContext*
 void cubs_interpreter_stack_set_reference_context_at(size_t offset, const CubsTypeContext *context)
 {
     stack_set_context_at(offset, context, true);
+}
+
+void cubs_interpreter_stack_set_null_context_at(size_t offset)
+{
+    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS] = 0;
 }
 
 void cubs_interpreter_set_instruction_pointer(const Bytecode *newIp)
