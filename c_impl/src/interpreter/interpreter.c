@@ -102,13 +102,13 @@ InterpreterStackFrame cubs_interpreter_current_stack_frame()
 void *cubs_interpreter_stack_value_at(size_t offset)
 {
     assert(offset < threadLocalStack.frame.frameLength);
-    return (void*)(&threadLocalStack.stack[threadLocalStack.frame.basePointerOffset + offset]);
+    return (void*)(&threadLocalStack.stack[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS]);
 }
 
 const CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset)
 {
     assert(offset < threadLocalStack.frame.frameLength);
-    uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
+    uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
     // Mask away the ref tag bit
     const CubsTypeContext* context = (const CubsTypeContext*)(contextPtr & ~(1ULL));
     return context;
@@ -116,7 +116,7 @@ const CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset)
 
 static bool is_owning_context_at(size_t offset) {
     assert(offset < threadLocalStack.frame.frameLength);
-    uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
+    uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
 
     return (contextPtr & 1ULL) == 0;
 }
@@ -130,10 +130,10 @@ static void stack_set_context_at(size_t offset, const CubsTypeContext* context, 
     uintptr_t contextPtr = (uintptr_t)context;
     uintptr_t refTag = (uintptr_t)isReference;
     
-    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset] = contextPtr | refTag;
+    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS] = contextPtr | refTag;
     if(context->sizeOfType > 8) {
         for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + i] = 0; // (uintptr_t)NULL
+            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset  + RESERVED_SLOTS + i] = 0; // (uintptr_t)NULL
         }
     }
 }
