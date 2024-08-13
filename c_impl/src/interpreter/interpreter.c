@@ -357,7 +357,13 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
 static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Bytecode* bytecode) {
     const OperandsAddUnknown unknownOperands = *(const OperandsAddUnknown*)bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src1);
-    assert(cubs_interpreter_stack_context_at(unknownOperands.src2) == context);
+    #ifdef _DEBUG
+    if(cubs_interpreter_stack_context_at(unknownOperands.src2) != context) {
+        fprintf(stderr, "Mistmatched contexts found...\n\t%s\n\t%s\n", context->name, cubs_interpreter_stack_context_at(unknownOperands.src2)->name);
+        fflush(stderr);
+        cubs_panic("Mismatched contexts");
+    }
+    #endif
 
     void* src1 = cubs_interpreter_stack_value_at(unknownOperands.src1);
     const void* src2 = cubs_interpreter_stack_value_at(unknownOperands.src2);
@@ -401,6 +407,16 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
             cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_FLOAT_CONTEXT);
         } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
             *(double*)src1 = result;
+        }
+    } else if(context == &CUBS_STRING_CONTEXT) {
+        const CubsString result = cubs_string_concat((const CubsString*)src1, (const CubsString*)src2);
+        if(unknownOperands.opType == MATH_TYPE_DST) {
+            const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
+            *(CubsString*)(cubs_interpreter_stack_value_at(dstOperands.dst)) = result;
+            cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_STRING_CONTEXT);
+        } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
+            cubs_string_deinit((CubsString*)src1); // deinitialize the string first, freeing any used resources
+            *(CubsString*)src1 = result;
         }
     } else {
         unreachable();

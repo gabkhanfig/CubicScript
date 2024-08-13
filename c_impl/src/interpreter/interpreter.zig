@@ -415,3 +415,57 @@ test "add assign float" {
         std.math.floatEps(f64),
     ));
 }
+
+test "add dst string" {
+    c.cubs_interpreter_push_frame(12, null, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    const s1 = "hello? it is a pleasure to meet you.";
+    const s2 = " And it is a pleasure to meet you as well!";
+    const concat = s1 ++ s2;
+
+    var bytecode = c.operands_make_add_dst(false, 8, 0, 4);
+
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+    @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = c.cubs_string_init_unchecked(.{ .str = s1.ptr, .len = s1.len });
+    c.cubs_interpreter_stack_set_context_at(4, &c.CUBS_STRING_CONTEXT);
+    @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4)))).* = c.cubs_string_init_unchecked(.{ .str = s2.ptr, .len = s2.len });
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+    try expect(c.cubs_interpreter_stack_context_at(8) == &c.CUBS_STRING_CONTEXT);
+    try expect(c.cubs_string_eql_slice(
+        @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(8)))),
+        .{ .str = concat.ptr, .len = concat.len },
+    ));
+
+    c.cubs_interpreter_stack_unwind_frame();
+}
+
+test "add assign string" {
+    c.cubs_interpreter_push_frame(8, null, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    const s1 = "hello? it is a pleasure to meet you.";
+    const s2 = " And it is a pleasure to meet you as well!";
+    const concat = s1 ++ s2;
+
+    var bytecode = c.operands_make_add_assign(false, 0, 4);
+
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+    @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = c.cubs_string_init_unchecked(.{ .str = s1.ptr, .len = s1.len });
+    c.cubs_interpreter_stack_set_context_at(4, &c.CUBS_STRING_CONTEXT);
+    @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4)))).* = c.cubs_string_init_unchecked(.{ .str = s2.ptr, .len = s2.len });
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+    try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_STRING_CONTEXT);
+    try expect(c.cubs_string_eql_slice(
+        @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))),
+        .{ .str = concat.ptr, .len = concat.len },
+    ));
+
+    c.cubs_interpreter_stack_unwind_frame();
+}
