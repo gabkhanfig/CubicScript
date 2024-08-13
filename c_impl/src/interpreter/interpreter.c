@@ -20,6 +20,10 @@
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
 
+static size_t ptr_is_aligned(const void* p, size_t alignment) {
+    return (((uintptr_t)p) % alignment) == 0;
+}
+
 static const size_t OLD_INSTRUCTION_POINTER = 0;
 static const size_t OLD_FRAME_LENGTH = 1;
 static const size_t OLD_RETURN_VALUE_DST = 2;
@@ -104,21 +108,37 @@ void *cubs_interpreter_stack_value_at(size_t offset)
 const CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset)
 {
     assert(offset < threadLocalStack.frame.frameLength);
-    const CubsTypeContext* context = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
+    uintptr_t contextPtr = (uintptr_t)threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset];
+    // Mask away the ref tag bit
+    const CubsTypeContext* context = (const CubsTypeContext*)(contextPtr & ~(1ULL));
     return context;
 }
 
-void cubs_interpreter_stack_set_context_at(size_t offset, const CubsTypeContext* context)
-{
+static void stack_set_context_at(size_t offset, const CubsTypeContext* context, bool isReference) {
+    _Static_assert(_Alignof(CubsTypeContext) > 1, "Bottom bit needs to be free for internal use");
+    assert(ptr_is_aligned(context, _Alignof(CubsTypeContext)));
     assert(offset < threadLocalStack.frame.frameLength);
     assert((offset + context->sizeOfType) < ((threadLocalStack.frame.frameLength + 1) * sizeof(size_t)));
+
+    uintptr_t contextPtr = (uintptr_t)context;
+    uintptr_t refTag = (uintptr_t)isReference;
     
-    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset] = context;
+    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset] = (const CubsTypeContext*)(contextPtr | refTag);
     if(context->sizeOfType > 8) {
         for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
             threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + i] = NULL;
         }
     }
+}
+
+void cubs_interpreter_stack_set_context_at(size_t offset, const CubsTypeContext* context)
+{
+    stack_set_context_at(offset, context, false);
+}
+
+void cubs_interpreter_stack_set_reference_context_at(size_t offset, const CubsTypeContext *context)
+{
+    stack_set_context_at(offset, context, true);
 }
 
 void cubs_interpreter_set_instruction_pointer(const Bytecode *newIp)

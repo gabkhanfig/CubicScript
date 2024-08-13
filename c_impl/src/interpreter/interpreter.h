@@ -42,6 +42,11 @@ const struct CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset);
 /// If `context->sizeOfType > sizeof(size_t)`, fills the following contexts to NULL.
 void cubs_interpreter_stack_set_context_at(size_t offset, const struct CubsTypeContext* context);
 
+/// Sets the context at a given stack offset, but flags it as non-owning. 
+/// This is mostly for dereferencing temporaries, as when the stack unwinds, the value will not be deinitialized.
+/// If `context->sizeOfType > sizeof(size_t)`, fills the following contexts to NULL.
+void cubs_interpreter_stack_set_reference_context_at(size_t offset, const struct CubsTypeContext* context);
+
 void cubs_interpreter_set_instruction_pointer(const struct Bytecode* newIp);
 
 /// Executes the operation at this thread's instruction pointer
