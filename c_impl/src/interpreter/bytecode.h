@@ -122,6 +122,7 @@ typedef enum  {
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
     uint64_t opType: RESERVE_MATH_OP_TYPE;
+    /// Only used for integer types (int, vec)
     uint64_t canOverflow: 1;
     uint64_t src1: BITS_PER_STACK_OPERAND;
     uint64_t src2: BITS_PER_STACK_OPERAND;
@@ -131,6 +132,7 @@ VALIDATE_SIZE_ALIGN_OPERANDS(OperandsAddUnknown);
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
     uint64_t opType: RESERVE_MATH_OP_TYPE;
+    /// Only used for integer types (int, vec)
     uint64_t canOverflow: 1;
     uint64_t src1: BITS_PER_STACK_OPERAND;
     uint64_t src2: BITS_PER_STACK_OPERAND;
@@ -142,6 +144,7 @@ Bytecode operands_make_add_dst(bool canOverflow, uint16_t dst, uint16_t src1, ui
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
     uint64_t opType: RESERVE_MATH_OP_TYPE;
+    /// Only used for integer types (int, vec)
     uint64_t canOverflow: 1;
     uint64_t src1: BITS_PER_STACK_OPERAND;
     uint64_t src2: BITS_PER_STACK_OPERAND;

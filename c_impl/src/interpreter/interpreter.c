@@ -391,6 +391,17 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
         } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
             *(int64_t*)src1 = result;
         }
+    } else if (context == &CUBS_FLOAT_CONTEXT) {
+        const double a = *(const double*)src1;
+        const double b = *(const double*)src2;
+        double result = a + b;
+        if(unknownOperands.opType == MATH_TYPE_DST) {
+            const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
+            *(double*)(cubs_interpreter_stack_value_at(dstOperands.dst)) = result;
+            cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_FLOAT_CONTEXT);
+        } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
+            *(double*)src1 = result;
+        }
     } else {
         unreachable();
     }

@@ -369,3 +369,49 @@ test "add assign overflow" {
     c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
     try expect(c.cubs_interpreter_execute_operation(&program) == c.cubsProgramRuntimeErrorAdditionIntegerOverflow);
 }
+
+test "add dst float" {
+    c.cubs_interpreter_push_frame(3, null, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    var bytecode = c.operands_make_add_dst(false, 2, 0, 1);
+
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_FLOAT_CONTEXT);
+    @as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = 2.5;
+    c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_FLOAT_CONTEXT);
+    @as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* = 4.5;
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+    try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_FLOAT_CONTEXT);
+    try expect(std.math.approxEqAbs(
+        f64,
+        @as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2)))).*,
+        7.0,
+        std.math.floatEps(f64),
+    ));
+}
+
+test "add assign float" {
+    c.cubs_interpreter_push_frame(2, null, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    var bytecode = c.operands_make_add_assign(false, 0, 1);
+
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_FLOAT_CONTEXT);
+    @as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = 2.5;
+    c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_FLOAT_CONTEXT);
+    @as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* = 4.5;
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+    try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_FLOAT_CONTEXT);
+    try expect(std.math.approxEqAbs(
+        f64,
+        @as(*f64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).*,
+        7.0,
+        std.math.floatEps(f64),
+    ));
+}
