@@ -1,6 +1,6 @@
 comptime {
     // Force linker to link all Zig re-implemented exports
-    _ = @import("util/mem.zig");
+    _ = @import("platform/mem.zig");
 
     _ = @import("program/program.zig").Program;
     _ = @import("interpreter/interpreter.zig");

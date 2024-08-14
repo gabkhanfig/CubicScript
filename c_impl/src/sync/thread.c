@@ -1,5 +1,5 @@
 #include "thread.h"
-#include "../util/mem.h"
+#include "../platform/mem.h"
 #include "../util/panic.h"
 #include <stdio.h>
 #include "locks.h"

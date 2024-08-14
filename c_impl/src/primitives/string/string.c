@@ -1,7 +1,7 @@
 #include "string.h"
 #include "../../sync/atomic.h"
 #include <assert.h>
-#include "../../util/mem.h"
+#include "../../platform/mem.h"
 #include <string.h>
 #include <stdint.h>
 #include "../../util/panic.h"

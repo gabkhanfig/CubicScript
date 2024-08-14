@@ -90,6 +90,8 @@ pub fn build(b: *std.Build) void {
 }
 
 pub const cubic_script_c_sources = [_][]const u8{
+    "src/platform/mem.c",
+
     "src/program/program.c",
     "src/interpreter/bytecode.c",
     "src/interpreter/interpreter.c",
@@ -97,7 +99,6 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/sync/locks.c",
     "src/sync/sync_queue.c",
     "src/sync/thread.c",
-    "src/util/mem.c",
     "src/util/panic.c",
     "src/util/math.c",
     "src/util/hash.c",

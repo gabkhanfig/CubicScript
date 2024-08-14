@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <string.h>
 #include "../util/panic.h"
-#include "../util/mem.h"
+#include "../platform/mem.h"
 #include "locks.h"
 #include "../primitives/sync_ptr/sync_ptr.h"
 

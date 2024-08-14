@@ -1,6 +1,6 @@
 #include "error.h"
 #include "../primitives_context.h"
-#include "../../util/mem.h"
+#include "../../platform/mem.h"
 #include <assert.h>
 #include <string.h>
 #include "../string/string.h"

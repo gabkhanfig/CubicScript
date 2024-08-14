@@ -1,6 +1,6 @@
 #include "option.h"
 #include <assert.h>
-#include "../../util/mem.h"
+#include "../../platform/mem.h"
 #include <string.h>
 #include "../primitives_context.h"
 #include "../../util/hash.h"

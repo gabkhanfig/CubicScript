@@ -1,7 +1,7 @@
 #include "program.h"
 #include "../sync/locks.h"
 #include <stdio.h>
-#include "../util/mem.h"
+#include "../platform/mem.h"
 #include <string.h>
 #include "../util/panic.h"
 

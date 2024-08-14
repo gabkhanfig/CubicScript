@@ -12,6 +12,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_STANDARD 17)
 
 add_library(CubicScript STATIC 
+    "src/platform/mem.c"
     "src/program/program.c"
     "src/interpreter/bytecode.c"
     "src/interpreter/interpreter.c"
@@ -19,7 +20,6 @@ add_library(CubicScript STATIC
     "src/sync/locks.c"
     "src/sync/sync_queue.c"
     "src/sync/thread.c"
-    "src/util/mem.c"
     "src/util/panic.c"
     "src/util/simd.c"
     "src/util/math.c"
