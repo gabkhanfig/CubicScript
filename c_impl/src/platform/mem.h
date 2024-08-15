@@ -16,3 +16,7 @@ extern void* _cubs_raw_aligned_malloc(size_t len, size_t align);
 
 /// Does not implement any runtime memory tracking in debug mode. Simply frees a buffer of heap memory.
 extern void _cubs_raw_aligned_free(void *buf, size_t len, size_t align);
+
+extern void* _cubs_os_malloc_pages(size_t len);
+
+extern void _cubs_os_free_pages(void* pagesStart, size_t len);

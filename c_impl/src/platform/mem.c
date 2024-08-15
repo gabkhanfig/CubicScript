@@ -4,6 +4,8 @@
 #include <malloc.h>
 #elif __GNUC__
 #include <stdlib.h>
+#include "mem.h"
+#include <sys/mman.h>
 #endif
 
 void* _cubs_raw_aligned_malloc(size_t len, size_t align) {
@@ -21,6 +23,22 @@ void _cubs_raw_aligned_free(void *buf, size_t len, size_t align) {
     _aligned_free(buf);
     #elif __GNUC__
     free(buf);
+    #endif
+}
+
+void* _cubs_os_malloc_pages(size_t len) {
+    #if defined(_WIN32) || defined(WIN32)
+    return VirtualAlloc(NULL, len, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    #elif __GNUC__
+    return mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    #endif
+}
+
+void _cubs_os_free_pages(void *pagesStart, size_t len) {
+    #if defined(_WIN32) || defined(WIN32)
+    VirtualFree(pagesStart, len, MEM_DECOMMIT | MEM_RELEASE);
+    #elif __GNUC__
+    munmap(pagesStart, len);
     #endif
 }
 

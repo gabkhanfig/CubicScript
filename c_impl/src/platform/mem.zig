@@ -38,3 +38,17 @@ export fn cubs_free(buf: *anyopaque, len: c_ulonglong, ptrAlign: c_ulonglong) ca
     const mem: [*]u8 = @ptrCast(buf);
     globalAllocator.rawFree(mem[0..len], logAlign, @returnAddress());
 }
+
+test "page" {
+    const c = struct {
+        extern fn _cubs_os_malloc_pages(len: usize) callconv(.C) *anyopaque;
+        extern fn _cubs_os_free_pages(pagesStart: *anyopaque, len: usize) callconv(.C) void;
+    };
+
+    const mem = c._cubs_os_malloc_pages(8);
+    defer c._cubs_os_free_pages(mem, 8);
+
+    try std.testing.expect((@intFromPtr(mem) & 4096) == 0); // at least 4k aligned
+    @as(*i64, @ptrCast(@alignCast(mem))).* = 60; // write
+    try std.testing.expect(@as(*i64, @ptrCast(@alignCast(mem))).* == 60); // read
+}
