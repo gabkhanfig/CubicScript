@@ -16,6 +16,7 @@
 #include "../primitives/error/error.h"
 #include "../primitives/result/result.h"
 #include "../util/math.h"
+#include <string.h>
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
@@ -175,6 +176,19 @@ void cubs_interpreter_set_instruction_pointer(const Bytecode *newIp)
 {
     assert(newIp != NULL);
     threadLocalStack.instructionPointer = newIp;
+}
+
+void cubs_interpreter_push_function_arg(const void *arg, const CubsTypeContext *context, size_t offset)
+{
+    const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
+
+    memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
+    threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
+    if(context->sizeOfType > 8) {
+        for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
+            threadLocalStack.contexts[actualOffset + i] = 0; // (uintptr_t)NULL
+        }
+    }
 }
 
 static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {

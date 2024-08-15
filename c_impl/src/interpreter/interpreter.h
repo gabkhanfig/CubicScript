@@ -55,5 +55,9 @@ void cubs_interpreter_stack_set_null_context_at(size_t offset);
 
 void cubs_interpreter_set_instruction_pointer(const struct Bytecode* newIp);
 
+/// Assumes that the new stack frame hasn't been pushed yet.
+/// Copies the memory at `arg`.
+void cubs_interpreter_push_function_arg(const void* arg, const struct CubsTypeContext* context, size_t offset);
+
 /// Executes the operation at this thread's instruction pointer
 CubsProgramRuntimeError cubs_interpreter_execute_operation(const struct CubsProgram* program);

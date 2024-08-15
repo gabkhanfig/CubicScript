@@ -83,6 +83,47 @@ test "unwind" {
     }
 }
 
+test "push function arg" {
+    { // one arg
+        const val: i64 = 55;
+        c.cubs_interpreter_push_function_arg(@ptrCast(&val), &c.CUBS_INT_CONTEXT, 0);
+
+        c.cubs_interpreter_push_frame(1, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 55);
+    }
+    { // multiple args, 1 "slot" per arg
+        const val1: i64 = 55;
+        const val2: i64 = 56;
+        c.cubs_interpreter_push_function_arg(@ptrCast(&val1), &c.CUBS_INT_CONTEXT, 0);
+        c.cubs_interpreter_push_function_arg(@ptrCast(&val2), &c.CUBS_INT_CONTEXT, 1);
+
+        c.cubs_interpreter_push_frame(2, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 55);
+        try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* == 56);
+    }
+    { // multiple args, wide args
+        const str1 = "hello world!";
+        const str2 = "hello to this truly glorious and magnificent world!";
+        const sVal1 = c.cubs_string_init_unchecked(.{ .str = str1.ptr, .len = str1.len });
+        const sVal2 = c.cubs_string_init_unchecked(.{ .str = str2.ptr, .len = str2.len });
+
+        c.cubs_interpreter_push_function_arg(@ptrCast(&sVal1), &c.CUBS_STRING_CONTEXT, 0);
+        c.cubs_interpreter_push_function_arg(@ptrCast(&sVal2), &c.CUBS_STRING_CONTEXT, 4);
+
+        c.cubs_interpreter_push_frame(8, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        try expect(c.cubs_string_eql_slice(@as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))), .{ .str = str1.ptr, .len = str1.len }));
+        try expect(c.cubs_string_eql_slice(@as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4)))), .{ .str = str2.ptr, .len = str2.len }));
+
+        c.cubs_interpreter_stack_unwind_frame();
+    }
+}
+
 fn ScriptContextTestRuntimeError(comptime errTag: c.CubsProgramRuntimeError) type {
     return struct {
         fn init(shouldExpectError: bool) c.CubsProgramContext {
