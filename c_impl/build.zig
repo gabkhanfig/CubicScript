@@ -93,6 +93,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/platform/mem.c",
 
     "src/program/program.c",
+    "src/program/protected_arena.c",
     "src/interpreter/bytecode.c",
     "src/interpreter/interpreter.c",
     "src/sync/atomic.c",

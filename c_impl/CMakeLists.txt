@@ -14,6 +14,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_library(CubicScript STATIC 
     "src/platform/mem.c"
     "src/program/program.c"
+    "src/program/protected_arena.c"
     "src/interpreter/bytecode.c"
     "src/interpreter/interpreter.c"
     "src/sync/atomic.c"
