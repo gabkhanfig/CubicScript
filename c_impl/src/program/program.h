@@ -1,8 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
+#include "../c_basic_types.h"
 #include "program_runtime_error.h"
 
 #ifdef __cplusplus
