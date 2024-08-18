@@ -4,6 +4,7 @@
 #include "../platform/mem.h"
 #include <string.h>
 #include "../util/panic.h"
+#include "protected_arena.h"
 
 const char *cubs_program_runtime_error_as_string(CubsProgramRuntimeError err)
 {
@@ -30,6 +31,7 @@ const CubsProgramContext DEFAULT_CONTEXT = {.ptr = NULL, .vtable = &DEFAULT_CONT
 #pragma endregion
 
 typedef struct {
+    ProtectedArena arena;
     CubsProgramContext context;
     CubsMutex contextMutex;
 } Inner;
@@ -57,10 +59,15 @@ CubsProgram cubs_program_init(CubsProgramInitParams params)
         context = DEFAULT_CONTEXT;
     }
 
-    const Inner innerData = {.context = context, .contextMutex = {0}};
-    Inner* inner = cubs_malloc(INNER_ALLOC_SIZE, INNER_ALLOC_ALIGN);
+    ProtectedArena arena = cubs_protected_arena_init();
+    Inner* inner = (Inner*)cubs_protected_arena_malloc(&arena, INNER_ALLOC_SIZE, INNER_ALLOC_ALIGN);
+
+    const Inner innerData = {
+        .arena = arena, 
+        .context = context, 
+        .contextMutex = CUBS_MUTEX_INITIALIZER
+    };
     *inner = innerData;
-    inner->contextMutex = CUBS_MUTEX_INITIALIZER;
 
     const CubsProgram program = {._inner = (void*)inner};
     return program;
@@ -75,7 +82,9 @@ void cubs_program_deinit(CubsProgram *self)
     inner->context.vtable->deinit(inner->context.ptr);
     cubs_mutex_unlock(&inner->contextMutex);
 
-    cubs_free((void*)inner, INNER_ALLOC_SIZE, INNER_ALLOC_ALIGN);
+    ProtectedArena arena = inner->arena;
+    cubs_protected_arena_free(&arena, (void*)inner);
+    cubs_protected_arena_deinit(&arena);
 }
 
 /// Not defined in `program.h`. Reserved for internal use only.
