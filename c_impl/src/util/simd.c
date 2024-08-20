@@ -78,6 +78,27 @@ uint32_t _cubs_simd_cmpeq_mask_8bit_32wide_aligned(uint8_t value, const uint8_t 
     #endif
 }
 
+uint16_t _cubs_simd_cmpeq_mask_8bit_16wide_aligned(uint8_t value, const uint8_t *alignedCompare)
+{
+    assert_aligned(alignedCompare, 16);
+
+    #if __AVX2__
+    const __m128i valueToFind = _mm_set1_epi8(value);
+    const __m128i bufferToSearch = *(const __m128i*)alignedCompare;
+    const __m128i result = _mm_cmpeq_epi8(valueToFind, bufferToSearch);
+    const int mask = _mm_movemask_epi8(result);
+    return (uint16_t)mask;
+    #else // good enough for ARM for now
+    uint16_t out = 0;
+    for(size_t i = 0; i < 16; i++) {
+        if(alignedCompare[i] == value) {
+            out |= (1U << i);
+        }
+    }
+    return out;
+    #endif
+}
+
 bool _cubs_simd_cmpeq_strings(const char *buffer, const char *otherBuffer, size_t len)
 {
     assert_aligned(buffer, 32);
