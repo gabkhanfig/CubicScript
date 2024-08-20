@@ -57,6 +57,48 @@ bool _cubs_simd_index_of_first_zero_8bit_32wide_aligned(size_t *out, const uint8
     #endif
 }
 
+bool _cubs_simd_index_of_first_zero_8bit_16wide_aligned(size_t *out, const uint8_t *alignedPtr)
+{
+    assert_aligned(alignedPtr, 16);
+
+    #if __AVX2__
+    const __m128i zeroVec = _mm_set1_epi8(0);
+    const __m128i buf = *(const __m128i*)alignedPtr;
+    const __m128i result = _mm_cmpeq_epi8(zeroVec, buf);
+    int resultMask = _mm_movemask_epi8(result);
+    uint32_t index;
+    if(!countTrailingZeroes32(&index, resultMask)) {
+        return false;
+    }
+    *out = (size_t)index;
+    return true;
+    #elif __ARM_NEON__
+    uint16_t resultMask = 0;
+    const uint8x16_t zeroVec = {0};
+    const uint8x16_t buf = *(const uint8x16_t*)(&alignedPtr[i * 16]);
+    const uint8x16_t result = vceqq_u8(zeroVec, buf);
+    for(int n = 0; n < 16; n++) { // TODO non scalar mask
+        const int offset = (i * 16) + n;
+        const bool isSet = (bool)(((const uint8_t*)&result)[n]);
+        resultMask |= (((uint16_t)isSet) << offset); 
+    }
+    uint32_t index;
+    if(!countTrailingZeroes32(&index, (uint32_t)resultMask)) {
+        return false;
+    }
+    *out = (size_t)index;
+    return true;
+    #else
+    for(size_t i = 0; i < 16; i++) {
+        if(alignedPtr[i] == 0) {
+            *out = i;
+            return true;
+        }
+    }
+    return false;
+    #endif
+}
+
 uint32_t _cubs_simd_cmpeq_mask_8bit_32wide_aligned(uint8_t value, const uint8_t *alignedCompare)
 {
     assert_aligned(alignedCompare, 32);
