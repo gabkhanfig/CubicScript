@@ -164,7 +164,7 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
 
 /// Returns -1 if not found
 static size_t group_find(const Group* self, const void* key, const CubsTypeContext* keyContext, CubsHashPairBitmask pairMask) {   
-    size_t i = 0;
+    uint32_t i = 0;
     while(i < self->capacity) {
         uint32_t resultMask = _cubs_simd_cmpeq_mask_8bit_32wide_aligned(pairMask.value, &self->hashMasks[i]);
         while(true) { // check each bit
