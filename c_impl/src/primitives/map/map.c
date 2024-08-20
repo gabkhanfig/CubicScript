@@ -14,12 +14,6 @@
 
 static const size_t GROUP_ALLOC_SIZE = 32;
 static const size_t ALIGNMENT = 32;
-static const size_t DATA_BITMASK = 0xFFFFFFFFFFFFULL;
-static const size_t TAG_SHIFT = 48;
-static const size_t TAG_BITMASK = 0xFFULL << 48;
-static const size_t TYPE_SIZE_SHIFT = 56;
-static const size_t TYPE_SIZE_BITMASK = 0xFFULL << 56;
-static const size_t NON_DATA_BITMASK = ~(0xFFFFFFFFFFFFULL);
 
 typedef struct PairHeader PairHeader;
 
