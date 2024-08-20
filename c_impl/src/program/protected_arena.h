@@ -10,7 +10,7 @@ In the future, it will explicitly protect this memory at the OS level.
 
 // TODO actually mprotect / VirtualProtect
 
-typedef struct {
+typedef struct ProtectedArena {
     void* allAllocations;
     size_t len;
     size_t capacity;

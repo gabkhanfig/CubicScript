@@ -94,8 +94,10 @@ pub const cubic_script_c_sources = [_][]const u8{
 
     "src/program/program.c",
     "src/program/protected_arena.c",
+    "src/program/function_map.c",
     "src/interpreter/bytecode.c",
     "src/interpreter/interpreter.c",
+    "src/interpreter/function_definition.c",
     "src/sync/atomic.c",
     "src/sync/locks.c",
     "src/sync/sync_queue.c",

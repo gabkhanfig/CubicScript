@@ -5,6 +5,10 @@
 #include <string.h>
 #include "../util/panic.h"
 #include "protected_arena.h"
+#include "../interpreter/function_definition.h"
+#include "../interpreter/bytecode.h"
+#include "protected_arena.h"
+#include "function_map.h"
 
 const char *cubs_program_runtime_error_as_string(CubsProgramRuntimeError err)
 {
@@ -112,3 +116,38 @@ void _cubs_internal_program_print(const CubsProgram* self, const char* message, 
     context.vtable->print(context.ptr, self, message, messageLength);
     cubs_mutex_unlock(contextMutex);
 }
+
+ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* self, CubsProgram* program) {
+    _Static_assert(_Alignof(ScriptFunctionDefinitionHeader) == _Alignof(Bytecode), "Alignment of function definition header must equal the bytecode alignment");
+    
+    assert(self->bytecode != NULL);
+    assert(self->bytecodeLen > 0);
+
+    Inner* inner = as_inner_mut(program);
+
+    const ScriptFunctionDefinitionHeader headerData = {
+        .fullyQualifiedName = self->fullyQualifiedName,
+        .name = self->name,
+        .optReturnType = self->optReturnType,
+        .args = self->args,
+        .bytecodeCount = self->bytecodeLen,
+    };
+    ScriptFunctionDefinitionHeader* header = cubs_protected_arena_malloc(
+        &inner->arena, 
+        sizeof(ScriptFunctionDefinitionHeader) + (sizeof(Bytecode) * self->bytecodeLen), 
+        _Alignof(Bytecode)
+    );
+    *header = headerData;
+    memcpy((void*)cubs_function_bytecode_start(header), (const void*)self->bytecode, self->bytecodeLen);
+
+    { // deinitialize function builder
+        cubs_free(self->bytecode, self->bytecodeCapacity * sizeof(Bytecode), _Alignof(Bytecode));
+        const FunctionBuilder zeroed = {0};
+        *self = zeroed;
+    }
+
+    
+
+}
+
+
