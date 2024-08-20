@@ -217,7 +217,7 @@ static void group_insert(Group* self, void* key, void* value, const CubsTypeCont
 
     group_ensure_total_capacity(self, self->pairCount + 1);
   
-    size_t i = 0;
+    uint32_t i = 0;
     while(i < self->capacity) {
         size_t index;
         if(!_cubs_simd_index_of_first_zero_8bit_32wide_aligned(&index, &self->hashMasks[i])) {
