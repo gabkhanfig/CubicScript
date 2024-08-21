@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include "../primitives/string/string.h"
 
-typedef struct CubsTypeContext;
+typedef struct CubsTypeContext CubsTypeContext;
 typedef struct CubsString CubsString;
 typedef struct Bytecode Bytecode;
 typedef struct CubsProgram CubsProgram;

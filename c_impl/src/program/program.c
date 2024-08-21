@@ -38,6 +38,7 @@ typedef struct {
     ProtectedArena arena;
     CubsProgramContext context;
     CubsMutex contextMutex;
+    FunctionMap functionMap;
 } Inner;
 
 /// Ceil to multiple of 64
@@ -69,7 +70,8 @@ CubsProgram cubs_program_init(CubsProgramInitParams params)
     const Inner innerData = {
         .arena = arena, 
         .context = context, 
-        .contextMutex = CUBS_MUTEX_INITIALIZER
+        .contextMutex = CUBS_MUTEX_INITIALIZER,
+        .functionMap = FUNCTION_MAP_INITIALIZER,
     };
     *inner = innerData;
 
@@ -146,8 +148,8 @@ ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* sel
         *self = zeroed;
     }
 
-    
-
+    cubs_function_map_insert(&inner->functionMap, &inner->arena, header);
+    return header;
 }
 
 
