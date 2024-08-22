@@ -2,10 +2,10 @@
 
 #include <stddef.h>
 #include "../primitives/string/string.h"
+#include "bytecode.h"
 
 typedef struct CubsTypeContext CubsTypeContext;
 typedef struct CubsString CubsString;
-typedef struct Bytecode Bytecode;
 typedef struct CubsProgram CubsProgram;
 
 typedef struct ScriptFunctionArgTypesSlice {
@@ -31,6 +31,11 @@ typedef struct FunctionBuilder {
 } FunctionBuilder;
 
 void cubs_function_builder_deinit(FunctionBuilder* self);
+
+void cubs_function_builder_push_bytecode(FunctionBuilder* self, Bytecode bytecode);
+
+/// `count` is the number of bytecodes to copy
+void cubs_function_builder_push_bytecode_many(FunctionBuilder* self, const Bytecode* bytecode, size_t count);
 
 // TODO when the program allocates the header and bytecode, mprotect / VirutalProtect it to prevent malicious actors from overwriting bytecode
 
