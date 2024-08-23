@@ -41,7 +41,8 @@ void cubs_function_builder_push_bytecode_many(FunctionBuilder* self, const Bytec
 
 typedef struct ScriptFunctionDefinitionHeader {
     CubsString fullyQualifiedName;
-    CubsString name;
+    CubsString name;  
+    size_t stackSpaceRequired;
     const CubsTypeContext* optReturnType;
     ScriptFunctionArgTypesSlice args;
     size_t bytecodeCount;

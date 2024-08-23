@@ -130,6 +130,7 @@ ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* sel
     const ScriptFunctionDefinitionHeader headerData = {
         .fullyQualifiedName = self->fullyQualifiedName,
         .name = self->name,
+        .stackSpaceRequired = self->stackSpaceRequired,
         .optReturnType = self->optReturnType,
         .args = self->args,
         .bytecodeCount = self->bytecodeLen,
