@@ -141,7 +141,7 @@ ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* sel
         _Alignof(Bytecode)
     );
     *header = headerData;
-    memcpy((void*)cubs_function_bytecode_start(header), (const void*)self->bytecode, self->bytecodeLen);
+    memcpy((void*)cubs_function_bytecode_start(header), (const void*)self->bytecode, self->bytecodeLen * sizeof(Bytecode));
 
     { // deinitialize function builder
         cubs_free(self->bytecode, self->bytecodeCapacity * sizeof(Bytecode), _Alignof(Bytecode));
