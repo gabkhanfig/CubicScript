@@ -25,7 +25,7 @@ typedef struct FunctionBuilder {
     const CubsTypeContext* optReturnType;
     ScriptFunctionArgTypesSlice args;
     size_t stackSpaceRequired;
-    struct Bytecode* bytecode;
+    Bytecode* bytecode;
     size_t bytecodeLen;
     size_t bytecodeCapacity;
 } FunctionBuilder;
@@ -48,7 +48,9 @@ typedef struct ScriptFunctionDefinitionHeader {
     size_t bytecodeCount;
 } ScriptFunctionDefinitionHeader;
 
-// Defined in `src/program/program.c`
+/// Returns a reference to the header that is owned by the `program`.
+/// Return value can be ignored.
+/// Defined in `src/program/program.c`
 extern ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* self, CubsProgram* program);
 
 const Bytecode* cubs_function_bytecode_start(const ScriptFunctionDefinitionHeader* header);
