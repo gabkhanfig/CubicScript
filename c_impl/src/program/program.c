@@ -144,6 +144,7 @@ ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* sel
     memcpy((void*)cubs_function_bytecode_start(header), (const void*)self->bytecode, self->bytecodeLen * sizeof(Bytecode));
 
     { // deinitialize function builder
+        // Explicitly DO NOT deinitialize the names, as their ownership is transferred above with `headerData`
         cubs_free(self->bytecode, self->bytecodeCapacity * sizeof(Bytecode), _Alignof(Bytecode));
         const FunctionBuilder zeroed = {0};
         *self = zeroed;
