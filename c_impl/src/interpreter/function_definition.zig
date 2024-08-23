@@ -68,3 +68,65 @@ test "push bytecode many" {
         c.cubs_function_builder_push_bytecode_many(&builder, &b2, 3);
     }
 }
+
+test "build nop" {
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var builder = c.FunctionBuilder{ .stackSpaceRequired = 0 };
+    defer c.cubs_function_builder_deinit(&builder);
+
+    const bytecode = c.cubs_bytecode_encode(c.OpCodeNop, null);
+
+    c.cubs_function_builder_push_bytecode(&builder, bytecode);
+
+    _ = c.cubs_function_builder_build(&builder, &program);
+}
+
+test "build and execute" {
+    {
+        var program = c.cubs_program_init(.{});
+        defer c.cubs_program_deinit(&program);
+
+        var builder = c.FunctionBuilder{ .stackSpaceRequired = 0 };
+        defer c.cubs_function_builder_deinit(&builder);
+
+        {
+            const bytecode = c.cubs_bytecode_encode(c.OpCodeNop, null);
+            c.cubs_function_builder_push_bytecode(&builder, bytecode);
+        }
+
+        const func = c.cubs_function_builder_build(&builder, &program);
+        const bytecodeStart = c.cubs_function_bytecode_start(func);
+
+        c.cubs_interpreter_push_frame(0, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(bytecodeStart));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+    }
+    {
+        var program = c.cubs_program_init(.{});
+        defer c.cubs_program_deinit(&program);
+
+        var builder = c.FunctionBuilder{ .stackSpaceRequired = 1 };
+        defer c.cubs_function_builder_deinit(&builder);
+
+        {
+            const bytecode = c.operands_make_load_immediate(c.LOAD_IMMEDIATE_BOOL, 0, 1);
+            c.cubs_function_builder_push_bytecode(&builder, bytecode);
+        }
+
+        const func = c.cubs_function_builder_build(&builder, &program);
+        const bytecodeStart = c.cubs_function_bytecode_start(func);
+
+        c.cubs_interpreter_push_frame(1, null, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(bytecodeStart));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_BOOL_CONTEXT);
+        try expect(@as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == true);
+    }
+}
