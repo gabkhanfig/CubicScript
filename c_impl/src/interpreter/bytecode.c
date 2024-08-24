@@ -88,6 +88,25 @@ void operands_make_load_clone_from_ptr(Bytecode *tripleBytecode, uint16_t dst, c
     tripleBytecode[2].value = (size_t)context;
 }
 
+Bytecode operands_make_increment_dst(bool canOverflow, uint16_t dst, uint16_t src)
+{
+    assert(dst <= MAX_FRAME_LENGTH);
+    assert(src <= MAX_FRAME_LENGTH);
+
+    _Alignas(_Alignof(Bytecode)) const OperandsIncrementDst operands = {.reserveOpcode = OpCodeAdd, .opType = MATH_TYPE_DST, .canOverflow = canOverflow, .dst = dst, .src = src};    
+    const Bytecode b = *(const Bytecode*)&operands;
+    return b;
+}
+
+Bytecode operands_make_increment_assign(bool canOverflow, uint16_t src)
+{
+    assert(src <= MAX_FRAME_LENGTH);    
+    
+    _Alignas(_Alignof(Bytecode)) const OperandsIncrementAssign operands = {.reserveOpcode = OpCodeAdd, .opType = MATH_TYPE_DST, .canOverflow = canOverflow, .src = src};    
+    const Bytecode b = *(const Bytecode*)&operands;
+    return b;
+}
+
 Bytecode operands_make_add_dst(bool canOverflow, uint16_t dst, uint16_t src1, uint16_t src2)
 {
     assert(dst <= MAX_FRAME_LENGTH);

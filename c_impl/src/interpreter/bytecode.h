@@ -19,6 +19,8 @@ typedef enum {
     /// - Default -> `OperandsLoadDefault` loads the default representation of a type if it has one. May be a multibyte instruction
     /// - Clone from ptr -> `OperandsLoadCloneFromPtr` Clones some data held at a given immediate pointer, using an immediate context. Is a 3 bytecode wide multibyte instruction
     OpCodeLoad = 1,
+    /// Increments an integer or iterator
+    OpCodeIncrement,
     /// 
     OpCodeAdd,
 
@@ -118,6 +120,41 @@ typedef enum  {
     
     RESERVE_MATH_OP_TYPE = 1,
 } MathOperationType;
+
+#pragma region Increment
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_MATH_OP_TYPE;
+    uint64_t canOverflow: 1;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+} OperandsIncrementUnknown;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsIncrementUnknown);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_MATH_OP_TYPE;
+    /// Only used for integer types (int, vec)
+    uint64_t canOverflow: 1;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+} OperandsIncrementDst;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsIncrementDst);
+Bytecode operands_make_increment_dst(bool canOverflow, uint16_t dst, uint16_t src);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_MATH_OP_TYPE;
+    /// Only used for integer types (int, vec)
+    uint64_t canOverflow: 1;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+} OperandsIncrementAssign;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsIncrementAssign);
+Bytecode operands_make_increment_assign(bool canOverflow, uint16_t src);
+
+#pragma endregion Increment
+
+#pragma region Add
 
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;

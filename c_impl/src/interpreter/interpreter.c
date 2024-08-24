@@ -354,6 +354,46 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
     }
 }
 
+static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode* bytecode) {
+    const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)bytecode;
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src);
+
+    void* src = cubs_interpreter_stack_value_at(unknownOperands.src);
+
+    if(context == &CUBS_INT_CONTEXT) {
+        const int64_t a = *(const int64_t*)src;
+        int64_t result;
+        if(!unknownOperands.canOverflow) {
+            const bool wouldOverflow = cubs_math_would_add_overflow(a, 1);
+            if(wouldOverflow) {
+                assert(program != NULL);
+                char errBuf[256];
+                #if defined(_WIN32) || defined(WIN32)
+                const int len = sprintf_s(errBuf, 256, "Increment integer overflow detected -> %lld + %lld\n", a, 1);
+                #else
+                const int len = sprintf(errBuf, "increment integer overflow detected -> %ld + %ld\n", a, 1);
+                #endif
+                assert(len >= 0);           
+                _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorIncrementIntegerOverflow, errBuf, len);             
+                return cubsProgramRuntimeErrorIncrementIntegerOverflow;
+            }
+            result = a + 1;
+        } else { // is allowed to overflow
+            cubs_panic("overflow-abled increment not yet implemented");
+        }              
+        if(unknownOperands.opType == MATH_TYPE_DST) {
+            const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
+            *(int64_t*)(cubs_interpreter_stack_value_at(dstOperands.dst)) = result;
+            cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_INT_CONTEXT);
+        } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
+            *(int64_t*)src = result;
+        }
+    } else {
+        unreachable();
+    }
+    return cubsProgramRuntimeErrorNone;
+}
+
 static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Bytecode* bytecode) {
     const OperandsAddUnknown unknownOperands = *(const OperandsAddUnknown*)bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src1);
@@ -437,6 +477,9 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         } break;
         case OpCodeLoad: {
             execute_load(&ipIncrement, &bytecode);
+        } break;
+        case OpCodeIncrement: {
+            potentialErr = execute_increment(program, &bytecode);
         } break;
         case OpCodeAdd: {
             potentialErr = execute_add(program, &bytecode);
