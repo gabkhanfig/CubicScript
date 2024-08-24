@@ -57,6 +57,8 @@ Bytecode cubs_bytecode_encode_immediate_long_float(double num);
 
 Bytecode cubs_bytecode_encode_immediate_long_ptr(void *ptr);
 
+#pragma region Load
+
 typedef enum {
     LOAD_TYPE_IMMEDIATE = 0,
     LOAD_TYPE_IMMEDIATE_LONG = 1,
@@ -114,45 +116,14 @@ typedef struct {
 } OperandsLoadCloneFromPtr;
 void operands_make_load_clone_from_ptr(Bytecode* tripleBytecode, uint16_t dst, const void* immediatePtr, const CubsTypeContext* context);
 
+#pragma endregion Load
+
 typedef enum  {
     MATH_TYPE_DST,
     MATH_TYPE_SRC_ASSIGN,
     
     RESERVE_MATH_OP_TYPE = 1,
 } MathOperationType;
-
-#pragma region Increment
-
-typedef struct {
-    uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t opType: RESERVE_MATH_OP_TYPE;
-    uint64_t canOverflow: 1;
-    uint64_t src: BITS_PER_STACK_OPERAND;
-} OperandsIncrementUnknown;
-VALIDATE_SIZE_ALIGN_OPERANDS(OperandsIncrementUnknown);
-
-typedef struct {
-    uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t opType: RESERVE_MATH_OP_TYPE;
-    /// Only used for integer types (int, vec)
-    uint64_t canOverflow: 1;
-    uint64_t src: BITS_PER_STACK_OPERAND;
-    uint64_t dst: BITS_PER_STACK_OPERAND;
-} OperandsIncrementDst;
-VALIDATE_SIZE_ALIGN_OPERANDS(OperandsIncrementDst);
-Bytecode operands_make_increment_dst(bool canOverflow, uint16_t dst, uint16_t src);
-
-typedef struct {
-    uint64_t reserveOpcode: OPCODE_USED_BITS;
-    uint64_t opType: RESERVE_MATH_OP_TYPE;
-    /// Only used for integer types (int, vec)
-    uint64_t canOverflow: 1;
-    uint64_t src: BITS_PER_STACK_OPERAND;
-} OperandsIncrementAssign;
-VALIDATE_SIZE_ALIGN_OPERANDS(OperandsIncrementAssign);
-Bytecode operands_make_increment_assign(bool canOverflow, uint16_t src);
-
-#pragma endregion Increment
 
 #pragma region Add
 
@@ -188,3 +159,5 @@ typedef struct {
 } OperandsAddAssign;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsAddAssign);
 Bytecode operands_make_add_assign(bool canOverflow, uint16_t src1, uint16_t src2);
+
+#pragma endregion Add
