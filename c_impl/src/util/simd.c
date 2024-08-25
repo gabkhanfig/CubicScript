@@ -75,12 +75,11 @@ bool _cubs_simd_index_of_first_zero_8bit_16wide_aligned(size_t *out, const uint8
     #elif __ARM_NEON__
     uint16_t resultMask = 0;
     const uint8x16_t zeroVec = {0};
-    const uint8x16_t buf = *(const uint8x16_t*)(&alignedPtr[i * 16]);
+    const uint8x16_t buf = *(const uint8x16_t*)(alignedPtr);
     const uint8x16_t result = vceqq_u8(zeroVec, buf);
     for(int n = 0; n < 16; n++) { // TODO non scalar mask
-        const int offset = (i * 16) + n;
         const bool isSet = (bool)(((const uint8_t*)&result)[n]);
-        resultMask |= (((uint16_t)isSet) << offset); 
+        resultMask |= (((uint16_t)isSet) << n); 
     }
     uint32_t index;
     if(!countTrailingZeroes32(&index, (uint32_t)resultMask)) {
