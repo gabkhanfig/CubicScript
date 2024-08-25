@@ -39,6 +39,7 @@ add_library(CubicScript STATIC
     "src/primitives/sync_ptr/sync_ptr.c"
     "src/primitives/reference/reference.c"
     "src/primitives/vector/vector.c"
+    "src/primitives/function/function.c"
 )
 
 add_executable(CubicScriptCppTests

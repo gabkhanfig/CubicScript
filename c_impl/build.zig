@@ -119,6 +119,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/primitives/sync_ptr/sync_ptr.c",
     "src/primitives/reference/reference.c",
     "src/primitives/vector/vector.c",
+    "src/primitives/function/function.c",
 };
 
 pub const cubic_script_cpp_test_sources = [_][]const u8{

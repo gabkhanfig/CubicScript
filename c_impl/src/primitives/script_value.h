@@ -103,10 +103,6 @@ typedef struct CubsWeak {
     const CubsTypeContext* context;
 } CubsWeak;
 
-typedef struct CubsFunctionPtr {
-  void* _inner;
-} CubsFunctionPtr;
-
 typedef struct CubsVec2i {
   int64_t x;
   int64_t y;

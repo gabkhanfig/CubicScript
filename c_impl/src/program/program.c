@@ -93,6 +93,18 @@ void cubs_program_deinit(CubsProgram *self)
     cubs_protected_arena_deinit(&arena);
 }
 
+bool cubs_program_find_function(const CubsProgram *self, CubsFunctionPtr *outFunc, CubsStringSlice fullyQualifiedName)
+{
+    const Inner* inner = as_inner(self);
+    const ScriptFunctionDefinitionHeader* header = cubs_function_map_find(&inner->functionMap, fullyQualifiedName);
+    if(header == NULL) {
+        return false;
+    }
+    CubsFunctionPtr func = {._inner = (const void*)header, .funcType = cubsFunctionPtrTypeScript};
+    *outFunc = func;
+    return true;
+}
+
 /// Not defined in `program.h`. Reserved for internal use only.
 void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength) {
     const Inner* inner = as_inner(self);

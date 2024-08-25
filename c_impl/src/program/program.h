@@ -2,6 +2,8 @@
 
 #include "../c_basic_types.h"
 #include "program_runtime_error.h"
+#include "../primitives/function/function.h"
+#include "../primitives/string/string.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +45,11 @@ typedef struct CubsProgramInitParams {
 CubsProgram cubs_program_init(CubsProgramInitParams params);
 
 void cubs_program_deinit(CubsProgram* self);
+
+/// Finds a script function with the name `fullyQualifiedName`. If it exists,
+/// stores the value in the out-param `outFunc`, and returns true.
+/// Otherwise returns false.
+bool cubs_program_find_function(const CubsProgram* self, CubsFunctionPtr* outFunc, CubsStringSlice fullyQualifiedName);
 
 #ifdef __cplusplus
 } // extern "C"
