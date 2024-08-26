@@ -530,6 +530,7 @@ CubsProgramRuntimeError cubs_interpreter_execute_function(const CubsProgram *pro
 
     const CubsProgramRuntimeError err = interpreter_execute_continuous(program);
     if(err != cubsProgramRuntimeErrorNone) {
+        /// If some error occurred, the stack frame won't automatically unwind in a return operation
         cubs_interpreter_stack_unwind_frame();
     }
 

@@ -16,6 +16,7 @@ add_library(CubicScript STATIC
     "src/program/program.c"
     "src/program/protected_arena.c"
     "src/program/function_map.c"
+    "src/program/function_call_args.c"
     "src/interpreter/bytecode.c"
     "src/interpreter/interpreter.c"
     "src/interpreter/function_definition.c"
