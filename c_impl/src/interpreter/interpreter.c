@@ -493,6 +493,9 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         case OpCodeLoad: {
             execute_load(&ipIncrement, &bytecode);
         } break;
+        case OpCodeReturn: {
+            // TODO actually return
+        } break;
         case OpCodeIncrement: {
             potentialErr = execute_increment(program, &bytecode);
         } break;
