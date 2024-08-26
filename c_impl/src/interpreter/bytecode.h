@@ -19,6 +19,8 @@ typedef enum {
     /// - Default -> `OperandsLoadDefault` loads the default representation of a type if it has one. May be a multibyte instruction
     /// - Clone from ptr -> `OperandsLoadCloneFromPtr` Clones some data held at a given immediate pointer, using an immediate context. Is a 3 bytecode wide multibyte instruction
     OpCodeLoad = 1,
+    /// 
+    OpCodeReturn = 2,
     /// Increments an integer or iterator
     OpCodeIncrement,
     /// 
