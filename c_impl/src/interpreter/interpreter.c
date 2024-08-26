@@ -17,6 +17,7 @@
 #include "../primitives/result/result.h"
 #include "../util/math.h"
 #include <string.h>
+#include "function_definition.h"
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
@@ -504,4 +505,31 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
     }
     threadLocalStack.instructionPointer = &threadLocalStack.instructionPointer[ipIncrement];
     return potentialErr;
+}
+
+static CubsProgramRuntimeError interpreter_execute_continuous(const CubsProgram *program) {
+    while(true) {
+        const Bytecode bytecode = *threadLocalStack.instructionPointer;
+        const OpCode opcode = cubs_bytecode_get_opcode(bytecode);
+        const bool isReturn = opcode == OpCodeReturn;
+
+        const CubsProgramRuntimeError err = cubs_interpreter_execute_operation(program);
+        if(err != cubsProgramRuntimeErrorNone || isReturn) {
+            return err;
+        }
+    }
+}
+
+CubsProgramRuntimeError cubs_interpreter_execute_function(const CubsProgram *program, const ScriptFunctionDefinitionHeader *function, void *outReturnValue, const CubsTypeContext **outContext)
+{
+    cubs_interpreter_push_frame(function->stackSpaceRequired, threadLocalStack.instructionPointer, outReturnValue, outContext);
+    cubs_interpreter_set_instruction_pointer(cubs_function_bytecode_start(function));
+
+    const CubsProgramRuntimeError err = interpreter_execute_continuous(program);
+    if(err != cubsProgramRuntimeErrorNone) {
+        cubs_interpreter_stack_unwind_frame();
+    }
+
+    cubs_interpreter_pop_frame();
+    return err;
 }
