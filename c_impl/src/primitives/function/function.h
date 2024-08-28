@@ -9,10 +9,10 @@ typedef enum CubsFunctionPtrType {
     _CUBS_FUNCTION_PTR_TYPE_MAX_VALUE = 0x7FFFFFFF,
 } CubsFunctionPtrType;
 
-typedef struct CubsFunctionPtr {
+typedef struct CubsFunction {
   const void* _inner;
   CubsFunctionPtrType funcType;
-} CubsFunctionPtr;
+} CubsFunction;
 
 typedef struct CubsScriptFunctionCallArgs CubsScriptFunctionCallArgs;
 
@@ -22,7 +22,7 @@ extern "C" {
 
 /// Returns a structure used to push function arguments onto the script stack, or...
 /// TODO extern C calling stuff
-CubsScriptFunctionCallArgs cubs_function_start_call(const CubsFunctionPtr* self);
+CubsScriptFunctionCallArgs cubs_function_start_call(const CubsFunction* self);
 
 #ifdef __cplusplus
 } // extern "C"

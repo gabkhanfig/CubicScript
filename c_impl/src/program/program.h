@@ -49,7 +49,7 @@ void cubs_program_deinit(CubsProgram* self);
 /// Finds a script function with the name `fullyQualifiedName`. If it exists,
 /// stores the value in the out-param `outFunc`, and returns true.
 /// Otherwise returns false.
-bool cubs_program_find_function(const CubsProgram* self, CubsFunctionPtr* outFunc, CubsStringSlice fullyQualifiedName);
+bool cubs_program_find_function(const CubsProgram* self, CubsFunction* outFunc, CubsStringSlice fullyQualifiedName);
 
 #ifdef __cplusplus
 } // extern "C"

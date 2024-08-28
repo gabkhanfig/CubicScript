@@ -2,13 +2,13 @@
 
 #include "../c_basic_types.h"
 
-typedef struct CubsFunctionPtr CubsFunctionPtr;
+typedef struct CubsFunction CubsFunction;
 typedef struct CubsTypeContext CubsTypeContext;
 typedef struct CubsProgram CubsProgram;
 
 /// Helper struct to push function arguments into the next script stack frame.
 typedef struct CubsScriptFunctionCallArgs {
-    const CubsFunctionPtr* func;
+    const CubsFunction* func;
     int _inner[2];
 } CubsScriptFunctionCallArgs;
 

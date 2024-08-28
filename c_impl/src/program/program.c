@@ -93,14 +93,14 @@ void cubs_program_deinit(CubsProgram *self)
     cubs_protected_arena_deinit(&arena);
 }
 
-bool cubs_program_find_function(const CubsProgram *self, CubsFunctionPtr *outFunc, CubsStringSlice fullyQualifiedName)
+bool cubs_program_find_function(const CubsProgram *self, CubsFunction *outFunc, CubsStringSlice fullyQualifiedName)
 {
     const Inner* inner = as_inner(self);
     const ScriptFunctionDefinitionHeader* header = cubs_function_map_find(&inner->functionMap, fullyQualifiedName);
     if(header == NULL) {
         return false;
     }
-    CubsFunctionPtr func = {._inner = (const void*)header, .funcType = cubsFunctionPtrTypeScript};
+    CubsFunction func = {._inner = (const void*)header, .funcType = cubsFunctionPtrTypeScript};
     *outFunc = func;
     return true;
 }
