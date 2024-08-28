@@ -43,7 +43,7 @@ typedef struct InterpreterStackState {
 
 static _Thread_local InterpreterStackState threadLocalStack = {0};
 
-void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldInstructionPointer, void* returnValueDst, const CubsTypeContext** returnContextDst) {
+void cubs_interpreter_push_frame(size_t frameLength, void* returnValueDst, const CubsTypeContext** returnContextDst) {
     assert(frameLength <= MAX_FRAME_LENGTH);
     { // store previous instruction pointer, frame length, return dst, and return tag dst
         size_t* basePointer = &((size_t*)threadLocalStack.stack)[threadLocalStack.nextBaseOffset];
@@ -53,7 +53,7 @@ void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldI
             basePointer[OLD_RETURN_VALUE_DST]       = 0;
             basePointer[OLD_RETURN_CONTEXT_DST]     = 0;
         } else {
-            basePointer[OLD_INSTRUCTION_POINTER]    = (size_t)((const void*)oldInstructionPointer); // cast ptr to size_t
+            basePointer[OLD_INSTRUCTION_POINTER]    = (size_t)((const void*)threadLocalStack.instructionPointer); // cast ptr to size_t
             basePointer[OLD_FRAME_LENGTH]           = threadLocalStack.frame.frameLength;
             basePointer[OLD_RETURN_VALUE_DST]       = (size_t)threadLocalStack.frame.returnValueDst;
             basePointer[OLD_RETURN_CONTEXT_DST]     = (size_t)threadLocalStack.frame.returnContextDst;
@@ -525,7 +525,7 @@ static CubsProgramRuntimeError interpreter_execute_continuous(const CubsProgram 
 
 CubsProgramRuntimeError cubs_interpreter_execute_function(const CubsProgram *program, const ScriptFunctionDefinitionHeader *function, void *outReturnValue, const CubsTypeContext **outContext)
 {
-    cubs_interpreter_push_frame(function->stackSpaceRequired, threadLocalStack.instructionPointer, outReturnValue, outContext);
+    cubs_interpreter_push_frame(function->stackSpaceRequired, outReturnValue, outContext);
     cubs_interpreter_set_instruction_pointer(cubs_function_bytecode_start(function));
 
     const CubsProgramRuntimeError err = interpreter_execute_continuous(program);

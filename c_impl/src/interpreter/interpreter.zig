@@ -13,7 +13,7 @@ const c = @cImport({
 });
 
 test "push frame no return" {
-    c.cubs_interpreter_push_frame(1, null, null, null);
+    c.cubs_interpreter_push_frame(1, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     const frame = c.cubs_interpreter_current_stack_frame();
@@ -22,7 +22,7 @@ test "push frame no return" {
 }
 
 test "nested push frame" {
-    c.cubs_interpreter_push_frame(100, null, null, null);
+    c.cubs_interpreter_push_frame(100, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     {
@@ -31,7 +31,7 @@ test "nested push frame" {
         try expect(frame.basePointerOffset == 0);
     }
 
-    c.cubs_interpreter_push_frame(100, null, null, null);
+    c.cubs_interpreter_push_frame(100, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     {
@@ -44,7 +44,7 @@ test "nested push frame" {
 test "unwind" {
     const frameLength = 10;
     { // all null
-        c.cubs_interpreter_push_frame(frameLength, null, null, null);
+        c.cubs_interpreter_push_frame(frameLength, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         for (0..frameLength) |i| {
@@ -54,7 +54,7 @@ test "unwind" {
         c.cubs_interpreter_stack_unwind_frame();
     }
     { // one int
-        c.cubs_interpreter_push_frame(frameLength, null, null, null);
+        c.cubs_interpreter_push_frame(frameLength, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         for (0..frameLength) |i| {
@@ -67,7 +67,7 @@ test "unwind" {
         c.cubs_interpreter_stack_unwind_frame();
     }
     { // one heap string (must explicitly deallocate)
-        c.cubs_interpreter_push_frame(frameLength, null, null, null);
+        c.cubs_interpreter_push_frame(frameLength, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         for (0..frameLength) |i| {
@@ -88,7 +88,7 @@ test "push function arg" {
         const val: i64 = 55;
         c.cubs_interpreter_push_function_arg(@ptrCast(&val), &c.CUBS_INT_CONTEXT, 0);
 
-        c.cubs_interpreter_push_frame(1, null, null, null);
+        c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 55);
@@ -99,7 +99,7 @@ test "push function arg" {
         c.cubs_interpreter_push_function_arg(@ptrCast(&val1), &c.CUBS_INT_CONTEXT, 0);
         c.cubs_interpreter_push_function_arg(@ptrCast(&val2), &c.CUBS_INT_CONTEXT, 1);
 
-        c.cubs_interpreter_push_frame(2, null, null, null);
+        c.cubs_interpreter_push_frame(2, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 55);
@@ -114,7 +114,7 @@ test "push function arg" {
         c.cubs_interpreter_push_function_arg(@ptrCast(&sVal1), &c.CUBS_STRING_CONTEXT, 0);
         c.cubs_interpreter_push_function_arg(@ptrCast(&sVal2), &c.CUBS_STRING_CONTEXT, 4);
 
-        c.cubs_interpreter_push_frame(8, null, null, null);
+        c.cubs_interpreter_push_frame(8, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         try expect(c.cubs_string_eql_slice(@as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))), .{ .str = str1.ptr, .len = str1.len }));
@@ -167,7 +167,7 @@ fn ScriptContextTestRuntimeError(comptime errTag: c.CubsProgramRuntimeError) typ
 }
 
 test "nop" {
-    c.cubs_interpreter_push_frame(1, null, null, null);
+    c.cubs_interpreter_push_frame(1, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     const bytecode = [_]c.Bytecode{
@@ -183,7 +183,7 @@ test "load immediate bool" {
         var bytecode = [_]c.Bytecode{undefined};
         bytecode[0] = c.operands_make_load_immediate(c.LOAD_IMMEDIATE_BOOL, 0, 1);
 
-        c.cubs_interpreter_push_frame(1, null, null, null);
+        c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
@@ -196,7 +196,7 @@ test "load immediate bool" {
         var bytecode = [_]c.Bytecode{undefined};
         bytecode[0] = c.operands_make_load_immediate(c.LOAD_IMMEDIATE_BOOL, 0, 0);
 
-        c.cubs_interpreter_push_frame(1, null, null, null);
+        c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
@@ -212,7 +212,7 @@ test "load immediate int" {
         var bytecode = [_]c.Bytecode{undefined};
         bytecode[0] = c.operands_make_load_immediate(c.LOAD_IMMEDIATE_INT, 0, 10);
 
-        c.cubs_interpreter_push_frame(1, null, null, null);
+        c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
@@ -225,7 +225,7 @@ test "load immediate int" {
         var bytecode = [_]c.Bytecode{undefined};
         bytecode[0] = c.operands_make_load_immediate(c.LOAD_IMMEDIATE_INT, 0, -10);
 
-        c.cubs_interpreter_push_frame(1, null, null, null);
+        c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
@@ -241,7 +241,7 @@ test "load immediate long" {
         var bytecode = [2]c.Bytecode{ undefined, undefined };
         c.operands_make_load_immediate_long(@ptrCast(&bytecode), c.cubsValueTagInt, 0, @bitCast(@as(i64, -1234567890)));
 
-        c.cubs_interpreter_push_frame(1, null, null, null);
+        c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
@@ -254,7 +254,7 @@ test "load immediate long" {
         var bytecode = [2]c.Bytecode{ undefined, undefined };
         c.operands_make_load_immediate_long(@ptrCast(&bytecode), c.cubsValueTagFloat, 0, @bitCast(@as(f64, -0.123456789)));
 
-        c.cubs_interpreter_push_frame(1, null, null, null);
+        c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
@@ -266,7 +266,7 @@ test "load immediate long" {
 }
 
 test "load default" {
-    c.cubs_interpreter_push_frame(10, null, null, null);
+    c.cubs_interpreter_push_frame(10, null, null);
     defer c.cubs_interpreter_pop_frame();
     { // bool
         var bytecode: c.Bytecode = undefined;
@@ -313,7 +313,7 @@ test "load default" {
 }
 
 test "load clone" {
-    c.cubs_interpreter_push_frame(10, null, null, null);
+    c.cubs_interpreter_push_frame(10, null, null);
     defer c.cubs_interpreter_pop_frame();
     {
         var bytecode = [3]c.Bytecode{ undefined, undefined, undefined };
@@ -336,7 +336,7 @@ test "load clone" {
 }
 
 test "add dst int" {
-    c.cubs_interpreter_push_frame(3, null, null, null);
+    c.cubs_interpreter_push_frame(3, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     var bytecode = c.operands_make_add_dst(false, 2, 0, 1);
@@ -354,7 +354,7 @@ test "add dst int" {
 }
 
 test "add assign int" {
-    c.cubs_interpreter_push_frame(2, null, null, null);
+    c.cubs_interpreter_push_frame(2, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     var bytecode = c.operands_make_add_assign(false, 0, 1);
@@ -372,7 +372,7 @@ test "add assign int" {
 }
 
 test "add dst overflow" {
-    c.cubs_interpreter_push_frame(3, null, null, null);
+    c.cubs_interpreter_push_frame(3, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     var context = ScriptContextTestRuntimeError(c.cubsProgramRuntimeErrorAdditionIntegerOverflow).init(true);
@@ -392,7 +392,7 @@ test "add dst overflow" {
 }
 
 test "add assign overflow" {
-    c.cubs_interpreter_push_frame(2, null, null, null);
+    c.cubs_interpreter_push_frame(2, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     var context = ScriptContextTestRuntimeError(c.cubsProgramRuntimeErrorAdditionIntegerOverflow).init(true);
@@ -412,7 +412,7 @@ test "add assign overflow" {
 }
 
 test "add dst float" {
-    c.cubs_interpreter_push_frame(3, null, null, null);
+    c.cubs_interpreter_push_frame(3, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     var bytecode = c.operands_make_add_dst(false, 2, 0, 1);
@@ -435,7 +435,7 @@ test "add dst float" {
 }
 
 test "add assign float" {
-    c.cubs_interpreter_push_frame(2, null, null, null);
+    c.cubs_interpreter_push_frame(2, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     var bytecode = c.operands_make_add_assign(false, 0, 1);
@@ -458,7 +458,7 @@ test "add assign float" {
 }
 
 test "add dst string" {
-    c.cubs_interpreter_push_frame(12, null, null, null);
+    c.cubs_interpreter_push_frame(12, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     const s1 = "hello? it is a pleasure to meet you.";
@@ -485,7 +485,7 @@ test "add dst string" {
 }
 
 test "add assign string" {
-    c.cubs_interpreter_push_frame(8, null, null, null);
+    c.cubs_interpreter_push_frame(8, null, null);
     defer c.cubs_interpreter_pop_frame();
 
     const s1 = "hello? it is a pleasure to meet you.";

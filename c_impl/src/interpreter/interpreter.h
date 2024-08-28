@@ -27,7 +27,7 @@ typedef struct {
     const CubsTypeContext** returnContextDst;
 } InterpreterStackFrame;
 
-void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldInstructionPointer, void* returnValueDst, const CubsTypeContext** returnContextDst);
+void cubs_interpreter_push_frame(size_t frameLength, void* returnValueDst, const CubsTypeContext** returnContextDst);
 
 /// Operates on the calling thread's interpreter stack.
 void cubs_interpreter_pop_frame();

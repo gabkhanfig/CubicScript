@@ -99,7 +99,7 @@ test "build and execute" {
         const func = c.cubs_function_builder_build(&builder, &program);
         const bytecodeStart = c.cubs_function_bytecode_start(func);
 
-        c.cubs_interpreter_push_frame(0, null, null, null);
+        c.cubs_interpreter_push_frame(0, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(bytecodeStart));
@@ -120,7 +120,7 @@ test "build and execute" {
         const func = c.cubs_function_builder_build(&builder, &program);
         const bytecodeStart = c.cubs_function_bytecode_start(func);
 
-        c.cubs_interpreter_push_frame(1, null, null, null);
+        c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
 
         c.cubs_interpreter_set_instruction_pointer(@ptrCast(bytecodeStart));
