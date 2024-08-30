@@ -369,6 +369,10 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
     }
 }
 
+static CubsProgramRuntimeError execute_return(size_t* ipIncrement, const Bytecode bytecode) {
+    
+}
+
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode* bytecode) {
     const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src);
@@ -494,7 +498,7 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
             execute_load(&ipIncrement, &bytecode);
         } break;
         case OpCodeReturn: {
-            // TODO actually return
+            execute_return(&ipIncrement, bytecode);
         } break;
         case OpCodeIncrement: {
             potentialErr = execute_increment(program, &bytecode);
