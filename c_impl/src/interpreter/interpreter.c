@@ -370,7 +370,22 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
 }
 
 static CubsProgramRuntimeError execute_return(size_t* ipIncrement, const Bytecode bytecode) {
-    
+    const OperandsReturn operands = *(const OperandsReturn*)&bytecode;
+
+    if(operands.hasReturn) {      
+        assert(threadLocalStack.frame.returnValueDst != NULL);
+        assert(threadLocalStack.frame.returnContextDst != NULL);
+
+        void* src = cubs_interpreter_stack_value_at(operands.returnSrc);
+        const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.returnSrc);
+        cubs_interpreter_stack_set_null_context_at(operands.returnSrc);
+
+        memcpy(threadLocalStack.frame.returnValueDst, src, context->sizeOfType);
+        *threadLocalStack.frame.returnContextDst = context;
+    }
+
+    cubs_interpreter_stack_unwind_frame();
+    cubs_interpreter_pop_frame();
 }
 
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode* bytecode) {
