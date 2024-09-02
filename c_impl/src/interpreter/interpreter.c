@@ -369,7 +369,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
     }
 }
 
-static CubsProgramRuntimeError execute_return(size_t* ipIncrement, const Bytecode bytecode) {
+static void execute_return(size_t* ipIncrement, const Bytecode bytecode) {
     const OperandsReturn operands = *(const OperandsReturn*)&bytecode;
 
     if(operands.hasReturn) {      
