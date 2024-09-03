@@ -130,3 +130,18 @@ test "build and execute" {
         try expect(@as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == true);
     }
 }
+
+test "interpreter execute function" {
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var builder = c.FunctionBuilder{ .stackSpaceRequired = 0 };
+    defer c.cubs_function_builder_deinit(&builder);
+
+    c.cubs_function_builder_push_bytecode(&builder, c.cubs_bytecode_encode(c.OpCodeNop, null));
+    c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(false, 0));
+
+    const func = c.cubs_function_builder_build(&builder, &program);
+
+    try expect(c.cubs_interpreter_execute_function(&program, func, null, null) == 0);
+}
