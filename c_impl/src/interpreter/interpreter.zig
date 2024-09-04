@@ -520,3 +520,22 @@ test "return no value" {
     c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
     try expect(c.cubs_interpreter_execute_operation(null) == 0);
 }
+
+test "return 1 stack-slot value" {
+    var outValue: i64 = undefined;
+    var outContext: *const c.CubsTypeContext = undefined;
+
+    c.cubs_interpreter_push_frame(1, &outValue, @ptrCast(&outContext));
+    // explicitly dont pop frame, as return will
+
+    var bytecode = c.operands_make_return(true, 0);
+
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+    @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = 10;
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+    try expect(outValue == 10);
+    try expect(outContext == &c.CUBS_INT_CONTEXT);
+}
