@@ -510,3 +510,13 @@ test "add assign string" {
 
     c.cubs_interpreter_stack_unwind_frame();
 }
+
+test "return no value" {
+    c.cubs_interpreter_push_frame(0, null, null);
+    // explicitly dont pop frame, as return will
+
+    var bytecode = c.operands_make_return(false, 0);
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+}
