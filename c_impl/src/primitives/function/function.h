@@ -14,7 +14,7 @@ typedef struct CubsFunction {
   CubsFunctionPtrType funcType;
 } CubsFunction;
 
-typedef struct CubsScriptFunctionCallArgs CubsScriptFunctionCallArgs;
+typedef struct CubsFunctionCallArgs CubsFunctionCallArgs;
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,7 +22,7 @@ extern "C" {
 
 /// Returns a structure used to push function arguments onto the script stack, or...
 /// TODO extern C calling stuff
-CubsScriptFunctionCallArgs cubs_function_start_call(const CubsFunction* self);
+CubsFunctionCallArgs cubs_function_start_call(const CubsFunction* self);
 
 #ifdef __cplusplus
 } // extern "C"

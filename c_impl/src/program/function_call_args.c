@@ -11,7 +11,7 @@
 const size_t CURRENT_OFFSET = 0;
 const size_t PUSHED_ARG_COUNT = 1;
 
-void cubs_function_push_arg(CubsScriptFunctionCallArgs *self, void *arg, const CubsTypeContext *typeContext)
+void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTypeContext *typeContext)
 {
     if(self->func->funcType == cubsFunctionPtrTypeScript) {
         const int currentOffset = self->_inner[CURRENT_OFFSET];
@@ -50,7 +50,7 @@ void cubs_function_push_arg(CubsScriptFunctionCallArgs *self, void *arg, const C
     }
 }
 
-void cubs_function_call(CubsScriptFunctionCallArgs self, const struct CubsProgram* program, void* outReturn, const struct CubsTypeContext** outContext)
+void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* program, void* outReturn, const struct CubsTypeContext** outContext)
 {    
     if(self.func->funcType == cubsFunctionPtrTypeScript) {
         
