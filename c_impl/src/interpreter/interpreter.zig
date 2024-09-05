@@ -539,3 +539,25 @@ test "return 1 stack-slot value" {
     try expect(outValue == 10);
     try expect(outContext == &c.CUBS_INT_CONTEXT);
 }
+
+test "return multi stack-slot value" {
+    var outValue: c.CubsString = undefined;
+    defer c.cubs_string_deinit(&outValue);
+
+    var outContext: *const c.CubsTypeContext = undefined;
+
+    c.cubs_interpreter_push_frame(4, &outValue, @ptrCast(&outContext));
+    // explicitly dont pop frame, as return will
+
+    var bytecode = c.operands_make_return(true, 0);
+
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+    const s = "hello? it is a pleasure to meet you.";
+    @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = c.cubs_string_init_unchecked(.{ .str = s.ptr, .len = s.len });
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+    try expect(c.cubs_string_eql_slice(&outValue, .{ .str = s.ptr, .len = s.len }));
+    try expect(outContext == &c.CUBS_STRING_CONTEXT);
+}
