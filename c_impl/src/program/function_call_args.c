@@ -60,7 +60,7 @@ void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* pro
 
         const ScriptFunctionDefinitionHeader* header = (const ScriptFunctionDefinitionHeader*)self.func->_inner;
 
-        //#if _DEBUG
+        #if _DEBUG
         char buf[512];
         if(currentPushedArgs != header->args.len) {
             #if defined(_WIN32) || defined(WIN32)
@@ -89,7 +89,7 @@ void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* pro
             assert(len >= 0);   
             cubs_panic(buf);
         }
-        //#endif
+        #endif
 
         cubs_interpreter_execute_function(program, header, outReturn.value, outReturn.context);
     } else {
