@@ -12,11 +12,6 @@ typedef struct CubsFunctionCallArgs {
     int _inner[2];
 } CubsFunctionCallArgs;
 
-/// Struct to access arguments for C function calls.
-typedef struct CubsCFunctionArgs {
-    size_t _inner[2];
-} CubsCFunctionArgs;
-
 /// Holds the return value and return context destinations for returning from a script-compatible function.
 /// For functions with no return value, 0 initializing this struct is fine.
 typedef struct CubsFunctionReturn {
@@ -24,12 +19,20 @@ typedef struct CubsFunctionReturn {
     const struct CubsTypeContext** context;
 } CubsFunctionReturn;
 
+/// Holds everything necessary to get the arguments of a C function call, as well as returning values.
+/// Scripts and `CubsFunction` use this.
+typedef struct CubsCFunctionHandler {
+    const struct CubsProgram* program;
+    size_t _frameBaseOffset;
+    int _offsetForArgs;
+    int argCount;
+    CubsFunctionReturn outReturn;
+} CubsCFunctionHandler;
+
 /// Function pointer definition for C functions that are accessible within scripts, or `CubsFunction`.
-/// @param outReturn Destination to move the return value to. If the function has no return value, 
-/// `outReturn` will have both params as NULL. See `cubs_function_return_set_value(...)`.
-/// @param args Holds the arguments for the function call. Does not need to be deinitialized.
-/// @return 0 on success, any other value is an error.
-typedef int(*CubsCFunctionPtr)(CubsCFunctionArgs args, CubsFunctionReturn outReturn);
+/// See `CubsCFunctionHandler`.
+/// @return 0 on success, or a non 0 user defined error code.
+typedef int(*CubsCFunctionPtr)(CubsCFunctionHandler);
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,10 +49,17 @@ void cubs_function_push_arg(CubsFunctionCallArgs* self, void* arg, const struct 
 /// If the function has no return value, pass in `NULL` for `outReturn`.
 void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* program, CubsFunctionReturn outReturn);
 
+/// Defined in `interpreter.c`.
+/// Moves the argument at `argIndex` to the memory at `outArg`.
+/// `argIndex` is an array index, in which `0` is the first argument, `1` is the second argument, etc. 
+/// regardless of the actual sizes of the argument data types.
+/// If `outContext == NULL`, does not bother setting it.
+extern void cubs_function_take_arg(const CubsCFunctionHandler* self, size_t argIndex, void* outArg, const struct CubsTypeContext** outContext);
+
 /// `memcpy`'s `returnValue` to the destination held in `self`, and sets the return context in `self` to `returnContext`.
 /// Takes ownership of `self`, effectively deinitializing it.
 /// NOTE - no actual deinitialization logic is necessary, just don't use the same CubsFunctionReturn twice. 
-void cubs_function_return_set_value(CubsFunctionReturn self, void* returnValue, const struct CubsTypeContext* returnContext);
+void cubs_function_return_set_value(CubsCFunctionHandler self, void* returnValue, const struct CubsTypeContext* returnContext);
 
 #ifdef __cplusplus
 } // extern "C"

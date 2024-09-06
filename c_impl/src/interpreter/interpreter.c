@@ -18,6 +18,7 @@
 #include "../util/math.h"
 #include <string.h>
 #include "function_definition.h"
+#include "../program/function_call_args.h"
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
@@ -25,12 +26,6 @@ extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsPr
 static bool ptr_is_aligned(const void* p, size_t alignment) {
     return (((uintptr_t)p) % alignment) == 0;
 }
-
-static const size_t OLD_INSTRUCTION_POINTER = 0;
-static const size_t OLD_FRAME_LENGTH = 1;
-static const size_t OLD_RETURN_VALUE_DST = 2;
-static const size_t OLD_RETURN_CONTEXT_DST = 3;
-static const size_t RESERVED_SLOTS = 4;
 
 typedef struct InterpreterStackState {
     const Bytecode* instructionPointer;
@@ -189,6 +184,52 @@ void cubs_interpreter_push_script_function_arg(const void *arg, const CubsTypeCo
         for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
             threadLocalStack.contexts[actualOffset + i] = 0; // (uintptr_t)NULL
         }
+    }
+}
+
+void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsTypeContext* context, size_t offset, size_t currentArgCount, size_t argTrackOffset)
+{
+    const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
+    // integer division.
+    // structs with a size less than or equal to 8 will have the track offset set to +1,
+    // otherwise it will be pushed further
+    const size_t newArgTrackOffset = actualOffset + (context->sizeOfType / 8);
+    if(argTrackOffset > 0) { // with an offset other than 0, it means args have already been pushed.
+        const size_t bytesToMove = 8 * (1 + (argTrackOffset / 4));
+        memmove((void*)&threadLocalStack.stack[newArgTrackOffset], (const void*)&threadLocalStack.stack[offset], bytesToMove); // `offset`
+    }
+    
+    memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
+
+    threadLocalStack.stack[newArgTrackOffset] = currentArgCount + 1;
+    uint16_t* offsetsArrayStart = (uint16_t*)&threadLocalStack.stack[newArgTrackOffset + 1]; // one after the argument count tracker
+    offsetsArrayStart[currentArgCount] = offset;
+
+    threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
+    if(context->sizeOfType > 8) {
+        for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
+            threadLocalStack.contexts[actualOffset + i] = 0; // (uintptr_t)NULL
+        }
+    }
+}
+
+void cubs_function_take_arg(const CubsCFunctionHandler *self, size_t argIndex, void *outArg, const CubsTypeContext **outContext)
+{
+    assert(outArg != NULL);
+    assert(self->argCount > argIndex);
+
+    const size_t startOfArgPositions = self->_frameBaseOffset + RESERVED_SLOTS + (size_t)self->_offsetForArgs + 1; // add one to make room for arg count
+    const uint16_t* argPositions = (const uint16_t*)&threadLocalStack.stack[startOfArgPositions];
+    const size_t actualArgPosition = argPositions[argIndex];
+
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(actualArgPosition);
+    assert(context != NULL);
+
+    memcpy(outArg, cubs_interpreter_stack_value_at(actualArgPosition), context->sizeOfType);
+    cubs_interpreter_stack_set_null_context_at(actualArgPosition);
+
+    if(outContext != NULL) {
+        *outContext = context;
     }
 }
 
@@ -403,9 +444,9 @@ static CubsProgramRuntimeError execute_increment(const CubsProgram* program, con
                 assert(program != NULL);
                 char errBuf[256];
                 #if defined(_WIN32) || defined(WIN32)
-                const int len = sprintf_s(errBuf, 256, "Increment integer overflow detected -> %lld + %lld\n", a, 1);
+                const int len = sprintf_s(errBuf, 256, "Increment integer overflow detected -> %lld + 1\n", a);
                 #else
-                const int len = sprintf(errBuf, "increment integer overflow detected -> %ld + %ld\n", a, 1);
+                const int len = sprintf(errBuf, "increment integer overflow detected -> %lld + 1\n", a);
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorIncrementIntegerOverflow, errBuf, len);             
@@ -454,7 +495,7 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
                 #if defined(_WIN32) || defined(WIN32)
                 const int len = sprintf_s(errBuf, 256, "Integer overflow detected -> %lld + %lld\n", a, b);
                 #else
-                const int len = sprintf(errBuf, "Integer overflow detected -> %ld + %ld\n", a, b);
+                const int len = sprintf(errBuf, "Integer overflow detected -> %lld + %lld\n", a, b);
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorAdditionIntegerOverflow, errBuf, len);             

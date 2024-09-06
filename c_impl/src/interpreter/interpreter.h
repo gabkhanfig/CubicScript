@@ -27,6 +27,14 @@ typedef struct {
     const CubsTypeContext** returnContextDst;
 } InterpreterStackFrame;
 
+enum InterpreterFrameReservedSlots {
+    OLD_INSTRUCTION_POINTER = 0,
+    OLD_FRAME_LENGTH = 1,
+    OLD_RETURN_VALUE_DST = 2,
+    OLD_RETURN_CONTEXT_DST = 3,
+    RESERVED_SLOTS = 4,
+};
+
 void cubs_interpreter_push_frame(size_t frameLength, void* returnValueDst, const CubsTypeContext** returnContextDst);
 
 /// Operates on the calling thread's interpreter stack.
@@ -59,6 +67,10 @@ void cubs_interpreter_set_instruction_pointer(const struct Bytecode* newIp);
 /// Assumes that the new stack frame hasn't been pushed yet.
 /// Copies the memory at `arg`.
 void cubs_interpreter_push_script_function_arg(const void* arg, const struct CubsTypeContext* context, size_t offset);
+
+/// Assumes that the new stack frame hasn't been pushed yet.
+/// Copies the memory at `arg`.
+void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsTypeContext* context, size_t offset, size_t currentArgCount, size_t argTrackOffset);
 
 /// Executes the operation at this thread's instruction pointer
 CubsProgramRuntimeError cubs_interpreter_execute_operation(const struct CubsProgram* program);
