@@ -179,7 +179,7 @@ void cubs_interpreter_set_instruction_pointer(const Bytecode *newIp)
     threadLocalStack.instructionPointer = newIp;
 }
 
-void cubs_interpreter_push_function_arg(const void *arg, const CubsTypeContext *context, size_t offset)
+void cubs_interpreter_push_script_function_arg(const void *arg, const CubsTypeContext *context, size_t offset)
 {
     const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
 

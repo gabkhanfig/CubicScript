@@ -86,7 +86,7 @@ test "unwind" {
 test "push function arg" {
     { // one arg
         const val: i64 = 55;
-        c.cubs_interpreter_push_function_arg(@ptrCast(&val), &c.CUBS_INT_CONTEXT, 0);
+        c.cubs_interpreter_push_script_function_arg(@ptrCast(&val), &c.CUBS_INT_CONTEXT, 0);
 
         c.cubs_interpreter_push_frame(1, null, null);
         defer c.cubs_interpreter_pop_frame();
@@ -96,8 +96,8 @@ test "push function arg" {
     { // multiple args, 1 "slot" per arg
         const val1: i64 = 55;
         const val2: i64 = 56;
-        c.cubs_interpreter_push_function_arg(@ptrCast(&val1), &c.CUBS_INT_CONTEXT, 0);
-        c.cubs_interpreter_push_function_arg(@ptrCast(&val2), &c.CUBS_INT_CONTEXT, 1);
+        c.cubs_interpreter_push_script_function_arg(@ptrCast(&val1), &c.CUBS_INT_CONTEXT, 0);
+        c.cubs_interpreter_push_script_function_arg(@ptrCast(&val2), &c.CUBS_INT_CONTEXT, 1);
 
         c.cubs_interpreter_push_frame(2, null, null);
         defer c.cubs_interpreter_pop_frame();
@@ -111,8 +111,8 @@ test "push function arg" {
         const sVal1 = c.cubs_string_init_unchecked(.{ .str = str1.ptr, .len = str1.len });
         const sVal2 = c.cubs_string_init_unchecked(.{ .str = str2.ptr, .len = str2.len });
 
-        c.cubs_interpreter_push_function_arg(@ptrCast(&sVal1), &c.CUBS_STRING_CONTEXT, 0);
-        c.cubs_interpreter_push_function_arg(@ptrCast(&sVal2), &c.CUBS_STRING_CONTEXT, 4);
+        c.cubs_interpreter_push_script_function_arg(@ptrCast(&sVal1), &c.CUBS_STRING_CONTEXT, 0);
+        c.cubs_interpreter_push_script_function_arg(@ptrCast(&sVal2), &c.CUBS_STRING_CONTEXT, 4);
 
         c.cubs_interpreter_push_frame(8, null, null);
         defer c.cubs_interpreter_pop_frame();

@@ -41,7 +41,7 @@ void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTyp
         }
         #endif
 
-        cubs_interpreter_push_function_arg(arg, typeContext, currentOffset);
+        cubs_interpreter_push_script_function_arg(arg, typeContext, currentOffset);
 
         const int offsetToAdd = (int)ROUND_SIZE_TO_MULTIPLE_OF_8(typeContext->sizeOfType);
         self->_inner[CURRENT_OFFSET] += offsetToAdd;
@@ -60,13 +60,13 @@ void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* pro
 
         const ScriptFunctionDefinitionHeader* header = (const ScriptFunctionDefinitionHeader*)self.func->_inner;
 
-        #if _DEBUG
+        //#if _DEBUG
         char buf[512];
         if(currentPushedArgs != header->args.len) {
             #if defined(_WIN32) || defined(WIN32)
             const int len = sprintf_s(buf, 512, "Script function [%s] expects %lld arguments. Only %lld passed in", cubs_string_as_slice(&header->name).str, header->args.len, currentPushedArgs);
             #else
-            const int len = sprintf(buf, "Script function [%s] expects %ld arguments. Only %lld passed in", cubs_string_as_slice(&header->name).str, header->args.len, currentPushedArgs);
+            const int len = sprintf(buf, "Script function [%s] expects %ld arguments. Only %ld passed in", cubs_string_as_slice(&header->name).str, header->args.len, currentPushedArgs);
             #endif
             assert(len >= 0);   
             cubs_panic(buf);
@@ -80,7 +80,7 @@ void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* pro
             assert(len >= 0);   
             cubs_panic(buf);
         }
-        if(header->optReturnType != NULL && outReturn == NULL) {
+        if(header->optReturnType != NULL && (outReturn.value == NULL || outReturn.context == NULL)) {
             #if defined(_WIN32) || defined(WIN32)
             const int len = sprintf_s(buf, 512, "Script function [%s] expected return value destination", cubs_string_as_slice(&header->name).str);
             #else
@@ -89,7 +89,7 @@ void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* pro
             assert(len >= 0);   
             cubs_panic(buf);
         }
-        #endif
+        //#endif
 
         cubs_interpreter_execute_function(program, header, outReturn.value, outReturn.context);
     } else {
