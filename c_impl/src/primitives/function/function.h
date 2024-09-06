@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../c_basic_types.h"
+#include "../../program/function_call_args.h"
 
 typedef enum CubsFunctionPtrType {
     cubsFunctionPtrTypeC = 0,
@@ -14,11 +15,11 @@ typedef struct CubsFunction {
   CubsFunctionPtrType funcType;
 } CubsFunction;
 
-typedef struct CubsFunctionCallArgs CubsFunctionCallArgs;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+CubsFunction cubs_function_init_c(CubsCFunctionPtr func);
 
 /// Returns a structure used to push function arguments onto the script stack, or...
 /// TODO extern C calling stuff

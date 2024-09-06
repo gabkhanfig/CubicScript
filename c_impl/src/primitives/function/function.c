@@ -1,5 +1,10 @@
 #include "function.h"
-#include "../../program/function_call_args.h"
+
+CubsFunction cubs_function_init_c(CubsCFunctionPtr func)
+{
+    const CubsFunction out = {._inner = (const void*)func, .funcType = cubsFunctionPtrTypeC};
+    return out;
+}
 
 CubsFunctionCallArgs cubs_function_start_call(const CubsFunction *self)
 {
