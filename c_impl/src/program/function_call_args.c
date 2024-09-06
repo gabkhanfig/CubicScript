@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "../util/context_size_round.h"
 #include "../primitives/context.h"
+#include <string.h>
 
 const size_t CURRENT_OFFSET = 0;
 const size_t PUSHED_ARG_COUNT = 1;
@@ -50,7 +51,7 @@ void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTyp
     }
 }
 
-void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* program, void* outReturn, const struct CubsTypeContext** outContext)
+void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* program, CubsFunctionReturn outReturn)
 {    
     if(self.func->funcType == cubsFunctionPtrTypeScript) {
         
@@ -90,8 +91,19 @@ void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* pro
         }
         #endif
 
-        cubs_interpreter_execute_function(program, header, outReturn, outContext);
+        cubs_interpreter_execute_function(program, header, outReturn.value, outReturn.context);
     } else {
         cubs_panic("TODO extern C functions");
     }
+}
+
+void cubs_function_return_set_value(CubsFunctionReturn self, void *returnValue, const CubsTypeContext *returnContext)
+{
+    assert(self.value != NULL);
+    assert(self.context != NULL);
+    assert(returnValue != NULL);
+    assert(returnContext != NULL);
+
+    memcpy(self.value, returnValue, returnContext->sizeOfType);
+    *self.context = returnContext;
 }
