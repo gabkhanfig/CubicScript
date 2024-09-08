@@ -54,7 +54,7 @@ void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTyp
     self->_inner[PUSHED_ARG_COUNT] += 1;
 }
 
-void cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
+int cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
 {    
     if(self.func->funcType == cubsFunctionPtrTypeScript) {
         
@@ -94,7 +94,7 @@ void cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
         }
         #endif
 
-        cubs_interpreter_execute_function(header, outReturn.value, outReturn.context);
+        return (int)cubs_interpreter_execute_function(header, outReturn.value, outReturn.context);
     } else {
         cubs_interpreter_push_frame(self._inner[CURRENT_OFFSET], outReturn.value, outReturn.context);
         const InterpreterStackFrame frame = cubs_interpreter_current_stack_frame();
@@ -109,19 +109,20 @@ void cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
 
         const CubsCFunctionPtr func = (const CubsCFunctionPtr)self.func->_inner;
         const int err = func(args);
-        if(err != 0) {
-            char* buf = cubs_malloc(128, 1);
-            #if defined(_WIN32) || defined(WIN32)
-            const int len = sprintf(buf, "CubicScript extern C function call error code %d", err);
-            #else
-            const int len = sprintf(buf, "CubicScript extern C function call error code %d", err);
-            #endif
-            assert(len >= 0);   
-            cubs_panic(buf);
-        }
+        // if(err != 0) {
+        //     char* buf = cubs_malloc(128, 1);
+        //     #if defined(_WIN32) || defined(WIN32)
+        //     const int len = sprintf(buf, "CubicScript extern C function call error code %d", err);
+        //     #else
+        //     const int len = sprintf(buf, "CubicScript extern C function call error code %d", err);
+        //     #endif
+        //     assert(len >= 0);   
+        //     cubs_panic(buf);
+        // }
 
         cubs_interpreter_stack_unwind_frame();
         cubs_interpreter_pop_frame();
+        return err;
     }
 }
 

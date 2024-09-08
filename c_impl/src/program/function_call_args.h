@@ -50,7 +50,9 @@ void cubs_function_push_arg(CubsFunctionCallArgs* self, void* arg, const struct 
 /// NOTE - no actual deinitialization logic is necessary, just don't use the same CubsScriptFunctionCallArgs twice. 
 /// Stores the return value in `outReturn`.
 /// If the function has no return value, pass in `NULL` for `outReturn`.
-void cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn);
+/// @return 0 on success. If the CubsFunction instance is a script function, returns a `CubsProgramRuntimeError`,
+/// otherwise returns a user defined, non 0 error code. 
+int cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn);
 
 /// Defined in `interpreter.c`.
 /// Moves the argument at `argIndex` to the memory at `outArg`.
