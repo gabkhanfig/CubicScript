@@ -42,6 +42,18 @@ pub const Function = extern struct {
         const f = Self.initC(&Example.example);
         _ = f;
     }
+
+    test startCall {
+        const Example = struct {
+            fn example(_: CFunctionHandler) callconv(.C) c_int {
+                return 0;
+            }
+        };
+
+        const f = Self.initC(&Example.example);
+        const a = f.startCall();
+        _ = a;
+    }
 };
 
 pub const FunctionCallArgs = extern struct {
@@ -52,7 +64,7 @@ pub const FunctionCallArgs = extern struct {
 
     pub const c = struct {
         pub extern fn cubs_function_push_arg(self: *Self, arg: *anyopaque, typeContext: *const TypeContext) callconv(.C) void;
-        pub extern fn cubs_function_call(self: Self, program: *const Program, outReturn: FunctionReturn) callconv(.C) void;
+        pub extern fn cubs_function_call(self: Self, outReturn: FunctionReturn) callconv(.C) c_int;
     };
 };
 
@@ -75,3 +87,15 @@ pub const CFunctionHandler = extern struct {
         pub extern fn cubs_function_return_set_value(self: *const Self, returnValue: *anyopaque, returnContext: *const TypeContext) callconv(.C) void;
     };
 };
+
+test "call C function" {
+    const Example = struct {
+        fn example(_: CFunctionHandler) callconv(.C) c_int {
+            return 0;
+        }
+    };
+
+    const f = Function.initC(&Example.example);
+    const a = f.startCall();
+    try expect(FunctionCallArgs.c.cubs_function_call(a, std.mem.zeroes(FunctionReturn)) == 0);
+}
