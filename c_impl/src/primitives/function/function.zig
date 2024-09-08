@@ -12,7 +12,15 @@ pub const Function = extern struct {
     _inner: *const anyopaque,
     funcType: FunctionPtrType,
 
-    pub const CFunctionPtr = *const fn (CFunctionHandler) c_int;
+    pub fn initC(func: CFunctionPtr) Self {
+        return c.cubs_function_init_c(func);
+    }
+
+    pub fn startCall(self: *const Self) FunctionCallArgs {
+        return c.cubs_function_start_call(self);
+    }
+
+    pub const CFunctionPtr = *const fn (CFunctionHandler) callconv(.C) c_int;
 
     pub const c = struct {
         pub extern fn cubs_function_init_c(func: CFunctionPtr) Self;
@@ -23,6 +31,17 @@ pub const Function = extern struct {
         C = 0,
         Script = 1,
     };
+
+    test initC {
+        const Example = struct {
+            fn example(_: CFunctionHandler) callconv(.C) c_int {
+                return 0;
+            }
+        };
+
+        const f = Self.initC(&Example.example);
+        _ = f;
+    }
 };
 
 pub const FunctionCallArgs = extern struct {
