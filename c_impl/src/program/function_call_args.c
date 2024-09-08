@@ -54,7 +54,7 @@ void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTyp
     self->_inner[PUSHED_ARG_COUNT] += 1;
 }
 
-void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* program, CubsFunctionReturn outReturn)
+void cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
 {    
     if(self.func->funcType == cubsFunctionPtrTypeScript) {
         
@@ -94,13 +94,13 @@ void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* pro
         }
         #endif
 
-        cubs_interpreter_execute_function(program, header, outReturn.value, outReturn.context);
+        cubs_interpreter_execute_function(header, outReturn.value, outReturn.context);
     } else {
         cubs_interpreter_push_frame(self._inner[CURRENT_OFFSET], outReturn.value, outReturn.context);
         const InterpreterStackFrame frame = cubs_interpreter_current_stack_frame();
 
         const CubsCFunctionHandler args = {
-            .program = program,
+            //.program = program,
             ._frameBaseOffset = frame.basePointerOffset,
             ._offsetForArgs = self._inner[CURRENT_OFFSET], 
             .argCount = self._inner[PUSHED_ARG_COUNT],

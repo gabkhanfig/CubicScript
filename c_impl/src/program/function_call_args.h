@@ -23,7 +23,7 @@ typedef struct CubsFunctionReturn {
 /// Holds everything necessary to get the arguments of a C function call, as well as returning values.
 /// Scripts and `CubsFunction` use this.
 typedef struct CubsCFunctionHandler {
-    const struct CubsProgram* program;
+    //const struct CubsProgram* program;
     /// Do not access
     size_t _frameBaseOffset;
     /// Do not access
@@ -50,7 +50,7 @@ void cubs_function_push_arg(CubsFunctionCallArgs* self, void* arg, const struct 
 /// NOTE - no actual deinitialization logic is necessary, just don't use the same CubsScriptFunctionCallArgs twice. 
 /// Stores the return value in `outReturn`.
 /// If the function has no return value, pass in `NULL` for `outReturn`.
-void cubs_function_call(CubsFunctionCallArgs self, const struct CubsProgram* program, CubsFunctionReturn outReturn);
+void cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn);
 
 /// Defined in `interpreter.c`.
 /// Moves the argument at `argIndex` to the memory at `outArg`.

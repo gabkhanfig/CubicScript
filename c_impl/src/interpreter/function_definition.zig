@@ -143,5 +143,5 @@ test "interpreter execute function" {
 
     const func = c.cubs_function_builder_build(&builder, &program);
 
-    try expect(c.cubs_interpreter_execute_function(&program, func, null, null) == 0);
+    try expect(c.cubs_interpreter_execute_function(func, null, null) == 0);
 }

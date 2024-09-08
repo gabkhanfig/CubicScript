@@ -40,6 +40,7 @@ void cubs_function_builder_push_bytecode_many(FunctionBuilder* self, const Bytec
 // TODO when the program allocates the header and bytecode, mprotect / VirutalProtect it to prevent malicious actors from overwriting bytecode
 
 typedef struct ScriptFunctionDefinitionHeader {
+    const CubsProgram* program;
     CubsString fullyQualifiedName;
     CubsString name;  
     size_t stackSpaceRequired;

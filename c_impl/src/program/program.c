@@ -140,6 +140,7 @@ ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* sel
     Inner* inner = as_inner_mut(program);
 
     const ScriptFunctionDefinitionHeader headerData = {
+        .program = program,
         .fullyQualifiedName = self->fullyQualifiedName,
         .name = self->name,
         .stackSpaceRequired = self->stackSpaceRequired,
