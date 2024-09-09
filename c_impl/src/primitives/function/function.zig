@@ -149,30 +149,18 @@ test "multiple arguments" {
             var context2: *const TypeContext = undefined;
 
             CFunctionHandler.c.cubs_function_take_arg(&args, 0, @ptrCast(&arg0), &context0);
-            expect(context0 == TypeContext.auto(String)) catch {
-                std.debug.print("Expected argument 0 to be string context", .{});
-            };
-            expect(arg0.eqlSlice("hello world!")) catch {
-                std.debug.print("Test fail. Expected first C function argument to be \"hello world!\"", .{});
-            };
+            assert(context0 == TypeContext.auto(String));
+            assert(arg0.eqlSlice("hello world!"));
 
             arg0.deinit();
 
             CFunctionHandler.c.cubs_function_take_arg(&args, 1, @ptrCast(&arg1), &context1);
-            expect(context0 == TypeContext.auto(i64)) catch {
-                std.debug.print("Expected argument 1 to be string context", .{});
-            };
-            expect(arg1 == 10) catch {
-                std.debug.print("Test fail. Expected second C function argument to be 10", .{});
-            };
+            assert(context1 == TypeContext.auto(i64));
+            assert(arg1 == 10);
 
             CFunctionHandler.c.cubs_function_take_arg(&args, 2, @ptrCast(&arg2), &context2);
-            expect(context2 == TypeContext.auto(String)) catch {
-                std.debug.print("Expected argument 2 to be string context", .{});
-            };
-            expect(arg0.eqlSlice("hello world!")) catch {
-                std.debug.print("Test fail. Expected first C function argument to be \"well hello to this truly glorious world!\"", .{});
-            };
+            assert(context2 == TypeContext.auto(String));
+            assert(arg0.eqlSlice("hello world!"));
 
             arg2.deinit();
 
