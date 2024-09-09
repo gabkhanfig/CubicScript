@@ -50,7 +50,7 @@ void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTyp
 
         cubs_interpreter_push_c_function_arg(arg, typeContext, currentOffset, currentPushedArgs, currentOffset);
     }
-    self->_inner[CURRENT_OFFSET] += offsetToAdd;
+    self->_inner[CURRENT_OFFSET] += (offsetToAdd / 8);
     self->_inner[PUSHED_ARG_COUNT] += 1;
 }
 

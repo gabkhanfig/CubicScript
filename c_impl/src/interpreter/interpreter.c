@@ -196,7 +196,7 @@ void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsType
     const size_t newArgTrackOffset = actualOffset + (context->sizeOfType / 8);
     if(argTrackOffset > 0) { // with an offset other than 0, it means args have already been pushed.
         const size_t bytesToMove = 8 * (1 + (argTrackOffset / 4));
-        memmove((void*)&threadLocalStack.stack[newArgTrackOffset], (const void*)&threadLocalStack.stack[offset], bytesToMove); // `offset`
+        memmove((void*)&threadLocalStack.stack[newArgTrackOffset], (const void*)&threadLocalStack.stack[threadLocalStack.nextBaseOffset + RESERVED_SLOTS + argTrackOffset], bytesToMove); // `offset`
     }
     
     memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
