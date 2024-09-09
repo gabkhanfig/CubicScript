@@ -130,7 +130,7 @@ static void stack_set_context_at(size_t offset, const CubsTypeContext* context, 
     threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS] = contextPtr | refTag;
     if(context->sizeOfType > 8) {
         for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset  + RESERVED_SLOTS + i] = 0; // (uintptr_t)NULL
+            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset  + RESERVED_SLOTS + i] = (uintptr_t)NULL;
         }
     }
 }
@@ -182,7 +182,7 @@ void cubs_interpreter_push_script_function_arg(const void *arg, const CubsTypeCo
     threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
     if(context->sizeOfType > 8) {
         for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[actualOffset + i] = 0; // (uintptr_t)NULL
+            threadLocalStack.contexts[actualOffset + i] = (uintptr_t)NULL;
         }
     }
 }
@@ -208,7 +208,7 @@ void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsType
     threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
     if(context->sizeOfType > 8) {
         for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[actualOffset + i] = 0; // (uintptr_t)NULL
+            threadLocalStack.contexts[actualOffset + i] = (uintptr_t)NULL;
         }
     }
 }
