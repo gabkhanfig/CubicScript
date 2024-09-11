@@ -76,7 +76,7 @@ pub const FunctionReturn = extern struct {
 pub const CFunctionHandler = extern struct {
     const Self = @This();
 
-    program: *const Program,
+    //program: *const Program,
     _frameBaseOffset: usize,
     _offsetForArgs: c_int,
     argCount: c_int,
