@@ -9,7 +9,8 @@ const Program = @import("../../program/program.zig").Program;
 pub const Function = extern struct {
     const Self = @This();
 
-    _inner: *const anyopaque,
+    /// If is null, function cannot be called
+    func: Ptr = std.mem.zeroes(Ptr),
     funcType: FunctionPtrType,
 
     pub fn initC(func: CFunctionPtr) Self {
@@ -21,6 +22,9 @@ pub const Function = extern struct {
     }
 
     pub const CFunctionPtr = *const fn (CFunctionHandler) callconv(.C) c_int;
+
+    /// Same as union `CubsFunctionPtr` in `function.h`
+    pub const Ptr = extern union { externC: CFunctionPtr, script: *const anyopaque };
 
     pub const c = struct {
         pub extern fn cubs_function_init_c(func: CFunctionPtr) Self;

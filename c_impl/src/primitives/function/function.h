@@ -3,16 +3,21 @@
 #include "../../c_basic_types.h"
 #include "../../program/function_call_args.h"
 
-typedef enum CubsFunctionPtrType {
+typedef enum CubsFunctionType {
     cubsFunctionPtrTypeC = 0,
     cubsFunctionPtrTypeScript = 1,
     /// Ensure at least 4 bytes
     _CUBS_FUNCTION_PTR_TYPE_MAX_VALUE = 0x7FFFFFFF,
-} CubsFunctionPtrType;
+} CubsFunctionType;
+
+typedef union CubsFunctionPtr {
+    CubsCFunctionPtr externC;
+    const void* script;
+} CubsFunctionPtr;
 
 typedef struct CubsFunction {
-  const void* _inner;
-  CubsFunctionPtrType funcType;
+    CubsFunctionPtr func;
+    CubsFunctionType funcType;
 } CubsFunction;
 
 #ifdef __cplusplus

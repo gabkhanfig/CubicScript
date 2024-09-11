@@ -1,5 +1,6 @@
 const std = @import("std");
 const expect = std.testing.expect;
+const Function = @import("../primitives/function/function.zig").Function;
 
 const c = @cImport({
     @cInclude("interpreter/interpreter.h");

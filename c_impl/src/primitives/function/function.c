@@ -2,7 +2,7 @@
 
 CubsFunction cubs_function_init_c(CubsCFunctionPtr func)
 {
-    const CubsFunction out = {._inner = (const void*)func, .funcType = cubsFunctionPtrTypeC};
+    const CubsFunction out = {.func = { .externC = func }, .funcType = cubsFunctionPtrTypeC};
     return out;
 }
 

@@ -21,7 +21,7 @@ void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTyp
         const int currentPushedArgs = self->_inner[PUSHED_ARG_COUNT];
 
         #if _DEBUG
-        const ScriptFunctionDefinitionHeader* header = (const ScriptFunctionDefinitionHeader*)self->func->_inner;
+        const ScriptFunctionDefinitionHeader* header = self->func->func.script;
         char buf[512];
         if(currentPushedArgs >= header->args.len) {
             #if defined(_WIN32) || defined(WIN32)
@@ -61,7 +61,7 @@ int cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
         const int currentOffset = self._inner[CURRENT_OFFSET];
         const int currentPushedArgs = self._inner[PUSHED_ARG_COUNT];
 
-        const ScriptFunctionDefinitionHeader* header = (const ScriptFunctionDefinitionHeader*)self.func->_inner;
+        const ScriptFunctionDefinitionHeader* header = (const ScriptFunctionDefinitionHeader*)self.func->func.script;
 
         #if _DEBUG
         char buf[512];
@@ -107,7 +107,7 @@ int cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
             .outReturn = outReturn,
         };
 
-        const CubsCFunctionPtr func = (const CubsCFunctionPtr)self.func->_inner;
+        const CubsCFunctionPtr func = self.func->func.externC;
         const int err = func(args);
         // if(err != 0) {
         //     char* buf = cubs_malloc(128, 1);

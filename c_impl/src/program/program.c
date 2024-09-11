@@ -100,7 +100,7 @@ bool cubs_program_find_function(const CubsProgram *self, CubsFunction *outFunc, 
     if(header == NULL) {
         return false;
     }
-    CubsFunction func = {._inner = (const void*)header, .funcType = cubsFunctionPtrTypeScript};
+    CubsFunction func = {.func = {.script = (const void*)header }, .funcType = cubsFunctionPtrTypeScript};
     *outFunc = func;
     return true;
 }
