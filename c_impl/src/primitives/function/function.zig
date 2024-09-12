@@ -237,3 +237,24 @@ test "multiple arguments" {
     FunctionCallArgs.c.cubs_function_push_arg(&a, @ptrCast(&a2), TypeContext.auto(String));
     try expect(FunctionCallArgs.c.cubs_function_call(a, std.mem.zeroes(FunctionReturn)) == 0);
 }
+
+test "return" {
+    const Example = struct {
+        fn example(args: CFunctionHandler) callconv(.C) c_int {
+            var out: i64 = 10;
+            const context: *const TypeContext = TypeContext.auto(i64);
+            CFunctionHandler.c.cubs_function_return_set_value(args, @ptrCast(&out), context);
+            return 0;
+        }
+    };
+
+    const f = Function.initC(&Example.example);
+    const a = f.startCall();
+
+    var num: i64 = undefined;
+    var cxt: *const TypeContext = undefined;
+
+    try expect(FunctionCallArgs.c.cubs_function_call(a, .{ .value = @ptrCast(&num), .context = &cxt }) == 0);
+    try expect(num == 10);
+    try expect(cxt == TypeContext.auto(i64));
+}
