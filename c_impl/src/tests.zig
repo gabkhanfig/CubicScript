@@ -32,4 +32,5 @@ comptime {
     _ = @import("primitives/vector/vector.zig").Vec4f;
     _ = @import("primitives/function/function.zig");
     _ = @import("primitives/function/function.zig").Function;
+    _ = @import("primitives/function/function.zig").FunctionCallArgs;
 }

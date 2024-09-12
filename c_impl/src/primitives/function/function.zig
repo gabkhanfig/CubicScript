@@ -11,7 +11,7 @@ pub const Function = extern struct {
 
     /// If is null, function cannot be called
     func: Ptr = std.mem.zeroes(Ptr),
-    funcType: FunctionPtrType,
+    funcType: FunctionPtrType = std.mem.zeroes(FunctionPtrType),
 
     pub fn initC(func: CFunctionPtr) Self {
         return c.cubs_function_init_c(func);
@@ -66,10 +66,63 @@ pub const FunctionCallArgs = extern struct {
     func: *const Function,
     _inner: [2]c_int,
 
+    pub fn pushArg(self: *Self, arg: anytype) void {
+        const argType = @TypeOf(arg);
+        const typeInfo = @typeInfo(argType);
+        if (typeInfo == .Pointer) {
+            @compileError("Passing pointer types not yet implemented");
+        }
+
+        var mutArg: argType = arg;
+        const context = TypeContext.auto(argType);
+        c.cubs_function_push_arg(self, @ptrCast(&mutArg), context);
+    }
+
+    pub fn call(self: Self, comptime RetT: type) !if (RetT == void) void else struct { value: RetT, context: *const TypeContext } {
+        const typeInfo = @typeInfo(RetT);
+        if (typeInfo == .Pointer) {
+            @compileError("Returning pointer types not yet implemented");
+        }
+
+        if (RetT == void) {
+            const result = c.cubs_function_call(self, std.mem.zeroes(FunctionReturn));
+            if (result == 0) {
+                return;
+            } else {
+                return error.Unknown;
+            }
+        } else {
+            var outValue: RetT = undefined;
+            var outContext: *const TypeContext = undefined;
+            const result = c.cubs_function_call(self, .{ .value = @ptrCast(&outValue), .context = &outContext });
+            if (result == 0) {
+                return .{ .value = outValue, .context = outContext };
+            } else {
+                return error.Unknown;
+            }
+        }
+    }
+
     pub const c = struct {
         pub extern fn cubs_function_push_arg(self: *Self, arg: *anyopaque, typeContext: *const TypeContext) callconv(.C) void;
         pub extern fn cubs_function_call(self: Self, outReturn: FunctionReturn) callconv(.C) c_int;
     };
+
+    test "pushArg and call" {
+        {
+            const Example = struct {
+                fn example(_: CFunctionHandler) callconv(.C) c_int {
+                    return 0;
+                }
+            };
+
+            const f = Function.initC(&Example.example);
+            var a = f.startCall();
+
+            a.pushArg(@as(i64, 10));
+            try a.call(void);
+        }
+    }
 };
 
 pub const FunctionReturn = extern struct {
