@@ -10,7 +10,7 @@ pub const CubsFunction = extern struct {
     const Self = @This();
 
     /// If is null, function cannot be called
-    func: CubsCFunctionPtr = std.mem.zeroes(CubsCFunctionPtr),
+    func: CubsFunctionPtr = std.mem.zeroes(CubsFunctionPtr),
     funcType: CubsFunctionType = std.mem.zeroes(CubsFunctionType),
 
     pub extern fn cubs_function_init_c(func: CubsCFunctionPtr) Self;
