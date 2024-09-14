@@ -1,6 +1,8 @@
 const std = @import("std");
 const expect = std.testing.expect;
-const Function = @import("../primitives/function/function.zig").Function;
+const CubsFunction = @import("../primitives/function/function.zig").CubsFunction;
+const CubsFunctionCallArgs = @import("../primitives/function/function.zig").CubsFunctionCallArgs;
+const CubsFunctionReturn = @import("../primitives/function/function.zig").CubsFunctionReturn;
 
 const c = @cImport({
     @cInclude("interpreter/interpreter.h");
@@ -145,4 +147,20 @@ test "interpreter execute function" {
     const func = c.cubs_function_builder_build(&builder, &program);
 
     try expect(c.cubs_interpreter_execute_function(func, null, null) == 0);
+}
+
+test "call through cubs function no args no return" {
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var builder = c.FunctionBuilder{ .stackSpaceRequired = 0 };
+    defer c.cubs_function_builder_deinit(&builder);
+
+    c.cubs_function_builder_push_bytecode(&builder, c.cubs_bytecode_encode(c.OpCodeNop, null));
+    c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(false, 0));
+
+    const func = CubsFunction{ .func = .{ .script = @ptrCast(c.cubs_function_builder_build(&builder, &program)) }, .funcType = .Script };
+    const a = CubsFunction.cubs_function_start_call(&func);
+
+    try expect(a.cubs_function_call(.{ .value = null, .context = null }) == 0);
 }
