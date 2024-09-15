@@ -16,7 +16,8 @@ static void script_function_arg_types_slice_add_arg(ScriptFunctionArgTypesSlice 
             _Alignof(const CubsTypeContext*)
         );
         if(self->optTypes != NULL) {
-            memcpy(newBuf, self->optTypes, self->len);
+            memcpy(newBuf, self->optTypes, sizeof(const CubsTypeContext*) * self->len);
+            cubs_free((void*)self->optTypes, sizeof(const CubsTypeContext*) * self->capacity, _Alignof(const CubsTypeContext*));
         }
         self->optTypes = newBuf;
         self->capacity = newCapacity;
