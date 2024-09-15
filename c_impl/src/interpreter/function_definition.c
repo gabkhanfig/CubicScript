@@ -5,11 +5,31 @@
 #include "bytecode.h"
 #include "../program/program.h"
 #include <string.h>
+#include <stdio.h>
+
+static void script_function_arg_types_slice_add_arg(ScriptFunctionArgTypesSlice *self, const CubsTypeContext *argType)
+{
+    if(self->len == self->capacity) {
+        const size_t newCapacity = (self->capacity + 1) * 2;
+        const CubsTypeContext** newBuf = (const CubsTypeContext**)cubs_malloc(
+            sizeof(const CubsTypeContext*) * newCapacity, 
+            _Alignof(const CubsTypeContext*)
+        );
+        if(self->optTypes != NULL) {
+            memcpy(newBuf, self->optTypes, self->len);
+        }
+        self->optTypes = newBuf;
+        self->capacity = newCapacity;
+    }
+    self->optTypes[self->len] = argType;
+    self->len += 1;
+}
 
 void cubs_function_builder_deinit(FunctionBuilder *self)
 {
     cubs_string_deinit(&self->fullyQualifiedName);
     cubs_string_deinit(&self->name);
+    
     if(self->args.capacity > 0) {
         cubs_free(self->args.optTypes, self->args.capacity * sizeof(const CubsTypeContext*), _Alignof(const CubsTypeContext*));
     }
@@ -57,6 +77,11 @@ void cubs_function_builder_push_bytecode_many(FunctionBuilder* self, const Bytec
     Bytecode* start = function_builder_add_n(self, count);
     memcpy((void*)start, (const void*)bytecode, count * sizeof(Bytecode));
     self->bytecodeLen += count;
+}
+
+void cubs_function_builder_add_arg(FunctionBuilder *self, const CubsTypeContext *argType)
+{
+    script_function_arg_types_slice_add_arg(&self->args, argType);
 }
 
 const Bytecode *cubs_function_bytecode_start(const ScriptFunctionDefinitionHeader *header)

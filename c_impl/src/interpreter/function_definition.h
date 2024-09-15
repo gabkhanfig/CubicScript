@@ -8,6 +8,7 @@ typedef struct CubsTypeContext CubsTypeContext;
 typedef struct CubsString CubsString;
 typedef struct CubsProgram CubsProgram;
 
+/// Zero initialize
 typedef struct ScriptFunctionArgTypesSlice {
     /// If NULL, the function take no arguments
     const CubsTypeContext** optTypes;
@@ -36,6 +37,8 @@ void cubs_function_builder_push_bytecode(FunctionBuilder* self, Bytecode bytecod
 
 /// `count` is the number of bytecodes to copy
 void cubs_function_builder_push_bytecode_many(FunctionBuilder* self, const Bytecode* bytecode, size_t count);
+
+void cubs_function_builder_add_arg(FunctionBuilder* self, const CubsTypeContext* argType);
 
 // TODO when the program allocates the header and bytecode, mprotect / VirutalProtect it to prevent malicious actors from overwriting bytecode
 

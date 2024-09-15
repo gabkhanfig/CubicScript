@@ -139,13 +139,25 @@ ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* sel
 
     Inner* inner = as_inner_mut(program);
 
+    ScriptFunctionArgTypesSlice newArgs = {0};
+    if(self->args.len > 0) {
+        newArgs.len = self->args.len;
+        newArgs.capacity = newArgs.len;
+        newArgs.optTypes = cubs_protected_arena_malloc(
+            &inner->arena, 
+            sizeof(const CubsTypeContext*) * newArgs.len, 
+            _Alignof(const CubsTypeContext*)
+        );
+        memcpy((void*)newArgs.optTypes, (const void*)self->args.optTypes, sizeof(const CubsTypeContext*) * self->args.len);
+    }
+
     const ScriptFunctionDefinitionHeader headerData = {
         .program = program,
         .fullyQualifiedName = self->fullyQualifiedName,
         .name = self->name,
         .stackSpaceRequired = self->stackSpaceRequired,
         .optReturnType = self->optReturnType,
-        .args = self->args,
+        .args = newArgs,
         .bytecodeCount = self->bytecodeLen,
     };
     ScriptFunctionDefinitionHeader* header = cubs_protected_arena_malloc(
@@ -159,6 +171,9 @@ ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* sel
     { // deinitialize function builder
         // Explicitly DO NOT deinitialize the names, as their ownership is transferred above with `headerData`
         cubs_free(self->bytecode, self->bytecodeCapacity * sizeof(Bytecode), _Alignof(Bytecode));
+        if(self->args.optTypes != NULL) {         
+            cubs_free(self->args.optTypes, sizeof(const CubsTypeContext*) * self->args.capacity, _Alignof(const CubsTypeContext*));
+        }
         const FunctionBuilder zeroed = {0};
         *self = zeroed;
     }
