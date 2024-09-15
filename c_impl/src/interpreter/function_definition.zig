@@ -3,6 +3,7 @@ const expect = std.testing.expect;
 const CubsFunction = @import("../primitives/function/function.zig").CubsFunction;
 const CubsFunctionCallArgs = @import("../primitives/function/function.zig").CubsFunctionCallArgs;
 const CubsFunctionReturn = @import("../primitives/function/function.zig").CubsFunctionReturn;
+const TypeContext = @import("../primitives/script_value.zig").TypeContext;
 
 const c = @cImport({
     @cInclude("interpreter/interpreter.h");
@@ -132,6 +133,23 @@ test "build and execute" {
         try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_BOOL_CONTEXT);
         try expect(@as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == true);
     }
+}
+
+test "build push arg" {
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var builder = c.FunctionBuilder{ .stackSpaceRequired = 1 };
+    defer c.cubs_function_builder_deinit(&builder);
+
+    c.cubs_function_builder_add_arg(&builder, &c.CUBS_INT_CONTEXT);
+
+    c.cubs_function_builder_push_bytecode(&builder, c.cubs_bytecode_encode(c.OpCodeNop, null));
+    c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(false, 0));
+
+    const header = c.cubs_function_builder_build(&builder, &program);
+    try expect(header.*.args.len > 0);
+    try expect(header.*.args.optTypes[0] == &c.CUBS_INT_CONTEXT);
 }
 
 test "interpreter execute function" {
