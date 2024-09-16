@@ -126,8 +126,6 @@ int cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
     }
 }
 
-
-
 void cubs_function_return_set_value(CubsCFunctionHandler self, void* returnValue, const struct CubsTypeContext* returnContext)
 {
     assert(self.outReturn.value != NULL);
