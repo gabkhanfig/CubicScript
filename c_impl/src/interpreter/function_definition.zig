@@ -4,6 +4,7 @@ const CubsFunction = @import("../primitives/function/function.zig").CubsFunction
 const CubsFunctionCallArgs = @import("../primitives/function/function.zig").CubsFunctionCallArgs;
 const CubsFunctionReturn = @import("../primitives/function/function.zig").CubsFunctionReturn;
 const TypeContext = @import("../primitives/script_value.zig").TypeContext;
+const String = @import("../primitives/script_value.zig").String;
 
 const c = @cImport({
     @cInclude("interpreter/interpreter.h");
@@ -216,5 +217,77 @@ test "call through cubs function no args no return" {
     const func = CubsFunction{ .func = .{ .script = @ptrCast(c.cubs_function_builder_build(&builder, &program)) }, .funcType = .Script };
     const a = CubsFunction.cubs_function_start_call(&func);
 
+    try expect(a.cubs_function_call(.{ .value = null, .context = null }) == 0);
+}
+
+test "call through cubs function 1 arg" {
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var builder = c.FunctionBuilder{ .stackSpaceRequired = 1 };
+    defer c.cubs_function_builder_deinit(&builder);
+
+    c.cubs_function_builder_add_arg(&builder, &c.CUBS_INT_CONTEXT);
+
+    c.cubs_function_builder_push_bytecode(&builder, c.cubs_bytecode_encode(c.OpCodeNop, null));
+    c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(false, 0));
+
+    const func = CubsFunction{ .func = .{ .script = @ptrCast(c.cubs_function_builder_build(&builder, &program)) }, .funcType = .Script };
+    var a = CubsFunction.cubs_function_start_call(&func);
+
+    var num: i64 = 10;
+    a.cubs_function_push_arg(@ptrCast(&num), TypeContext.auto(i64));
+
+    {
+        c.cubs_interpreter_push_frame(1, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        try expect(@as(*const i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 10);
+        try expect(@as(*const TypeContext, @ptrCast(c.cubs_interpreter_stack_context_at(0))) == TypeContext.auto(i64));
+    }
+
+    try expect(a.cubs_function_call(.{ .value = null, .context = null }) == 0);
+}
+
+test "call through cubs function multiple arg" {
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var builder = c.FunctionBuilder{ .stackSpaceRequired = 9 };
+    defer c.cubs_function_builder_deinit(&builder);
+
+    c.cubs_function_builder_add_arg(&builder, &c.CUBS_STRING_CONTEXT);
+    c.cubs_function_builder_add_arg(&builder, &c.CUBS_INT_CONTEXT);
+    c.cubs_function_builder_add_arg(&builder, &c.CUBS_STRING_CONTEXT);
+
+    c.cubs_function_builder_push_bytecode(&builder, c.cubs_bytecode_encode(c.OpCodeNop, null));
+    c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(false, 0));
+
+    const func = CubsFunction{ .func = .{ .script = @ptrCast(c.cubs_function_builder_build(&builder, &program)) }, .funcType = .Script };
+    var a = CubsFunction.cubs_function_start_call(&func);
+
+    {
+        var a0 = String.initUnchecked("hello world!");
+        var a1: i64 = 10;
+        var a2 = String.initUnchecked("well hello to this truly glorious world!");
+
+        a.cubs_function_push_arg(@ptrCast(&a0), TypeContext.auto(String));
+        a.cubs_function_push_arg(@ptrCast(&a1), TypeContext.auto(i64));
+        a.cubs_function_push_arg(@ptrCast(&a2), TypeContext.auto(String));
+
+        c.cubs_interpreter_push_frame(9, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        try expect(@as(*const String, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).eqlSlice("hello world!"));
+        try expect(@as(*const TypeContext, @ptrCast(c.cubs_interpreter_stack_context_at(0))) == TypeContext.auto(String));
+
+        try expect(@as(*const i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4)))).* == 10);
+        try expect(@as(*const TypeContext, @ptrCast(c.cubs_interpreter_stack_context_at(4))) == TypeContext.auto(i64));
+
+        try expect(@as(*const String, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(5)))).eqlSlice("well hello to this truly glorious world!"));
+        try expect(@as(*const TypeContext, @ptrCast(c.cubs_interpreter_stack_context_at(5))) == TypeContext.auto(String));
+    }
+
+    // Will unwind stack and deinit/destruct the strings
     try expect(a.cubs_function_call(.{ .value = null, .context = null }) == 0);
 }
