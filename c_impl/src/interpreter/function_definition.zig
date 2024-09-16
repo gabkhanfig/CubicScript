@@ -291,3 +291,33 @@ test "call through cubs function multiple arg" {
     // Will unwind stack and deinit/destruct the strings
     try expect(a.cubs_function_call(.{ .value = null, .context = null }) == 0);
 }
+
+test "call through cubs function script return value" {
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var builder = c.FunctionBuilder{ .stackSpaceRequired = 1, .optReturnType = &c.CUBS_INT_CONTEXT };
+    defer c.cubs_function_builder_deinit(&builder);
+
+    c.cubs_function_builder_push_bytecode(&builder, c.cubs_bytecode_encode(c.OpCodeNop, null));
+    // true here, must return
+    c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(true, 0));
+
+    const func = CubsFunction{ .func = .{ .script = @ptrCast(c.cubs_function_builder_build(&builder, &program)) }, .funcType = .Script };
+    const a = CubsFunction.cubs_function_start_call(&func);
+
+    {
+        c.cubs_interpreter_push_frame(1, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = 10;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+    }
+
+    var retVal: i64 = undefined;
+    var retContext: *const TypeContext = undefined;
+
+    try expect(a.cubs_function_call(.{ .value = @ptrCast(&retVal), .context = @ptrCast(&retContext) }) == 0);
+    try expect(retVal == 10);
+    try expect(retContext == TypeContext.auto(i64));
+}
