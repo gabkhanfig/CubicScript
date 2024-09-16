@@ -173,6 +173,21 @@ test "push many args" {
     try expect(header.*.args.optTypes[2] == &c.CUBS_ARRAY_CONTEXT);
 }
 
+test "with return value" {
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var builder = c.FunctionBuilder{ .stackSpaceRequired = 1, .optReturnType = &c.CUBS_INT_CONTEXT };
+    defer c.cubs_function_builder_deinit(&builder);
+
+    c.cubs_function_builder_push_bytecode(&builder, c.cubs_bytecode_encode(c.OpCodeNop, null));
+    c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(true, 0));
+
+    const header = c.cubs_function_builder_build(&builder, &program);
+    try expect(header.*.optReturnType == &c.CUBS_INT_CONTEXT);
+    try expect(header.*.args.len == 0);
+}
+
 test "interpreter execute function" {
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
