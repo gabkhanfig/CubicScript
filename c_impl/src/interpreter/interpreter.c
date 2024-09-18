@@ -16,6 +16,9 @@
 #include "../primitives/error/error.h"
 #include "../primitives/result/result.h"
 #include "../util/math.h"
+#include <string.h>
+#include "function_definition.h"
+#include "../program/function_call_args.h"
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
@@ -23,12 +26,6 @@ extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsPr
 static bool ptr_is_aligned(const void* p, size_t alignment) {
     return (((uintptr_t)p) % alignment) == 0;
 }
-
-static const size_t OLD_INSTRUCTION_POINTER = 0;
-static const size_t OLD_FRAME_LENGTH = 1;
-static const size_t OLD_RETURN_VALUE_DST = 2;
-static const size_t OLD_RETURN_CONTEXT_DST = 3;
-static const size_t RESERVED_SLOTS = 4;
 
 typedef struct InterpreterStackState {
     const Bytecode* instructionPointer;
@@ -41,7 +38,7 @@ typedef struct InterpreterStackState {
 
 static _Thread_local InterpreterStackState threadLocalStack = {0};
 
-void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldInstructionPointer, void* returnValueDst, const CubsTypeContext** returnContextDst) {
+void cubs_interpreter_push_frame(size_t frameLength, void* returnValueDst, const CubsTypeContext** returnContextDst) {
     assert(frameLength <= MAX_FRAME_LENGTH);
     { // store previous instruction pointer, frame length, return dst, and return tag dst
         size_t* basePointer = &((size_t*)threadLocalStack.stack)[threadLocalStack.nextBaseOffset];
@@ -51,7 +48,7 @@ void cubs_interpreter_push_frame(size_t frameLength, const struct Bytecode* oldI
             basePointer[OLD_RETURN_VALUE_DST]       = 0;
             basePointer[OLD_RETURN_CONTEXT_DST]     = 0;
         } else {
-            basePointer[OLD_INSTRUCTION_POINTER]    = (size_t)((const void*)oldInstructionPointer); // cast ptr to size_t
+            basePointer[OLD_INSTRUCTION_POINTER]    = (size_t)((const void*)threadLocalStack.instructionPointer); // cast ptr to size_t
             basePointer[OLD_FRAME_LENGTH]           = threadLocalStack.frame.frameLength;
             basePointer[OLD_RETURN_VALUE_DST]       = (size_t)threadLocalStack.frame.returnValueDst;
             basePointer[OLD_RETURN_CONTEXT_DST]     = (size_t)threadLocalStack.frame.returnContextDst;
@@ -133,7 +130,7 @@ static void stack_set_context_at(size_t offset, const CubsTypeContext* context, 
     threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS] = contextPtr | refTag;
     if(context->sizeOfType > 8) {
         for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset  + RESERVED_SLOTS + i] = 0; // (uintptr_t)NULL
+            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset  + RESERVED_SLOTS + i] = (uintptr_t)NULL;
         }
     }
 }
@@ -175,6 +172,65 @@ void cubs_interpreter_set_instruction_pointer(const Bytecode *newIp)
 {
     assert(newIp != NULL);
     threadLocalStack.instructionPointer = newIp;
+}
+
+void cubs_interpreter_push_script_function_arg(const void *arg, const CubsTypeContext *context, size_t offset)
+{
+    const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
+
+    memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
+    threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
+    if(context->sizeOfType > 8) {
+        for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
+            threadLocalStack.contexts[actualOffset + i] = (uintptr_t)NULL;
+        }
+    }
+}
+
+void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsTypeContext* context, size_t offset, size_t currentArgCount, size_t argTrackOffset)
+{
+    const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
+    // integer division.
+    // structs with a size less than or equal to 8 will have the track offset set to +1,
+    // otherwise it will be pushed further
+    const size_t newArgTrackOffset = actualOffset + (context->sizeOfType / 8);
+    if(argTrackOffset > 0) { // with an offset other than 0, it means args have already been pushed.
+        const size_t bytesToMove = 8 * (1 + (argTrackOffset / 4));
+        memmove((void*)&threadLocalStack.stack[newArgTrackOffset], (const void*)&threadLocalStack.stack[threadLocalStack.nextBaseOffset + RESERVED_SLOTS + argTrackOffset], bytesToMove); // `offset`
+    }
+    
+    memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
+
+    threadLocalStack.stack[newArgTrackOffset] = currentArgCount + 1;
+    uint16_t* offsetsArrayStart = (uint16_t*)&threadLocalStack.stack[newArgTrackOffset + 1]; // one after the argument count tracker
+    offsetsArrayStart[currentArgCount] = offset;
+
+    threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
+    if(context->sizeOfType > 8) {
+        for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
+            threadLocalStack.contexts[actualOffset + i] = (uintptr_t)NULL;
+        }
+    }
+}
+
+void cubs_function_take_arg(const CubsCFunctionHandler *self, size_t argIndex, void *outArg, const CubsTypeContext **outContext)
+{
+    assert(outArg != NULL);
+    assert(self->argCount > argIndex);
+
+    const size_t startOfArgPositions = self->_frameBaseOffset + RESERVED_SLOTS + (size_t)self->_offsetForArgs + 1; // add one to make room for arg count
+    const uint16_t* argPositions = (const uint16_t*)&threadLocalStack.stack[startOfArgPositions];
+    const size_t actualArgPosition = argPositions[argIndex];
+
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(actualArgPosition);
+    assert(context != NULL);
+
+    memcpy(outArg, cubs_interpreter_stack_value_at(actualArgPosition), context->sizeOfType);
+    cubs_interpreter_stack_set_null_context_at(actualArgPosition);
+
+    if(outContext != NULL) {
+        *outContext = context;
+    }
 }
 
 static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
@@ -354,6 +410,25 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
     }
 }
 
+static void execute_return(size_t* ipIncrement, const Bytecode bytecode) {
+    const OperandsReturn operands = *(const OperandsReturn*)&bytecode;
+
+    if(operands.hasReturn) {      
+        assert(threadLocalStack.frame.returnValueDst != NULL);
+        assert(threadLocalStack.frame.returnContextDst != NULL);
+
+        void* src = cubs_interpreter_stack_value_at(operands.returnSrc);
+        const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.returnSrc);
+        cubs_interpreter_stack_set_null_context_at(operands.returnSrc);
+
+        memcpy(threadLocalStack.frame.returnValueDst, src, context->sizeOfType);
+        *threadLocalStack.frame.returnContextDst = context;
+    }
+
+    cubs_interpreter_stack_unwind_frame();
+    cubs_interpreter_pop_frame();
+}
+
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode* bytecode) {
     const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src);
@@ -369,9 +444,9 @@ static CubsProgramRuntimeError execute_increment(const CubsProgram* program, con
                 assert(program != NULL);
                 char errBuf[256];
                 #if defined(_WIN32) || defined(WIN32)
-                const int len = sprintf_s(errBuf, 256, "Increment integer overflow detected -> %lld + %lld\n", a, 1);
+                const int len = sprintf_s(errBuf, 256, "Increment integer overflow detected -> %lld + 1\n", a);
                 #else
-                const int len = sprintf(errBuf, "increment integer overflow detected -> %ld + %ld\n", a, 1);
+                const int len = sprintf(errBuf, "increment integer overflow detected -> %lld + 1\n", a);
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorIncrementIntegerOverflow, errBuf, len);             
@@ -420,7 +495,7 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
                 #if defined(_WIN32) || defined(WIN32)
                 const int len = sprintf_s(errBuf, 256, "Integer overflow detected -> %lld + %lld\n", a, b);
                 #else
-                const int len = sprintf(errBuf, "Integer overflow detected -> %ld + %ld\n", a, b);
+                const int len = sprintf(errBuf, "Integer overflow detected -> %lld + %lld\n", a, b);
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorAdditionIntegerOverflow, errBuf, len);             
@@ -478,6 +553,9 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         case OpCodeLoad: {
             execute_load(&ipIncrement, &bytecode);
         } break;
+        case OpCodeReturn: {
+            execute_return(&ipIncrement, bytecode);
+        } break;
         case OpCodeIncrement: {
             potentialErr = execute_increment(program, &bytecode);
         } break;
@@ -490,4 +568,32 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
     }
     threadLocalStack.instructionPointer = &threadLocalStack.instructionPointer[ipIncrement];
     return potentialErr;
+}
+
+static CubsProgramRuntimeError interpreter_execute_continuous(const CubsProgram *program) {
+    while(true) {
+        const Bytecode bytecode = *threadLocalStack.instructionPointer;
+        const OpCode opcode = cubs_bytecode_get_opcode(bytecode);
+        const bool isReturn = opcode == OpCodeReturn;
+
+        const CubsProgramRuntimeError err = cubs_interpreter_execute_operation(program);
+        if(err != cubsProgramRuntimeErrorNone || isReturn) {
+            return err;
+        }
+    }
+}
+
+CubsProgramRuntimeError cubs_interpreter_execute_function(const ScriptFunctionDefinitionHeader *function, void *outReturnValue, const CubsTypeContext **outContext)
+{
+    cubs_interpreter_push_frame(function->stackSpaceRequired, outReturnValue, outContext);
+    cubs_interpreter_set_instruction_pointer(cubs_function_bytecode_start(function));
+
+    const CubsProgramRuntimeError err = interpreter_execute_continuous(function->program);
+    if(err != cubsProgramRuntimeErrorNone) {
+        /// If some error occurred, the stack frame won't automatically unwind in a return operation
+        cubs_interpreter_stack_unwind_frame();
+        cubs_interpreter_pop_frame();
+    }
+
+    return err;
 }

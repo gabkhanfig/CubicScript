@@ -32,6 +32,13 @@ pub const c = struct {
     pub const CubsUnique = @import("sync_ptr/sync_ptr.zig").CubsUnique;
     pub const CubsShared = @import("sync_ptr/sync_ptr.zig").CubsShared;
     pub const CubsWeak = @import("sync_ptr/sync_ptr.zig").CubsWeak;
+    pub const CubsFunction = @import("function/function.zig").CubsFunction;
+    pub const CubsCFunctionPtr = @import("function/function.zig").CubsCFunctionPtr;
+    pub const CubsFunctionPtr = @import("function/function.zig").CubsFunctionPtr;
+    pub const CubsFunctionType = @import("function/function.zig").CubsFunctionType;
+    pub const CubsFunctionCallArgs = @import("function/function.zig").CubsFunctionCallArgs;
+    pub const CubsFunctionReturn = @import("function/function.zig").CubsFunctionReturn;
+    pub const CubsCFunctionHandler = @import("function/function.zig").CubsCFunctionHandler;
 };
 
 // pub const ValueTag = enum(c_int) {

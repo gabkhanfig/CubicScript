@@ -14,8 +14,12 @@ set(CMAKE_CXX_STANDARD 17)
 add_library(CubicScript STATIC 
     "src/platform/mem.c"
     "src/program/program.c"
+    "src/program/protected_arena.c"
+    "src/program/function_map.c"
+    "src/program/function_call_args.c"
     "src/interpreter/bytecode.c"
     "src/interpreter/interpreter.c"
+    "src/interpreter/function_definition.c"
     "src/sync/atomic.c"
     "src/sync/locks.c"
     "src/sync/sync_queue.c"
@@ -36,6 +40,7 @@ add_library(CubicScript STATIC
     "src/primitives/sync_ptr/sync_ptr.c"
     "src/primitives/reference/reference.c"
     "src/primitives/vector/vector.c"
+    "src/primitives/function/function.c"
 )
 
 add_executable(CubicScriptCppTests

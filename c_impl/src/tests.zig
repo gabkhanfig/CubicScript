@@ -4,6 +4,8 @@ comptime {
 
     _ = @import("program/program.zig").Program;
     _ = @import("interpreter/interpreter.zig");
+    _ = @import("interpreter/function_definition.zig");
+    _ = @import("program/protected_arena.zig");
 
     // Many tests are within the structs themselves, so importing .ScriptThread for example is necessary.
     _ = @import("sync/thread.zig").ScriptThread;
@@ -28,4 +30,5 @@ comptime {
     _ = @import("primitives/vector/vector.zig").Vec2f;
     _ = @import("primitives/vector/vector.zig").Vec3f;
     _ = @import("primitives/vector/vector.zig").Vec4f;
+    _ = @import("primitives/function/function.zig");
 }

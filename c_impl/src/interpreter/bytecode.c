@@ -88,6 +88,12 @@ void operands_make_load_clone_from_ptr(Bytecode *tripleBytecode, uint16_t dst, c
     tripleBytecode[2].value = (size_t)context;
 }
 
+Bytecode operands_make_return(bool hasReturn, uint16_t returnSrc)
+{
+    _Alignas(_Alignof(Bytecode)) const OperandsReturn ret = {.reserveOpcode = OpCodeReturn, .hasReturn = hasReturn, .returnSrc = returnSrc};
+    return *(const Bytecode*)&ret;
+}
+
 Bytecode operands_make_increment_dst(bool canOverflow, uint16_t dst, uint16_t src)
 {
     assert(dst <= MAX_FRAME_LENGTH);

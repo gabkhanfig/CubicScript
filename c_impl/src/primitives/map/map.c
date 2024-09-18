@@ -14,12 +14,6 @@
 
 static const size_t GROUP_ALLOC_SIZE = 32;
 static const size_t ALIGNMENT = 32;
-static const size_t DATA_BITMASK = 0xFFFFFFFFFFFFULL;
-static const size_t TAG_SHIFT = 48;
-static const size_t TAG_BITMASK = 0xFFULL << 48;
-static const size_t TYPE_SIZE_SHIFT = 56;
-static const size_t TYPE_SIZE_BITMASK = 0xFFULL << 56;
-static const size_t NON_DATA_BITMASK = ~(0xFFFFFFFFFFFFULL);
 
 typedef struct PairHeader PairHeader;
 
@@ -170,7 +164,7 @@ static void group_ensure_total_capacity(Group* self, size_t minCapacity) {
 
 /// Returns -1 if not found
 static size_t group_find(const Group* self, const void* key, const CubsTypeContext* keyContext, CubsHashPairBitmask pairMask) {   
-    size_t i = 0;
+    uint32_t i = 0;
     while(i < self->capacity) {
         uint32_t resultMask = _cubs_simd_cmpeq_mask_8bit_32wide_aligned(pairMask.value, &self->hashMasks[i]);
         while(true) { // check each bit
@@ -223,7 +217,7 @@ static void group_insert(Group* self, void* key, void* value, const CubsTypeCont
 
     group_ensure_total_capacity(self, self->pairCount + 1);
   
-    size_t i = 0;
+    uint32_t i = 0;
     while(i < self->capacity) {
         size_t index;
         if(!_cubs_simd_index_of_first_zero_8bit_32wide_aligned(&index, &self->hashMasks[i])) {

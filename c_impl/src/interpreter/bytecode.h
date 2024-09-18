@@ -19,6 +19,8 @@ typedef enum {
     /// - Default -> `OperandsLoadDefault` loads the default representation of a type if it has one. May be a multibyte instruction
     /// - Clone from ptr -> `OperandsLoadCloneFromPtr` Clones some data held at a given immediate pointer, using an immediate context. Is a 3 bytecode wide multibyte instruction
     OpCodeLoad = 1,
+    /// 
+    OpCodeReturn = 2,
     /// Increments an integer or iterator
     OpCodeIncrement,
     /// 
@@ -113,6 +115,19 @@ typedef struct {
     uint64_t dst: BITS_PER_STACK_OPERAND;
 } OperandsLoadCloneFromPtr;
 void operands_make_load_clone_from_ptr(Bytecode* tripleBytecode, uint16_t dst, const void* immediatePtr, const CubsTypeContext* context);
+
+#pragma region Return
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t hasReturn: 1;
+    uint64_t returnSrc: BITS_PER_STACK_OPERAND;
+} OperandsReturn;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsReturn);
+/// If `hasReturn == false`, `returnSrc` is ignored.
+Bytecode operands_make_return(bool hasReturn, uint16_t returnSrc);
+
+#pragma endregion Return
 
 typedef enum  {
     MATH_TYPE_DST,
