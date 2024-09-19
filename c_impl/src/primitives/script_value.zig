@@ -14,6 +14,7 @@ pub const Result = @import("result/result.zig").Result;
 pub const Unique = @import("sync_ptr/sync_ptr.zig").Unique;
 pub const Shared = @import("sync_ptr/sync_ptr.zig").Shared;
 pub const Weak = @import("sync_ptr/sync_ptr.zig").Weak;
+pub const Function = @import("function/function.zig").Function;
 pub const Vec2i = @import("vector/vector.zig").Vec2i;
 pub const Vec3i = @import("vector/vector.zig").Vec3i;
 pub const Vec4i = @import("vector/vector.zig").Vec4i;
