@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include "../primitives/string/string.h"
 #include "bytecode.h"
+#include "../program/function_call_args.h"
 
 typedef struct CubsTypeContext CubsTypeContext;
 typedef struct CubsString CubsString;
@@ -42,19 +43,9 @@ void cubs_function_builder_add_arg(FunctionBuilder* self, const CubsTypeContext*
 
 // TODO when the program allocates the header and bytecode, mprotect / VirutalProtect it to prevent malicious actors from overwriting bytecode
 
-typedef struct ScriptFunctionDefinitionHeader {
-    const CubsProgram* program;
-    CubsString fullyQualifiedName;
-    CubsString name;  
-    size_t stackSpaceRequired;
-    const CubsTypeContext* optReturnType;
-    ScriptFunctionArgTypesSlice args;
-    size_t bytecodeCount;
-} ScriptFunctionDefinitionHeader;
-
 /// Returns a reference to the header that is owned by the `program`.
 /// Return value can be ignored.
 /// Defined in `src/program/program.c`
-extern ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* self, CubsProgram* program);
+extern CubsScriptFunctionPtr* cubs_function_builder_build(FunctionBuilder* self, CubsProgram* program);
 
-const Bytecode* cubs_function_bytecode_start(const ScriptFunctionDefinitionHeader* header);
+const Bytecode* cubs_function_bytecode_start(const CubsScriptFunctionPtr* header);

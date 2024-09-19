@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include "../primitives/string/string.h"
 
-typedef struct ScriptFunctionDefinitionHeader ScriptFunctionDefinitionHeader;
+typedef struct CubsScriptFunctionPtr CubsScriptFunctionPtr;
 typedef struct FunctionMapQualifiedGroup FunctionMapQualifiedGroup;
 typedef struct ProtectedArena ProtectedArena;
 
@@ -27,6 +27,6 @@ static const FunctionMap FUNCTION_MAP_INITIALIZER = {0};
 
 /// Find a script function given a fully qualified function name.
 /// Returns NULL if function `name` doesn't exist.
-const ScriptFunctionDefinitionHeader* cubs_function_map_find(const FunctionMap* self, CubsStringSlice fullyQualifiedName);
+const CubsScriptFunctionPtr* cubs_function_map_find(const FunctionMap* self, CubsStringSlice fullyQualifiedName);
 
-void cubs_function_map_insert(FunctionMap *self, ProtectedArena* arena, ScriptFunctionDefinitionHeader* function);
+void cubs_function_map_insert(FunctionMap *self, ProtectedArena* arena, CubsScriptFunctionPtr* function);

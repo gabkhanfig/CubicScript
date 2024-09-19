@@ -96,7 +96,7 @@ void cubs_program_deinit(CubsProgram *self)
 bool cubs_program_find_function(const CubsProgram *self, CubsFunction *outFunc, CubsStringSlice fullyQualifiedName)
 {
     const Inner* inner = as_inner(self);
-    const ScriptFunctionDefinitionHeader* header = cubs_function_map_find(&inner->functionMap, fullyQualifiedName);
+    const CubsScriptFunctionPtr* header = cubs_function_map_find(&inner->functionMap, fullyQualifiedName);
     if(header == NULL) {
         return false;
     }
@@ -131,38 +131,39 @@ void _cubs_internal_program_print(const CubsProgram* self, const char* message, 
     cubs_mutex_unlock(contextMutex);
 }
 
-ScriptFunctionDefinitionHeader* cubs_function_builder_build(FunctionBuilder* self, CubsProgram* program) {
-    _Static_assert(_Alignof(ScriptFunctionDefinitionHeader) == _Alignof(Bytecode), "Alignment of function definition header must equal the bytecode alignment");
+CubsScriptFunctionPtr* cubs_function_builder_build(FunctionBuilder* self, CubsProgram* program) {
+    _Static_assert(_Alignof(CubsScriptFunctionPtr) == _Alignof(Bytecode), "Alignment of function definition header must equal the bytecode alignment");
     
     assert(self->bytecode != NULL);
     assert(self->bytecodeLen > 0);
 
     Inner* inner = as_inner_mut(program);
 
-    ScriptFunctionArgTypesSlice newArgs = {0};
+    const CubsTypeContext** newArgsTypes = NULL;
+    size_t newArgsLen = 0;
     if(self->args.len > 0) {
-        newArgs.len = self->args.len;
-        newArgs.capacity = newArgs.len;
-        newArgs.optTypes = cubs_protected_arena_malloc(
+        newArgsLen = self->args.len;
+        newArgsTypes = cubs_protected_arena_malloc(
             &inner->arena, 
-            sizeof(const CubsTypeContext*) * newArgs.len, 
+            sizeof(const CubsTypeContext*) * newArgsLen, 
             _Alignof(const CubsTypeContext*)
         );
-        memcpy((void*)newArgs.optTypes, (const void*)self->args.optTypes, sizeof(const CubsTypeContext*) * self->args.len);
+        memcpy((void*)newArgsTypes, (const void*)self->args.optTypes, sizeof(const CubsTypeContext*) * self->args.len);
     }
 
-    const ScriptFunctionDefinitionHeader headerData = {
+    const CubsScriptFunctionPtr headerData = {
         .program = program,
         .fullyQualifiedName = self->fullyQualifiedName,
         .name = self->name,
-        .stackSpaceRequired = self->stackSpaceRequired,
-        .optReturnType = self->optReturnType,
-        .args = newArgs,
-        .bytecodeCount = self->bytecodeLen,
+        .returnType = self->optReturnType,
+        .argsTypes = newArgsTypes,
+        .argsLen = newArgsLen,
+        ._stackSpaceRequired = self->stackSpaceRequired,
+        ._bytecodeCount = self->bytecodeLen,
     };
-    ScriptFunctionDefinitionHeader* header = cubs_protected_arena_malloc(
+    CubsScriptFunctionPtr* header = cubs_protected_arena_malloc(
         &inner->arena, 
-        sizeof(ScriptFunctionDefinitionHeader) + (sizeof(Bytecode) * self->bytecodeLen), 
+        sizeof(CubsScriptFunctionPtr) + (sizeof(Bytecode) * self->bytecodeLen), 
         _Alignof(Bytecode)
     );
     *header = headerData;

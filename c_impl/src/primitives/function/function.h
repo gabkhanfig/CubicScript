@@ -12,7 +12,7 @@ typedef enum CubsFunctionType {
 
 typedef union CubsFunctionPtr {
     CubsCFunctionPtr externC;
-    const void* script;
+    const CubsScriptFunctionPtr* script;
 } CubsFunctionPtr;
 
 typedef struct CubsFunction {

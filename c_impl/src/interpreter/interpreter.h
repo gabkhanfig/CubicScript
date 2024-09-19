@@ -9,7 +9,7 @@
 typedef struct Bytecode Bytecode;
 typedef struct CubsProgram CubsProgram;
 typedef struct CubsTypeContext CubsTypeContext;
-typedef struct ScriptFunctionDefinitionHeader ScriptFunctionDefinitionHeader;
+typedef struct CubsScriptFunctionPtr CubsScriptFunctionPtr;
 
 #ifndef CUBS_STACK_SLOTS
 /// 1 MB default (slots * 8 bytes per slot)
@@ -76,4 +76,4 @@ void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsType
 CubsProgramRuntimeError cubs_interpreter_execute_operation(const struct CubsProgram* program);
 
 /// Will push and pop a frame for execution
-CubsProgramRuntimeError cubs_interpreter_execute_function(const struct ScriptFunctionDefinitionHeader* function, void* outReturnValue, const struct CubsTypeContext** outContext);
+CubsProgramRuntimeError cubs_interpreter_execute_function(const struct CubsScriptFunctionPtr* function, void* outReturnValue, const struct CubsTypeContext** outContext);

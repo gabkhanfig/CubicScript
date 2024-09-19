@@ -149,8 +149,8 @@ test "build push arg" {
     c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(false, 0));
 
     const header = c.cubs_function_builder_build(&builder, &program);
-    try expect(header.*.args.len == 1);
-    try expect(header.*.args.optTypes[0] == &c.CUBS_INT_CONTEXT);
+    try expect(header.*.argsLen == 1);
+    try expect(header.*.argsTypes[0] == &c.CUBS_INT_CONTEXT);
 }
 
 test "push many args" {
@@ -168,10 +168,10 @@ test "push many args" {
     c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(false, 0));
 
     const header = c.cubs_function_builder_build(&builder, &program);
-    try expect(header.*.args.len == 3);
-    try expect(header.*.args.optTypes[0] == &c.CUBS_STRING_CONTEXT);
-    try expect(header.*.args.optTypes[1] == &c.CUBS_INT_CONTEXT);
-    try expect(header.*.args.optTypes[2] == &c.CUBS_ARRAY_CONTEXT);
+    try expect(header.*.argsLen == 3);
+    try expect(header.*.argsTypes[0] == &c.CUBS_STRING_CONTEXT);
+    try expect(header.*.argsTypes[1] == &c.CUBS_INT_CONTEXT);
+    try expect(header.*.argsTypes[2] == &c.CUBS_ARRAY_CONTEXT);
 }
 
 test "with return value" {
@@ -185,8 +185,8 @@ test "with return value" {
     c.cubs_function_builder_push_bytecode(&builder, c.operands_make_return(true, 0));
 
     const header = c.cubs_function_builder_build(&builder, &program);
-    try expect(header.*.optReturnType == &c.CUBS_INT_CONTEXT);
-    try expect(header.*.args.len == 0);
+    try expect(header.*.returnType == &c.CUBS_INT_CONTEXT);
+    try expect(header.*.argsLen == 0);
 }
 
 test "interpreter execute function" {

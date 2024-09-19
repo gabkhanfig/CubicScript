@@ -21,18 +21,18 @@ void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTyp
         const int currentPushedArgs = self->_inner[PUSHED_ARG_COUNT];
 
         #if _DEBUG
-        const ScriptFunctionDefinitionHeader* header = self->func->func.script;
+        const CubsScriptFunctionPtr* header = self->func->func.script;
         char buf[512];
-        if(currentPushedArgs >= header->args.len) {
+        if(currentPushedArgs >= header->argsLen) {
             #if defined(_WIN32) || defined(WIN32)
-            const int len = sprintf_s(buf, 512, "Script function [%s] expects %lld arguments", cubs_string_as_slice(&header->name).str, header->args.len);
+            const int len = sprintf_s(buf, 512, "Script function [%s] expects %lld arguments", cubs_string_as_slice(&header->name).str, header->argsLen);
             #else
-            const int len = sprintf(buf, "Script function [%s] expects %ld arguments", cubs_string_as_slice(&header->name).str, header->args.len);
+            const int len = sprintf(buf, "Script function [%s] expects %ld arguments", cubs_string_as_slice(&header->name).str, header->argsLen);
             #endif
             assert(len >= 0);   
             cubs_panic(buf);
         }
-        if(currentOffset > header->stackSpaceRequired) {
+        if(currentOffset > header->_stackSpaceRequired) {
             #if defined(_WIN32) || defined(WIN32)
             const int len = sprintf_s(buf, 512, "Overflowed script function [%s] stack frame with function arguments", cubs_string_as_slice(&header->name).str);
             #else
@@ -61,20 +61,20 @@ int cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
         const int currentOffset = self._inner[CURRENT_OFFSET];
         const int currentPushedArgs = self._inner[PUSHED_ARG_COUNT];
 
-        const ScriptFunctionDefinitionHeader* header = (const ScriptFunctionDefinitionHeader*)self.func->func.script;
+        const CubsScriptFunctionPtr* header = self.func->func.script;
 
         #if _DEBUG
         char buf[512];
-        if(currentPushedArgs != header->args.len) {
+        if(currentPushedArgs != header->argsLen) {
             #if defined(_WIN32) || defined(WIN32)
-            const int len = sprintf_s(buf, 512, "Script function [%s] expects %lld arguments. Only %lld passed in", cubs_string_as_slice(&header->name).str, header->args.len, currentPushedArgs);
+            const int len = sprintf_s(buf, 512, "Script function [%s] expects %lld arguments. Only %d passed in", cubs_string_as_slice(&header->name).str, header->argsLen, currentPushedArgs);
             #else
-            const int len = sprintf(buf, "Script function [%s] expects %ld arguments. Only %ld passed in", cubs_string_as_slice(&header->name).str, header->args.len, currentPushedArgs);
+            const int len = sprintf(buf, "Script function [%s] expects %ld arguments. Only %d passed in", cubs_string_as_slice(&header->name).str, header->argsLen, currentPushedArgs);
             #endif
             assert(len >= 0);   
             cubs_panic(buf);
         }
-        if(currentOffset > header->stackSpaceRequired) {
+        if(currentOffset > header->_stackSpaceRequired) {
             #if defined(_WIN32) || defined(WIN32)
             const int len = sprintf_s(buf, 512, "Overflowed script function [%s] stack frame with function arguments", cubs_string_as_slice(&header->name).str);
             #else
@@ -83,7 +83,7 @@ int cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn)
             assert(len >= 0);   
             cubs_panic(buf);
         }
-        if(header->optReturnType != NULL && (outReturn.value == NULL || outReturn.context == NULL)) {
+        if(header->returnType != NULL && (outReturn.value == NULL || outReturn.context == NULL)) {
             #if defined(_WIN32) || defined(WIN32)
             const int len = sprintf_s(buf, 512, "Script function [%s] expected return value destination", cubs_string_as_slice(&header->name).str);
             #else

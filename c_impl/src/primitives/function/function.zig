@@ -198,7 +198,21 @@ pub const CubsFunction = extern struct {
 
 pub const CubsCFunctionPtr = *const fn (CubsCFunctionHandler) callconv(.C) c_int;
 
-pub const CubsFunctionPtr = extern union { externC: CubsCFunctionPtr, script: *const anyopaque };
+pub const CubsScriptFunctionPtr = extern struct {
+    program: *const Program,
+    fullyQualifiedName: String,
+    name: String,
+    /// If NULL, the function does not return any value
+    returnType: ?*const TypeContext,
+    /// If NULL, the function take no arguments, otherwise valid when `i < argsLen`.
+    argsTypes: ?[*]*const TypeContext,
+    /// If zero, the function take no arguments
+    argsLen: usize,
+    _stackSpaceRequired: usize,
+    _bytecodeCount: usize,
+};
+
+pub const CubsFunctionPtr = extern union { externC: CubsCFunctionPtr, script: *const CubsScriptFunctionPtr };
 
 pub const CubsFunctionType = enum(c_int) {
     C = 0,

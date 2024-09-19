@@ -583,9 +583,9 @@ static CubsProgramRuntimeError interpreter_execute_continuous(const CubsProgram 
     }
 }
 
-CubsProgramRuntimeError cubs_interpreter_execute_function(const ScriptFunctionDefinitionHeader *function, void *outReturnValue, const CubsTypeContext **outContext)
+CubsProgramRuntimeError cubs_interpreter_execute_function(const CubsScriptFunctionPtr *function, void *outReturnValue, const CubsTypeContext **outContext)
 {
-    cubs_interpreter_push_frame(function->stackSpaceRequired, outReturnValue, outContext);
+    cubs_interpreter_push_frame(function->_stackSpaceRequired, outReturnValue, outContext);
     cubs_interpreter_set_instruction_pointer(cubs_function_bytecode_start(function));
 
     const CubsProgramRuntimeError err = interpreter_execute_continuous(function->program);

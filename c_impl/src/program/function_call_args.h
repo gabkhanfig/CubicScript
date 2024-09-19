@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../c_basic_types.h"
+#include "../primitives/string/string.h"
 
 typedef struct CubsFunction CubsFunction;
 typedef struct CubsTypeContext CubsTypeContext;
@@ -36,6 +37,20 @@ typedef struct CubsCFunctionHandler {
 /// See `CubsCFunctionHandler`.
 /// @return 0 on success, or a non 0 user defined error code.
 typedef int(*CubsCFunctionPtr)(CubsCFunctionHandler);
+
+typedef struct CubsScriptFunctionPtr {
+    const CubsProgram* program;
+    CubsString fullyQualifiedName;
+    CubsString name;  
+    /// If NULL, the function does not return any value
+    const CubsTypeContext* returnType;
+    /// If NULL, the function take no arguments, otherwise valid when `i < argsLen`.
+    const CubsTypeContext** argsTypes;
+    /// If zero, the function take no arguments
+    size_t argsLen;
+    size_t _stackSpaceRequired;
+    size_t _bytecodeCount;
+} CubsScriptFunctionPtr;
 
 #ifdef __cplusplus
 extern "C" {

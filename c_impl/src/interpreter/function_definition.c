@@ -85,7 +85,7 @@ void cubs_function_builder_add_arg(FunctionBuilder *self, const CubsTypeContext 
     script_function_arg_types_slice_add_arg(&self->args, argType);
 }
 
-const Bytecode *cubs_function_bytecode_start(const ScriptFunctionDefinitionHeader *header)
+const Bytecode *cubs_function_bytecode_start(const CubsScriptFunctionPtr *header)
 {
     return (const Bytecode*)&header[1];
 }

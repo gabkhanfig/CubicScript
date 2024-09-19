@@ -15,7 +15,7 @@ static const size_t ALIGNMENT = 16;
 typedef struct {
     size_t hashCode;
     CubsStringSlice name;
-    ScriptFunctionDefinitionHeader* function;
+    CubsScriptFunctionPtr* function;
 } Pair;
 
 // TODO support unqualified function name lookup
@@ -122,10 +122,10 @@ static size_t qualified_group_find(const FunctionMapQualifiedGroup* self, CubsSt
 static void map_ensure_total_capacity(FunctionMap* self, ProtectedArena* arena) {
     if(self->allFunctionsCount == self->allFunctionsCapacity) {
         const size_t newCapacity = self->allFunctionsCapacity == 0 ? 16 : self->allFunctionsCapacity << 1;
-        ScriptFunctionDefinitionHeader** newArray = (ScriptFunctionDefinitionHeader**)cubs_protected_arena_malloc(
+        CubsScriptFunctionPtr** newArray = (CubsScriptFunctionPtr**)cubs_protected_arena_malloc(
             arena, 
-            sizeof(ScriptFunctionDefinitionHeader*) * newCapacity, 
-            _Alignof(ScriptFunctionDefinitionHeader*)
+            sizeof(CubsScriptFunctionPtr*) * newCapacity, 
+            _Alignof(CubsScriptFunctionPtr*)
         );
         if(self->allFunctions != NULL) {
             memcpy((void*)newArray, (const void*)self->allFunctions, self->allFunctionsCount);
@@ -234,7 +234,7 @@ static void qualified_group_insert(FunctionMapQualifiedGroup* self, ProtectedAre
     unreachable();
 }
 
-const ScriptFunctionDefinitionHeader *cubs_function_map_find(const FunctionMap *self, CubsStringSlice fullyQualifiedName)
+const CubsScriptFunctionPtr *cubs_function_map_find(const FunctionMap *self, CubsStringSlice fullyQualifiedName)
 {
     if(self->allFunctionsCount == 0) {
         return NULL;
@@ -259,7 +259,7 @@ const ScriptFunctionDefinitionHeader *cubs_function_map_find(const FunctionMap *
     return qualified_group_pair_buf_start(group)[found].function;
 }
 
-void cubs_function_map_insert(FunctionMap *self, ProtectedArena* arena, ScriptFunctionDefinitionHeader* function)
+void cubs_function_map_insert(FunctionMap *self, ProtectedArena* arena, CubsScriptFunctionPtr* function)
 {
     map_ensure_total_capacity(self, arena);
 
