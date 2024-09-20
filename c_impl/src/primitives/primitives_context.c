@@ -7,30 +7,66 @@
 #include "../primitives/error/error.h"
 #include "../primitives/result/result.h"
 #include "../primitives/sync_ptr/sync_ptr.h"
+#include "../primitives/function/function.h"
+#include "../primitives/reference/reference.h"
 #include "../util/panic.h"
 #include <assert.h>
 
-static void bool_clone(bool* dst, const bool* self) {
-    *dst = *self;
+/*
+static const CubsTypeContext _CONTEXT = {
+    .sizeOfType = sizeof(),
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
+    .name = "",
+    .nameLength = ,
+};
+const CubsTypeContext* CUBS__CONTEXT = &_CONTEXT;
+*/
+
+static int bool_clone(CubsCFunctionHandler handler) {
+    bool self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == CUBS_BOOL_CONTEXT);
+    cubs_function_return_set_value(handler, (void*)&self, CUBS_BOOL_CONTEXT);
+    return 0;
 }
 
-static bool bool_eql(const bool* self, const bool* other) {
-    return *self == *other;
+static int bool_eql(CubsCFunctionHandler handler) {
+    bool lhs;
+    const CubsTypeContext* lhsContext;
+    bool rhs;
+    const CubsTypeContext* rhsContext;
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&lhs, &lhsContext);
+    assert(lhsContext == CUBS_BOOL_CONTEXT);
+    assert(rhsContext == CUBS_BOOL_CONTEXT);
+    bool result = lhs == rhs;
+    cubs_function_return_set_value(handler, (void*)&result, CUBS_BOOL_CONTEXT);
+    return 0;
 }
 
-static size_t bool_hash(const bool* self) {
-    return (size_t)(*self);
+static int bool_hash(CubsCFunctionHandler handler) {
+    bool self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    int64_t hashed = (int64_t)self;
+    cubs_function_return_set_value(handler, (void*)&hashed, CUBS_INT_CONTEXT);
+    return 0;
 }
 
-const CubsTypeContext CUBS_BOOL_CONTEXT = {
-    .sizeOfType = 1,
-    .destructor = NULL,
-    .clone = (CubsStructCloneFn)&bool_clone,
-    .eql = (CubsStructEqlFn)&bool_eql,
-    .hash = (CubsStructHashFn)&bool_hash,
+static const CubsTypeContext BOOL_CONTEXT = {
+.   sizeOfType = 1,
+    .destructor = {0},
+    .clone = {.func = {.externC = &bool_clone}, .funcType = cubsFunctionPtrTypeC},
+    .eql = {0},
+    .hash = {0},
     .name = "bool",
     .nameLength = 4,
 };
+const CubsTypeContext* CUBS_BOOL_CONTEXT = &BOOL_CONTEXT;
 
 static void int_clone(int64_t* dst, const int64_t* self) {
     *dst = *self;
@@ -45,15 +81,16 @@ static size_t int_hash(const int64_t* self) {
     return (size_t)(*self);
 }
 
-const CubsTypeContext CUBS_INT_CONTEXT = {
+static const CubsTypeContext INT_CONTEXT = {
     .sizeOfType = sizeof(int64_t),
-    .destructor = NULL, 
-    .clone = (CubsStructCloneFn)&int_clone,
-    .eql = (CubsStructEqlFn)&int_eql,
-    .hash = (CubsStructHashFn)&int_hash,
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "int",
     .nameLength = 3,
 };
+const CubsTypeContext* CUBS_INT_CONTEXT = &INT_CONTEXT;
 
 static void float_clone(double* dst, const double* self) {
     *dst = *self;
@@ -71,157 +108,278 @@ static size_t float_hash(const double* self) {
     return int_hash(&floatAsInt);
 }
 
-const CubsTypeContext CUBS_FLOAT_CONTEXT = {
+static const CubsTypeContext FLOAT_CONTEXT = {
     .sizeOfType = sizeof(double),
-    .destructor = NULL, 
-    .clone = (CubsStructCloneFn)&float_clone,
-    .eql = (CubsStructEqlFn)&float_eql,
-    .hash = (CubsStructHashFn)&float_hash,
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "float",
     .nameLength = 5,
 };
+const CubsTypeContext* CUBS_FLOAT_CONTEXT = &FLOAT_CONTEXT;
 
 static void string_clone(CubsString* dst, const CubsString* self) {
     const CubsString temp = cubs_string_clone(self);
     *dst = temp;
 }
 
-const CubsTypeContext CUBS_STRING_CONTEXT = {
+static const CubsTypeContext STRING_CONTEXT = {
     .sizeOfType = sizeof(CubsString),
-    .destructor = (CubsStructDestructorFn)&cubs_string_deinit,
-    .clone = (CubsStructCloneFn)&string_clone,
-    .eql = (CubsStructEqlFn)&cubs_string_eql,
-    .hash = (CubsStructHashFn)&cubs_string_hash,
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "string",
     .nameLength = 6,
 };
+const CubsTypeContext* CUBS_STRING_CONTEXT = &STRING_CONTEXT;
 
 static void array_clone(CubsArray* dst, const CubsArray* self) {
     const CubsArray temp = cubs_array_clone(self);
     *dst = temp;
 }
 
-const CubsTypeContext CUBS_ARRAY_CONTEXT = {
+static const CubsTypeContext ARRAY_CONTEXT = {
     .sizeOfType = sizeof(CubsArray),
-    .destructor = (CubsStructDestructorFn)&cubs_array_deinit,
-    .clone = (CubsStructCloneFn)&array_clone,
-    .eql = (CubsStructEqlFn)&cubs_array_eql,
-    .hash = (CubsStructHashFn)&cubs_array_hash,
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "array",
     .nameLength = 5,
 };
+const CubsTypeContext* CUBS_ARRAY_CONTEXT = &ARRAY_CONTEXT;
 
 static void set_clone(CubsSet* dst, const CubsSet* self) {
     const CubsSet temp = cubs_set_clone(self);
     *dst = temp;
 }
 
-const CubsTypeContext CUBS_SET_CONTEXT = {  
+static const CubsTypeContext SET_CONTEXT = {
     .sizeOfType = sizeof(CubsSet),
-    .destructor = (CubsStructDestructorFn)&cubs_set_deinit,
-    .clone = (CubsStructCloneFn)&set_clone,
-    .eql = (CubsStructEqlFn)&cubs_set_eql,
-    .hash = (CubsStructHashFn)&cubs_set_hash,
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "set",
     .nameLength = 3,
 };
+const CubsTypeContext* CUBS_SET_CONTEXT = &SET_CONTEXT;
 
 static void map_clone(CubsMap* dst, const CubsMap* self) {
     const CubsMap temp = cubs_map_clone(self);
     *dst = temp;
 }
 
-const CubsTypeContext CUBS_MAP_CONTEXT = {
+static const CubsTypeContext MAP_CONTEXT = {
     .sizeOfType = sizeof(CubsMap),
-    .destructor = (CubsStructDestructorFn)&cubs_map_deinit,
-    .clone = (CubsStructCloneFn)&map_clone,
-    .eql = (CubsStructEqlFn)&cubs_map_eql,
-    .hash = (CubsStructHashFn)&cubs_map_hash,
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "map",
     .nameLength = 3,
 };
+const CubsTypeContext* CUBS_MAP_CONTEXT = &MAP_CONTEXT;
 
 static void option_clone(CubsOption* dst, const CubsOption* self) {
     const CubsOption temp = cubs_option_clone(self);
     *dst = temp;
 }
 
-const CubsTypeContext CUBS_OPTION_CONTEXT = {
+static const CubsTypeContext OPTION_CONTEXT = {
     .sizeOfType = sizeof(CubsOption),
-    .destructor = (CubsStructDestructorFn)&cubs_option_deinit,
-    .clone = (CubsStructCloneFn)&option_clone,
-    .eql = (CubsStructEqlFn)&cubs_option_eql,
-    .hash = (CubsStructHashFn)&cubs_option_hash,
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "option",
     .nameLength = 6,
 };
+const CubsTypeContext* CUBS_OPTION_CONTEXT = &OPTION_CONTEXT;
 
 static void error_clone(CubsError* dst, const CubsError* self) {
     const CubsError temp = cubs_error_clone(self);
     *dst = temp;
 }
 
-const CubsTypeContext CUBS_ERROR_CONTEXT = {
-    .sizeOfType = sizeof(CubsOption),
-    .destructor = (CubsStructDestructorFn)&cubs_error_deinit,
-    .clone = (CubsStructCloneFn)&error_clone,
-    .eql = (CubsStructEqlFn)&cubs_error_eql,
-    .hash = (CubsStructHashFn)&cubs_error_hash,
+static const CubsTypeContext ERROR_CONTEXT = {
+    .sizeOfType = sizeof(CubsError),
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "error",
     .nameLength = 5,
 };
+const CubsTypeContext* CUBS_ERROR_CONTEXT = &ERROR_CONTEXT;
 
 // static void result_clone(CubsResult* dst, const CubsResult* self) {
 //     const CubsResult temp = cubs_result_clone(self);
 //     *dst = temp;
 // }
 
-const CubsTypeContext CUBS_RESULT_CONTEXT = {
+static const CubsTypeContext RESULT_CONTEXT = {
     .sizeOfType = sizeof(CubsResult),
-    .destructor = (CubsStructDestructorFn)&cubs_result_deinit,
-    .clone = NULL,
-    .eql = NULL,
-    .hash = NULL,
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "result",
     .nameLength = 6,
 };
+const CubsTypeContext* CUBS_RESULT_CONTEXT = &RESULT_CONTEXT;
 
-const CubsTypeContext CUBS_UNIQUE_CONTEXT = {
+static const CubsTypeContext UNIQUE_CONTEXT = {
     .sizeOfType = sizeof(CubsUnique),
-    .destructor = (CubsStructDestructorFn)&cubs_unique_deinit,
-    .clone = NULL, // because of requiring locking, unique may not be cloned, only it's inner data may be cloned and then a new unique instantiated from it
-    .eql = NULL, // same reasoning. Cannot do equality check without locking
-    .hash = NULL, // same reasoning. Cannot do hashing without locking
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "unique",
     .nameLength = 6,
 };
+const CubsTypeContext* CUBS_UNIQUE_CONTEXT = &UNIQUE_CONTEXT;
 
 static void shared_clone(CubsShared* dst, const CubsShared* self) {
     const CubsShared temp = cubs_shared_clone(self);
     *dst = temp;
 }
 
-const CubsTypeContext CUBS_SHARED_CONTEXT = {
+static const CubsTypeContext SHARED_CONTEXT = {
     .sizeOfType = sizeof(CubsShared),
-    .destructor = (CubsStructDestructorFn)&cubs_shared_deinit,
-    .clone = (CubsStructCloneFn)&shared_clone, // clone does not require locking, thus is ok
-    .eql = (CubsStructEqlFn)&cubs_shared_eql, // equality does not require locking, so its ok
-    .hash = NULL, // Cannot do hashing without locking
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "shared",
     .nameLength = 6,
 };
+const CubsTypeContext* CUBS_SHARED_CONTEXT = &SHARED_CONTEXT;
 
 static void weak_clone(CubsWeak* dst, const CubsWeak* self) {
     const CubsWeak temp = cubs_weak_clone(self);
     *dst = temp;
 }
 
-const CubsTypeContext CUBS_WEAK_CONTEXT = {
+static const CubsTypeContext WEAK_CONTEXT = {
     .sizeOfType = sizeof(CubsWeak),
-    .destructor = (CubsStructDestructorFn)&cubs_weak_deinit,
-    .clone = (CubsStructCloneFn)&weak_clone, // clone does not require locking, thus is ok
-    .eql = (CubsStructEqlFn)&cubs_weak_eql, // equality does not require locking, so its ok
-    .hash = NULL, // Cannot do hashing without locking
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
     .name = "weak",
     .nameLength = 4,
 };
+const CubsTypeContext* CUBS_WEAK_CONTEXT = &WEAK_CONTEXT;
+
+static const CubsTypeContext FUNCTION_CONTEXT = {
+    .sizeOfType = sizeof(CubsFunction),
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
+    .name = "function",
+    .nameLength = 8,
+};
+const CubsTypeContext* CUBS_FUNCTION_CONTEXT = &FUNCTION_CONTEXT;
+
+static const CubsTypeContext CONST_REF_CONTEXT = {
+    .sizeOfType = sizeof(CubsConstRef),
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
+    .name = "const_ref",
+    .nameLength = 9,
+};
+const CubsTypeContext* CUBS_CONST_REF_CONTEXT = &CONST_REF_CONTEXT;
+
+static const CubsTypeContext MUT_REF_CONTEXT = {
+    .sizeOfType = sizeof(CubsMutRef),
+    .destructor = {0}, 
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
+    .name = "mut_ref",
+    .nameLength = 7,
+};
+const CubsTypeContext* CUBS_MUT_REF_CONTEXT = &MUT_REF_CONTEXT;
+
+void cubs_context_fast_deinit(void *value, const CubsTypeContext *context)
+{
+    if(context->destructor.func.externC == NULL) { // works for script types too cause union
+        return;
+    }
+    else if(context == CUBS_STRING_CONTEXT) {
+        cubs_string_deinit((CubsString*)value);
+    } else {
+        CubsFunctionCallArgs args = cubs_function_start_call(&context->destructor);
+        cubs_function_push_arg(&args, value, context);
+        const CubsFunctionReturn nullReturn = {0};
+        const int result = cubs_function_call(args, nullReturn);
+        assert(result == 0 && "Deinitialization can never fail");
+    }
+}
+
+void cubs_context_fast_clone(void *out, const void *value, const CubsTypeContext *context)
+{
+    assert(context->clone.func.externC != NULL && "Cannot clone type that doesn't have a valid externC or script function");
+    if(context == CUBS_STRING_CONTEXT) {
+        const CubsString ret = cubs_string_clone((const CubsString*)value);
+        *(CubsString*)out = ret;
+    } else {
+        CubsFunctionCallArgs args = cubs_function_start_call(&context->clone);
+
+        CubsConstRef arg = {.ref = value, .context = context};
+        cubs_function_push_arg(&args, (void*)&arg, CUBS_CONST_REF_CONTEXT);
+
+        const CubsTypeContext* outContext = NULL;
+        const CubsFunctionReturn ret = {.value = out, .context = &outContext};
+        const int result = cubs_function_call(args, ret);
+        assert(outContext == context && "return type for clone mismatch");
+    }
+}
+
+bool cubs_context_fast_eql(const void *lhs, const void *rhs, const CubsTypeContext *context)
+{
+    assert(context->eql.func.externC != NULL && "Cannot do equality comaprison on type that doesn't have a valid externC or script function");
+    if(context == CUBS_STRING_CONTEXT) {
+        return cubs_string_eql(lhs, rhs);
+    } else {
+        CubsFunctionCallArgs args = cubs_function_start_call(&context->clone);
+
+        CubsConstRef argLhs = {.ref = lhs, .context = context};
+        CubsConstRef argRhs = {.ref = rhs, .context = context};
+        cubs_function_push_arg(&args, (void*)&argLhs, CUBS_CONST_REF_CONTEXT);
+        cubs_function_push_arg(&args, (void*)&argRhs, CUBS_CONST_REF_CONTEXT);
+
+        bool out;
+        const CubsTypeContext* outContext = NULL;
+        const CubsFunctionReturn ret = {.value = (void*)&out, .context = &outContext};
+        const int result = cubs_function_call(args, ret);
+        assert(outContext == CUBS_BOOL_CONTEXT && "expected bool return type for equality comparison");
+        return out;
+    }
+}
+
+size_t cubs_context_fast_hash(const void *value, const CubsTypeContext *context)
+{
+    assert(context->eql.func.externC != NULL && "Cannot do hash on type that doesn't have a valid externC or script function");
+    if(context == CUBS_STRING_CONTEXT) {
+        return cubs_string_hash(value);
+    } else {
+        CubsFunctionCallArgs args = cubs_function_start_call(&context->clone);
+
+        CubsConstRef arg = {.ref = value, .context = context};
+        cubs_function_push_arg(&args, (void*)&arg, CUBS_CONST_REF_CONTEXT);
+
+        int64_t out;
+        const CubsTypeContext* outContext = NULL;
+        const CubsFunctionReturn ret = {.value = (void*)&out, .context = &outContext};
+        const int result = cubs_function_call(args, ret);
+        assert(outContext == CUBS_INT_CONTEXT && "expected int return type for hash");
+        return (size_t)out;
+    }
+}
