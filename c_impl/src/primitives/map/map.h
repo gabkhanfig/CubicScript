@@ -47,7 +47,7 @@ extern "C" {
 
 //CubsMap cubs_map_init_primitives(CubsValueTag keyTag, CubsValueTag valueTag);
 
-CubsMap cubs_map_init(const CubsTypeContext* keyContext, const CubsTypeContext* valueContext);
+CubsMap cubs_map_init(const struct CubsTypeContext* keyContext, const struct CubsTypeContext* valueContext);
 
 void cubs_map_deinit(CubsMap* self);
 

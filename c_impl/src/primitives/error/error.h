@@ -17,7 +17,7 @@ extern "C" {
 /// Creates a buffer to store the memory of `optionalMetadata` in.
 /// # Debug Assert
 /// If `optionalMetadata != NULL` -> asserts `optionalContext != NULL`
-CubsError cubs_error_init(CubsString name, void* optionalMetadata, const CubsTypeContext* optionalContext);
+CubsError cubs_error_init(CubsString name, void* optionalMetadata, const struct CubsTypeContext* optionalContext);
 
 void cubs_error_deinit(CubsError* self);
 

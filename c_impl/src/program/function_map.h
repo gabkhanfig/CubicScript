@@ -12,7 +12,7 @@ typedef struct ProtectedArena ProtectedArena;
 /// Maps all of the script functions. Must be zero initialized.
 typedef struct FunctionMap {
     /// An array holding all of the functions. Is valid to `self.allFunctions[self.count - 1]`
-    struct ScriptFunctionDefinitionHeader** allFunctions;
+    struct CubsScriptFunctionPtr** allFunctions;
     size_t allFunctionsCount;
     size_t allFunctionsCapacity;
     struct FunctionMapQualifiedGroup* qualifiedGroups;

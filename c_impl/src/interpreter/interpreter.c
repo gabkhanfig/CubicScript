@@ -139,14 +139,13 @@ void cubs_interpreter_stack_unwind_frame() {
     uintptr_t* start = &threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + RESERVED_SLOTS];
     for(size_t i = 0; i < threadLocalStack.frame.frameLength; i++) {
         const CubsTypeContext* context = cubs_interpreter_stack_context_at(i);
-        const bool isOwningContext = is_owning_context_at(i);
+        const bool isOwningContext = is_owning_context_at(i);        
         if(context == NULL || !isOwningContext) {
             continue;
         }
-        if(context->destructor == NULL) {
-            continue;
-        }
-        context->destructor(cubs_interpreter_stack_value_at(i));
+
+        cubs_context_fast_deinit(cubs_interpreter_stack_value_at(i), context);
+
         // While technically it makes the most sense to set to NULL earlier, since nothing gets executed if the type has no destructor,
         // leaving a previous context for a "dumb" type, such as an integer, is fine.
         cubs_interpreter_stack_set_null_context_at(i); // set context to NULL
@@ -178,6 +177,7 @@ void cubs_interpreter_push_script_function_arg(const void *arg, const CubsTypeCo
 {
     const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
 
+    fprintf(stderr, "context->sizeOfType %lld\n", context->sizeOfType);
     memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
     threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
     if(context->sizeOfType > 8) {
@@ -398,8 +398,8 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
 
             void* dst = cubs_interpreter_stack_value_at(operands.dst);
 
-            assert(context->clone != NULL);
-            context->clone(dst, immediate);
+            assert(context->clone.func.externC != NULL);
+            cubs_context_fast_clone(dst, immediate, context);
 
             cubs_interpreter_stack_set_context_at(operands.dst, context);      
             (*ipIncrement) += 2; // move instruction pointer further into the bytecode

@@ -20,7 +20,7 @@ typedef struct CubsArray {
     void* buf;
     /// Accessing this is unsafe
     size_t capacity;
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsArray;
 
 typedef struct CubsSet {
@@ -29,7 +29,7 @@ typedef struct CubsSet {
     /// Accessing this is unsafe
     void* _metadata[5];
     /// Requires equality and hash function pointers
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsSet;
 
 typedef struct CubsMap {
@@ -38,16 +38,16 @@ typedef struct CubsMap {
     /// Accessing this is unsafe
     void* _metadata[5];
     /// Requires equality and hash function pointers
-    const CubsTypeContext* keyContext;
+    const struct CubsTypeContext* keyContext;
     /// Does not require equality and hash function pointers
-    const CubsTypeContext* valueContext;
+    const struct CubsTypeContext* valueContext;
 } CubsMap;
 
 /// 0 / null intialization makes it a none option.
 typedef struct CubsOption {
     bool isSome;
     void* _metadata[4];
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsOption;
 
 typedef struct CubsError {
@@ -55,7 +55,7 @@ typedef struct CubsError {
     /// Can be NULL. Must be cast to the appropriate type.
     void* metadata;
     /// Is the type of `metadata`. Can be NULL if the error has no metadata.
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsError;
 
 typedef struct CubsResult {
@@ -63,7 +63,7 @@ typedef struct CubsResult {
     void* metadata[sizeof(CubsError) / sizeof(void*)];
     bool isErr;
     /// Context of the ok value. If `NULL`, is an empty ok value.
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsResult;
 
 typedef struct CubsOwnedInterface {
@@ -78,29 +78,29 @@ typedef struct CubsConstRef {
     /// Safe to access. Should be cast to the appropriate type.
     /// Should never be NULL. Nullable references must be wrapped in a `CubsOption`.
     const void* ref;
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsConstRef;
 
 typedef struct CubsMutRef {
     /// Safe to access. Should be cast to the appropriate type.
     /// Should never be NULL. Nullable references must be wrapped in a `CubsOption`.
     void* ref;
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsMutRef;
 
 typedef struct CubsUnique {
     void* _inner;
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsUnique;
 
 typedef struct CubsShared {
     void* _inner;
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsShared;
 
 typedef struct CubsWeak {
     void* _inner;
-    const CubsTypeContext* context;
+    const struct CubsTypeContext* context;
 } CubsWeak;
 
 typedef struct CubsVec2i {

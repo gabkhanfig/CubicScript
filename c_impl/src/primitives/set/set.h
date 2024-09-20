@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 /// Does not allocate any memory, just zeroes and sets the context.
-CubsSet cubs_set_init(const CubsTypeContext* context);
+CubsSet cubs_set_init(const struct CubsTypeContext* context);
 
 void cubs_set_deinit(CubsSet* self);
 

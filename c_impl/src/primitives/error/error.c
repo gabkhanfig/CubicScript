@@ -37,6 +37,7 @@ void cubs_error_deinit(CubsError *self)
         return;
     }
 
+    cubs_context_fast_deinit(self->metadata, self->context);
     cubs_free(self->metadata, self->context->sizeOfType, _Alignof(size_t));
     self->metadata = NULL;
 }
@@ -48,10 +49,10 @@ CubsError cubs_error_clone(const CubsError *self)
         return err;
     } else {
         assert(self->context != NULL);
-        assert(self->context->clone != NULL);
+        assert(self->context->clone.func.externC != NULL);
         
         void* mem = cubs_malloc(self->context->sizeOfType, _Alignof(size_t));
-        self->context->clone(mem, self->metadata);
+        cubs_context_fast_clone(mem, self->metadata, self->context);
         const CubsError err = {.name = cubs_string_clone(&self->name), .metadata = mem, .context = self->context};
         return err;
     }
@@ -86,7 +87,7 @@ bool cubs_error_eql(const CubsError *self, const CubsError *other)
         return false; // self metadata is non-null, therefore they cannot be equal
     }
     // both are non null
-    return self->context->eql(self->metadata, other->metadata);
+    cubs_context_fast_eql(self->metadata, other->metadata, self->context);
 }
 
 size_t cubs_error_hash(const CubsError *self)
@@ -95,9 +96,9 @@ size_t cubs_error_hash(const CubsError *self)
     
     if(self->metadata != NULL) {
         assert(self->context != NULL);
-        assert(self->context->hash != NULL);
+        assert(self->context->hash.func.externC != NULL);
 
-        h = cubs_combine_hash(h, self->context->hash(self->metadata));
+        h = cubs_combine_hash(h, cubs_context_fast_hash(self->metadata, self->context));
     }
     
     return h;

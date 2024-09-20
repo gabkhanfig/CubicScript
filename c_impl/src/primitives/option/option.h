@@ -11,7 +11,7 @@ extern "C" {
 //CubsOption cubs_option_init_primitive(CubsValueTag tag, void* optionalValue);
 
 /// If `optionalValue != NULL`, takes ownership. Otherwise, this is a none option.
-CubsOption cubs_option_init(const CubsTypeContext* context, void* optionalValue);
+CubsOption cubs_option_init(const struct CubsTypeContext* context, void* optionalValue);
 
 void cubs_option_deinit(CubsOption* self);
 
