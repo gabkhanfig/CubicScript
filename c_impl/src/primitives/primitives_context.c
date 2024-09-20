@@ -578,7 +578,13 @@ void cubs_context_fast_deinit(void *value, const CubsTypeContext *context)
 void cubs_context_fast_clone(void *out, const void *value, const CubsTypeContext *context)
 {
     assert(context->clone.func.externC != NULL && "Cannot clone type that doesn't have a valid externC or script function");
-    if(context == &CUBS_STRING_CONTEXT) {
+    if(context == &CUBS_BOOL_CONTEXT) {
+        *(bool*)out = *(const bool*)value;
+    } else if(context == &CUBS_INT_CONTEXT) {
+        *(int64_t*)out = *(const int64_t*)value;
+    } else if(context == &CUBS_FLOAT_CONTEXT) {
+        *(double*)out = *(const double*)value;
+    } else if(context == &CUBS_STRING_CONTEXT) {
         const CubsString ret = cubs_string_clone((const CubsString*)value);
         *(CubsString*)out = ret;
     } else {
@@ -597,9 +603,17 @@ void cubs_context_fast_clone(void *out, const void *value, const CubsTypeContext
 bool cubs_context_fast_eql(const void *lhs, const void *rhs, const CubsTypeContext *context)
 {
     assert(context->eql.func.externC != NULL && "Cannot do equality comaprison on type that doesn't have a valid externC or script function");
-    if(context == &CUBS_STRING_CONTEXT) {
+    if(context == &CUBS_BOOL_CONTEXT) {
+        return (*(const bool*)lhs) == (*(const bool*)rhs);
+    } else if(context == &CUBS_INT_CONTEXT) {
+        return (*(const int64_t*)lhs) == (*(const int64_t*)rhs);
+    } else if(context == &CUBS_FLOAT_CONTEXT) {
+        return (*(const double*)lhs) == (*(const double*)rhs);
+    } else if(context == &CUBS_STRING_CONTEXT) {
         return cubs_string_eql(lhs, rhs);
     } else {
+        cubs_panic("not tested yet"); // TODO seems like the equality doesn't work properly with reference types
+
         CubsFunctionCallArgs args = cubs_function_start_call(&context->eql);
 
         CubsConstRef argLhs = {.ref = lhs, .context = context};
@@ -619,7 +633,13 @@ bool cubs_context_fast_eql(const void *lhs, const void *rhs, const CubsTypeConte
 size_t cubs_context_fast_hash(const void *value, const CubsTypeContext *context)
 {
     assert(context->eql.func.externC != NULL && "Cannot do hash on type that doesn't have a valid externC or script function");
-    if(context == &CUBS_STRING_CONTEXT) {
+    if(context == &CUBS_BOOL_CONTEXT) {
+        return (size_t)(*(const bool*)value);
+    } else if(context == &CUBS_INT_CONTEXT) {
+        return (size_t)(*(const int64_t*)value);
+    } else if(context == &CUBS_FLOAT_CONTEXT) {
+        return (size_t)(int64_t)(*(const double*)value);
+    } else if(context == &CUBS_STRING_CONTEXT) {
         return cubs_string_hash(value);
     } else {
         CubsFunctionCallArgs args = cubs_function_start_call(&context->hash);
