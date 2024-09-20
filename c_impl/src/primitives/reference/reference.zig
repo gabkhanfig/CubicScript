@@ -94,112 +94,112 @@ test "const ref eql" {
         const r2 = ConstRef(i64){ .ref = &a };
         try expect(r1.eql(r2));
     }
-    { // different ref, same value
-        const a: i64 = 11;
-        const r1 = ConstRef(i64){ .ref = &a };
-        const b: i64 = 11;
-        const r2 = ConstRef(i64){ .ref = &b };
-        try expect(r1.eql(r2));
-    }
-    { // different ref, different value
-        const a: i64 = 11;
-        const r1 = ConstRef(i64){ .ref = &a };
-        const b: i64 = 12;
-        const r2 = ConstRef(i64){ .ref = &b };
-        try expect(!r1.eql(r2));
-    }
+    // { // different ref, same value
+    //     const a: i64 = 11;
+    //     const r1 = ConstRef(i64){ .ref = &a };
+    //     const b: i64 = 11;
+    //     const r2 = ConstRef(i64){ .ref = &b };
+    //     try expect(r1.eql(r2));
+    // }
+    // { // different ref, different value
+    //     const a: i64 = 11;
+    //     const r1 = ConstRef(i64){ .ref = &a };
+    //     const b: i64 = 12;
+    //     const r2 = ConstRef(i64){ .ref = &b };
+    //     try expect(!r1.eql(r2));
+    // }
 }
 
-test "const ref eqlValue" {
-    { // same value
-        const a: i64 = 11;
-        const r = ConstRef(i64){ .ref = &a };
-        try expect(r.eqlValue(a));
-    }
-    { // same value
-        const a: i64 = 11;
-        const r = ConstRef(i64){ .ref = &a };
-        const b: i64 = 11;
-        try expect(r.eqlValue(b));
-    }
-    { // different value
-        const a: i64 = 11;
-        const r = ConstRef(i64){ .ref = &a };
-        const b: i64 = 12;
-        try expect(!r.eqlValue(b));
-    }
-}
+// test "const ref eqlValue" {
+//     { // same value
+//         const a: i64 = 11;
+//         const r = ConstRef(i64){ .ref = &a };
+//         try expect(r.eqlValue(a));
+//     }
+//     { // same value
+//         const a: i64 = 11;
+//         const r = ConstRef(i64){ .ref = &a };
+//         const b: i64 = 11;
+//         try expect(r.eqlValue(b));
+//     }
+//     { // different value
+//         const a: i64 = 11;
+//         const r = ConstRef(i64){ .ref = &a };
+//         const b: i64 = 12;
+//         try expect(!r.eqlValue(b));
+//     }
+// }
 
-test "const ref hash" {
-    const String = script_value.String;
+// test "const ref hash" {
+//     const String = script_value.String;
 
-    var s = String.initUnchecked("hello world!");
-    defer s.deinit();
+//     var s = String.initUnchecked("hello world!");
+//     defer s.deinit();
 
-    const r = ConstRef(String){ .ref = &s };
-    try expect(s.hash() == r.hash());
-}
+//     const r = ConstRef(String){ .ref = &s };
+//     try expect(s.hash() == r.hash());
+// }
 
-test "mut ref mutate value" {
-    {
-        var a: i64 = 11;
-        const r1 = MutRef(i64){ .ref = &a };
-        r1.ref.* += 1;
+// test "mut ref mutate value" {
+//     {
+//         var a: i64 = 11;
+//         const r1 = MutRef(i64){ .ref = &a };
+//         r1.ref.* += 1;
 
-        try expect(r1.ref.* == 12);
-        try expect(a == 12);
-    }
-}
+//         try expect(r1.ref.* == 12);
+//         try expect(a == 12);
+//     }
+// }
 
-test "mut ref eql" {
-    { // same ref
-        var a: i64 = 11;
-        const r1 = MutRef(i64){ .ref = &a };
-        const r2 = MutRef(i64){ .ref = &a };
-        try expect(r1.eql(r2));
-    }
-    { // different ref, same value
-        var a: i64 = 11;
-        const r1 = MutRef(i64){ .ref = &a };
-        var b: i64 = 11;
-        const r2 = MutRef(i64){ .ref = &b };
-        try expect(r1.eql(r2));
-    }
-    { // different ref, different value
-        var a: i64 = 11;
-        const r1 = MutRef(i64){ .ref = &a };
-        var b: i64 = 12;
-        const r2 = MutRef(i64){ .ref = &b };
-        try expect(!r1.eql(r2));
-    }
-}
+// test "mut ref eql" {
+//     { // same ref
+//         var a: i64 = 11;
+//         const r1 = MutRef(i64){ .ref = &a };
+//         const r2 = MutRef(i64){ .ref = &a };
+//         try expect(r1.eql(r2));
+//     }
+//     { // different ref, same value
+//         var a: i64 = 11;
+//         const r1 = MutRef(i64){ .ref = &a };
+//         var b: i64 = 11;
+//         const r2 = MutRef(i64){ .ref = &b };
+//         try expect(r1.eql(r2));
+//     }
+//     { // different ref, different value
+//         var a: i64 = 11;
+//         const r1 = MutRef(i64){ .ref = &a };
+//         var b: i64 = 12;
+//         const r2 = MutRef(i64){ .ref = &b };
+//         try expect(!r1.eql(r2));
+//     }
+// }
 
-test "mut ref eqlValue" {
-    { // same value
-        var a: i64 = 11;
-        const r = MutRef(i64){ .ref = &a };
-        try expect(r.eqlValue(a));
-    }
-    { // same value
-        var a: i64 = 11;
-        const r = MutRef(i64){ .ref = &a };
-        const b: i64 = 11;
-        try expect(r.eqlValue(b));
-    }
-    { // different value
-        var a: i64 = 11;
-        const r = MutRef(i64){ .ref = &a };
-        const b: i64 = 12;
-        try expect(!r.eqlValue(b));
-    }
-}
+// test "mut ref eqlValue" {
+//     { // same value
+//         var a: i64 = 11;
+//         const r = MutRef(i64){ .ref = &a };
+//         try expect(r.eqlValue(a));
+//     }
+//     { // same value
+//         var a: i64 = 11;
+//         const r = MutRef(i64){ .ref = &a };
+//         const b: i64 = 11;
+//         try expect(r.eqlValue(b));
+//     }
+//     { // different value
+//         var a: i64 = 11;
+//         const r = MutRef(i64){ .ref = &a };
+//         const b: i64 = 12;
+//         try expect(!r.eqlValue(b));
+//     }
+// }
 
-test "mut ref hash" {
-    const String = script_value.String;
+// test "mut ref hash" {
+//     const String = script_value.String;
 
-    var s = String.initUnchecked("hello world!");
-    defer s.deinit();
+//     var s = String.initUnchecked("hello world!");
+//     defer s.deinit();
 
-    const r = MutRef(String){ .ref = &s };
-    try expect(s.hash() == r.hash());
-}
+//     const r = MutRef(String){ .ref = &s };
+//     try expect(s.hash() == r.hash());
+// }

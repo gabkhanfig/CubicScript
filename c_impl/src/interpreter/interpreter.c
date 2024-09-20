@@ -177,7 +177,6 @@ void cubs_interpreter_push_script_function_arg(const void *arg, const CubsTypeCo
 {
     const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
 
-    fprintf(stderr, "context->sizeOfType %lld\n", context->sizeOfType);
     memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
     threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
     if(context->sizeOfType > 8) {

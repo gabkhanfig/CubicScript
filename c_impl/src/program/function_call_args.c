@@ -15,7 +15,6 @@ const size_t PUSHED_ARG_COUNT = 1;
 
 void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTypeContext *typeContext)
 {
-    const int offsetToAdd = (int)ROUND_SIZE_TO_MULTIPLE_OF_8(typeContext->sizeOfType);
     if(self->func->funcType == cubsFunctionPtrTypeScript) {
         const int currentOffset = self->_inner[CURRENT_OFFSET];
         const int currentPushedArgs = self->_inner[PUSHED_ARG_COUNT];
@@ -50,6 +49,7 @@ void cubs_function_push_arg(CubsFunctionCallArgs *self, void *arg, const CubsTyp
 
         cubs_interpreter_push_c_function_arg(arg, typeContext, currentOffset, currentPushedArgs, currentOffset);
     }
+    const int offsetToAdd = (int)ROUND_SIZE_TO_MULTIPLE_OF_8(typeContext->sizeOfType);
     self->_inner[CURRENT_OFFSET] += (offsetToAdd / 8);
     self->_inner[PUSHED_ARG_COUNT] += 1;
 }
