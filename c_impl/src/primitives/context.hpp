@@ -1,8 +1,15 @@
 #pragma once
 
-#include "script_value.hpp"
+#include <cstddef>
+#include <cstdint>
 
 namespace cubs {
+    namespace detail {
+        #include "context.h"
+    }
+    /// See `autoTypeContext<T>()` to automatically create one for a type. 
+    typedef detail::CubsTypeContext TypeContext;
+
     template<typename T>
     const TypeContext* autoTypeContext();
 }

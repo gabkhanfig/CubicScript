@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 /// Copies the memory at `value`.
-CubsUnique cubs_unique_init(void* value, const CubsTypeContext* context);
+CubsUnique cubs_unique_init(void* value, const struct CubsTypeContext* context);
 
 /// Mustn't be locked
 void cubs_unique_deinit(CubsUnique* self);
@@ -55,7 +55,7 @@ CubsUnique cubs_unique_clone(const CubsUnique* self);
 //CubsWeak cubs_unique_make_weak(CubsUnique* self);
 
 /// Copies the memory at `value`.
-CubsShared cubs_shared_init(void* value, const CubsTypeContext* context);
+CubsShared cubs_shared_init(void* value, const struct CubsTypeContext* context);
 
 /// Mustn't be locked
 void cubs_shared_deinit(CubsShared* self);

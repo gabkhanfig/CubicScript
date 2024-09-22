@@ -10,7 +10,7 @@ const c = @cImport({
     @cInclude("interpreter/interpreter.h");
     @cInclude("interpreter/function_definition.h");
     @cInclude("interpreter/bytecode.h");
-    @cInclude("primitives/primitives_context.h");
+    @cInclude("primitives/context.h");
     @cInclude("primitives/string/string.h");
     @cInclude("program/program.h");
 });

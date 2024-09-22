@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 /// Does not allocate any memory, just zeroes and sets the context.
-CubsArray cubs_array_init(const CubsTypeContext* context);
+CubsArray cubs_array_init(const struct CubsTypeContext* context);
 
 void cubs_array_deinit(CubsArray* self);
 

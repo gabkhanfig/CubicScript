@@ -4,7 +4,7 @@
 #include <string.h>
 #include "../../util/panic.h"
 #include <stdio.h>
-#include "../primitives_context.h"
+#include "../context.h"
 #include "../../util/hash.h"
 
 static const size_t CAPACITY_BITMASK = 0xFFFFFFFFFFFFULL;
@@ -68,11 +68,11 @@ void cubs_array_deinit(CubsArray *self)
     }
 
     const size_t sizeOfType = self->context->sizeOfType;
-    if(self->context->destructor != NULL) {       
+    if(self->context->destructor.func.externC != NULL) {       
         char* byteStart = (char*)self->buf;
         for(size_t i = 0; i < self->len; i++) {
             const size_t actualIndex = i * sizeOfType;
-            self->context->destructor((void*)&byteStart[actualIndex]);
+            cubs_context_fast_deinit((void*)&byteStart[actualIndex], self->context);
         }      
     }
     
@@ -99,7 +99,7 @@ CubsArray cubs_array_clone(const CubsArray *self)
         void* selfValue = (void*)&((char*)self->buf)[i * sizeOfType];
         void* newValue = (void*)&((char*)newSelf.buf)[i * sizeOfType];
    
-        self->context->clone(valueTempStorage, selfValue);
+        cubs_context_fast_clone(valueTempStorage, selfValue, self->context);
 
         memcpy(newValue, valueTempStorage, sizeOfType);
     }
@@ -152,9 +152,9 @@ CubsArrayError cubs_array_at_mut(void** out, CubsArray *self, size_t index)
 
 bool cubs_array_eql(const CubsArray *self, const CubsArray *other)
 {
-    assert(self->context->eql != NULL);
-    assert(other->context->eql != NULL);
-    assert(self->context->eql == other->context->eql);
+    assert(self->context->eql.func.externC != NULL);
+    assert(other->context->eql.func.externC != NULL);
+    assert(self->context->eql.func.externC == other->context->eql.func.externC);
     assert(self->context->sizeOfType == other->context->sizeOfType);
 
     if(self->len != other->len) {
@@ -166,7 +166,8 @@ bool cubs_array_eql(const CubsArray *self, const CubsArray *other)
         const void* selfValue = (const void*)&((const char*)self->buf)[i * sizeOfType];
         const void* otherValue = (const void*)&((const char*)other->buf)[i * sizeOfType];
 
-        if(self->context->eql(selfValue, otherValue) == false) {
+
+        if(cubs_context_fast_eql(selfValue, otherValue, self->context) == false) {
             return false;
         }
     }
@@ -175,13 +176,13 @@ bool cubs_array_eql(const CubsArray *self, const CubsArray *other)
 
 size_t cubs_array_hash(const CubsArray *self)
 {
-    assert(self->context->hash != NULL);
+    assert(self->context->hash.func.externC != NULL);
 
     const size_t globalHashSeed = cubs_hash_seed();
     size_t h = globalHashSeed;
 
     for(size_t i = 0; i < self->len; i++) {
-        const size_t hashedValue = self->context->hash(cubs_array_at_unchecked(self, i));
+        const size_t hashedValue = cubs_context_fast_hash(cubs_array_at_unchecked(self, i), self->context);
         h = cubs_combine_hash(hashedValue, h);
     }
 

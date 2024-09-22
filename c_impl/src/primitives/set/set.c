@@ -8,7 +8,7 @@
 #include "../../util/hash.h"
 #include "../../util/bitwise.h"
 #include "../string/string.h"
-#include "../primitives_context.h"
+#include "../context.h"
 #include "../../util/simd.h"
 #include "../../util/context_size_round.h"
 
@@ -80,12 +80,9 @@ static void key_header_deinit(KeyHeader* header, const CubsTypeContext* keyConte
         *iterLast = before;
     }
     
-    if(keyContext->destructor != NULL) {
-        keyContext->destructor(key_of_header_mut(header));
-    }
-    
-    const size_t round8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(keyContext->sizeOfType);
+    cubs_context_fast_deinit(key_of_header_mut(header), keyContext);
 
+    const size_t round8Size = ROUND_SIZE_TO_MULTIPLE_OF_8(keyContext->sizeOfType);
     cubs_free((void*)header, sizeof(KeyHeader) + round8Size, _Alignof(size_t));
 }
 
@@ -167,9 +164,9 @@ static size_t group_find(const Group* self, const void* key, const CubsTypeConte
             const size_t actualIndex = index + i;
             const void* pair = group_key_buf_start(self)[actualIndex];
             const void* pairKey = key_of_header(pair);
-            assert(keyContext->eql != NULL);
-            /// Because of C union alignment, and the sizes and alignments of the union members, this is valid.
-            if(!keyContext->eql(pairKey, key)) {
+            assert(keyContext->eql.func.externC != NULL);
+
+            if(!cubs_context_fast_eql(pairKey, key, keyContext)) {
                 resultMask = (resultMask & ~(1U << index));
                 continue;
             }
@@ -192,9 +189,7 @@ static void group_insert(Group* self, void* key, const CubsTypeContext* keyConte
     const size_t existingIndex = group_find(self, &key, keyContext, pairMask);
     
     if(existingIndex != -1) {
-        if(keyContext->destructor != NULL) {
-            keyContext->destructor(key);  // don't need duplicate keys
-        }
+        cubs_context_fast_deinit(key, keyContext); // don't need duplicate keys
         return;
     }
 
@@ -343,8 +338,8 @@ static void map_ensure_total_capacity(CubsSet* self) {
 CubsSet cubs_set_init(const CubsTypeContext *context)
 {
     assert(context != NULL);
-    assert(context->eql != NULL && "Map's keyContext must contain a valid equality function pointer");
-    assert(context->hash != NULL && "Map's keyContext must contain a valid hashing function pointer");
+    assert(context->eql.func.externC != NULL && "Map's keyContext must contain a valid equality function pointer");
+    assert(context->hash.func.externC != NULL && "Map's keyContext must contain a valid hashing function pointer");
     const CubsSet out = {.len = 0, ._metadata = {0}, .context = context};
     return out;
 }
@@ -398,8 +393,8 @@ CubsSet cubs_set_clone(const CubsSet *self)
     while(cubs_set_iter_next(&iter)) {   
         const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
         const size_t groupIndex = groupBitmask.value % newMetadata->groupCount;
-    
-        self->context->clone(keyTempStorage, iter.key);
+
+        cubs_context_fast_clone(keyTempStorage, iter.key, self->context);
 
         group_insert(&newMetadata->groupsArray[groupIndex], keyTempStorage, self->context, hashCode, &newMetadata->iterFirst, &newMetadata->iterLast); 
     }
@@ -416,8 +411,8 @@ bool cubs_set_contains(const CubsSet* self, const void* key)
     }
     const Metadata* metadata = map_metadata(self);
 
-    assert(self->context->hash != NULL);
-    const size_t hashCode = self->context->hash(key);
+    assert(self->context->hash.func.externC != NULL);
+    const size_t hashCode = cubs_context_fast_hash(key, self->context);
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
     const size_t groupIndex = groupBitmask.value % metadata->groupCount;
     const Group* group = &metadata->groupsArray[groupIndex];
@@ -432,8 +427,8 @@ void cubs_set_insert(CubsSet *self, void* key)
     
     Metadata* metadata = map_metadata_mut(self);
     
-    assert(self->context->hash != NULL);
-    const size_t hashCode = self->context->hash(key);
+    assert(self->context->hash.func.externC != NULL);
+    const size_t hashCode = cubs_context_fast_hash(key, self->context);
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
     const size_t groupIndex = groupBitmask.value % metadata->groupCount;
 
@@ -450,8 +445,8 @@ bool cubs_set_erase(CubsSet *self, const void *key)
 
     Metadata* metadata = map_metadata_mut(self);
 
-    assert(self->context->hash != NULL);
-    const size_t hashCode = self->context->hash(key);
+    assert(self->context->hash.func.externC != NULL);
+    const size_t hashCode = cubs_context_fast_hash(key, self->context);
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
     const size_t groupIndex = groupBitmask.value % metadata->groupCount;
 
@@ -466,9 +461,9 @@ bool cubs_set_erase(CubsSet *self, const void *key)
 bool cubs_set_eql(const CubsSet *self, const CubsSet *other)
 {   
     assert(self->context->sizeOfType == other->context->sizeOfType);
-    assert(self->context->eql != NULL);
-    assert(other->context->eql != NULL);
-    assert(self->context->eql == other->context->eql);
+    assert(self->context->eql.func.externC != NULL);
+    assert(other->context->eql.func.externC != NULL);
+    assert(self->context->eql.func.externC == other->context->eql.func.externC);
 
     if(self->len != other->len) {
         return false;
@@ -488,7 +483,7 @@ bool cubs_set_eql(const CubsSet *self, const CubsSet *other)
             return true;
         }
 
-        if(self->context->eql(selfIter.key, otherIter.key) == false) {
+        if(cubs_context_fast_eql(selfIter.key, otherIter.key, self->context) == false) {
             return false;
         }
     }
@@ -496,7 +491,7 @@ bool cubs_set_eql(const CubsSet *self, const CubsSet *other)
 
 size_t cubs_set_hash(const CubsSet *self)
 {
-    assert(self->context->hash != NULL);
+    assert(self->context->hash.func.externC != NULL);
 
     CubsSetIter selfIter = cubs_set_iter_begin(self);
     
@@ -504,7 +499,7 @@ size_t cubs_set_hash(const CubsSet *self)
     size_t h = globalHashSeed;
 
     while(cubs_set_iter_next(&selfIter)) {
-        const size_t hashedKey = self->context->hash(selfIter.key);
+        const size_t hashedKey = cubs_context_fast_hash(selfIter.key, self->context);
         h = cubs_combine_hash(hashedKey, h);
     }
 

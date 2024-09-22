@@ -4,7 +4,7 @@ const expect = std.testing.expect;
 const c = @cImport({
     @cInclude("interpreter/interpreter.h");
     @cInclude("interpreter/bytecode.h");
-    @cInclude("primitives/primitives_context.h");
+    @cInclude("primitives/context.h");
     @cInclude("primitives/string/string.h");
     @cInclude("primitives/array/array.h");
     @cInclude("primitives/set/set.h");

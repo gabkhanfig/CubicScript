@@ -2,7 +2,7 @@
 #include <assert.h>
 #include "../../platform/mem.h"
 #include <string.h>
-#include "../primitives_context.h"
+#include "../context.h"
 #include "../../util/hash.h"
 
 // CubsOption cubs_option_init_primitive(CubsValueTag tag, void* optionalValue)
@@ -36,11 +36,11 @@ void cubs_option_deinit(CubsOption *self)
         return;
     }
 
-    if(self->context->destructor != NULL) {
+    if(self->context->destructor.func.externC != NULL) {
         if(self->context->sizeOfType <= sizeof(self->_metadata)) {
-            self->context->destructor(&self->_metadata);
+            cubs_context_fast_deinit(&self->_metadata, self->context);
         } else {
-            self->context->destructor(self->_metadata[0]);
+            cubs_context_fast_deinit(self->_metadata[0], self->context);
             cubs_free(self->_metadata[0], self->context->sizeOfType, _Alignof(size_t));
         }
     }
@@ -50,7 +50,7 @@ void cubs_option_deinit(CubsOption *self)
 
 CubsOption cubs_option_clone(const CubsOption *self)
 {
-    assert(self->context->clone != NULL);
+    assert(self->context->clone.func.externC != NULL);
 
     CubsOption out = {._metadata = {0}, .isSome = self->isSome, .context = self->context};
     if(!self->isSome) {
@@ -58,10 +58,10 @@ CubsOption cubs_option_clone(const CubsOption *self)
     }
 
     if(self->context->sizeOfType <= sizeof(self->_metadata)) {
-        self->context->clone((void*)&out._metadata, cubs_option_get(self));
+        cubs_context_fast_clone((void*)&out._metadata, cubs_option_get(self), self->context);
     } else {
         void* metadataMem = cubs_malloc(self->context->sizeOfType, _Alignof(size_t));
-        self->context->clone(metadataMem, cubs_option_get(self));
+        cubs_context_fast_clone(metadataMem, cubs_option_get(self), self->context);
         out._metadata[0] = metadataMem;
     }
     return out;
@@ -104,8 +104,8 @@ void cubs_option_take(void *out, CubsOption *self)
 
 bool cubs_option_eql(const CubsOption *self, const CubsOption *other)
 {
-    assert(self->context->eql == other->context->eql);
-    assert(self->context->eql != NULL);
+    assert(self->context->eql.func.externC == other->context->eql.func.externC);
+    assert(self->context->eql.func.externC != NULL);
     assert(self->context->sizeOfType == other->context->sizeOfType);
 
     if(self->isSome != other->isSome) {
@@ -113,7 +113,7 @@ bool cubs_option_eql(const CubsOption *self, const CubsOption *other)
     }
 
     if(self->isSome) {
-        return self->context->eql(cubs_option_get(self), cubs_option_get(other));
+        return cubs_context_fast_eql(cubs_option_get(self), cubs_option_get(other), self->context);
     } else {
         return true; // both are null
     }
@@ -122,13 +122,13 @@ bool cubs_option_eql(const CubsOption *self, const CubsOption *other)
 
 size_t cubs_option_hash(const CubsOption *self)
 {
-    assert(self->context->hash != NULL);
+    assert(self->context->hash.func.externC != NULL);
 
     if(!self->isSome) {
         return 0;
     }
 
     const size_t globalHashSeed = cubs_hash_seed();
-    const size_t hashed = self->context->hash(cubs_option_get(self));
+    const size_t hashed = cubs_context_fast_hash(cubs_option_get(self), self->context);
     return cubs_combine_hash(globalHashSeed, hashed);
 }

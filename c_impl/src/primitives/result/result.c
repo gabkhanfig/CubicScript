@@ -1,5 +1,5 @@
 #include "result.h"
-#include "../primitives_context.h"
+#include "../context.h"
 #include "../../platform/mem.h"
 #include <assert.h>
 #include <string.h>
@@ -57,9 +57,8 @@ void cubs_result_deinit(CubsResult *self)
             return;
         }
         void* okValue = cubs_result_get_ok_mut(self);
-        if(self->context->destructor != NULL) {
-            self->context->destructor(okValue);
-        }
+
+        cubs_context_fast_deinit(okValue, self->context);
         if(self->context->sizeOfType > sizeof(self->metadata)) {
             cubs_free(okValue, self->context->sizeOfType, _Alignof(size_t));
         }

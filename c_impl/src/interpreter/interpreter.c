@@ -7,7 +7,7 @@
 #include "value_tag.h"
 #include <string.h>
 #include "../primitives/script_value.h"
-#include "../primitives/primitives_context.h"
+#include "../primitives/context.h"
 #include "../primitives/string/string.h"
 #include "../primitives/array/array.h"
 #include "../primitives/set/set.h"
@@ -19,6 +19,7 @@
 #include <string.h>
 #include "function_definition.h"
 #include "../program/function_call_args.h"
+#include "../util/context_size_round.h"
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
@@ -139,14 +140,13 @@ void cubs_interpreter_stack_unwind_frame() {
     uintptr_t* start = &threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + RESERVED_SLOTS];
     for(size_t i = 0; i < threadLocalStack.frame.frameLength; i++) {
         const CubsTypeContext* context = cubs_interpreter_stack_context_at(i);
-        const bool isOwningContext = is_owning_context_at(i);
+        const bool isOwningContext = is_owning_context_at(i);        
         if(context == NULL || !isOwningContext) {
             continue;
         }
-        if(context->destructor == NULL) {
-            continue;
-        }
-        context->destructor(cubs_interpreter_stack_value_at(i));
+
+        cubs_context_fast_deinit(cubs_interpreter_stack_value_at(i), context);
+
         // While technically it makes the most sense to set to NULL earlier, since nothing gets executed if the type has no destructor,
         // leaving a previous context for a "dumb" type, such as an integer, is fine.
         cubs_interpreter_stack_set_null_context_at(i); // set context to NULL
@@ -193,9 +193,10 @@ void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsType
     // integer division.
     // structs with a size less than or equal to 8 will have the track offset set to +1,
     // otherwise it will be pushed further
-    const size_t newArgTrackOffset = actualOffset + (context->sizeOfType / 8);
+    const size_t newArgTrackOffset = actualOffset + 
+    (ROUND_SIZE_TO_MULTIPLE_OF_8(context->sizeOfType) / 8);
     if(argTrackOffset > 0) { // with an offset other than 0, it means args have already been pushed.
-        const size_t bytesToMove = 8 * (1 + (argTrackOffset / 4));
+        const size_t bytesToMove = sizeof(size_t) + (sizeof(size_t) * (1 + (currentArgCount / 4)));
         memmove((void*)&threadLocalStack.stack[newArgTrackOffset], (const void*)&threadLocalStack.stack[threadLocalStack.nextBaseOffset + RESERVED_SLOTS + argTrackOffset], bytesToMove); // `offset`
     }
     
@@ -398,8 +399,8 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
 
             void* dst = cubs_interpreter_stack_value_at(operands.dst);
 
-            assert(context->clone != NULL);
-            context->clone(dst, immediate);
+            assert(context->clone.func.externC != NULL);
+            cubs_context_fast_clone(dst, immediate, context);
 
             cubs_interpreter_stack_set_context_at(operands.dst, context);      
             (*ipIncrement) += 2; // move instruction pointer further into the bytecode

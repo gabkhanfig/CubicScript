@@ -29,7 +29,7 @@ add_library(CubicScript STATIC
     "src/util/math.c"
     "src/util/hash.c"
     "src/primitives/script_value.c"
-    "src/primitives/primitives_context.c"
+    "src/primitives/context.c"
     "src/primitives/string/string.c"
     "src/primitives/array/array.c"
     "src/primitives/map/map.c"

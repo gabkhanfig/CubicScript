@@ -5,7 +5,7 @@
 #include "../../platform/mem.h"
 #include <string.h>
 #include "../../util/hash.h"
-#include "../primitives_context.h"
+#include "../context.h"
 
 #define ALIGNMENT 64
 
@@ -114,9 +114,7 @@ void cubs_unique_deinit(CubsUnique *self)
 
     cubs_rwlock_lock_exclusive(&header->lock);
 
-    if(self->context->destructor != NULL) {
-        self->context->destructor(header_value_mut(header));
-    }   
+    cubs_context_fast_deinit(header_value_mut(header), self->context);
     cubs_atomic_flag_store(&header->isExpired, true);
 
     // If there are no weak references, free here.
@@ -182,10 +180,10 @@ void *cubs_unique_get_mut(CubsUnique *self)
 
 CubsUnique cubs_unique_clone(const CubsUnique *self)
 {
-    assert(self->context->clone != NULL);
+    assert(self->context->clone.func.externC != NULL);
 
     RefHeader* header = header_init(false, self->context->sizeOfType);
-    self->context->clone(header_value_mut(header), cubs_unique_get(self));
+    cubs_context_fast_clone(header_value_mut(header), cubs_unique_get(self), self->context);
     const CubsUnique unique = {._inner = (void*)header, .context = self->context};
     return unique;
 }
@@ -259,9 +257,7 @@ void cubs_shared_deinit(CubsShared* self) {
 
     cubs_rwlock_lock_exclusive(&header->lock);
 
-    if(self->context->destructor != NULL) {
-        self->context->destructor(header_value_mut(header));
-    }   
+    cubs_context_fast_deinit(header_value_mut(header), self->context);
     cubs_atomic_flag_store(&header->isExpired, true);
 
     
