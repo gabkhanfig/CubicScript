@@ -4,7 +4,7 @@
 #include <string.h>
 #include "../../util/panic.h"
 #include <stdio.h>
-#include "../primitives_context.h"
+#include "../context.h"
 #include "../../util/hash.h"
 
 static const size_t CAPACITY_BITMASK = 0xFFFFFFFFFFFFULL;

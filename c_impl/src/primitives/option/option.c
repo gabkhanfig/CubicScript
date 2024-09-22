@@ -2,7 +2,7 @@
 #include <assert.h>
 #include "../../platform/mem.h"
 #include <string.h>
-#include "../primitives_context.h"
+#include "../context.h"
 #include "../../util/hash.h"
 
 // CubsOption cubs_option_init_primitive(CubsValueTag tag, void* optionalValue)

@@ -1,5 +1,5 @@
 #include "result.h"
-#include "../primitives_context.h"
+#include "../context.h"
 #include "../../platform/mem.h"
 #include <assert.h>
 #include <string.h>

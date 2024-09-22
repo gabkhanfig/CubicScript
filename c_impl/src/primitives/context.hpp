@@ -6,9 +6,6 @@
 namespace cubs {
     namespace detail {
         #include "context.h"
-        extern "C" {
-            #include "primitives_context.h"
-        }
     }
     /// See `autoTypeContext<T>()` to automatically create one for a type. 
     typedef detail::CubsTypeContext TypeContext;

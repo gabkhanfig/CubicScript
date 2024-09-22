@@ -5,7 +5,7 @@
 #include "../../platform/mem.h"
 #include <string.h>
 #include "../../util/hash.h"
-#include "../primitives_context.h"
+#include "../context.h"
 
 #define ALIGNMENT 64
 

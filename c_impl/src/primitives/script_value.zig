@@ -1,7 +1,7 @@
 const std = @import("std");
 const expect = std.testing.expect;
 const primitive_context = @cImport({
-    @cInclude("primitives/primitives_context.h");
+    @cInclude("primitives/context.h");
 });
 
 pub const String = @import("string/string.zig").String;

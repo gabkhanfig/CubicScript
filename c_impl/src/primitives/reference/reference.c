@@ -1,6 +1,6 @@
 #include "reference.h"
 #include <assert.h>
-#include "../primitives_context.h"
+#include "../context.h"
 
 bool cubs_const_ref_eql(const CubsConstRef *self, const CubsConstRef *other)
 {

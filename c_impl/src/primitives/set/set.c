@@ -8,7 +8,7 @@
 #include "../../util/hash.h"
 #include "../../util/bitwise.h"
 #include "../string/string.h"
-#include "../primitives_context.h"
+#include "../context.h"
 #include "../../util/simd.h"
 #include "../../util/context_size_round.h"
 
