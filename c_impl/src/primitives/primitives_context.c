@@ -91,10 +91,7 @@ static int int_clone(CubsCFunctionHandler handler) {
     return 0;
 }
 
-#include <stdio.h>
-
 static int int_eql(CubsCFunctionHandler handler) {
-    
     CubsConstRef lhs;
     const CubsTypeContext* lhsContext;
     CubsConstRef rhs;
@@ -612,8 +609,6 @@ bool cubs_context_fast_eql(const void *lhs, const void *rhs, const CubsTypeConte
     } else if(context == &CUBS_STRING_CONTEXT) {
         return cubs_string_eql(lhs, rhs);
     } else {
-        cubs_panic("not tested yet"); // TODO seems like the equality doesn't work properly with reference types
-
         CubsFunctionCallArgs args = cubs_function_start_call(&context->eql);
 
         CubsConstRef argLhs = {.ref = lhs, .context = context};
