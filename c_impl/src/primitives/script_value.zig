@@ -83,10 +83,10 @@ pub const c = struct {
 
 pub const TypeContext = extern struct {
     sizeOfType: usize,
-    onDeinit: ?*const fn (self: *anyopaque) callconv(.C) void = null,
-    clone: ?*const fn (dst: *anyopaque, self: *const anyopaque) callconv(.C) void = null,
-    eql: ?*const fn (self: *const anyopaque, other: *const anyopaque) callconv(.C) bool = null,
-    hash: ?*const fn (self: *const anyopaque) callconv(.C) usize = null,
+    onDeinit: c.CubsFunction = std.mem.zeroes(c.CubsFunction),
+    clone: c.CubsFunction = std.mem.zeroes(c.CubsFunction),
+    eql: c.CubsFunction = std.mem.zeroes(c.CubsFunction),
+    hash: c.CubsFunction = std.mem.zeroes(c.CubsFunction),
     name: [*c]const u8,
     nameLength: usize,
 
@@ -160,7 +160,7 @@ pub const TypeContext = extern struct {
         var context: TypeContext = undefined;
         context.sizeOfType = @sizeOf(T);
 
-        context.onDeinit = null;
+        context.onDeinit = std.mem.zeroes(c.CubsFunction);
         if (std.meta.hasFn(T, "deinit")) {
             context.onDeinit = @ptrCast(&T.deinit);
         }
@@ -202,7 +202,7 @@ pub const TypeContext = extern struct {
             };
             const context = auto(Example);
             try expect(context.sizeOfType == @sizeOf(Example));
-            try expect(context.onDeinit == null);
+            try expect(@intFromPtr(context.onDeinit.func.externC) == 0);
             try expect(std.mem.eql(u8, context.name[0..context.nameLength], "Example"));
         }
     }
