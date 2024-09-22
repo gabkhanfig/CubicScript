@@ -4,7 +4,7 @@
 #include "../primitives/string/string.h"
 
 typedef struct CubsFunction CubsFunction;
-typedef struct CubsTypeContext CubsTypeContext;
+struct CubsTypeContext;
 typedef struct CubsProgram CubsProgram;
 
 /// Helper struct to push function arguments into the next script stack frame.
@@ -18,7 +18,7 @@ typedef struct CubsFunctionCallArgs {
 /// For functions with no return value, 0 initializing this struct is fine.
 typedef struct CubsFunctionReturn {
     void* value;
-    const struct CubsTypeContext** context;
+    const CubsTypeContext** context;
 } CubsFunctionReturn;
 
 /// Holds everything necessary to get the arguments of a C function call, as well as returning values.
@@ -59,7 +59,7 @@ extern "C" {
 /// Pushes an argument into either the next script stack frame in order, or pushes to a C function call.
 /// Calling `cubs_function_push_arg(...)` without also eventually calling `cubs_function_call(...)` after
 /// pushing all arguments is undefined behaviour.
-void cubs_function_push_arg(CubsFunctionCallArgs* self, void* arg, const struct CubsTypeContext* typeContext);
+void cubs_function_push_arg(CubsFunctionCallArgs* self, void* arg, const CubsTypeContext* typeContext);
 
 /// Takes ownership of `self`, effectively deinitializing it.
 /// NOTE - no actual deinitialization logic is necessary, just don't use the same CubsScriptFunctionCallArgs twice. 
@@ -74,12 +74,12 @@ int cubs_function_call(CubsFunctionCallArgs self, CubsFunctionReturn outReturn);
 /// `argIndex` is an array index, in which `0` is the first argument, `1` is the second argument, etc. 
 /// regardless of the actual sizes of the argument data types.
 /// If `outContext == NULL`, does not bother setting it.
-extern void cubs_function_take_arg(const CubsCFunctionHandler* self, size_t argIndex, void* outArg, const struct CubsTypeContext** outContext);
+extern void cubs_function_take_arg(const CubsCFunctionHandler* self, size_t argIndex, void* outArg, const CubsTypeContext** outContext);
 
 /// `memcpy`'s `returnValue` to the destination held in `self`, and sets the return context in `self` to `returnContext`.
 /// Takes ownership of `self`, effectively deinitializing it.
 /// NOTE - no actual deinitialization logic is necessary, just don't use the same CubsFunctionReturn twice. 
-void cubs_function_return_set_value(CubsCFunctionHandler self, void* returnValue, const struct CubsTypeContext* returnContext);
+void cubs_function_return_set_value(CubsCFunctionHandler self, void* returnValue, const CubsTypeContext* returnContext);
 
 #ifdef __cplusplus
 } // extern "C"
