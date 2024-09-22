@@ -13,6 +13,7 @@ extern "C" {
 #include "../src/primitives/error/error.h"
 #include "../src/primitives/result/result.h"
 #include "../src/primitives/reference/reference.h"
+#include "../src/primitives/function/function.h"
 #include "../src/primitives/sync_ptr/sync_ptr.h"
 
 #include "../src/sync/sync_queue.h"
