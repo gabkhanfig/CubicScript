@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string_view> 
-#include "../script_value.hpp"
+#include "../context.hpp"
+#include <string_view>
 #include <assert.h>
 #include <iostream>
 
@@ -57,9 +57,7 @@ namespace cubs {
             detail::cubs_string_deinit(&this->string);
         }
 
-        static const TypeContext* scriptTypeContext() {
-            return &detail::CUBS_STRING_CONTEXT;
-        }
+        static const TypeContext* scriptTypeContext();
 
         size_t len() const {
             return this->string.len;
@@ -68,12 +66,14 @@ namespace cubs {
         String& operator= (const String& other) {
             detail::cubs_string_deinit(&this->string);
             this->string = detail::cubs_string_clone(&other.string);
+            return *this;
         }
 
         String& operator= (String&& other) {
             detail::cubs_string_deinit(&this->string);
             this->string = other.string;
             other.string = {0};
+            return *this;
         }
 
         [[nodiscard]] string_view asStringView() const {
@@ -212,6 +212,10 @@ namespace cubs {
     private:
         detail::CubsString string;
     };
+}
+
+inline const cubs::TypeContext* cubs::String::scriptTypeContext() {
+    return &detail::CUBS_STRING_CONTEXT;
 }
 
 namespace std {

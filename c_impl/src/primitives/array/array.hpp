@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../script_value.hpp"
+#include "../context.hpp"
 #include <assert.h>
 #include <cstdint>
 
@@ -19,16 +19,17 @@ namespace cubs {
             detail::cubs_array_deinit(&this->arr);
         }
 
-        static const TypeContext* scriptTypeContext() {
-            return &detail::CUBS_ARRAY_CONTEXT;
-        }
+        static const TypeContext* scriptTypeContext();
 
     private:
         detail::CubsArray arr;
     };
 }
 
-#include "../context.hpp"
+template<typename T>
+inline const cubs::TypeContext* cubs::Array<T>::scriptTypeContext() {
+    return &detail::CUBS_ARRAY_CONTEXT;
+}
 
 template<typename T>
 inline cubs::Array<T>::Array() {
