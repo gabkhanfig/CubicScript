@@ -19,6 +19,7 @@
 #include <string.h>
 #include "function_definition.h"
 #include "../program/function_call_args.h"
+#include "../util/context_size_round.h"
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
@@ -192,9 +193,10 @@ void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsType
     // integer division.
     // structs with a size less than or equal to 8 will have the track offset set to +1,
     // otherwise it will be pushed further
-    const size_t newArgTrackOffset = actualOffset + (context->sizeOfType / 8);
+    const size_t newArgTrackOffset = actualOffset + 
+    (ROUND_SIZE_TO_MULTIPLE_OF_8(context->sizeOfType) / 8);
     if(argTrackOffset > 0) { // with an offset other than 0, it means args have already been pushed.
-        const size_t bytesToMove = 8 * (1 + (argTrackOffset / 4));
+        const size_t bytesToMove = 8 + (8 * (1 + (argTrackOffset / 4)));
         memmove((void*)&threadLocalStack.stack[newArgTrackOffset], (const void*)&threadLocalStack.stack[threadLocalStack.nextBaseOffset + RESERVED_SLOTS + argTrackOffset], bytesToMove); // `offset`
     }
     
