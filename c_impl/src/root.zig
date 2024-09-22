@@ -12,7 +12,7 @@
 //! advantage of some features of Zig, while simultaneously preserving functionality in C.
 
 comptime {
-    _ = @import("util/mem.zig");
+    _ = @import("platform/mem.zig");
 }
 
 pub const String = script_value.String;
