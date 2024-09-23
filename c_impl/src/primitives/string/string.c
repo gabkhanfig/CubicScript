@@ -215,14 +215,14 @@ CubsString cubs_string_init_unchecked(CubsStringSlice slice)
     return temp;
 }
 
-NewStringError cubs_string_init(CubsString *out, CubsStringSlice slice)
+CubsStringError cubs_string_init(CubsString *out, CubsStringSlice slice)
 {
   if (is_valid_utf8(slice)) {
     (*out) = cubs_string_init_unchecked(slice);
-    return newStringErrorNone;
+    return cubsStringErrorNone;
   }
   else {
-    return newStringErrorInvalidUtf8;
+    return cubsStringErrorInvalidUtf8;
   }
 }
 
@@ -387,32 +387,32 @@ CubsString cubs_string_concat_slice_unchecked(const CubsString *self, CubsString
   return concat_valid_slices(cubs_string_as_slice(self), slice);
 }
 
-NewStringError cubs_string_concat_slice(CubsString *out, const CubsString *self, CubsStringSlice slice)
+CubsStringError cubs_string_concat_slice(CubsString *out, const CubsString *self, CubsStringSlice slice)
 {
   if (is_valid_utf8(slice)) {
     (*out) = concat_valid_slices(cubs_string_as_slice(self), slice);
-    return newStringErrorNone;
+    return cubsStringErrorNone;
   }
   else {
-    return newStringErrorInvalidUtf8;
+    return cubsStringErrorInvalidUtf8;
   }
 }
 
-NewStringError cubs_string_substr(CubsString *out, const CubsString *self, size_t startInclusive, size_t endExclusive)
+CubsStringError cubs_string_substr(CubsString *out, const CubsString *self, size_t startInclusive, size_t endExclusive)
 {
   if(startInclusive == 0 && endExclusive == 0) {   
     (*out) = EMPTY_STRING;
-    return newStringErrorNone;
+    return cubsStringErrorNone;
   }
 
   const CubsStringSlice selfSlice = cubs_string_as_slice(self);
   if(startInclusive >= selfSlice.len || endExclusive > selfSlice.len || startInclusive > endExclusive) {
-    return newStringErrorIndexOutOfBounds;
+    return cubsStringErrorIndexOutOfBounds;
   }
 
   if(startInclusive == endExclusive) {
     (*out) = EMPTY_STRING;
-    return newStringErrorNone;
+    return cubsStringErrorNone;
   }
 
   const size_t len = endExclusive - startInclusive;
@@ -543,7 +543,7 @@ CubsString cubs_string_from_float(double num)
   return cubs_string_init_unchecked(slice);
 }
 
-NewStringError cubs_string_to_bool(bool *out, const CubsString *self)
+CubsStringError cubs_string_to_bool(bool *out, const CubsString *self)
 {
   const size_t TRUE_MASK = (size_t)('t') | ((size_t)('r') << 8) | ((size_t)('u') << 16)| ((size_t)('e') << 24);
   const size_t FALSE_MASK = (size_t)('f') | ((size_t)('a') << 8) | ((size_t)('l') << 16)| ((size_t)('s') << 24) | ((size_t)('e') << 32);
@@ -551,13 +551,13 @@ NewStringError cubs_string_to_bool(bool *out, const CubsString *self)
   const size_t* start = (const size_t*)cubs_string_as_slice(self).str;
     if((*start) == TRUE_MASK) {
     (*out) = true;
-    return newStringErrorNone;
+    return cubsStringErrorNone;
   }
   else if((*start) == FALSE_MASK) {
     (*out) = false;
-    return newStringErrorNone;
+    return cubsStringErrorNone;
   }
   else {
-    return newStringErrorParseBool;
+    return cubsStringErrorParseBool;
   }
 }

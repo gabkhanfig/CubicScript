@@ -4,17 +4,17 @@
 #include "../script_value.h"
 #include "../../util/ordering.h"
 
-typedef enum newStringError {
-  newStringErrorNone = 0,
-  newStringErrorInvalidUtf8 = 1,
-  newStringErrorIndexOutOfBounds = 2,
-  newStringErrorParseBool = 3,
-  newStringErrorParseInt = 4,
-  newStringErrorParseFloat = 5,
+typedef enum CubsStringError {
+  cubsStringErrorNone = 0,
+  cubsStringErrorInvalidUtf8 = 1,
+  cubsStringErrorIndexOutOfBounds = 2,
+  cubsStringErrorParseBool = 3,
+  cubsStringErrorParseInt = 4,
+  cubsStringErrorParseFloat = 5,
 
   // Enforce enum size is at least 32 bits, which is `int` on most platforms
-  _NEW_STRING_ERROR_MAX_VALUE = 0x7FFFFFFF,
-} NewStringError;
+  _CUBS_STRING_ERROR_MAX_VALUE = 0x7FFFFFFF,
+} CubsStringError;
 
 /// Is essential a [C++ std::string_view](https://en.cppreference.com/w/cpp/header/string_view) or a [Rust &str](https://doc.rust-lang.org/std/primitive.str.html)
 typedef struct CubsStringSlice {
@@ -41,7 +41,7 @@ CubsString cubs_string_init_unchecked(CubsStringSlice slice);
 /// In debug mode, will validate that a null terminator does not exist before `slice.len`.
 /// Will always validate that the string is valid utf8, returning the appropriate error if it's not.
 /// @returns `cubsStringErrorInvalidUtf8` if invalid utf8, or `cubsStringErrorNone` if valid.
-NewStringError cubs_string_init(CubsString* out, CubsStringSlice slice);
+CubsStringError cubs_string_init(CubsString* out, CubsStringSlice slice);
 
 /// For heap strings, decrements the ref count, freeing the string if there are no more references.
 void cubs_string_deinit(CubsString* self);
@@ -96,7 +96,7 @@ CubsString cubs_string_concat_slice_unchecked(const CubsString* self, CubsString
 /// Concatenate this string with a string slice, returning a new string.
 /// Will always validate `slice` is valid utf8, returning the appropriate error if it's not.
 /// @returns `cubsStringErrorInvalidUtf8` if invalid utf8, or `cubsStringErrorNone` if valid.
-NewStringError cubs_string_concat_slice(CubsString* out, const CubsString* self, CubsStringSlice slice);
+CubsStringError cubs_string_concat_slice(CubsString* out, const CubsString* self, CubsStringSlice slice);
 
 /// Creates a substring of this string from the range `startInclusive` to `endExclusive`. If they are equal, 
 /// `out` will be assigned to an empty string. 
@@ -107,7 +107,7 @@ NewStringError cubs_string_concat_slice(CubsString* out, const CubsString* self,
 /// hence "Exclusive". It may not be greater than the length of `self`.
 /// @return `cubsStringErrorNone` if everything is ok, `cubsStringErrorOutOfRange` if either the start or end are out of range,
 /// or `cubsStringErrorInvalidUtf8` if the substring is not valid utf8.
-NewStringError cubs_string_substr(CubsString* out, const CubsString* self, size_t startInclusive, size_t endExclusive);
+CubsStringError cubs_string_substr(CubsString* out, const CubsString* self, size_t startInclusive, size_t endExclusive);
 
 /// Converts a bool to an string. Does not allocate any memory as the SSO buffer is large enough to fit "true" and "falses"
 CubsString cubs_string_from_bool(bool b);
@@ -121,7 +121,7 @@ CubsString cubs_string_from_int(int64_t num);
 CubsString cubs_string_from_float(double num);
 
 /// Parses a bool from this string, returning an error if `self` isn't "true" or "false".
-NewStringError cubs_string_to_bool(bool* out, const CubsString* self);
+CubsStringError cubs_string_to_bool(bool* out, const CubsString* self);
 
 #ifdef __cplusplus
 } // extern "C"
