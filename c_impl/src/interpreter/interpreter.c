@@ -6,7 +6,6 @@
 #include "../program/program.h"
 #include "value_tag.h"
 #include <string.h>
-#include "../primitives/script_value.h"
 #include "../primitives/context.h"
 #include "../primitives/string/string.h"
 #include "../primitives/array/array.h"

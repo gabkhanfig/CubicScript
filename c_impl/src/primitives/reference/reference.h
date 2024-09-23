@@ -1,7 +1,22 @@
 #pragma once
 
 #include "../../c_basic_types.h"
-#include "../script_value.h"
+
+struct CubsTypeContext;
+
+typedef struct CubsConstRef {
+    /// Safe to access. Should be cast to the appropriate type.
+    /// Should never be NULL. Nullable references must be wrapped in a `CubsOption`.
+    const void* ref;
+    const struct CubsTypeContext* context;
+} CubsConstRef;
+
+typedef struct CubsMutRef {
+    /// Safe to access. Should be cast to the appropriate type.
+    /// Should never be NULL. Nullable references must be wrapped in a `CubsOption`.
+    void* ref;
+    const struct CubsTypeContext* context;
+} CubsMutRef;
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,7 +1,18 @@
 #pragma once
 
 #include "../../c_basic_types.h"
-#include "../script_value.h"
+#include "../string/string.h"
+
+struct CubsTypeContext;
+
+typedef struct CubsError {
+    CubsString name;
+    /// Can be NULL. Must be cast to the appropriate type.
+    void* metadata;
+    /// Is the type of `metadata`. Can be NULL if the error has no metadata.
+    const struct CubsTypeContext* context;
+} CubsError;
+
 
 #ifdef __cplusplus
 extern "C" {

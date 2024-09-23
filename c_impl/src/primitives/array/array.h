@@ -1,7 +1,19 @@
 #pragma once
 
 #include "../../c_basic_types.h"
-#include "../script_value.h"
+
+struct CubsTypeContext;
+
+typedef struct CubsArray {
+    /// Reading this is safe. Writing is unsafe.
+    size_t len;
+    /// This *can* be read or written to, but it must be cast to the correct type depending on the array's tag.
+    /// It guaranteed to be valid for `((T*)_buf)[len - 1]` where T is the type of `cubs_array_tag(...)`.
+    void* buf;
+    /// Accessing this is unsafe
+    size_t capacity;
+    const struct CubsTypeContext* context;
+} CubsArray;
 
 typedef struct CubsArrayConstIter {
     const CubsArray* _arr;

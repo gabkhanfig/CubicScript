@@ -17,12 +17,12 @@ namespace cubs {
         using int64_t = std::int64_t;
 
         enum class Error : int {
-            None = detail::newStringErrorNone,
-            InvalidUtf8 = detail::newStringErrorInvalidUtf8,
-            IndexOutOfBounds = detail::newStringErrorIndexOutOfBounds,
-            ParseBool = detail::newStringErrorParseBool,
-            ParseInt = detail::newStringErrorParseInt,
-            ParseFloat = detail::newStringErrorParseFloat,
+            None = detail::cubsStringErrorNone,
+            InvalidUtf8 = detail::cubsStringErrorInvalidUtf8,
+            IndexOutOfBounds = detail::cubsStringErrorIndexOutOfBounds,
+            ParseBool = detail::cubsStringErrorParseBool,
+            ParseInt = detail::cubsStringErrorParseInt,
+            ParseFloat = detail::cubsStringErrorParseFloat,
         };
 
         constexpr static size_t npos = detail::CUBS_STRING_N_POS;

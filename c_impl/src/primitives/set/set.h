@@ -1,7 +1,17 @@
 #pragma once
 
 #include "../../c_basic_types.h"
-#include "../script_value.h"
+
+struct CubsTypeContext;
+
+typedef struct CubsSet {
+    /// The number of key/value pairs in the hashset.
+    size_t len;
+    /// Accessing this is unsafe
+    void* _metadata[5];
+    /// Requires equality and hash function pointers
+    const struct CubsTypeContext* context;
+} CubsSet;
 
 typedef struct CubsSetIter {
     const CubsSet* _set;

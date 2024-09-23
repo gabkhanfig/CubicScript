@@ -1,8 +1,15 @@
 #pragma once
 
 #include "../../c_basic_types.h"
-#include "../script_value.h"
 #include "../../util/ordering.h"
+
+/// 0 / null intialization makes it an empty string.
+typedef struct CubsString {
+    /// Reading this is safe. Writing is unsafe.
+    size_t len;
+    /// Accessing this is unsafe
+    void* _metadata[3];
+} CubsString;
 
 typedef enum CubsStringError {
   cubsStringErrorNone = 0,

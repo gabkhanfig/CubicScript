@@ -2,7 +2,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "../primitives/script_value.h"
 
 /// Instantiated once per program call 
 size_t cubs_hash_seed();

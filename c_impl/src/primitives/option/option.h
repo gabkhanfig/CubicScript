@@ -1,7 +1,15 @@
 #pragma once
 
 #include "../../c_basic_types.h"
-#include "../script_value.h"
+
+struct CubsTypeContext;
+
+/// 0 / null intialization makes it a none option.
+typedef struct CubsOption {
+    bool isSome;
+    void* _metadata[4];
+    const struct CubsTypeContext* context;
+} CubsOption;
 
 #ifdef __cplusplus
 extern "C" {

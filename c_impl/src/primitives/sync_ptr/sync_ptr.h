@@ -1,6 +1,23 @@
 #pragma once
 
-#include "../script_value.h"
+#include "../../c_basic_types.h"
+
+struct CubsTypeContext;
+
+typedef struct CubsUnique {
+    void* _inner;
+    const struct CubsTypeContext* context;
+} CubsUnique;
+
+typedef struct CubsShared {
+    void* _inner;
+    const struct CubsTypeContext* context;
+} CubsShared;
+
+typedef struct CubsWeak {
+    void* _inner;
+    const struct CubsTypeContext* context;
+} CubsWeak;
 
 #ifdef __cplusplus
 extern "C" {

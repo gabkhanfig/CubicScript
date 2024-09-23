@@ -1,7 +1,19 @@
 #pragma once
 
 #include "../../c_basic_types.h"
-#include "../script_value.h"
+
+struct CubsTypeContext;
+
+typedef struct CubsMap {
+    /// The number of key/value pairs in the hashmap.
+    size_t len;
+    /// Accessing this is unsafe
+    void* _metadata[5];
+    /// Requires equality and hash function pointers
+    const struct CubsTypeContext* keyContext;
+    /// Does not require equality and hash function pointers
+    const struct CubsTypeContext* valueContext;
+} CubsMap;
 
 typedef struct CubsMapConstIter {
     const CubsMap* _map;

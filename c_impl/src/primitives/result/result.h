@@ -1,7 +1,17 @@
 #pragma once
 
 #include "../../c_basic_types.h"
-#include "../script_value.h"
+#include "../error/error.h"
+
+struct CubsTypeContext;
+
+typedef struct CubsResult {
+    /// Accessing this is unsafe.
+    void* metadata[sizeof(CubsError) / sizeof(void*)];
+    bool isErr;
+    /// Context of the ok value. If `NULL`, is an empty ok value.
+    const struct CubsTypeContext* context;
+} CubsResult;
 
 #ifdef __cplusplus
 extern "C" {
