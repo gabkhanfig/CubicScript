@@ -861,13 +861,19 @@ void cubs_context_fast_clone(void *out, const void *value, const CubsTypeContext
     } else if(context == &CUBS_ERROR_CONTEXT) {
         const CubsError ret = cubs_error_clone((const CubsError*)value);
         *(CubsError*)out = ret;
-    // TODO result clone?    
+    // TODO result clone?
     } else if(context == &CUBS_SHARED_CONTEXT) {
         const CubsShared ret = cubs_shared_clone((const CubsShared*)value);
         *(CubsShared*)out = ret;
     } else if(context == &CUBS_WEAK_CONTEXT) {
         const CubsWeak ret = cubs_weak_clone((const CubsWeak*)value);
         *(CubsWeak*)out = ret;
+    } else if(context == &CUBS_CONST_REF_CONTEXT) {
+        const CubsConstRef ret = *(const CubsConstRef*)value;
+        *(CubsConstRef*)out = ret;
+    } else if(context == &CUBS_MUT_REF_CONTEXT) {
+        const CubsMutRef ret = *(const CubsMutRef*)value;
+        *(CubsMutRef*)out = ret;
     } else {
         CubsFunctionCallArgs args = cubs_function_start_call(&context->clone);
 
