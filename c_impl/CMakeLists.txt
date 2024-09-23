@@ -12,6 +12,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_STANDARD 17)
 
 add_library(CubicScript STATIC 
+    "src/validate_compilation_target.c"
     "src/platform/mem.c"
     "src/program/program.c"
     "src/program/protected_arena.c"
@@ -28,7 +29,6 @@ add_library(CubicScript STATIC
     "src/util/simd.c"
     "src/util/math.c"
     "src/util/hash.c"
-    "src/primitives/script_value.c"
     "src/primitives/context.c"
     "src/primitives/string/string.c"
     "src/primitives/array/array.c"

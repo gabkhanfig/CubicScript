@@ -90,6 +90,8 @@ pub fn build(b: *std.Build) void {
 }
 
 pub const cubic_script_c_sources = [_][]const u8{
+    "src/validate_compilation_target.c",
+
     "src/platform/mem.c",
 
     "src/program/program.c",
@@ -108,7 +110,6 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/util/hash.c",
     "src/util/simd.c",
 
-    "src/primitives/script_value.c",
     "src/primitives/context.c",
     "src/primitives/string/string.c",
     "src/primitives/array/array.c",
