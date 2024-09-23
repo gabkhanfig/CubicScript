@@ -195,6 +195,7 @@ static int string_deinit(CubsCFunctionHandler handler) {
     cubs_function_take_arg(&handler, 0, (void*)&self, &context);
     assert(context == &CUBS_STRING_CONTEXT);
     cubs_string_deinit(&self);
+    return 0;
 }
 
 static int string_clone(CubsCFunctionHandler handler) {
@@ -258,6 +259,7 @@ static int array_deinit(CubsCFunctionHandler handler) {
     cubs_function_take_arg(&handler, 0, (void*)&self, &context);
     assert(context == &CUBS_ARRAY_CONTEXT);
     cubs_array_deinit(&self);
+    return 0;
 }
 
 static int array_clone(CubsCFunctionHandler handler) {
@@ -321,6 +323,7 @@ static int set_deinit(CubsCFunctionHandler handler) {
     cubs_function_take_arg(&handler, 0, (void*)&self, &context);
     assert(context == &CUBS_SET_CONTEXT);
     cubs_set_deinit(&self);
+    return 0;
 }
 
 static int set_clone(CubsCFunctionHandler handler) {
@@ -384,6 +387,7 @@ static int map_deinit(CubsCFunctionHandler handler) {
     cubs_function_take_arg(&handler, 0, (void*)&self, &context);
     assert(context == &CUBS_MAP_CONTEXT);
     cubs_map_deinit(&self);
+    return 0;
 }
 
 static int map_clone(CubsCFunctionHandler handler) {
@@ -439,44 +443,148 @@ const CubsTypeContext CUBS_MAP_CONTEXT = {
 
 #pragma endregion
 
-static void option_clone(CubsOption* dst, const CubsOption* self) {
-    const CubsOption temp = cubs_option_clone(self);
-    *dst = temp;
+#pragma region Option
+
+static int option_deinit(CubsCFunctionHandler handler) {
+    CubsOption self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_OPTION_CONTEXT);
+    cubs_map_deinit(&self);
+    return 0;
+}
+
+static int option_clone(CubsCFunctionHandler handler) {
+    CubsConstRef self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT);
+    assert(self.context == &CUBS_OPTION_CONTEXT);
+    CubsOption clone = cubs_option_clone((const CubsOption*)self.ref);
+    cubs_function_return_set_value(handler, (void*)&clone, &CUBS_STRING_CONTEXT); // explicitly const cast
+    return 0;
+}
+
+static int option_eql(CubsCFunctionHandler handler) {
+    CubsConstRef lhs;
+    const CubsTypeContext* lhsContext;
+    CubsConstRef rhs;
+    const CubsTypeContext* rhsContext;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_OPTION_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_OPTION_CONTEXT);
+
+    bool result = cubs_option_eql((const CubsOption*)lhs.ref, (const CubsOption*)rhs.ref);
+    cubs_function_return_set_value(handler, (void*)&result, &CUBS_BOOL_CONTEXT);
+    return 0;
+}
+
+static int option_hash(CubsCFunctionHandler handler) {
+    CubsConstRef self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT);
+    assert(self.context == &CUBS_OPTION_CONTEXT);
+    size_t hashed = cubs_option_hash((const CubsOption*)self.ref);
+    cubs_function_return_set_value(handler, (void*)&hashed, &CUBS_INT_CONTEXT);
+    return 0;
 }
 
 const CubsTypeContext CUBS_OPTION_CONTEXT = {
     .sizeOfType = sizeof(CubsOption),
-    .destructor = {0}, 
-    .clone = {0},
-    .eql = {0},
-    .hash = {0},
+    .destructor = {.func = {.externC = &option_deinit}, .funcType = cubsFunctionPtrTypeC},
+    .clone = {.func = {.externC = &option_clone}, .funcType = cubsFunctionPtrTypeC},
+    .eql = {.func = {.externC = &option_eql}, .funcType = cubsFunctionPtrTypeC},
+    .hash = {.func = {.externC = &option_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "option",
     .nameLength = 6,
 };
 
-static void error_clone(CubsError* dst, const CubsError* self) {
-    const CubsError temp = cubs_error_clone(self);
-    *dst = temp;
+#pragma endregion
+
+#pragma region Error
+
+static int error_deinit(CubsCFunctionHandler handler) {
+    CubsError self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_ERROR_CONTEXT);
+    cubs_error_deinit(&self);
+    return 0;
+}
+
+static int error_clone(CubsCFunctionHandler handler) {
+    CubsConstRef self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT);
+    assert(self.context == &CUBS_ERROR_CONTEXT);
+    CubsError clone = cubs_error_clone((const CubsError*)self.ref);
+    cubs_function_return_set_value(handler, (void*)&clone, &CUBS_STRING_CONTEXT); // explicitly const cast
+    return 0;
+}
+
+static int error_eql(CubsCFunctionHandler handler) {
+    CubsConstRef lhs;
+    const CubsTypeContext* lhsContext;
+    CubsConstRef rhs;
+    const CubsTypeContext* rhsContext;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_ERROR_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_ERROR_CONTEXT);
+
+    bool result = cubs_error_eql((const CubsError*)lhs.ref, (const CubsError*)rhs.ref);
+    cubs_function_return_set_value(handler, (void*)&result, &CUBS_BOOL_CONTEXT);
+    return 0;
+}
+
+static int error_hash(CubsCFunctionHandler handler) {
+    CubsConstRef self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT);
+    assert(self.context == &CUBS_ERROR_CONTEXT);
+    size_t hashed = cubs_error_hash((const CubsError*)self.ref);
+    cubs_function_return_set_value(handler, (void*)&hashed, &CUBS_INT_CONTEXT);
+    return 0;
 }
 
 const CubsTypeContext CUBS_ERROR_CONTEXT = {
     .sizeOfType = sizeof(CubsError),
-    .destructor = {0}, 
-    .clone = {0},
-    .eql = {0},
-    .hash = {0},
+    .destructor = {.func = {.externC = &error_deinit}, .funcType = cubsFunctionPtrTypeC},
+    .clone = {.func = {.externC = &error_clone}, .funcType = cubsFunctionPtrTypeC},
+    .eql = {.func = {.externC = &error_eql}, .funcType = cubsFunctionPtrTypeC},
+    .hash = {.func = {.externC = &error_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "error",
     .nameLength = 5,
 };
 
-// static void result_clone(CubsResult* dst, const CubsResult* self) {
-//     const CubsResult temp = cubs_result_clone(self);
-//     *dst = temp;
-// }
+#pragma endregion
+
+#pragma region Result
+
+static int result_deinit(CubsCFunctionHandler handler) {
+    CubsResult self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_RESULT_CONTEXT);
+    cubs_result_deinit(&self);
+    return 0;
+}
 
 const CubsTypeContext CUBS_RESULT_CONTEXT = {
     .sizeOfType = sizeof(CubsResult),
-    .destructor = {0}, 
+    .destructor = {.func = {.externC = &result_deinit}, .funcType = cubsFunctionPtrTypeC},
     .clone = {0},
     .eql = {0},
     .hash = {0},
@@ -484,9 +592,22 @@ const CubsTypeContext CUBS_RESULT_CONTEXT = {
     .nameLength = 6,
 };
 
+#pragma endregion
+
+#pragma region Unique
+
+static int unique_deinit(CubsCFunctionHandler handler) {
+    CubsUnique self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_UNIQUE_CONTEXT);
+    cubs_unique_deinit(&self);
+    return 0;
+}
+
 const CubsTypeContext CUBS_UNIQUE_CONTEXT = {
     .sizeOfType = sizeof(CubsUnique),
-    .destructor = {0}, 
+    .destructor = {.func = {.externC = &unique_deinit}, .funcType = cubsFunctionPtrTypeC},
     .clone = {0},
     .eql = {0},
     .hash = {0},
@@ -494,35 +615,113 @@ const CubsTypeContext CUBS_UNIQUE_CONTEXT = {
     .nameLength = 6,
 };
 
-static void shared_clone(CubsShared* dst, const CubsShared* self) {
-    const CubsShared temp = cubs_shared_clone(self);
-    *dst = temp;
+#pragma endregion
+
+#pragma region Shared
+
+static int shared_deinit(CubsCFunctionHandler handler) {
+    CubsShared self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_ERROR_CONTEXT);
+    cubs_shared_deinit(&self);
+    return 0;
+}
+
+static int shared_clone(CubsCFunctionHandler handler) {
+    CubsConstRef self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT);
+    assert(self.context == &CUBS_ERROR_CONTEXT);
+    CubsShared clone = cubs_shared_clone((const CubsShared*)self.ref);
+    cubs_function_return_set_value(handler, (void*)&clone, &CUBS_STRING_CONTEXT); // explicitly const cast
+    return 0;
+}
+
+static int shared_eql(CubsCFunctionHandler handler) {
+    CubsConstRef lhs;
+    const CubsTypeContext* lhsContext;
+    CubsConstRef rhs;
+    const CubsTypeContext* rhsContext;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_ERROR_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_ERROR_CONTEXT);
+
+    bool result = cubs_shared_eql((const CubsShared*)lhs.ref, (const CubsShared*)rhs.ref);
+    cubs_function_return_set_value(handler, (void*)&result, &CUBS_BOOL_CONTEXT);
+    return 0;
 }
 
 const CubsTypeContext CUBS_SHARED_CONTEXT = {
     .sizeOfType = sizeof(CubsShared),
-    .destructor = {0}, 
-    .clone = {0},
-    .eql = {0},
+    .destructor = {.func = {.externC = &shared_deinit}, .funcType = cubsFunctionPtrTypeC},
+    .clone = {.func = {.externC = &shared_clone}, .funcType = cubsFunctionPtrTypeC},
+    .eql = {.func = {.externC = &shared_eql}, .funcType = cubsFunctionPtrTypeC},
     .hash = {0},
     .name = "shared",
     .nameLength = 6,
 };
 
-static void weak_clone(CubsWeak* dst, const CubsWeak* self) {
-    const CubsWeak temp = cubs_weak_clone(self);
-    *dst = temp;
+#pragma endregion
+
+#pragma region Weak
+
+static int weak_deinit(CubsCFunctionHandler handler) {
+    CubsWeak self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_ERROR_CONTEXT);
+    cubs_weak_deinit(&self);
+    return 0;
+}
+
+static int weak_clone(CubsCFunctionHandler handler) {
+    CubsConstRef self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT);
+    assert(self.context == &CUBS_ERROR_CONTEXT);
+    CubsWeak clone = cubs_weak_clone((const CubsWeak*)self.ref);
+    cubs_function_return_set_value(handler, (void*)&clone, &CUBS_STRING_CONTEXT); // explicitly const cast
+    return 0;
+}
+
+static int weak_eql(CubsCFunctionHandler handler) {
+    CubsConstRef lhs;
+    const CubsTypeContext* lhsContext;
+    CubsConstRef rhs;
+    const CubsTypeContext* rhsContext;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_ERROR_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_ERROR_CONTEXT);
+
+    bool result = cubs_weak_eql((const CubsWeak*)lhs.ref, (const CubsWeak*)rhs.ref);
+    cubs_function_return_set_value(handler, (void*)&result, &CUBS_BOOL_CONTEXT);
+    return 0;
 }
 
 const CubsTypeContext CUBS_WEAK_CONTEXT = {
     .sizeOfType = sizeof(CubsWeak),
-    .destructor = {0}, 
-    .clone = {0},
-    .eql = {0},
+    .destructor = {.func = {.externC = &weak_deinit}, .funcType = cubsFunctionPtrTypeC},
+    .clone = {.func = {.externC = &weak_clone}, .funcType = cubsFunctionPtrTypeC},
+    .eql = {.func = {.externC = &weak_eql}, .funcType = cubsFunctionPtrTypeC},
     .hash = {0},
     .name = "weak",
     .nameLength = 4,
 };
+
+#pragma endregion
 
 const CubsTypeContext CUBS_FUNCTION_CONTEXT = {
     .sizeOfType = sizeof(CubsFunction),
@@ -534,6 +733,51 @@ const CubsTypeContext CUBS_FUNCTION_CONTEXT = {
     .nameLength = 8,
 };
 
+#pragma region ConstRef
+
+// TODO decide how to pass around reference types
+
+// static int const_ref_clone(CubsCFunctionHandler handler) {
+//     CubsConstRef self;
+//     const CubsTypeContext* context;
+//     cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+//     assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT); 
+//     assert(self.context == &CUBS_CONST_REF_CONTEXT);
+//     CubsConstRef clone = *(const CubsConstRef*)self.ref;
+//     cubs_function_return_set_value(handler, (void*)&clone, &CUBS_STRING_CONTEXT); // explicitly const cast
+//     return 0;
+// }
+
+// static int const_ref_eql(CubsCFunctionHandler handler) {
+//     CubsConstRef lhs;
+//     const CubsTypeContext* lhsContext;
+//     CubsConstRef rhs;
+//     const CubsTypeContext* rhsContext;
+
+//     cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+//     cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+//     assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+//     assert(lhs.context == &CUBS_CONST_REF_CONTEXT);
+//     assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+//     assert(rhs.context == &CUBS_CONST_REF_CONTEXT);
+
+//     bool result = cubs_const_ref_eql((const CubsConstRef*)lhs.ref, (const CubsConstRef*)rhs.ref);
+//     cubs_function_return_set_value(handler, (void*)&result, &CUBS_BOOL_CONTEXT);
+//     return 0;
+// }
+
+// static int const_ref_hash(CubsCFunctionHandler handler) {
+//     CubsConstRef self;
+//     const CubsTypeContext* context;
+//     cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+//     assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT);
+//     assert(self.context == &CUBS_ERROR_CONTEXT);
+//     size_t hashed = cubs_const_ref_hash((const CubsConstRef*)self.ref);
+//     cubs_function_return_set_value(handler, (void*)&hashed, &CUBS_INT_CONTEXT);
+//     return 0;
+// }
+
 const CubsTypeContext CUBS_CONST_REF_CONTEXT = {
     .sizeOfType = sizeof(CubsConstRef),
     .destructor = {0}, 
@@ -543,6 +787,8 @@ const CubsTypeContext CUBS_CONST_REF_CONTEXT = {
     .name = "const_ref",
     .nameLength = 9,
 };
+
+#pragma endregion
 
 const CubsTypeContext CUBS_MUT_REF_CONTEXT = {
     .sizeOfType = sizeof(CubsMutRef),
@@ -563,6 +809,22 @@ void cubs_context_fast_deinit(void *value, const CubsTypeContext *context)
         cubs_string_deinit((CubsString*)value);
     } else if (context == &CUBS_ARRAY_CONTEXT) {
         cubs_array_deinit((CubsString*)value);
+    } else if(context == &CUBS_SET_CONTEXT) {
+        cubs_set_deinit((CubsSet*)value);
+    } else if (context == &CUBS_MAP_CONTEXT) {
+        cubs_map_deinit((CubsMap*)value);
+    } else if (context == &CUBS_OPTION_CONTEXT) {
+        cubs_option_deinit((CubsOption*)value);
+    } else if(context == &CUBS_ERROR_CONTEXT) {
+        cubs_error_deinit((CubsError*)value);
+    } else if (context == &CUBS_RESULT_CONTEXT) {
+        cubs_result_deinit((CubsResult*)value);
+    }  else if (context == &CUBS_UNIQUE_CONTEXT) {
+        cubs_unique_deinit((CubsUnique*)value);
+    } else if(context == &CUBS_SHARED_CONTEXT) {
+        cubs_shared_deinit((CubsShared*)value);
+    } else if (context == &CUBS_WEAK_CONTEXT) {
+        cubs_weak_deinit((CubsWeak*)value);
     } else {
         CubsFunctionCallArgs args = cubs_function_start_call(&context->destructor);
         cubs_function_push_arg(&args, value, context);
@@ -584,6 +846,28 @@ void cubs_context_fast_clone(void *out, const void *value, const CubsTypeContext
     } else if(context == &CUBS_STRING_CONTEXT) {
         const CubsString ret = cubs_string_clone((const CubsString*)value);
         *(CubsString*)out = ret;
+    } else if(context == &CUBS_ARRAY_CONTEXT) {
+        const CubsArray ret = cubs_array_clone((const CubsArray*)value);
+        *(CubsArray*)out = ret;
+    } else if(context == &CUBS_SET_CONTEXT) {
+        const CubsSet ret = cubs_set_clone((const CubsSet*)value);
+        *(CubsSet*)out = ret;
+    } else if(context == &CUBS_MAP_CONTEXT) {
+        const CubsMap ret = cubs_map_clone((const CubsMap*)value);
+        *(CubsMap*)out = ret;
+    } else if(context == &CUBS_OPTION_CONTEXT) {
+        const CubsOption ret = cubs_option_clone((const CubsOption*)value);
+        *(CubsOption*)out = ret;
+    } else if(context == &CUBS_ERROR_CONTEXT) {
+        const CubsError ret = cubs_error_clone((const CubsError*)value);
+        *(CubsError*)out = ret;
+    // TODO result clone?    
+    } else if(context == &CUBS_SHARED_CONTEXT) {
+        const CubsShared ret = cubs_shared_clone((const CubsShared*)value);
+        *(CubsShared*)out = ret;
+    } else if(context == &CUBS_WEAK_CONTEXT) {
+        const CubsWeak ret = cubs_weak_clone((const CubsWeak*)value);
+        *(CubsWeak*)out = ret;
     } else {
         CubsFunctionCallArgs args = cubs_function_start_call(&context->clone);
 
@@ -607,7 +891,25 @@ bool cubs_context_fast_eql(const void *lhs, const void *rhs, const CubsTypeConte
     } else if(context == &CUBS_FLOAT_CONTEXT) {
         return (*(const double*)lhs) == (*(const double*)rhs);
     } else if(context == &CUBS_STRING_CONTEXT) {
-        return cubs_string_eql(lhs, rhs);
+        return cubs_string_eql((const CubsString*)lhs, (const CubsString*)rhs);
+    } else if(context == &CUBS_ARRAY_CONTEXT) {
+        return cubs_array_eql((const CubsArray*)lhs, (const CubsArray*)rhs);
+    } else if(context == &CUBS_SET_CONTEXT) {
+        return cubs_set_eql((const CubsSet*)lhs, (const CubsSet*)rhs);
+    } else if(context == &CUBS_MAP_CONTEXT) {
+        return cubs_map_eql((const CubsMap*)lhs, (const CubsMap*)rhs);
+    } else if(context == &CUBS_OPTION_CONTEXT) {
+        return cubs_option_eql((const CubsOption*)lhs, (const CubsOption*)rhs);
+    } else if(context == &CUBS_ERROR_CONTEXT) {
+        return cubs_error_eql((const CubsError*)lhs, (const CubsError*)rhs);
+    } else if(context == &CUBS_SHARED_CONTEXT) {
+        return cubs_shared_eql((const CubsShared*)lhs, (const CubsShared*)rhs);
+    } else if(context == &CUBS_WEAK_CONTEXT) {
+        return cubs_weak_eql((const CubsWeak*)lhs, (const CubsWeak*)rhs);
+    } else if(context == &CUBS_CONST_REF_CONTEXT) {
+        return cubs_const_ref_eql((const CubsConstRef*)lhs, (const CubsConstRef*)rhs);
+    } else if(context == &CUBS_MUT_REF_CONTEXT) {
+        return cubs_mut_ref_eql((const CubsConstRef*)lhs, (const CubsConstRef*)rhs);
     } else {
         CubsFunctionCallArgs args = cubs_function_start_call(&context->eql);
 
@@ -635,7 +937,19 @@ size_t cubs_context_fast_hash(const void *value, const CubsTypeContext *context)
     } else if(context == &CUBS_FLOAT_CONTEXT) {
         return (size_t)(int64_t)(*(const double*)value);
     } else if(context == &CUBS_STRING_CONTEXT) {
-        return cubs_string_hash(value);
+        return cubs_string_hash((const CubsString*)value);
+    } else if(context == &CUBS_SET_CONTEXT) {
+        return cubs_set_hash((const CubsSet*)value);
+    } else if(context == &CUBS_MAP_CONTEXT) {
+        return cubs_map_hash((const CubsMap*)value);
+    } else if(context == &CUBS_OPTION_CONTEXT) {
+        return cubs_option_hash((const CubsOption*)value);
+    } else if(context == &CUBS_ERROR_CONTEXT) {
+        return cubs_error_hash((const CubsError*)value);
+    } else if(context == &CUBS_CONST_REF_CONTEXT) {
+        return cubs_const_ref_hash((const CubsConstRef*)value);
+    } else if(context == &CUBS_MUT_REF_CONTEXT) {
+        return cubs_mut_ref_hash((const CubsConstRef*)value);
     } else {
         CubsFunctionCallArgs args = cubs_function_start_call(&context->hash);
 
