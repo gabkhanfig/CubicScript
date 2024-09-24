@@ -723,15 +723,60 @@ const CubsTypeContext CUBS_WEAK_CONTEXT = {
 
 #pragma endregion
 
+#pragma region Function
+
+static int function_clone(CubsCFunctionHandler handler) {
+    CubsConstRef self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT); 
+    assert(self.context == &CUBS_FUNCTION_CONTEXT);
+    CubsFunction clone = *(const CubsFunction*)self.ref;
+    cubs_function_return_set_value(handler, (void*)&clone, &CUBS_FUNCTION_CONTEXT); // explicitly const cast
+    return 0;
+}
+
+static int function_eql(CubsCFunctionHandler handler) {
+    CubsConstRef lhs;
+    const CubsTypeContext* lhsContext;
+    CubsConstRef rhs;
+    const CubsTypeContext* rhsContext;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_FUNCTION_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_FUNCTION_CONTEXT);
+
+    bool result = cubs_const_ref_eql((const CubsFunction*)lhs.ref, (const CubsFunction*)rhs.ref);
+    cubs_function_return_set_value(handler, (void*)&result, &CUBS_BOOL_CONTEXT);
+    return 0;
+}
+
+static int function_hash(CubsCFunctionHandler handler) {
+    CubsConstRef self;
+    const CubsTypeContext* context;
+    cubs_function_take_arg(&handler, 0, (void*)&self, &context);
+    assert(context == &CUBS_CONST_REF_CONTEXT || context == &CUBS_MUT_REF_CONTEXT);
+    assert(self.context == &CUBS_FUNCTION_CONTEXT);
+    size_t hashed = cubs_const_ref_hash((const CubsFunction*)self.ref);
+    cubs_function_return_set_value(handler, (void*)&hashed, &CUBS_INT_CONTEXT);
+    return 0;
+}
+
 const CubsTypeContext CUBS_FUNCTION_CONTEXT = {
     .sizeOfType = sizeof(CubsFunction),
     .destructor = {0}, 
-    .clone = {0},
-    .eql = {0},
-    .hash = {0},
+    .clone = {.func = {.externC = &function_clone}, .funcType = cubsFunctionPtrTypeC},
+    .eql = {.func = {.externC = &function_eql}, .funcType = cubsFunctionPtrTypeC},
+    .hash = {.func = {.externC = &function_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "function",
     .nameLength = 8,
 };
+
+#pragma endregion
 
 #pragma region ConstRef
 
@@ -913,6 +958,9 @@ void cubs_context_fast_clone(void *out, const void *value, const CubsTypeContext
     } else if(context == &CUBS_WEAK_CONTEXT) {
         const CubsWeak ret = cubs_weak_clone((const CubsWeak*)value);
         *(CubsWeak*)out = ret;
+    } else if(context == &CUBS_FUNCTION_CONTEXT) {
+        const CubsFunction ret = *(const CubsFunction*)value;
+        *(CubsFunction*)out = ret;
     } else if(context == &CUBS_CONST_REF_CONTEXT) {
         const CubsConstRef ret = *(const CubsConstRef*)value;
         *(CubsConstRef*)out = ret;
@@ -957,6 +1005,8 @@ bool cubs_context_fast_eql(const void *lhs, const void *rhs, const CubsTypeConte
         return cubs_shared_eql((const CubsShared*)lhs, (const CubsShared*)rhs);
     } else if(context == &CUBS_WEAK_CONTEXT) {
         return cubs_weak_eql((const CubsWeak*)lhs, (const CubsWeak*)rhs);
+    } else if(context == &CUBS_WEAK_CONTEXT) {
+        return cubs_function_eql((const CubsFunction*)lhs, (const CubsFunction*)rhs);
     } else if(context == &CUBS_CONST_REF_CONTEXT) {
         return cubs_const_ref_eql((const CubsConstRef*)lhs, (const CubsConstRef*)rhs);
     } else if(context == &CUBS_MUT_REF_CONTEXT) {
@@ -997,6 +1047,8 @@ size_t cubs_context_fast_hash(const void *value, const CubsTypeContext *context)
         return cubs_option_hash((const CubsOption*)value);
     } else if(context == &CUBS_ERROR_CONTEXT) {
         return cubs_error_hash((const CubsError*)value);
+    } else if(context == &CUBS_FUNCTION_CONTEXT) {
+        return cubs_function_hash((const CubsFunction*)value);
     } else if(context == &CUBS_CONST_REF_CONTEXT) {
         return cubs_const_ref_hash((const CubsConstRef*)value);
     } else if(context == &CUBS_MUT_REF_CONTEXT) {

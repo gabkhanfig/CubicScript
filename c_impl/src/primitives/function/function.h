@@ -15,6 +15,7 @@ typedef union CubsFunctionPtr {
     const CubsScriptFunctionPtr* script;
 } CubsFunctionPtr;
 
+/// Can be trivially cloned through memcpy or whatever means
 typedef struct CubsFunction {
     CubsFunctionPtr func;
     CubsFunctionType funcType;
@@ -25,6 +26,10 @@ extern "C" {
 #endif
 
 CubsFunction cubs_function_init_c(CubsCFunctionPtr func);
+
+bool cubs_function_eql(const CubsFunction* self, const CubsFunction* other);
+
+size_t cubs_function_hash(const CubsFunction* self);
 
 /// Returns a structure used to push function arguments onto the script stack, or...
 /// TODO extern C calling stuff
