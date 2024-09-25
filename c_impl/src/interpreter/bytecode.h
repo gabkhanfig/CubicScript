@@ -39,4 +39,15 @@ typedef struct Bytecode {
     uint64_t value;
 } Bytecode;
 
+OpCode cubs_bytecode_get_opcode(Bytecode b);
+
+Bytecode cubs_bytecode_encode(OpCode opcode, const void* operands);
+
+Bytecode cubs_bytecode_encode_data_as_bytecode(size_t sizeOfT, const void* data);
+
+Bytecode cubs_bytecode_encode_immediate_long_int(int64_t num);
+
+Bytecode cubs_bytecode_encode_immediate_long_float(double num);
+
+Bytecode cubs_bytecode_encode_immediate_long_ptr(void *ptr);
 
