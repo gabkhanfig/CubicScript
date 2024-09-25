@@ -7,18 +7,6 @@
 _Static_assert(sizeof(OperandsT) == sizeof(Bytecode), "Size of " STRINGIFY(OperandsT) " must match that of InterpreterBytecode"); \
 _Static_assert(_Alignof(OperandsT) == _Alignof(Bytecode), "Align of " STRINGIFY(OperandsT) " must match that of InterpreterBytecode");
 
-OpCode cubs_bytecode_get_opcode(Bytecode b);
-
-Bytecode cubs_bytecode_encode(OpCode opcode, const void* operands);
-
-Bytecode cubs_bytecode_encode_data_as_bytecode(size_t sizeOfT, const void* data);
-
-Bytecode cubs_bytecode_encode_immediate_long_int(int64_t num);
-
-Bytecode cubs_bytecode_encode_immediate_long_float(double num);
-
-Bytecode cubs_bytecode_encode_immediate_long_ptr(void *ptr);
-
 enum LoadOperationType {
     LOAD_TYPE_IMMEDIATE = 0,
     LOAD_TYPE_IMMEDIATE_LONG = 1,
