@@ -3,9 +3,9 @@
 #include "../c_basic_types.h"
 #include "../primitives/string/string.h"
 
-typedef struct CubsFunction CubsFunction;
+struct CubsFunction;
 struct CubsTypeContext;
-typedef struct CubsProgram CubsProgram;
+struct CubsProgram;
 
 /// Helper struct to push function arguments into the next script stack frame.
 typedef struct CubsFunctionCallArgs {
@@ -39,7 +39,7 @@ typedef struct CubsCFunctionHandler {
 typedef int(*CubsCFunctionPtr)(CubsCFunctionHandler);
 
 typedef struct CubsScriptFunctionPtr {
-    const CubsProgram* program;
+    const struct CubsProgram* program;
     CubsString fullyQualifiedName;
     CubsString name;  
     /// If NULL, the function does not return any value

@@ -7,6 +7,7 @@ typedef enum CubsFunctionType {
     cubsFunctionPtrTypeC = 0,
     cubsFunctionPtrTypeScript = 1,
     /// Ensure at least 4 bytes
+    _CUBS_FUNCTION_PTR_TYPE_USED_BITS = 1,
     _CUBS_FUNCTION_PTR_TYPE_MAX_VALUE = 0x7FFFFFFF,
 } CubsFunctionType;
 
