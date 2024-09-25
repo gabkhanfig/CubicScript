@@ -9,7 +9,7 @@ struct CubsProgram;
 
 /// Helper struct to push function arguments into the next script stack frame.
 typedef struct CubsFunctionCallArgs {
-    const CubsFunction* func;
+    const struct CubsFunction* func;
     /// Do not access
     int _inner[2];
 } CubsFunctionCallArgs;

@@ -1,5 +1,6 @@
 #include "interpreter.h"
 #include "bytecode.h"
+#include "operations.h"
 #include <stdio.h>
 #include "../util/unreachable.h"
 #include <assert.h>
