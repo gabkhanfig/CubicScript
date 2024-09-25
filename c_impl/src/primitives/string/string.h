@@ -3,6 +3,23 @@
 #include "../../c_basic_types.h"
 #include "../../util/ordering.h"
 
+/// Unlike C, `CubsChar` represents a single unicode character, more specifically a 32-bit
+/// [unicode scalar value](https://www.unicode.org/glossary/#unicode_scalar_value), which is similar to but not the same as a [unicode code point](https://www.unicode.org/glossary/#code_point).
+/// ### Scalar Values:
+/// Scalar values are any code point excluding the high and low surrogate code points.
+/// The valid scalar values are in the range of hex 0 to D7FF and E000 to 10FFFF.
+/// ### Code Points:
+/// Any of the 1114111 (hex 10FFFF) possible, but not necessarily assigned, values
+/// 
+/// It is the responsibility of the programmer to ensure that they use valid scalar values, 
+/// and functions that use `CubsChar` will debug assert that this is the case.
+///
+/// # See
+/// - [Glossary of Unicode Terms](https://www.unicode.org/glossary)
+/// - [List of Unicode Characters](https://en.wikipedia.org/wiki/List_of_Unicode_characters)
+/// - [Unicode Technical Quick Start Guide](https://home.unicode.org/technical-quick-start-guide)
+typedef unsigned int CubsChar;
+
 /// 0 / null intialization makes it an empty string.
 typedef struct CubsString {
     /// Reading this is safe. Writing is unsafe.
