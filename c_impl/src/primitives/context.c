@@ -1094,7 +1094,7 @@ size_t cubs_context_fast_hash(const void *value, const CubsTypeContext *context)
         return (size_t)(*(const int64_t*)value);
     } else if(context == &CUBS_FLOAT_CONTEXT) {
         return (size_t)(int64_t)(*(const double*)value);
-    } else if(context == &CUBS_FLOAT_CONTEXT) {
+    } else if(context == &CUBS_CHAR_CONTEXT) {
         return (size_t)(int64_t)(*(const CubsChar*)value);
     } else if(context == &CUBS_STRING_CONTEXT) {
         return cubs_string_hash((const CubsString*)value);
