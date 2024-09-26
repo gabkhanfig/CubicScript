@@ -986,6 +986,8 @@ void cubs_context_fast_clone(void *out, const void *value, const CubsTypeContext
         *(int64_t*)out = *(const int64_t*)value;
     } else if(context == &CUBS_FLOAT_CONTEXT) {
         *(double*)out = *(const double*)value;
+    } else if(context == &CUBS_CHAR_CONTEXT) {
+        *(CubsChar*)out = *(const CubsChar*)value;
     } else if(context == &CUBS_STRING_CONTEXT) {
         const CubsString ret = cubs_string_clone((const CubsString*)value);
         *(CubsString*)out = ret;
@@ -1042,6 +1044,8 @@ bool cubs_context_fast_eql(const void *lhs, const void *rhs, const CubsTypeConte
         return (*(const int64_t*)lhs) == (*(const int64_t*)rhs);
     } else if(context == &CUBS_FLOAT_CONTEXT) {
         return (*(const double*)lhs) == (*(const double*)rhs);
+    } else if(context == &CUBS_CHAR_CONTEXT) {
+        return (*(const CubsChar*)lhs) == (*(const CubsChar*)rhs);
     } else if(context == &CUBS_STRING_CONTEXT) {
         return cubs_string_eql((const CubsString*)lhs, (const CubsString*)rhs);
     } else if(context == &CUBS_ARRAY_CONTEXT) {
@@ -1090,6 +1094,8 @@ size_t cubs_context_fast_hash(const void *value, const CubsTypeContext *context)
         return (size_t)(*(const int64_t*)value);
     } else if(context == &CUBS_FLOAT_CONTEXT) {
         return (size_t)(int64_t)(*(const double*)value);
+    } else if(context == &CUBS_FLOAT_CONTEXT) {
+        return (size_t)(int64_t)(*(const CubsChar*)value);
     } else if(context == &CUBS_STRING_CONTEXT) {
         return cubs_string_hash((const CubsString*)value);
     } else if(context == &CUBS_SET_CONTEXT) {
