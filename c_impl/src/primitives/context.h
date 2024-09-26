@@ -26,6 +26,7 @@ extern "C" {
 extern const CubsTypeContext CUBS_BOOL_CONTEXT;
 extern const CubsTypeContext CUBS_INT_CONTEXT;
 extern const CubsTypeContext CUBS_FLOAT_CONTEXT;
+extern const CubsTypeContext CUBS_CHAR_CONTEXT;
 extern const CubsTypeContext CUBS_STRING_CONTEXT;
 extern const CubsTypeContext CUBS_ARRAY_CONTEXT;
 extern const CubsTypeContext CUBS_SET_CONTEXT;
