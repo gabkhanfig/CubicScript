@@ -77,6 +77,55 @@ Bytecode operands_make_return(bool hasReturn, uint16_t returnSrc);
 
 #pragma endregion Return
 
+#pragma region Call
+
+enum CallType {
+    CALL_TYPE_IMMEDIATE = 0,
+    CALL_TYPE_SRC = 1,
+
+    RESERVE_BITS_CALL_TYPE = 1,
+};
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_BITS_CALL_TYPE;
+    uint64_t argCount: BITS_PER_STACK_OPERAND;
+    /// Boolean flag
+    uint64_t hasReturn: 1;
+    uint64_t returnDst: BITS_PER_STACK_OPERAND;
+} OperandsCallUnknown;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsCallUnknown);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_BITS_CALL_TYPE;
+    uint64_t argCount: BITS_PER_STACK_OPERAND;
+    /// Boolean flag
+    uint64_t hasReturn: 1;
+    uint64_t returnDst: BITS_PER_STACK_OPERAND;
+    uint64_t funcType: _CUBS_FUNCTION_PTR_TYPE_USED_BITS;
+} OperandsCallImmediate;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsCallImmediate);
+
+/// If hasReturn == false, returnSrc is ignored.
+void cubs_operands_make_call_immediate(Bytecode* bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t* args, bool hasReturn, uint16_t returnSrc, CubsFunction func);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_BITS_CALL_TYPE;
+    uint64_t argCount: BITS_PER_STACK_OPERAND;
+    /// Boolean flag
+    uint64_t hasReturn: 1;
+    uint64_t returnDst: BITS_PER_STACK_OPERAND;
+    uint64_t funcSrc: BITS_PER_STACK_OPERAND;
+} OperandsCallSrc;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsCallSrc);
+
+/// If hasReturn == false, returnSrc is ignored.
+void cubs_operands_make_call_src(Bytecode* bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t* args, bool hasReturn, uint16_t returnSrc, uint16_t funcSrc);
+
+#pragma endregion
+
 enum MathOperationType {
     MATH_TYPE_DST,
     MATH_TYPE_SRC_ASSIGN,

@@ -45,6 +45,80 @@ Bytecode operands_make_return(bool hasReturn, uint16_t returnSrc)
     return *(const Bytecode*)&ret;
 }
 
+void cubs_operands_make_call_immediate(Bytecode *bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t *args, bool hasReturn, uint16_t returnSrc, CubsFunction func)
+{
+    { // validation
+        if(hasReturn) {
+            assert(returnSrc <= MAX_FRAME_LENGTH);
+        }
+        for(uint16_t i = 0; i < argCount; i++) {
+            assert(args[i] <= MAX_FRAME_LENGTH);
+        }
+
+        /// Initial bytecode + immediate function
+        size_t requiredBytecode = 1 + 1;
+        if(argCount & 4 == 0) {
+            requiredBytecode += (argCount / 4);
+        } else {
+            requiredBytecode += (argCount / 4) + 1;
+        }
+        assert(availableBytecode >= requiredBytecode);
+    }
+
+    _Alignas(_Alignof(Bytecode)) const OperandsCallImmediate operands = {
+        .reserveOpcode = OpCodeCall, 
+        .opType = CALL_TYPE_IMMEDIATE, 
+        .argCount = argCount,
+        .hasReturn = hasReturn,
+        .returnDst = returnSrc,
+        .funcType = (uint64_t)func.funcType,
+    };
+
+    bytecodeArr[0] = *(const Bytecode*)&operands;
+    bytecodeArr[1].value = (uint64_t)func.func.externC;
+    uint16_t* bytecodeArgs = (uint16_t*)&bytecodeArr[2];
+    for(uint16_t i = 0; i < argCount; i++) {
+        bytecodeArgs[i] = args[i];
+    }
+}
+
+void cubs_operands_make_call_src(Bytecode *bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t *args, bool hasReturn, uint16_t returnSrc, uint16_t funcSrc)
+{
+    { // validation
+        assert(funcSrc <= MAX_FRAME_LENGTH);
+        if(hasReturn) {
+            assert(returnSrc <= MAX_FRAME_LENGTH);
+        }
+        for(uint16_t i = 0; i < argCount; i++) {
+            assert(args[i] <= MAX_FRAME_LENGTH);
+        }
+
+        /// Initial bytecode
+        size_t requiredBytecode = 1;
+        if(argCount & 4 == 0) {
+            requiredBytecode += (argCount / 4);
+        } else {
+            requiredBytecode += (argCount / 4) + 1;
+        }
+        assert(availableBytecode >= requiredBytecode);
+    }
+
+    _Alignas(_Alignof(Bytecode)) const OperandsCallSrc operands = {
+        .reserveOpcode = OpCodeCall, 
+        .opType = CALL_TYPE_IMMEDIATE, 
+        .argCount = argCount,
+        .hasReturn = hasReturn,
+        .returnDst = returnSrc,
+        .funcSrc = funcSrc,
+    };
+
+    bytecodeArr[0] = *(const Bytecode*)&operands;
+    uint16_t* bytecodeArgs = (uint16_t*)&bytecodeArr[1];
+    for(uint16_t i = 0; i < argCount; i++) {
+        bytecodeArgs[i] = args[i];
+    }
+}
+
 Bytecode operands_make_increment_dst(bool canOverflow, uint16_t dst, uint16_t src)
 {
     assert(dst <= MAX_FRAME_LENGTH);
