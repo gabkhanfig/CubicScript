@@ -57,7 +57,7 @@ void cubs_operands_make_call_immediate(Bytecode *bytecodeArr, size_t availableBy
 
         /// Initial bytecode + immediate function
         size_t requiredBytecode = 1 + 1;
-        if(argCount & 4 == 0) {
+        if((argCount & 4) == 0) {
             requiredBytecode += (argCount / 4);
         } else {
             requiredBytecode += (argCount / 4) + 1;
@@ -95,7 +95,7 @@ void cubs_operands_make_call_src(Bytecode *bytecodeArr, size_t availableBytecode
 
         /// Initial bytecode
         size_t requiredBytecode = 1;
-        if(argCount & 4 == 0) {
+        if((argCount & 4) == 0) {
             requiredBytecode += (argCount / 4);
         } else {
             requiredBytecode += (argCount / 4) + 1;
