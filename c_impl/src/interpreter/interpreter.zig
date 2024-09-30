@@ -629,3 +629,93 @@ test "call immediate C one arg no return" {
     try expect(c.cubs_interpreter_execute_operation(null) == 0);
     try expect(Example.flag == true);
 }
+
+test "call immediate C four args no return" {
+    const Example = struct {
+        var flag: bool = false;
+
+        fn example(arg: c.CubsCFunctionHandler) callconv(.C) c_int {
+            std.debug.assert(arg.argCount == 4);
+
+            for (0..4) |i| {
+                var num: i64 = undefined;
+                var ctx: *const c.CubsTypeContext = undefined;
+
+                c.cubs_function_take_arg(&arg, i, @ptrCast(&num), @ptrCast(&ctx));
+                std.debug.assert(num == @as(i64, @intCast(i)));
+                std.debug.assert(ctx == &c.CUBS_INT_CONTEXT);
+            }
+
+            flag = true;
+            return 0;
+        }
+    };
+
+    c.cubs_interpreter_push_frame(4, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    for (0..4) |i| {
+        @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(i)))).* = @as(i64, @intCast(i));
+        c.cubs_interpreter_stack_set_context_at(i, &c.CUBS_INT_CONTEXT);
+    }
+
+    var bytecode: [3]c.Bytecode = undefined;
+    c.cubs_operands_make_call_immediate(
+        &bytecode,
+        3,
+        4,
+        &[_]u16{ 0, 1, 2, 3 },
+        false,
+        0,
+        c.CubsFunction{ .func = .{ .externC = &Example.example }, .funcType = c.cubsFunctionPtrTypeC },
+    );
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+    try expect(Example.flag == true);
+}
+
+test "call immediate C many args no return" {
+    const Example = struct {
+        var flag: bool = false;
+
+        fn example(arg: c.CubsCFunctionHandler) callconv(.C) c_int {
+            std.debug.assert(arg.argCount == 7);
+
+            for (0..7) |i| {
+                var num: i64 = undefined;
+                var ctx: *const c.CubsTypeContext = undefined;
+
+                c.cubs_function_take_arg(&arg, i, @ptrCast(&num), @ptrCast(&ctx));
+                std.debug.assert(num == @as(i64, @intCast(i)));
+                std.debug.assert(ctx == &c.CUBS_INT_CONTEXT);
+            }
+
+            flag = true;
+            return 0;
+        }
+    };
+
+    c.cubs_interpreter_push_frame(7, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    for (0..7) |i| {
+        @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(i)))).* = @as(i64, @intCast(i));
+        c.cubs_interpreter_stack_set_context_at(i, &c.CUBS_INT_CONTEXT);
+    }
+
+    var bytecode: [4]c.Bytecode = undefined;
+    c.cubs_operands_make_call_immediate(
+        &bytecode,
+        4,
+        7,
+        &[_]u16{ 0, 1, 2, 3, 4, 5, 6 },
+        false,
+        0,
+        c.CubsFunction{ .func = .{ .externC = &Example.example }, .funcType = c.cubsFunctionPtrTypeC },
+    );
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+    try expect(Example.flag == true);
+}
