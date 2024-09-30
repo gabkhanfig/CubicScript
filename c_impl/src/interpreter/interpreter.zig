@@ -562,3 +562,29 @@ test "return multi stack-slot value" {
     try expect(c.cubs_string_eql_slice(&outValue, .{ .str = s.ptr, .len = s.len }));
     try expect(outContext == &c.CUBS_STRING_CONTEXT);
 }
+
+test "call immediate C no args no return" {
+    const Example = struct {
+        var flag: bool = false;
+
+        fn example(_: c.CubsCFunctionHandler) callconv(.C) c_int {
+            flag = true;
+            return 0;
+        }
+    };
+
+    var bytecode: [2]c.Bytecode = undefined;
+    c.cubs_operands_make_call_immediate(
+        &bytecode,
+        2,
+        0,
+        null,
+        false,
+        0,
+        c.CubsFunction{ .func = .{ .externC = &Example.example }, .funcType = c.cubsFunctionPtrTypeC },
+    );
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+    try expect(Example.flag == true);
+}

@@ -112,6 +112,12 @@ const CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset)
     return context;
 }
 
+const CubsTypeContext** cubs_interpreter_stack_context_ptr_at(size_t offset) 
+{
+    assert(offset < threadLocalStack.frame.frameLength);
+    return (const CubsTypeContext**)&threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
+}
+
 static bool is_owning_context_at(size_t offset) {
     assert(offset < threadLocalStack.frame.frameLength);
     uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
@@ -428,6 +434,71 @@ static void execute_return(size_t* ipIncrement, const Bytecode bytecode) {
 
     cubs_interpreter_stack_unwind_frame();
     cubs_interpreter_pop_frame();
+}
+
+static void execute_call(size_t* ipIncrement, const Bytecode* bytecode) {
+    const OperandsCallUnknown operands = *(const OperandsCallUnknown*)&bytecode[0];
+    const enum CallType opType = (enum CallType)operands.opType;
+    const unsigned int argCount = (unsigned int)operands.argCount;
+    void* returnSrc;
+
+    const uint16_t* argsSrcs = NULL;
+    CubsFunction func = {0};
+
+    switch(opType) { 
+        case CALL_TYPE_IMMEDIATE: {
+            const OperandsCallImmediate immediateOperands = *(const OperandsCallImmediate*)&bytecode[0];
+            const CubsFunction _func = {
+                .func = {.externC = (CubsCFunctionPtr)bytecode[1].value},
+                .funcType = (CubsFunctionType)immediateOperands.funcType,
+            };
+            func = _func;
+            argsSrcs = (const uint16_t*)&bytecode[2];
+
+            // See operands.c cubs_operands_make_call_immediate
+            /// Initial bytecode + immediate function
+            size_t requiredBytecode = 1 + 1;
+            if((argCount & 4) == 0) {
+                requiredBytecode += (argCount / 4);
+            } else {
+                requiredBytecode += (argCount / 4) + 1;
+            }
+            *ipIncrement = requiredBytecode;
+        } break;
+        case CALL_TYPE_SRC: {
+            const OperandsCallSrc srcOperands = *(const OperandsCallSrc*)&bytecode[0];
+            assert(cubs_interpreter_stack_context_at(srcOperands.funcSrc) == &CUBS_FUNCTION_CONTEXT);
+            func = *(const CubsFunction*)cubs_interpreter_stack_value_at(srcOperands.funcSrc);
+            argsSrcs = (const uint16_t*)&bytecode[1];
+         
+            // See operands.c cubs_operands_make_call_src
+            /// Initial bytecode
+            size_t requiredBytecode = 1;
+            if((argCount & 4) == 0) {
+                requiredBytecode += (argCount / 4);
+            } else {
+                requiredBytecode += (argCount / 4) + 1;
+            }
+            *ipIncrement = requiredBytecode;
+        } break;
+    }
+
+    CubsFunctionCallArgs funcArgs = cubs_function_start_call(&func);
+    for(unsigned int i = 0; i < argCount; i++) {
+        const uint16_t argSrc = argsSrcs[i];
+        assert(cubs_interpreter_stack_context_at(argSrc) != NULL);
+        cubs_function_push_arg(&funcArgs, cubs_interpreter_stack_value_at(argSrc), cubs_interpreter_stack_context_at(argSrc));
+    }
+
+    if(operands.hasReturn) {
+        void* retValue = cubs_interpreter_stack_value_at(operands.returnDst);
+        const CubsTypeContext** retContext = cubs_interpreter_stack_context_ptr_at(operands.returnDst);
+        const CubsFunctionReturn ret = {.value = retValue, .context = retContext};
+        cubs_function_call(funcArgs, ret);
+    } else {
+        const CubsFunctionReturn nullRet = {0};
+        cubs_function_call(funcArgs, nullRet);
+    }
 }
 
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode* bytecode) {

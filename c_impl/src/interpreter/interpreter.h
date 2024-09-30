@@ -52,6 +52,11 @@ void* cubs_interpreter_stack_value_at(size_t offset);
 /// `offset` is an offset from the start of the current stack frame (excluding reserved slots) from as intervals of 8 bytes
 const struct CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset);
 
+/// Gets the pointer to the actual place in the interpreter stack where the context at `offset` should be.
+/// It is up to the programmer to correct set the ref tag bit if necessary, or mask it away. The bit specifically is `0b01`.
+/// `offset` is an offset from the start of the current stack frame (excluding reserved slots) from as intervals of 8 bytes
+const struct CubsTypeContext** cubs_interpreter_stack_context_ptr_at(size_t offset);
+
 /// If `context->sizeOfType > sizeof(size_t)`, fills the following contexts to NULL.
 void cubs_interpreter_stack_set_context_at(size_t offset, const struct CubsTypeContext* context);
 
