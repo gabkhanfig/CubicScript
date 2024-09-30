@@ -588,3 +588,44 @@ test "call immediate C no args no return" {
     try expect(c.cubs_interpreter_execute_operation(null) == 0);
     try expect(Example.flag == true);
 }
+
+test "call immediate C one arg no return" {
+    const Example = struct {
+        var flag: bool = false;
+
+        fn example(arg: c.CubsCFunctionHandler) callconv(.C) c_int {
+            std.debug.assert(arg.argCount == 1);
+
+            var num: i64 = undefined;
+            var ctx: *const c.CubsTypeContext = undefined;
+
+            c.cubs_function_take_arg(&arg, 0, @ptrCast(&num), @ptrCast(&ctx));
+            std.debug.assert(num == 10);
+            std.debug.assert(ctx == &c.CUBS_INT_CONTEXT);
+
+            flag = true;
+            return 0;
+        }
+    };
+
+    c.cubs_interpreter_push_frame(1, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = 10;
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+
+    var bytecode: [3]c.Bytecode = undefined;
+    c.cubs_operands_make_call_immediate(
+        &bytecode,
+        3,
+        1,
+        &[_]u16{0},
+        false,
+        0,
+        c.CubsFunction{ .func = .{ .externC = &Example.example }, .funcType = c.cubsFunctionPtrTypeC },
+    );
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+    try expect(Example.flag == true);
+}
