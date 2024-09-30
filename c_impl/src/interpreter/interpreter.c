@@ -458,7 +458,7 @@ static void execute_call(size_t* ipIncrement, const Bytecode* bytecode) {
             // See operands.c cubs_operands_make_call_immediate
             /// Initial bytecode + immediate function
             size_t requiredBytecode = 1 + 1;
-            if((argCount & 4) == 0) {
+            if((argCount % 4) == 0) {
                 requiredBytecode += (argCount / 4);
             } else {
                 requiredBytecode += (argCount / 4) + 1;
@@ -474,7 +474,7 @@ static void execute_call(size_t* ipIncrement, const Bytecode* bytecode) {
             // See operands.c cubs_operands_make_call_src
             /// Initial bytecode
             size_t requiredBytecode = 1;
-            if((argCount & 4) == 0) {
+            if((argCount % 4) == 0) {
                 requiredBytecode += (argCount / 4);
             } else {
                 requiredBytecode += (argCount / 4) + 1;
