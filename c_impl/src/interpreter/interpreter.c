@@ -552,10 +552,13 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
             fprintf(stderr, "nop :)\n");
         } break;
         case OpCodeLoad: {
-            execute_load(&ipIncrement, &bytecode);
+            execute_load(&ipIncrement, threadLocalStack.instructionPointer);
         } break;
         case OpCodeReturn: {
             execute_return(&ipIncrement, bytecode);
+        } break;
+        case OpCodeCall: {
+            execute_call(&ipIncrement, threadLocalStack.instructionPointer);
         } break;
         case OpCodeIncrement: {
             potentialErr = execute_increment(program, &bytecode);
