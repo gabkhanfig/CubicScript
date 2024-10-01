@@ -84,7 +84,7 @@ void cubs_interpreter_pop_frame()
     const CubsTypeContext** const oldReturnTagDst = (const CubsTypeContext**)basePointer[OLD_RETURN_CONTEXT_DST];
 
     const InterpreterStackFrame newFrame = {
-        .basePointerOffset = threadLocalStack.nextBaseOffset,
+        .basePointerOffset = threadLocalStack.nextBaseOffset - oldFrameLength - RESERVED_SLOTS,
         .frameLength = oldFrameLength,
         .returnValueDst = oldReturnValueDst,
         .returnContextDst = oldReturnTagDst
