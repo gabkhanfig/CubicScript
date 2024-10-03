@@ -142,11 +142,12 @@ typedef struct {
     uint64_t opType: RESERVE_BITS_JUMP_TYPE;
     /// Only used for conditional jumps
     uint64_t optSrc: BITS_PER_STACK_OPERAND;
-    uint64_t jumpAmount: 32;
+    int64_t jumpAmount: 32;
 } OperandsJump;
 
 /// If `jumpType == JUMP_TYPE_DEFAULT`, `jumpSrc` is ignored.
-Bytecode cubs_operands_make_jump(enum JumpType jumpType, uint32_t jumpAmount, uint16_t jumpSrc);
+/// Jump amount is any 32 bit signed integer, but must be in range of function bytecode.
+Bytecode cubs_operands_make_jump(enum JumpType jumpType, int32_t jumpAmount, uint16_t jumpSrc);
 
 #pragma endregion
 
