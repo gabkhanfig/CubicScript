@@ -7,7 +7,7 @@
 #include <assert.h>
 #include "interpreter.h"
 
-typedef enum {
+typedef enum OpCode {
     /// No operation. Useful for debugging purposes.
     OpCodeNop = 0,
     /// Loads a value into the stack. There are 4 types of load operations.
@@ -24,7 +24,7 @@ typedef enum {
     /// TODO figure out switch
     OpCodeJump = 4,
     /// Most of the time, stack unwinding is good enough, however there may be specific cases where explicit 
-    ///deinitialization is necessary, whether through variable reassignment, or whatever else.
+    /// deinitialization is necessary, whether through variable reassignment, or whatever else.
     OpCodeDeinit = 5,
     /// Increments an integer or iterator
     OpCodeIncrement,
