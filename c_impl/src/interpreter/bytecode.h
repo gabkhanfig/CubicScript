@@ -18,8 +18,14 @@ typedef enum {
     OpCodeLoad = 1,
     /// 
     OpCodeReturn = 2,
-    /// 
+    /// TODO should call be split into two different opcodes? theoretically is higher performance as takes 1 less branch
     OpCodeCall = 3,
+    /// TODO should jump be split into different opcodes for normal jump, jump if true, and jump if false? theoretically higher performance with less branching
+    /// TODO figure out switch
+    OpCodeJump = 4,
+    /// Most of the time, stack unwinding is good enough, however there may be specific cases where explicit 
+    ///deinitialization is necessary, whether through variable reassignment, or whatever else.
+    OpCodeDeinit = 5,
     /// Increments an integer or iterator
     OpCodeIncrement,
     /// 
