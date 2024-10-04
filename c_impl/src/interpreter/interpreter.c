@@ -512,20 +512,20 @@ static void execute_jump(int64_t* const ipIncrement, const Bytecode bytecode) {
     const enum JumpType jumpType = operands.opType;
     switch(jumpType) {
         case JUMP_TYPE_DEFAULT: {
-            *ipIncrement += jumpAmount;
+            *ipIncrement = jumpAmount;
         } break;
         case JUMP_TYPE_IF_TRUE: {
             assert(cubs_interpreter_stack_context_at(operands.optSrc) == &CUBS_BOOL_CONTEXT);
             const bool value = *(const bool*)cubs_interpreter_stack_value_at(operands.optSrc);
             if(value) {
-                *ipIncrement += jumpAmount;
+                *ipIncrement = jumpAmount;
             }
         } break;
         case JUMP_TYPE_IF_FALSE: {
             assert(cubs_interpreter_stack_context_at(operands.optSrc) == &CUBS_BOOL_CONTEXT);
             const bool value = *(const bool*)cubs_interpreter_stack_value_at(operands.optSrc);
             if(!value) {
-                *ipIncrement += jumpAmount;
+                *ipIncrement = jumpAmount;
             }
         } break;
     }
