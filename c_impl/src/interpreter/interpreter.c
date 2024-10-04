@@ -97,6 +97,11 @@ InterpreterStackFrame cubs_interpreter_current_stack_frame()
     return threadLocalStack.frame;
 }
 
+const Bytecode *cubs_interpreter_get_instruction_pointer()
+{
+    return threadLocalStack.instructionPointer;
+}
+
 void *cubs_interpreter_stack_value_at(size_t offset)
 {
     assert(offset < threadLocalStack.frame.frameLength);
