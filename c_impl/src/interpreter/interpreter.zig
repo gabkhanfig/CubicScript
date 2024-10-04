@@ -762,3 +762,14 @@ test "call immediate C no args with return" {
 
     try expect(@as(*const i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* == 10);
 }
+
+test "jump forward 2" {
+    var bytecode: [3]c.Bytecode = undefined;
+    bytecode[0] = c.cubs_operands_make_jump(c.JUMP_TYPE_DEFAULT, 2, 0);
+    bytecode[1] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    bytecode[2] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+    try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[2]);
+}
