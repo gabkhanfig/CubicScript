@@ -126,6 +126,31 @@ void cubs_operands_make_call_src(Bytecode* bytecodeArr, size_t availableBytecode
 
 #pragma endregion
 
+#pragma region Jump
+
+enum JumpType {
+    JUMP_TYPE_DEFAULT = 0,
+    JUMP_TYPE_IF_TRUE = 1,
+    JUMP_TYPE_IF_FALSE = 2,
+
+    RESERVE_BITS_JUMP_TYPE = 2,
+};
+
+/// Jump operation can jump up to UINT32_MAX instructions at once. 
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t opType: RESERVE_BITS_JUMP_TYPE;
+    /// Only used for conditional jumps
+    uint64_t optSrc: BITS_PER_STACK_OPERAND;
+    int64_t jumpAmount: 32;
+} OperandsJump;
+
+/// If `jumpType == JUMP_TYPE_DEFAULT`, `jumpSrc` is ignored.
+/// Jump amount is any 32 bit signed integer, but must be in range of function bytecode.
+Bytecode cubs_operands_make_jump(enum JumpType jumpType, int32_t jumpAmount, uint16_t jumpSrc);
+
+#pragma endregion
+
 enum MathOperationType {
     MATH_TYPE_DST,
     MATH_TYPE_SRC_ASSIGN,

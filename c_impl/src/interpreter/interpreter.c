@@ -97,6 +97,11 @@ InterpreterStackFrame cubs_interpreter_current_stack_frame()
     return threadLocalStack.frame;
 }
 
+const Bytecode *cubs_interpreter_get_instruction_pointer()
+{
+    return threadLocalStack.instructionPointer;
+}
+
 void *cubs_interpreter_stack_value_at(size_t offset)
 {
     assert(offset < threadLocalStack.frame.frameLength);
@@ -240,7 +245,7 @@ void cubs_function_take_arg(const CubsCFunctionHandler *self, size_t argIndex, v
     }
 }
 
-static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
+static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
     const OperandsLoadUnknown unknownOperands = *(const OperandsLoadUnknown*)bytecode;
 
     switch(unknownOperands.loadType) {
@@ -417,7 +422,7 @@ static void execute_load(size_t* ipIncrement, const Bytecode* bytecode) {
     }
 }
 
-static void execute_return(size_t* ipIncrement, const Bytecode bytecode) {
+static void execute_return(int64_t* const ipIncrement, const Bytecode bytecode) {
     const OperandsReturn operands = *(const OperandsReturn*)&bytecode;
 
     if(operands.hasReturn) {      
@@ -436,7 +441,7 @@ static void execute_return(size_t* ipIncrement, const Bytecode bytecode) {
     cubs_interpreter_pop_frame();
 }
 
-static void execute_call(size_t* ipIncrement, const Bytecode* bytecode) {
+static void execute_call(int64_t* const ipIncrement, const Bytecode* bytecode) {
     const OperandsCallUnknown operands = *(const OperandsCallUnknown*)&bytecode[0];
     const enum CallType opType = (enum CallType)operands.opType;
     const unsigned int argCount = (unsigned int)operands.argCount;
@@ -501,8 +506,33 @@ static void execute_call(size_t* ipIncrement, const Bytecode* bytecode) {
     }
 }
 
-static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode* bytecode) {
-    const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)bytecode;
+static void execute_jump(int64_t* const ipIncrement, const Bytecode bytecode) {
+    const OperandsJump operands = *(const OperandsJump*)&bytecode;
+    const int32_t jumpAmount = (int32_t)operands.jumpAmount;
+    const enum JumpType jumpType = operands.opType;
+    switch(jumpType) {
+        case JUMP_TYPE_DEFAULT: {
+            *ipIncrement = jumpAmount;
+        } break;
+        case JUMP_TYPE_IF_TRUE: {
+            assert(cubs_interpreter_stack_context_at(operands.optSrc) == &CUBS_BOOL_CONTEXT);
+            const bool value = *(const bool*)cubs_interpreter_stack_value_at(operands.optSrc);
+            if(value) {
+                *ipIncrement = jumpAmount;
+            }
+        } break;
+        case JUMP_TYPE_IF_FALSE: {
+            assert(cubs_interpreter_stack_context_at(operands.optSrc) == &CUBS_BOOL_CONTEXT);
+            const bool value = *(const bool*)cubs_interpreter_stack_value_at(operands.optSrc);
+            if(!value) {
+                *ipIncrement = jumpAmount;
+            }
+        } break;
+    }
+}
+
+static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode bytecode) {
+    const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src);
 
     void* src = cubs_interpreter_stack_value_at(unknownOperands.src);
@@ -529,7 +559,7 @@ static CubsProgramRuntimeError execute_increment(const CubsProgram* program, con
             cubs_panic("overflow-abled increment not yet implemented");
         }              
         if(unknownOperands.opType == MATH_TYPE_DST) {
-            const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
+            const OperandsAddDst dstOperands = *(const OperandsAddDst*)&bytecode;
             *(int64_t*)(cubs_interpreter_stack_value_at(dstOperands.dst)) = result;
             cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_INT_CONTEXT);
         } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
@@ -541,8 +571,8 @@ static CubsProgramRuntimeError execute_increment(const CubsProgram* program, con
     return cubsProgramRuntimeErrorNone;
 }
 
-static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Bytecode* bytecode) {
-    const OperandsAddUnknown unknownOperands = *(const OperandsAddUnknown*)bytecode;
+static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Bytecode bytecode) {
+    const OperandsAddUnknown unknownOperands = *(const OperandsAddUnknown*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src1);
     #ifdef _DEBUG
     if(cubs_interpreter_stack_context_at(unknownOperands.src2) != context) {
@@ -578,7 +608,7 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
             cubs_panic("overflow-abled addition not yet implemented");
         }
         if(unknownOperands.opType == MATH_TYPE_DST) {
-            const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
+            const OperandsAddDst dstOperands = *(const OperandsAddDst*)&bytecode;
             *(int64_t*)(cubs_interpreter_stack_value_at(dstOperands.dst)) = result;
             cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_INT_CONTEXT);
         } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
@@ -589,7 +619,7 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
         const double b = *(const double*)src2;
         double result = a + b;
         if(unknownOperands.opType == MATH_TYPE_DST) {
-            const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
+            const OperandsAddDst dstOperands = *(const OperandsAddDst*)&bytecode;
             *(double*)(cubs_interpreter_stack_value_at(dstOperands.dst)) = result;
             cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_FLOAT_CONTEXT);
         } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
@@ -598,7 +628,7 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
     } else if(context == &CUBS_STRING_CONTEXT) {
         const CubsString result = cubs_string_concat((const CubsString*)src1, (const CubsString*)src2);
         if(unknownOperands.opType == MATH_TYPE_DST) {
-            const OperandsAddDst dstOperands = *(const OperandsAddDst*)bytecode;
+            const OperandsAddDst dstOperands = *(const OperandsAddDst*)&bytecode;
             *(CubsString*)(cubs_interpreter_stack_value_at(dstOperands.dst)) = result;
             cubs_interpreter_stack_set_context_at(dstOperands.dst, &CUBS_STRING_CONTEXT);
         } else if(unknownOperands.opType == MATH_TYPE_SRC_ASSIGN) {
@@ -613,7 +643,7 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
 
 CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *program)
 {
-    size_t ipIncrement = 1;
+    int64_t ipIncrement = 1;
     const Bytecode bytecode = *threadLocalStack.instructionPointer;
     const OpCode opcode = cubs_bytecode_get_opcode(bytecode);
 
@@ -631,11 +661,14 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         case OpCodeCall: {
             execute_call(&ipIncrement, threadLocalStack.instructionPointer);
         } break;
+        case OpCodeJump: {
+            execute_jump(&ipIncrement, bytecode);
+        } break;
         case OpCodeIncrement: {
-            potentialErr = execute_increment(program, &bytecode);
+            potentialErr = execute_increment(program, bytecode);
         } break;
         case OpCodeAdd: {
-            potentialErr = execute_add(program, &bytecode);
+            potentialErr = execute_add(program, bytecode);
         } break;
         default: {
             unreachable();

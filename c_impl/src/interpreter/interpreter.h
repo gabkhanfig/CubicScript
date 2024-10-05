@@ -6,10 +6,10 @@
 #include "value_tag.h"
 #include "../program/program_runtime_error.h"
 
-typedef struct Bytecode Bytecode;
-typedef struct CubsProgram CubsProgram;
-typedef struct CubsTypeContext CubsTypeContext;
-typedef struct CubsScriptFunctionPtr CubsScriptFunctionPtr;
+struct Bytecode;
+struct CubsProgram;
+struct CubsTypeContext;
+struct CubsScriptFunctionPtr;
 
 #ifndef CUBS_STACK_SLOTS
 /// 1 MB default (slots * 8 bytes per slot)
@@ -35,7 +35,7 @@ enum InterpreterFrameReservedSlots {
     RESERVED_SLOTS = 4,
 };
 
-void cubs_interpreter_push_frame(size_t frameLength, void* returnValueDst, const CubsTypeContext** returnContextDst);
+void cubs_interpreter_push_frame(size_t frameLength, void* returnValueDst, const struct CubsTypeContext** returnContextDst);
 
 /// Operates on the calling thread's interpreter stack.
 void cubs_interpreter_pop_frame();
@@ -66,6 +66,8 @@ void cubs_interpreter_stack_set_context_at(size_t offset, const struct CubsTypeC
 void cubs_interpreter_stack_set_reference_context_at(size_t offset, const struct CubsTypeContext* context);
 
 void cubs_interpreter_stack_set_null_context_at(size_t offset);
+
+const struct Bytecode* cubs_interpreter_get_instruction_pointer();
 
 void cubs_interpreter_set_instruction_pointer(const struct Bytecode* newIp);
 
