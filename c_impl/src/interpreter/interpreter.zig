@@ -773,3 +773,106 @@ test "jump forward 2" {
     try expect(c.cubs_interpreter_execute_operation(null) == 0);
     try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[2]);
 }
+
+test "jump backwards 1" {
+    var bytecode: [3]c.Bytecode = undefined;
+    bytecode[0] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    bytecode[1] = c.cubs_operands_make_jump(c.JUMP_TYPE_DEFAULT, -1, 0);
+    bytecode[2] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[1]));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+    try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[0]);
+}
+
+test "jump if true forward 2" {
+    var bytecode: [3]c.Bytecode = undefined;
+    bytecode[0] = c.cubs_operands_make_jump(c.JUMP_TYPE_IF_TRUE, 2, 0);
+    bytecode[1] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    bytecode[2] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    { // true
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = true;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+        try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[2]);
+    }
+    { // false
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = false;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+        try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[1]);
+    }
+}
+
+test "jump if true backwards 1" {
+    var bytecode: [3]c.Bytecode = undefined;
+    bytecode[0] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    bytecode[1] = c.cubs_operands_make_jump(c.JUMP_TYPE_IF_TRUE, -1, 0);
+    bytecode[2] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    { // true
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = true;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[1]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+        try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[0]);
+    }
+    { // false
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = false;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[1]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+        try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[2]);
+    }
+}
+
+test "jump if false forward 2" {
+    var bytecode: [3]c.Bytecode = undefined;
+    bytecode[0] = c.cubs_operands_make_jump(c.JUMP_TYPE_IF_FALSE, 2, 0);
+    bytecode[1] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    bytecode[2] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    { // true
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = true;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+        try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[1]);
+    }
+    { // false
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = false;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+        try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[2]);
+    }
+}
+
+test "jump if false backwards 1" {
+    var bytecode: [3]c.Bytecode = undefined;
+    bytecode[0] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    bytecode[1] = c.cubs_operands_make_jump(c.JUMP_TYPE_IF_FALSE, -1, 0);
+    bytecode[2] = c.cubs_bytecode_encode(c.OpCodeNop, null);
+    { // true
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = true;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[1]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+        try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[2]);
+    }
+    { // false
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = false;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[1]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+        try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[0]);
+    }
+}
