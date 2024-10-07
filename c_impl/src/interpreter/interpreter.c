@@ -531,6 +531,19 @@ static void execute_jump(int64_t* const ipIncrement, const Bytecode bytecode) {
     }
 }
 
+static void execute_deinit(const Bytecode bytecode) {
+    const OperandsDeinit operands = *(const OperandsDeinit*)&bytecode;
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src);
+    assert(context != NULL);
+    // TODO should this be done at all?
+    // It's a waste of processing power to do this, as if there is no destructor, the deinit operation shouldn't be used at all
+    if(context->destructor.func.externC == NULL) {
+        return;
+    }
+    cubs_context_fast_deinit(cubs_interpreter_stack_value_at(operands.src), context);
+    cubs_interpreter_stack_set_null_context_at(operands.src);
+}
+
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode bytecode) {
     const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src);
@@ -663,6 +676,9 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         } break;
         case OpCodeJump: {
             execute_jump(&ipIncrement, bytecode);
+        } break;
+        case OpCodeDeinit: {
+            execute_deinit(bytecode);
         } break;
         case OpCodeIncrement: {
             potentialErr = execute_increment(program, bytecode);

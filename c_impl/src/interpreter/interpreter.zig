@@ -876,3 +876,19 @@ test "jump if false backwards 1" {
         try expect(c.cubs_interpreter_get_instruction_pointer() == &bytecode[0]);
     }
 }
+
+test "deinit" {
+    const bytecode = c.cubs_operands_make_deinit(0);
+
+    c.cubs_interpreter_push_frame(4, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    const s = "hello to this truly glorious world!";
+    @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = c.cubs_string_init_unchecked(.{ .str = s.ptr, .len = s.len });
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+    try expect(c.cubs_interpreter_stack_context_at(0) == null);
+}

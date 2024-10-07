@@ -151,6 +151,17 @@ Bytecode cubs_operands_make_jump(enum JumpType jumpType, int32_t jumpAmount, uin
 
 #pragma endregion
 
+#pragma region Deinit
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+} OperandsDeinit;
+
+Bytecode cubs_operands_make_deinit(uint16_t src);
+
+#pragma endregion
+
 enum MathOperationType {
     MATH_TYPE_DST,
     MATH_TYPE_SRC_ASSIGN,

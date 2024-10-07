@@ -130,6 +130,14 @@ Bytecode cubs_operands_make_jump(enum JumpType jumpType, int32_t jumpAmount, uin
     return b;
 }
 
+Bytecode cubs_operands_make_deinit(uint16_t src)
+{
+    assert(src <= MAX_FRAME_LENGTH);
+    _Alignas(_Alignof(Bytecode)) const OperandsDeinit operands = {.reserveOpcode = OpCodeDeinit, .src = src};
+    const Bytecode b = *(const Bytecode*)&operands;
+    return b;
+}
+
 Bytecode operands_make_increment_dst(bool canOverflow, uint16_t dst, uint16_t src)
 {
     assert(dst <= MAX_FRAME_LENGTH);
