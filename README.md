@@ -1,6 +1,6 @@
 # CubicScript
 
-Embeddable Scripting Language For Cross Platform Multiplayer Games
+Effortlessly Embeddable Scripting Language for Cross Platform Multiplayer Games
 
 Minimum supported compiler versions for all platforms.
 
