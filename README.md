@@ -4,9 +4,53 @@ Embeddable Scripting Language For Multiplayer Games
 
 ## Build and Install
 
-CubicScript currently only supports zig modules. In the future, a full static library will be available, with a C header.
+### Manual
 
-### Integration Into A Zig Project
+CubicScript does not require any special build steps, only a C compiler. As a result, you are safe to just drop in the source code directly into any project.
+
+From there, include one of the following headers:
+
+C: `#include "(relative_install_location)/include/cubic_script.h"`
+
+C++: `#include "(relative_install_location)/include/cubic_script.hpp"
+
+#### Making Custom Abstraction Layer
+
+All of the functions/symbols that are intended for API use are accessible from `include/cubic_script.h`. These symbols will also be found in the 
+
+### CMake
+
+#### Command Line
+
+CubicScript is build with cmake similar to any other cmake project that generates a static library.
+*Tested for windows, mac, and linux*
+
+```bash
+# From the install location
+
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+
+Then link the output `CubicScript.lib` or `CubicScript.a` file depending on your platform, and set the correct include directory to `(relative_install_location)/CubicScript/include`
+
+C: `#include <cubic_script.h>`
+
+C++: `#include <cubic_script.hpp>`
+
+#### Include In CMake Project
+
+```cmake
+add_subdirectory ("(relative_install_location)/CubicScript")
+```
+
+C: `#include <cubic_script.h>`
+
+C++: `#include <cubic_script.hpp>`
+
+### Zig
 
 First, add the git archive url into your projects build.zig.zon file.
 
@@ -50,3 +94,7 @@ const cubic_script = @import("cubic_script");
 ```
 
 That's all!
+
+### Rust
+
+COMING SOON
