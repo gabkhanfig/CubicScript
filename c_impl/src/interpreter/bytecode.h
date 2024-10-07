@@ -26,6 +26,26 @@ typedef enum OpCode {
     /// Most of the time, stack unwinding is good enough, however there may be specific cases where explicit 
     /// deinitialization is necessary, whether through variable reassignment, or whatever else.
     OpCodeDeinit = 5,
+    // TODO this operation
+    OpCodeSync,
+    // TODO this operation
+    OpCodeMove,
+    // TODO this operation
+    OpCodeClone,
+    // TODO this operation
+    OpCodeCast,
+    // TODO this operation
+    OpCodeEqual,
+    // TODO this operation
+    OpCodeNotEqual,
+    // TODO this operation
+    OpCodeLess,
+    // TODO this operation
+    OpCodeGreater,
+    // TODO this operation
+    OpCodeLessOrEqual,
+    // TODO this operation
+    OpCodeGreaterOrEqual,
     /// Increments an integer or iterator
     OpCodeIncrement,
     /// 
