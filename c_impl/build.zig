@@ -102,6 +102,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/interpreter/interpreter.c",
     "src/interpreter/function_definition.c",
     "src/interpreter/operations.c",
+    "src/interpreter/stack.c",
     "src/sync/atomic.c",
     "src/sync/locks.c",
     "src/sync/sync_queue.c",

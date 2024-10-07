@@ -5,6 +5,7 @@ const c = @cImport({
     @cInclude("interpreter/interpreter.h");
     @cInclude("interpreter/bytecode.h");
     @cInclude("interpreter/operations.h");
+    @cInclude("interpreter/stack.h");
     @cInclude("primitives/context.h");
     @cInclude("primitives/string/string.h");
     @cInclude("primitives/array/array.h");

@@ -4,6 +4,7 @@
 #include "../util/panic.h"
 #include "../interpreter/interpreter.h"
 #include "../interpreter/function_definition.h"
+#include "../interpreter/stack.h"
 #include <stdio.h>
 #include "../util/context_size_round.h"
 #include "../primitives/context.h"

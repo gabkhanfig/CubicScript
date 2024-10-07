@@ -497,6 +497,7 @@ test "zig function many args and return" {
 
 test "nested frame function call" {
     const interpreter = @cImport({
+        @cInclude("interpreter/stack.h");
         @cInclude("interpreter/interpreter.h");
     });
 
