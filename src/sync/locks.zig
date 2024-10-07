@@ -9,7 +9,7 @@ const c = @cImport({
 pub const Mutex = struct {
     const Self = @This();
 
-    cMutex: c.CubsMutex = c.CUBS_MUTEX_INITIALIZER,
+    cMutex: c.CubsMutex = c._CUBS_MUTEX_INITIALIZER,
 
     pub fn lock(self: *Self) void {
         c.cubs_mutex_lock(&self.cMutex);
@@ -39,7 +39,7 @@ pub const Mutex = struct {
 pub const RwLock = struct {
     const Self = @This();
 
-    cRwLock: c.CubsRwLock = c.CUBS_RWLOCK_INITIALIZER,
+    cRwLock: c.CubsRwLock = c._CUBS_RWLOCK_INITIALIZER,
 
     pub fn lockShared(self: *const Self) void {
         c.cubs_rwlock_lock_shared(&self.cRwLock);

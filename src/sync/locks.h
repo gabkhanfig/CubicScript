@@ -50,6 +50,10 @@ typedef union CubsRwLock {
 #define CUBS_MUTEX_INITIALIZER {0}
 #define CUBS_RWLOCK_INITIALIZER {0}
 #endif
+/// Used for Zig
+static const CubsMutex _CUBS_MUTEX_INITIALIZER = CUBS_MUTEX_INITIALIZER;
+/// Used for Zig
+static const CubsRwLock _CUBS_RWLOCK_INITIALIZER = CUBS_RWLOCK_INITIALIZER;
 
 void cubs_mutex_init(CubsMutex* mutexToInit);
 
