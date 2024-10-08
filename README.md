@@ -15,7 +15,7 @@ Minimum supported compiler versions for all platforms.
 
 ### Manual
 
-CubicScript does not require any special build steps, only a C11 compiler. As a result, you are safe to just drop in the source code directly into any project.
+CubicScript does not require any special build steps, only a C11 compiler. As a result, you are safe to just drop in the source code directly into any project. **Note** that there is a main function defined in `src/cpp_tests.cpp`.
 
 From there, include one of the following headers:
 
