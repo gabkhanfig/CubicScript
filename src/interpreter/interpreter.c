@@ -559,8 +559,10 @@ static CubsProgramRuntimeError execute_increment(const CubsProgram* program, con
                 char errBuf[256];
                 #if defined(_WIN32) || defined(WIN32)
                 const int len = sprintf_s(errBuf, 256, "Increment integer overflow detected -> %lld + 1\n", a);
-                #else
+                #elif __APPLE__
                 const int len = sprintf(errBuf, "increment integer overflow detected -> %lld + 1\n", a);
+                #else
+                const int len = sprintf(errBuf, "increment integer overflow detected -> %ld + 1\n", a);
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorIncrementIntegerOverflow, errBuf, len);             
@@ -608,8 +610,10 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
                 char errBuf[256];
                 #if defined(_WIN32) || defined(WIN32)
                 const int len = sprintf_s(errBuf, 256, "Integer overflow detected -> %lld + %lld\n", a, b);
-                #else
+                #elif __APPLE__
                 const int len = sprintf(errBuf, "Integer overflow detected -> %lld + %lld\n", a, b);
+                #else
+                const int len = sprintf(errBuf, "Integer overflow detected -> %ld + %ld\n", a, b);
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorAdditionIntegerOverflow, errBuf, len);             
