@@ -1,6 +1,7 @@
 .vs
 .vscode
 .zig-cache
+.DS_Store
 zig-out
 build
 out
