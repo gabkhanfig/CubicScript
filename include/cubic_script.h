@@ -4,7 +4,6 @@
 extern "C" {
 #endif
 
-#include "../src/primitives/script_value.h"
 #include "../src/primitives/string/string.h"
 #include "../src/primitives/array/array.h"
 #include "../src/primitives/map/map.h"
