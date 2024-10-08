@@ -20,6 +20,8 @@ void cubs_panic(const char* message) {
 
 #elif __GNUC__
 
+#include <stdlib.h>
+
 void cubs_panic(const char* message) {
     #if _DEBUG
     fprintf(stderr, "CubicScript panic:\n%s\n", message);

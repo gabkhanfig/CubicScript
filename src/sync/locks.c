@@ -77,7 +77,8 @@ _Static_assert(_Alignof(CubsMutex) == _Alignof(pthread_mutex_t), "The alignment 
 
 void cubs_mutex_init(CubsMutex* mutexToInit)
 {
-	*mutexToInit = CUBS_MUTEX_INITIALIZER;
+	const CubsMutex m = CUBS_MUTEX_INITIALIZER;
+	*mutexToInit = m;
 }
 
 #include <stdio.h>
