@@ -2,10 +2,6 @@ const std = @import("std");
 const expect = std.testing.expect;
 const assert = std.debug.assert;
 const script_value = @import("../script_value.zig");
-const ValueTag = script_value.ValueTag;
-const RawValue = script_value.RawValue;
-const CTaggedValue = script_value.CTaggedValue;
-const TaggedValue = script_value.TaggedValue;
 const String = script_value.String;
 const TypeContext = script_value.TypeContext;
 
@@ -22,23 +18,6 @@ pub fn Array(comptime T: type) type {
         pub const Error = error{
             OutOfRange,
         };
-
-        // /// For all primitive script types, creates the array.
-        // /// For user defined types, attemps to generate one.
-        // /// Alternatively, one can be passed in manually through creating a struct instance. For example
-        // /// ```
-        // /// const arr = Array(UserStruct){.context = ...};
-        // /// ```
-        // pub fn init() Self {
-        //     const valueTag = comptime script_value.scriptTypeToTag(T);
-        //     if (valueTag != .userStruct) {
-        //         const raw = RawArray.cubs_array_init_primitive(valueTag);
-        //         return @bitCast(raw);
-        //     } else {
-        //         const raw = RawArray.cubs_array_init_user_struct(TypeContext.auto(T));
-        //         return raw;
-        //     }
-        // }
 
         pub fn deinit(self: *Self) void {
             return CubsArray.cubs_array_deinit(self.asRawMut());
@@ -201,7 +180,6 @@ pub const CubsArray = extern struct {
     pub extern fn cubs_array_init(rtti: *const TypeContext) callconv(.C) CubsArray;
     pub extern fn cubs_array_deinit(self: *CubsArray) callconv(.C) void;
     pub extern fn cubs_array_clone(self: *const CubsArray) callconv(.C) CubsArray;
-    pub extern fn cubs_array_tag(self: *const CubsArray) callconv(.C) ValueTag;
     pub extern fn cubs_array_len(self: *const CubsArray) callconv(.C) usize;
     pub extern fn cubs_array_push_unchecked(self: *CubsArray, value: *anyopaque) callconv(.C) void;
     pub extern fn cubs_array_at_unchecked(self: *const CubsArray, index: usize) callconv(.C) *const anyopaque;
