@@ -4,8 +4,8 @@
 #define XSTRINGIFY(s) str(s)
 #define STRINGIFY(s) #s
 #define VALIDATE_SIZE_ALIGN_OPERANDS(OperandsT) \
-_Static_assert(sizeof(OperandsT) == sizeof(Bytecode), "Size of " STRINGIFY(OperandsT) " must match that of InterpreterBytecode"); \
-_Static_assert(_Alignof(OperandsT) == _Alignof(Bytecode), "Align of " STRINGIFY(OperandsT) " must match that of InterpreterBytecode");
+_Static_assert(sizeof(OperandsT) <= sizeof(Bytecode), "Size of " STRINGIFY(OperandsT) " must be less than or equal to Bytecode"); \
+_Static_assert(_Alignof(OperandsT) <= _Alignof(Bytecode), "Align of " STRINGIFY(OperandsT) " must be less than or equal to Bytecode");
 
 enum LoadOperationType {
     LOAD_TYPE_IMMEDIATE = 0,
@@ -144,10 +144,49 @@ typedef struct {
     uint64_t optSrc: BITS_PER_STACK_OPERAND;
     int64_t jumpAmount: 32;
 } OperandsJump;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsJump);
 
 /// If `jumpType == JUMP_TYPE_DEFAULT`, `jumpSrc` is ignored.
 /// Jump amount is any 32 bit signed integer, but must be in range of function bytecode.
 Bytecode cubs_operands_make_jump(enum JumpType jumpType, int32_t jumpAmount, uint16_t jumpSrc);
+
+#pragma endregion
+
+#pragma region Sync
+
+enum SyncType {
+    SYNC_TYPE_SYNC = 0,
+    SYNC_TYPE_UNSYNC = 1,
+
+    RESERVE_BITS_SYNC_TYPE = 1,
+};
+
+enum SyncLockType {
+    SYNC_TYPE_READ = 0,
+    SYNC_TYPE_WRITE = 1,
+
+    RESERVE_BITS_SYNC_LOCK_TYPE = 1,
+};
+
+typedef struct {
+    uint16_t src: BITS_PER_STACK_OPERAND;
+    uint16_t lock: RESERVE_BITS_SYNC_LOCK_TYPE;
+} SyncLockSource;
+_Static_assert(sizeof(SyncLockSource) == sizeof(uint16_t), "SyncLockSource must only occupy 2 bytes");
+
+/// Holds the first and second sources inline the operands. Any further sync sources will need
+typedef struct {
+    uint16_t reserveOpcode: OPCODE_USED_BITS;
+    uint16_t opType: RESERVE_BITS_SYNC_TYPE;
+    /// If `opType == SYNC_TYPE_SYNC`, is the amount of things to lock and is always non-zero, otherwise unused. 
+    uint16_t num: BITS_PER_STACK_OPERAND;
+    /// If `opType != SYNC_TYPE_SYNC`, unused. Inline the first sync source in the operands. Is an instance of SyncLockSource.
+    /// Guaranteed to be used.
+    SyncLockSource src1;
+    /// If `opType != SYNC_TYPE_SYNC`, unused. Inline the second sync source in the operands. Is an instance of SyncLockSource.
+    SyncLockSource src2;
+} OperandsSync;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsSync);
 
 #pragma endregion
 
