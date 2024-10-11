@@ -162,8 +162,8 @@ enum SyncType {
 };
 
 enum SyncLockType {
-    SYNC_TYPE_READ = 0,
-    SYNC_TYPE_WRITE = 1,
+    SYNC_LOCK_TYPE_READ = 0,
+    SYNC_LOCK_TYPE_WRITE = 1,
 
     RESERVE_BITS_SYNC_LOCK_TYPE = 1,
 };
@@ -187,6 +187,9 @@ typedef struct {
     SyncLockSource src2;
 } OperandsSync;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsSync);
+
+/// Reads up to `sources[num - 1]`
+void cubs_operands_make_sync(Bytecode* bytecodeArr, size_t availableBytecode, enum SyncType syncType, uint16_t num, const SyncLockSource* sources);
 
 #pragma endregion
 
