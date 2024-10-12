@@ -5,7 +5,7 @@
 #include "../util/unreachable.h"
 #include "../util/panic.h"
 #include <assert.h>
-#include "interpreter.h"
+#include "stack.h"
 
 typedef enum OpCode {
     /// No operation. Useful for debugging purposes.
