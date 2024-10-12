@@ -20,6 +20,7 @@
 #include "function_definition.h"
 #include "../program/function_call_args.h"
 #include "../util/context_size_round.h"
+#include "../sync/sync_queue.h"
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
@@ -112,66 +113,6 @@ static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
                 } break;
                 case cubsValueTagResult: {
                     cubs_panic("Results do not have a default value");
-                } break;
-                case cubsValueTagVec2i: {
-                    cubs_panic("TODO vec2i");
-                    // const CubsVec2i zeroVec = {0};
-                    // *(CubsVec2i*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec2i) == (2 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec3i: {
-                    cubs_panic("TODO vec3i");
-                    // const CubsVec3i zeroVec = {0};
-                    // *(CubsVec3i*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec3i) == (3 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec4i: {
-                    cubs_panic("TODO vec4i");
-                    // const CubsVec4i zeroVec = {0};
-                    // *(CubsVec4i*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec4i) == (4 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec2f: {
-                    cubs_panic("TODO vec2f");
-                    // const CubsVec2f zeroVec = {0};
-                    // *(CubsVec2f*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec2f) == (2 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec3f: {
-                    cubs_panic("TODO vec3f");
-                    // const CubsVec3f zeroVec = {0};
-                    // *(CubsVec3f*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec3f) == (3 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec4f: {
-                    cubs_panic("TODO vec4f");
-                    // const CubsVec4f zeroVec = {0};
-                    // *(CubsVec4f*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec4f) == (4 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
                 } break;
                 default: {
                     cubs_panic("unimplemented default initialization for type");
@@ -322,6 +263,69 @@ static void execute_deinit(const Bytecode bytecode) {
     }
     cubs_context_fast_deinit(cubs_interpreter_stack_value_at(operands.src), context);
     cubs_interpreter_stack_set_null_context_at(operands.src);
+}
+
+static void sync_value_at(SyncLockSource src) {
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(src.src);
+    const enum SyncLockType lockType = (enum SyncLockType)src.lock;
+    void* value = cubs_interpreter_stack_value_at(src.src);
+    if(context == &CUBS_UNIQUE_CONTEXT) {
+        if(src.lock == SYNC_LOCK_TYPE_READ) {
+            cubs_sync_queue_unique_add_shared((const struct CubsUnique*)value);
+        } else {
+            cubs_sync_queue_unique_add_exclusive((struct CubsUnique*)value);
+        }
+    } else if(context == &CUBS_SHARED_CONTEXT) {
+        if(src.lock == SYNC_LOCK_TYPE_READ) {
+            cubs_sync_queue_shared_add_shared((const struct CubsShared*)value);
+        } else {
+            cubs_sync_queue_shared_add_exclusive((struct CubsShared*)value);
+        }
+    } else if(context == &CUBS_WEAK_CONTEXT) {
+        if(src.lock == SYNC_LOCK_TYPE_READ) {
+            cubs_sync_queue_weak_add_shared((const struct CubsWeak*)value);
+        } else {
+            cubs_sync_queue_weak_add_exclusive((struct CubsWeak*)value);
+        }
+    } else {
+        cubs_panic("Cannot sync non-sync type");
+    }
+}
+
+static void execute_sync(int64_t* const ipIncrement, const Bytecode* bytecode) {
+    const OperandsSync operands = *(const OperandsSync*)&bytecode[0];
+    const enum SyncType syncType = (enum SyncType)operands.opType;
+    if(syncType == SYNC_TYPE_UNSYNC) {
+        cubs_sync_queue_unlock();
+        return;
+    }
+
+    // first is guaranteed to get sync'd
+    sync_value_at(operands.src1); 
+    
+    if(operands.num > 1) {
+        sync_value_at(operands.src2);
+
+        const SyncLockSource* sources = (const SyncLockSource*)&bytecode[1];
+
+        const size_t extended = operands.num - 2;
+        for(uint16_t i = 0; i < extended; i++) {
+            sync_value_at(sources[i]);
+        }
+
+        if(extended > 0) { // increment
+            /// Initial bytecode
+            int64_t requiredBytecode = 1;
+            if((extended % 4) == 0) {
+                requiredBytecode += (extended / 4);
+            } else {
+                requiredBytecode += (extended / 4) + 1;
+            }
+            *ipIncrement = requiredBytecode;
+        }
+    }
+
+    cubs_sync_queue_lock();
 }
 
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode bytecode) {
