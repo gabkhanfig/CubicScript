@@ -120,6 +120,8 @@
         "function_call_args.h": "c",
         "function.h": "c",
         "context.h": "c",
-        "operations.h": "c"
+        "operations.h": "c",
+        "sync_queue.h": "c",
+        "result.h": "c"
     }
 }
