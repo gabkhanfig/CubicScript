@@ -464,6 +464,9 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         case OpCodeDeinit: {
             execute_deinit(*instructionPointer);
         } break;
+        case OpCodeSync: {
+            execute_sync(&ipIncrement, instructionPointer);
+        } break;
         case OpCodeIncrement: {
             potentialErr = execute_increment(program, *instructionPointer);
         } break;

@@ -1,5 +1,8 @@
 const std = @import("std");
 const expect = std.testing.expect;
+const Unique = @import("../primitives/sync_ptr/sync_ptr.zig").Unique;
+const Shared = @import("../primitives/sync_ptr/sync_ptr.zig").Shared;
+const Weak = @import("../primitives/sync_ptr/sync_ptr.zig").Weak;
 
 const c = @cImport({
     @cInclude("interpreter/interpreter.h");
@@ -780,4 +783,33 @@ test "deinit" {
     try expect(c.cubs_interpreter_execute_operation(null) == 0);
 
     try expect(c.cubs_interpreter_stack_context_at(0) == null);
+}
+
+test "sync / unsync one thread one read" {
+    var bytecode: [2]c.Bytecode = undefined;
+    c.cubs_operands_make_sync(
+        &bytecode,
+        1,
+        c.SYNC_TYPE_SYNC,
+        1,
+        &[_]c.SyncLockSource{.{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ }},
+    );
+    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+    c.cubs_interpreter_push_frame(2, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    { // unique
+        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        val.* = Unique(i64).init(8);
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+        try expect(val.get().* == 8);
+
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+        val.deinit();
+    }
 }
