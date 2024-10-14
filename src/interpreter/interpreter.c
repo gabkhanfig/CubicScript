@@ -265,7 +265,7 @@ static void execute_deinit(const Bytecode bytecode) {
     cubs_interpreter_stack_set_null_context_at(operands.src);
 }
 
-static void sync_value_at(SyncLockSource src) {
+static void sync_value_at(OperandsSyncLockSource src) {
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(src.src);
     const enum SyncLockType lockType = (enum SyncLockType)src.lock;
     void* value = cubs_interpreter_stack_value_at(src.src);
@@ -306,7 +306,7 @@ static void execute_sync(int64_t* const ipIncrement, const Bytecode* bytecode) {
     if(operands.num > 1) {
         sync_value_at(operands.src2);
 
-        const SyncLockSource* sources = (const SyncLockSource*)&bytecode[1];
+        const OperandsSyncLockSource* sources = (const OperandsSyncLockSource*)&bytecode[1];
 
         const size_t extended = operands.num - 2;
         for(uint16_t i = 0; i < extended; i++) {

@@ -147,41 +147,47 @@ void cubs_operands_make_sync(Bytecode *bytecodeArr, size_t availableBytecode, en
             }
 
             /// Initial bytecode
-            size_t requiredBytecode = 1;
-            const size_t extendedRequired = num - 2; // 2 sources are stored inline the bytecode
-            if((extendedRequired % 4) == 0) {
-                requiredBytecode += (extendedRequired / 4);
-            } else {
-                requiredBytecode += (extendedRequired / 4) + 1;
+            if(num > 2) {
+                size_t requiredBytecode = 1;
+                const size_t extendedRequired = num - 2; // 2 sources are stored inline the bytecode
+                if((extendedRequired % 4) == 0) {
+                    requiredBytecode += (extendedRequired / 4);
+                } else {
+                    requiredBytecode += (extendedRequired / 4) + 1;
+                }
+                assert(availableBytecode >= requiredBytecode);
             }
-            assert(availableBytecode >= requiredBytecode);
         }
 
         if(num == 1) {
+            const OperandsSyncLockSource src1 = {.src = sources[0].src, .lock = (uint16_t)sources[1].lock};
             BYTECODE_ALIGN const OperandsSync operands = {
                 .reserveOpcode = OpCodeSync, 
                 .opType = SYNC_TYPE_UNSYNC,
                 .num = num,
-                .src1 = sources[0],
+                .src1 = src1,
                 .src2 = {0}
             };
             const Bytecode b = *(const Bytecode*)&operands;
             bytecodeArr[0] = b;
         } else {
+            const OperandsSyncLockSource src1 = {.src = sources[0].src, .lock = (uint16_t)sources[1].lock};
+            const OperandsSyncLockSource src2 = {.src = sources[1].src, .lock = (uint16_t)sources[1].lock};
             BYTECODE_ALIGN const OperandsSync operands = {
                 .reserveOpcode = OpCodeSync, 
                 .opType = SYNC_TYPE_UNSYNC,
                 .num = num,
-                .src1 = sources[0],
-                .src2 = sources[1]
+                .src1 = src1,
+                .src2 = src2
             };
             const Bytecode b = *(const Bytecode*)&operands;
             bytecodeArr[0] = b;
             if(num > 2) {
                 const size_t ignoreFirstTwo = num - 2;
-                SyncLockSource* bytecodeSyncSources = (SyncLockSource*)&bytecodeArr[1];
+                OperandsSyncLockSource* bytecodeSyncSources = (OperandsSyncLockSource*)&bytecodeArr[1];
                 for(uint16_t i = 0; i < ignoreFirstTwo; i++) {
-                    bytecodeSyncSources[i] = sources[2 + i];
+                    const OperandsSyncLockSource src = {.src = sources[2 + i].src, .lock = (uint16_t)sources[2 + i].lock};
+                    bytecodeSyncSources[i] = src;
                 }
             }
         }

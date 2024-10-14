@@ -169,10 +169,15 @@ enum SyncLockType {
 };
 
 typedef struct {
+    uint16_t src;
+    enum SyncLockType lock;
+} SyncLockSource;
+
+typedef struct {
     uint16_t src: BITS_PER_STACK_OPERAND;
     uint16_t lock: RESERVE_BITS_SYNC_LOCK_TYPE;
-} SyncLockSource;
-_Static_assert(sizeof(SyncLockSource) == sizeof(uint16_t), "SyncLockSource must only occupy 2 bytes");
+} OperandsSyncLockSource;
+_Static_assert(sizeof(OperandsSyncLockSource) == sizeof(uint16_t), "SyncLockSource must only occupy 2 bytes");
 
 /// Holds the first and second sources inline the operands. Any further sync sources will need
 typedef struct {
@@ -182,9 +187,9 @@ typedef struct {
     uint16_t num: BITS_PER_STACK_OPERAND;
     /// If `opType != SYNC_TYPE_SYNC`, unused. Inline the first sync source in the operands. Is an instance of SyncLockSource.
     /// Guaranteed to be used.
-    SyncLockSource src1;
+    OperandsSyncLockSource src1;
     /// If `opType != SYNC_TYPE_SYNC`, unused. Inline the second sync source in the operands. Is an instance of SyncLockSource.
-    SyncLockSource src2;
+    OperandsSyncLockSource src2;
 } OperandsSync;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsSync);
 
