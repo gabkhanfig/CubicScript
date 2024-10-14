@@ -842,3 +842,61 @@ test "sync / unsync one thread one read" {
         val.deinit();
     }
 }
+
+test "sync / unsync one thread one write" {
+    var bytecode: [2]c.Bytecode = undefined;
+    c.cubs_operands_make_sync(
+        &bytecode,
+        1,
+        c.SYNC_TYPE_SYNC,
+        1,
+        &[_]c.SyncLockSource{.{ .src = 0, .lock = c.SYNC_LOCK_TYPE_WRITE }},
+    );
+    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+    c.cubs_interpreter_push_frame(2, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    { // unique
+        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        val.* = Unique(i64).init(8);
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+        try expect(val.getMut().* == 8);
+
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+        val.deinit();
+    }
+    { // shared
+        const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        val.* = Shared(i64).init(8);
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+        try expect(val.getMut().* == 8);
+
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+        val.deinit();
+    }
+    { // weak
+        var u = Unique(i64).init(8);
+        defer u.deinit();
+
+        const val = @as(*Weak(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        val.* = u.makeWeak();
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_WEAK_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+        try expect(val.getMut().* == 8);
+
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+        val.deinit();
+    }
+}
