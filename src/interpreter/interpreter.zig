@@ -812,4 +812,33 @@ test "sync / unsync one thread one read" {
         try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
         val.deinit();
     }
+    { // shared
+        const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        val.* = Shared(i64).init(8);
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+        try expect(val.get().* == 8);
+
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+        val.deinit();
+    }
+    { // weak
+        var u = Unique(i64).init(8);
+        defer u.deinit();
+
+        const val = @as(*Weak(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        val.* = u.makeWeak();
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_WEAK_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+        try expect(val.get().* == 8);
+
+        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+        val.deinit();
+    }
 }
