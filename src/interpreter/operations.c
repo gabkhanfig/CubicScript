@@ -163,7 +163,7 @@ void cubs_operands_make_sync(Bytecode *bytecodeArr, size_t availableBytecode, en
             const OperandsSyncLockSource src1 = {.src = sources[0].src, .lock = (uint16_t)sources[1].lock};
             BYTECODE_ALIGN const OperandsSync operands = {
                 .reserveOpcode = OpCodeSync, 
-                .opType = SYNC_TYPE_UNSYNC,
+                .opType = SYNC_TYPE_SYNC,
                 .num = num,
                 .src1 = src1,
                 .src2 = {0}
@@ -175,7 +175,7 @@ void cubs_operands_make_sync(Bytecode *bytecodeArr, size_t availableBytecode, en
             const OperandsSyncLockSource src2 = {.src = sources[1].src, .lock = (uint16_t)sources[1].lock};
             BYTECODE_ALIGN const OperandsSync operands = {
                 .reserveOpcode = OpCodeSync, 
-                .opType = SYNC_TYPE_UNSYNC,
+                .opType = SYNC_TYPE_SYNC,
                 .num = num,
                 .src1 = src1,
                 .src2 = src2
