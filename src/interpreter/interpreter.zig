@@ -900,3 +900,36 @@ test "sync / unsync one thread one write" {
         val.deinit();
     }
 }
+
+test "sync / unsync one thread two values" {
+    var bytecode: [2]c.Bytecode = undefined;
+    c.cubs_operands_make_sync(
+        &bytecode,
+        1,
+        c.SYNC_TYPE_SYNC,
+        1,
+        &[_]c.SyncLockSource{ .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ }, .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE } },
+    );
+    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+    c.cubs_interpreter_push_frame(4, null, null);
+    defer c.cubs_interpreter_pop_frame();
+
+    const val1 = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+    val1.* = Unique(i64).init(8);
+    defer val1.deinit();
+    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+
+    const val2 = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+    val2.* = Shared(i64).init(8);
+    defer val2.deinit();
+    c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_SHARED_CONTEXT);
+
+    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+    try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+    try expect(val1.get().* == 8);
+    try expect(val2.getMut().* == 8);
+
+    try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+}
