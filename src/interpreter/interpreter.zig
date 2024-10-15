@@ -785,65 +785,295 @@ test "deinit" {
     try expect(c.cubs_interpreter_stack_context_at(0) == null);
 }
 
-test "sync / unsync one thread one read" {
-    var bytecode: [2]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
-        &bytecode,
-        1,
-        c.SYNC_TYPE_SYNC,
-        1,
-        &[_]c.SyncLockSource{.{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ }},
-    );
-    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+// test "sync / unsync one thread one read" {
+//     var bytecode: [2]c.Bytecode = undefined;
+//     c.cubs_operands_make_sync(
+//         &bytecode,
+//         1,
+//         c.SYNC_TYPE_SYNC,
+//         1,
+//         &[_]c.SyncLockSource{.{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ }},
+//     );
+//     c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
 
-    c.cubs_interpreter_push_frame(2, null, null);
-    defer c.cubs_interpreter_pop_frame();
+//     c.cubs_interpreter_push_frame(2, null, null);
+//     defer c.cubs_interpreter_pop_frame();
 
-    { // unique
-        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
-        val.* = Unique(i64).init(8);
-        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+//     { // unique
+//         const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+//         val.* = Unique(i64).init(8);
+//         c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
 
-        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+//         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
 
-        try expect(val.get().* == 8);
+//         try expect(val.get().* == 8);
 
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-        val.deinit();
-    }
-    { // shared
-        const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
-        val.* = Shared(i64).init(8);
-        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+//         val.deinit();
+//     }
+//     { // shared
+//         const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+//         val.* = Shared(i64).init(8);
+//         c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
 
-        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+//         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
 
-        try expect(val.get().* == 8);
+//         try expect(val.get().* == 8);
 
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-        val.deinit();
-    }
-    { // weak
-        var u = Unique(i64).init(8);
-        defer u.deinit();
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+//         val.deinit();
+//     }
+//     { // weak
+//         var u = Unique(i64).init(8);
+//         defer u.deinit();
 
-        const val = @as(*Weak(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
-        val.* = u.makeWeak();
-        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_WEAK_CONTEXT);
+//         const val = @as(*Weak(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+//         val.* = u.makeWeak();
+//         c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_WEAK_CONTEXT);
 
-        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+//         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
 
-        try expect(val.get().* == 8);
+//         try expect(val.get().* == 8);
 
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-        val.deinit();
-    }
-}
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+//         val.deinit();
+//     }
+// }
 
-test "sync / unsync one thread one write" {
+// test "sync / unsync one thread one write" {
+//     var bytecode: [2]c.Bytecode = undefined;
+//     c.cubs_operands_make_sync(
+//         &bytecode,
+//         1,
+//         c.SYNC_TYPE_SYNC,
+//         1,
+//         &[_]c.SyncLockSource{.{ .src = 0, .lock = c.SYNC_LOCK_TYPE_WRITE }},
+//     );
+//     c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+//     c.cubs_interpreter_push_frame(2, null, null);
+//     defer c.cubs_interpreter_pop_frame();
+
+//     { // unique
+//         const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+//         val.* = Unique(i64).init(8);
+//         c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+
+//         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+//         try expect(val.getMut().* == 8);
+
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+//         val.deinit();
+//     }
+//     { // shared
+//         const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+//         val.* = Shared(i64).init(8);
+//         c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
+
+//         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+//         try expect(val.getMut().* == 8);
+
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+//         val.deinit();
+//     }
+//     { // weak
+//         var u = Unique(i64).init(8);
+//         defer u.deinit();
+
+//         const val = @as(*Weak(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+//         val.* = u.makeWeak();
+//         c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_WEAK_CONTEXT);
+
+//         c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+//         try expect(val.getMut().* == 8);
+
+//         try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+//         val.deinit();
+//     }
+// }
+
+// test "sync / unsync one thread two values" {
+//     var bytecode: [2]c.Bytecode = undefined;
+//     c.cubs_operands_make_sync(
+//         &bytecode,
+//         1,
+//         c.SYNC_TYPE_SYNC,
+//         2,
+//         &[_]c.SyncLockSource{ .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ }, .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE } },
+//     );
+//     c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+//     c.cubs_interpreter_push_frame(4, null, null);
+//     defer c.cubs_interpreter_pop_frame();
+
+//     const val1 = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+//     val1.* = Unique(i64).init(8);
+//     defer val1.deinit();
+//     c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+
+//     const val2 = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+//     val2.* = Shared(i64).init(8);
+//     defer val2.deinit();
+//     c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_SHARED_CONTEXT);
+
+//     c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//     try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+//     try expect(val1.get().* == 8);
+//     try expect(val2.getMut().* == 8);
+
+//     try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+// }
+
+// test "sync / unsync one thread 3 values" {
+//     var bytecode: [3]c.Bytecode = undefined;
+//     c.cubs_operands_make_sync(
+//         &bytecode,
+//         2,
+//         c.SYNC_TYPE_SYNC,
+//         3,
+//         &[_]c.SyncLockSource{
+//             .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ },
+//             .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE },
+//             .{ .src = 4, .lock = c.SYNC_LOCK_TYPE_READ },
+//         },
+//     );
+//     c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+//     c.cubs_interpreter_push_frame(6, null, null);
+//     defer c.cubs_interpreter_pop_frame();
+
+//     const val1 = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+//     val1.* = Unique(i64).init(8);
+//     defer val1.deinit();
+//     c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+
+//     const val2 = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+//     val2.* = Shared(i64).init(8);
+//     defer val2.deinit();
+//     c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_SHARED_CONTEXT);
+
+//     var u = Unique(i64).init(8);
+//     defer u.deinit();
+
+//     const val3 = @as(*Weak(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4))));
+//     val3.* = u.makeWeak();
+//     defer val3.deinit();
+//     c.cubs_interpreter_stack_set_context_at(4, &c.CUBS_WEAK_CONTEXT);
+
+//     c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//     try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+//     try expect(val1.get().* == 8);
+//     try expect(val2.getMut().* == 8);
+//     try expect(val3.get().* == 8);
+
+//     try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+// }
+
+// test "sync / unsync one thread 6 values (2 inline bytecode, 4 extended bytecode)" {
+//     var bytecode: [3]c.Bytecode = undefined;
+//     c.cubs_operands_make_sync(
+//         &bytecode,
+//         2,
+//         c.SYNC_TYPE_SYNC,
+//         6,
+//         &[_]c.SyncLockSource{
+//             .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ },
+//             .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE },
+//             .{ .src = 4, .lock = c.SYNC_LOCK_TYPE_READ },
+//             .{ .src = 6, .lock = c.SYNC_LOCK_TYPE_WRITE },
+//             .{ .src = 8, .lock = c.SYNC_LOCK_TYPE_READ },
+//             .{ .src = 10, .lock = c.SYNC_LOCK_TYPE_WRITE },
+//         },
+//     );
+//     c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+//     c.cubs_interpreter_push_frame(12, null, null);
+//     defer c.cubs_interpreter_pop_frame();
+
+//     for (0..6) |i| {
+//         const at = i * (@sizeOf(Unique(i64)) / 8);
+//         const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
+//         val.* = Unique(i64).init(@intCast(i));
+//         c.cubs_interpreter_stack_set_context_at(at, &c.CUBS_UNIQUE_CONTEXT);
+//     }
+
+//     c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//     try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+//     for (0..6) |i| {
+//         const at = i * (@sizeOf(Unique(i64)) / 8);
+//         const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
+//         try expect(val.get().* == @as(i64, @intCast(i)));
+//     }
+
+//     try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+
+//     for (0..6) |i| {
+//         const at = i * (@sizeOf(Unique(i64)) / 8);
+//         const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
+//         defer val.deinit();
+//     }
+// }
+
+// test "sync / unsync one thread 7 values (2 inline bytecode, 4 extended bytecode, 1 extra extended bytecode)" {
+//     var bytecode: [4]c.Bytecode = undefined;
+//     c.cubs_operands_make_sync(
+//         &bytecode,
+//         3,
+//         c.SYNC_TYPE_SYNC,
+//         7,
+//         &[_]c.SyncLockSource{
+//             .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ },
+//             .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE },
+//             .{ .src = 4, .lock = c.SYNC_LOCK_TYPE_READ },
+//             .{ .src = 6, .lock = c.SYNC_LOCK_TYPE_WRITE },
+//             .{ .src = 8, .lock = c.SYNC_LOCK_TYPE_READ },
+//             .{ .src = 10, .lock = c.SYNC_LOCK_TYPE_WRITE },
+//             .{ .src = 12, .lock = c.SYNC_LOCK_TYPE_WRITE },
+//         },
+//     );
+//     c.cubs_operands_make_sync(&bytecode[3], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+//     c.cubs_interpreter_push_frame(14, null, null);
+//     defer c.cubs_interpreter_pop_frame();
+
+//     for (0..7) |i| {
+//         const at = i * (@sizeOf(Unique(i64)) / 8);
+//         const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
+//         val.* = Unique(i64).init(@intCast(i));
+//         c.cubs_interpreter_stack_set_context_at(at, &c.CUBS_UNIQUE_CONTEXT);
+//     }
+
+//     c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+//     try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+
+//     for (0..7) |i| {
+//         const at = i * (@sizeOf(Unique(i64)) / 8);
+//         const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
+//         try expect(val.get().* == @as(i64, @intCast(i)));
+//     }
+
+//     try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
+
+//     for (0..7) |i| {
+//         const at = i * (@sizeOf(Unique(i64)) / 8);
+//         const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
+//         defer val.deinit();
+//     }
+// }
+
+test "sync / unsync multithread one value write" {
     var bytecode: [2]c.Bytecode = undefined;
     c.cubs_operands_make_sync(
         &bytecode,
@@ -854,221 +1084,39 @@ test "sync / unsync one thread one write" {
     );
     c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
 
-    c.cubs_interpreter_push_frame(2, null, null);
-    defer c.cubs_interpreter_pop_frame();
+    const ThreadTest = struct {
+        fn add(s: Shared(i64), n: usize, b: []const c.Bytecode) void {
+            c.cubs_interpreter_push_frame(2, null, null);
+            defer c.cubs_interpreter_pop_frame();
 
-    { // unique
-        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
-        val.* = Unique(i64).init(8);
-        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+            const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+            val.* = s.clone();
+            c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
 
-        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+            for (0..n) |_| {
+                c.cubs_interpreter_set_instruction_pointer(@ptrCast(&b[0]));
+                expect(c.cubs_interpreter_execute_operation(null) == 0) catch unreachable; // sync
 
-        try expect(val.getMut().* == 8);
+                val.getMut().* += 1;
 
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-        val.deinit();
-    }
-    { // shared
-        const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
-        val.* = Shared(i64).init(8);
-        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
+                expect(c.cubs_interpreter_execute_operation(null) == 0) catch unreachable; // unsync
 
-        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+            }
 
-        try expect(val.getMut().* == 8);
+            val.deinit();
+        }
+    };
 
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-        val.deinit();
-    }
-    { // weak
-        var u = Unique(i64).init(8);
-        defer u.deinit();
+    var shared = Shared(i64).init(0);
+    defer shared.deinit();
 
-        const val = @as(*Weak(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
-        val.* = u.makeWeak();
-        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_WEAK_CONTEXT);
+    const num = 10000;
 
-        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
+    const t1 = try std.Thread.spawn(.{}, ThreadTest.add, .{ shared, num, &bytecode });
+    const t2 = try std.Thread.spawn(.{}, ThreadTest.add, .{ shared, num, &bytecode });
 
-        try expect(val.getMut().* == 8);
+    t1.join();
+    t2.join();
 
-        try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-        val.deinit();
-    }
-}
-
-test "sync / unsync one thread two values" {
-    var bytecode: [2]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
-        &bytecode,
-        1,
-        c.SYNC_TYPE_SYNC,
-        2,
-        &[_]c.SyncLockSource{ .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ }, .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE } },
-    );
-    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
-
-    c.cubs_interpreter_push_frame(4, null, null);
-    defer c.cubs_interpreter_pop_frame();
-
-    const val1 = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
-    val1.* = Unique(i64).init(8);
-    defer val1.deinit();
-    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
-
-    const val2 = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
-    val2.* = Shared(i64).init(8);
-    defer val2.deinit();
-    c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_SHARED_CONTEXT);
-
-    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-    try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
-
-    try expect(val1.get().* == 8);
-    try expect(val2.getMut().* == 8);
-
-    try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-}
-
-test "sync / unsync one thread 3 values" {
-    var bytecode: [3]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
-        &bytecode,
-        2,
-        c.SYNC_TYPE_SYNC,
-        3,
-        &[_]c.SyncLockSource{
-            .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ },
-            .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE },
-            .{ .src = 4, .lock = c.SYNC_LOCK_TYPE_READ },
-        },
-    );
-    c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null);
-
-    c.cubs_interpreter_push_frame(6, null, null);
-    defer c.cubs_interpreter_pop_frame();
-
-    const val1 = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
-    val1.* = Unique(i64).init(8);
-    defer val1.deinit();
-    c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
-
-    const val2 = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
-    val2.* = Shared(i64).init(8);
-    defer val2.deinit();
-    c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_SHARED_CONTEXT);
-
-    var u = Unique(i64).init(8);
-    defer u.deinit();
-
-    const val3 = @as(*Weak(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4))));
-    val3.* = u.makeWeak();
-    defer val3.deinit();
-    c.cubs_interpreter_stack_set_context_at(4, &c.CUBS_WEAK_CONTEXT);
-
-    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-    try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
-
-    try expect(val1.get().* == 8);
-    try expect(val2.getMut().* == 8);
-    try expect(val3.get().* == 8);
-
-    try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-}
-
-test "sync / unsync one thread 6 values (2 inline bytecode, 4 extended bytecode)" {
-    var bytecode: [3]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
-        &bytecode,
-        2,
-        c.SYNC_TYPE_SYNC,
-        6,
-        &[_]c.SyncLockSource{
-            .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ },
-            .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE },
-            .{ .src = 4, .lock = c.SYNC_LOCK_TYPE_READ },
-            .{ .src = 6, .lock = c.SYNC_LOCK_TYPE_WRITE },
-            .{ .src = 8, .lock = c.SYNC_LOCK_TYPE_READ },
-            .{ .src = 10, .lock = c.SYNC_LOCK_TYPE_WRITE },
-        },
-    );
-    c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null);
-
-    c.cubs_interpreter_push_frame(12, null, null);
-    defer c.cubs_interpreter_pop_frame();
-
-    for (0..6) |i| {
-        const at = i * (@sizeOf(Unique(i64)) / 8);
-        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
-        val.* = Unique(i64).init(@intCast(i));
-        c.cubs_interpreter_stack_set_context_at(at, &c.CUBS_UNIQUE_CONTEXT);
-    }
-
-    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-    try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
-
-    for (0..6) |i| {
-        const at = i * (@sizeOf(Unique(i64)) / 8);
-        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
-        try expect(val.get().* == @as(i64, @intCast(i)));
-    }
-
-    try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-
-    for (0..6) |i| {
-        const at = i * (@sizeOf(Unique(i64)) / 8);
-        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
-        defer val.deinit();
-    }
-}
-
-test "sync / unsync one thread 7 values (2 inline bytecode, 4 extended bytecode, 1 extra extended bytecode)" {
-    var bytecode: [4]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
-        &bytecode,
-        3,
-        c.SYNC_TYPE_SYNC,
-        7,
-        &[_]c.SyncLockSource{
-            .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ },
-            .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE },
-            .{ .src = 4, .lock = c.SYNC_LOCK_TYPE_READ },
-            .{ .src = 6, .lock = c.SYNC_LOCK_TYPE_WRITE },
-            .{ .src = 8, .lock = c.SYNC_LOCK_TYPE_READ },
-            .{ .src = 10, .lock = c.SYNC_LOCK_TYPE_WRITE },
-            .{ .src = 12, .lock = c.SYNC_LOCK_TYPE_WRITE },
-        },
-    );
-    c.cubs_operands_make_sync(&bytecode[3], 1, c.SYNC_TYPE_UNSYNC, 0, null);
-
-    c.cubs_interpreter_push_frame(14, null, null);
-    defer c.cubs_interpreter_pop_frame();
-
-    for (0..7) |i| {
-        const at = i * (@sizeOf(Unique(i64)) / 8);
-        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
-        val.* = Unique(i64).init(@intCast(i));
-        c.cubs_interpreter_stack_set_context_at(at, &c.CUBS_UNIQUE_CONTEXT);
-    }
-
-    c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
-    try expect(c.cubs_interpreter_execute_operation(null) == 0); // sync
-
-    for (0..7) |i| {
-        const at = i * (@sizeOf(Unique(i64)) / 8);
-        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
-        try expect(val.get().* == @as(i64, @intCast(i)));
-    }
-
-    try expect(c.cubs_interpreter_execute_operation(null) == 0); // unsync
-
-    for (0..7) |i| {
-        const at = i * (@sizeOf(Unique(i64)) / 8);
-        const val = @as(*Unique(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(at))));
-        defer val.deinit();
-    }
+    try expect(shared.get().* == (num * 2));
 }

@@ -297,38 +297,34 @@ static void execute_sync(int64_t* const ipIncrement, const Bytecode* bytecode) {
     const enum SyncType syncType = (enum SyncType)operands.opType;
     if(syncType == SYNC_TYPE_UNSYNC) {
         cubs_sync_queue_unlock();
-        return;
-    }
-
-    // first is guaranteed to get sync'd
-    sync_value_at(operands.src1); 
+    } else {
+        // first is guaranteed to get sync'd
+        sync_value_at(operands.src1);
     
-    if(operands.num > 1) {
-        sync_value_at(operands.src2);
+        if(operands.num > 1) {
+            sync_value_at(operands.src2);
 
-        const OperandsSyncLockSource* sources = (const OperandsSyncLockSource*)&bytecode[1];
+            const OperandsSyncLockSource* sources = (const OperandsSyncLockSource*)&bytecode[1];
 
-        const size_t extended = operands.num - 2;
-        for(uint16_t i = 0; i < extended; i++) {
-            sync_value_at(sources[i]);
-        }
-
-        if(extended > 0) { // increment
-            /// Initial bytecode
-            fprintf(stderr, "extention\n");
-            int64_t requiredBytecode = 1;
-            if((extended % 4) == 0) {
-                requiredBytecode += (extended / 4);
-            } else {
-                requiredBytecode += (extended / 4) + 1;
+            const size_t extended = operands.num - 2;
+            for(uint16_t i = 0; i < extended; i++) {
+                sync_value_at(sources[i]);
             }
-            *ipIncrement = requiredBytecode;
+
+            if(extended > 0) { // increment
+                /// Initial bytecode
+                int64_t requiredBytecode = 1;
+                if((extended % 4) == 0) {
+                    requiredBytecode += (extended / 4);
+                } else {
+                    requiredBytecode += (extended / 4) + 1;
+                }
+                *ipIncrement = requiredBytecode;
+            }
         }
+
+        cubs_sync_queue_lock();
     }
-
-    cubs_sync_queue_lock();
-
-    fprintf(stderr, "current ip increment: %lld\n", *ipIncrement);
 }
 
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode bytecode) {
