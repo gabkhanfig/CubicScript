@@ -315,6 +315,7 @@ static void execute_sync(int64_t* const ipIncrement, const Bytecode* bytecode) {
 
         if(extended > 0) { // increment
             /// Initial bytecode
+            fprintf(stderr, "extention\n");
             int64_t requiredBytecode = 1;
             if((extended % 4) == 0) {
                 requiredBytecode += (extended / 4);
@@ -326,6 +327,8 @@ static void execute_sync(int64_t* const ipIncrement, const Bytecode* bytecode) {
     }
 
     cubs_sync_queue_lock();
+
+    fprintf(stderr, "current ip increment: %lld\n", *ipIncrement);
 }
 
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode bytecode) {
