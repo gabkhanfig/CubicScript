@@ -26,7 +26,8 @@ typedef enum OpCode {
     /// Most of the time, stack unwinding is good enough, however there may be specific cases where explicit 
     /// deinitialization is necessary, whether through variable reassignment, or whatever else.
     OpCodeDeinit = 5,
-    // TODO this operation
+    /// Adds multiple values in the stack frame to the sync queue, and then queues them.
+    /// This avoids deadlocks, and also can leverage read-only, OR read-write access.
     OpCodeSync,
     // TODO this operation
     OpCodeMove,
