@@ -1121,7 +1121,8 @@ test "sync / unsync multithread one value write" {
     try expect(shared.get().* == (num * 2));
 }
 
-test "sync / unsync multithread many value write" {
+// This test is explicitly to ensure that out of order access of sync objects will still work, and avoid deadlock
+test "sync / unsync multithread many value write random" {
     const COUNT = 3;
 
     const ThreadTest = struct {
