@@ -1120,3 +1120,72 @@ test "sync / unsync multithread one value write" {
 
     try expect(shared.get().* == (num * 2));
 }
+
+test "sync / unsync multithread many value write" {
+    const COUNT = 3;
+
+    const ThreadTest = struct {
+        fn add(s: [COUNT]Shared(i64), n: usize) void {
+            var lockSources: [3]c.SyncLockSource = undefined;
+            { // randomize order
+                var rnd = std.rand.DefaultPrng.init(@intCast(std.Thread.getCurrentId()));
+                const randomNum = rnd.random().intRangeLessThan(usize, 0, COUNT); // 0 (inclusive) - COUNT (exclusive)
+
+                for (0..COUNT) |i| {
+                    const source = @as(u16, @intCast(@mod(i + randomNum, COUNT))) * 2;
+                    lockSources[i] = c.SyncLockSource{ .src = source, .lock = c.SYNC_LOCK_TYPE_WRITE };
+                }
+            }
+
+            var bytecode: [3]c.Bytecode = undefined;
+            c.cubs_operands_make_sync(&bytecode, 2, c.SYNC_TYPE_SYNC, COUNT, &lockSources);
+            c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+
+            c.cubs_interpreter_push_frame(COUNT * 2, null, null);
+            defer c.cubs_interpreter_pop_frame();
+
+            for (0..COUNT) |i| {
+                const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(i * 2))));
+                val.* = s[i].clone();
+                c.cubs_interpreter_stack_set_context_at(i * 2, &c.CUBS_SHARED_CONTEXT);
+            }
+
+            for (0..n) |_| {
+                c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode[0]));
+                expect(c.cubs_interpreter_execute_operation(null) == 0) catch unreachable; // sync
+
+                for (0..COUNT) |i| {
+                    const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(i * 2))));
+                    val.getMut().* += 1;
+                }
+
+                expect(c.cubs_interpreter_execute_operation(null) == 0) catch unreachable; // unsyncs
+            }
+
+            for (0..COUNT) |i| {
+                const val = @as(*Shared(i64), @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(i * 2))));
+                val.deinit();
+            }
+        }
+    };
+
+    {
+        var shared = [_]Shared(i64){ Shared(i64).init(0), Shared(i64).init(0), Shared(i64).init(0) };
+
+        const num = 10000;
+
+        var threads: [8]std.Thread = undefined;
+        for (0..threads.len) |i| {
+            threads[i] = try std.Thread.spawn(.{}, ThreadTest.add, .{ shared, num });
+        }
+
+        for (0..threads.len) |i| {
+            threads[i].join();
+        }
+
+        for (&shared) |*sVal| {
+            try expect(sVal.get().* == (num * threads.len));
+            sVal.deinit();
+        }
+    }
+}
