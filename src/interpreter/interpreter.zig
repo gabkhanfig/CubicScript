@@ -1190,3 +1190,54 @@ test "sync / unsync multithread many value write random" {
         }
     }
 }
+
+test "move" {
+    { // 1 byte (bool)
+        const bytecode = c.cubs_operands_make_move(1, 0);
+        c.cubs_interpreter_push_frame(2, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = true;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(0) == null);
+        try expect(@as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* == true);
+        try expect(c.cubs_interpreter_stack_context_at(1) == &c.CUBS_BOOL_CONTEXT);
+    }
+    { // 8 bytes, full stack slot (64 bit int)
+        const bytecode = c.cubs_operands_make_move(1, 0);
+        c.cubs_interpreter_push_frame(2, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = 55;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(0) == null);
+        try expect(@as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1)))).* == 55);
+        try expect(c.cubs_interpreter_stack_context_at(1) == &c.CUBS_INT_CONTEXT);
+    }
+    { // 32 bytes, multiple stack slots (string)
+        const bytecode = c.cubs_operands_make_move(4, 0);
+        c.cubs_interpreter_push_frame(8, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const s = "hello to this fantastical world!";
+        const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
+        @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0)))).* = c.cubs_string_init_unchecked(slice);
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(0) == null);
+        try expect(c.cubs_string_eql_slice(@as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4)))), slice));
+        try expect(c.cubs_interpreter_stack_context_at(4) == &c.CUBS_STRING_CONTEXT);
+        c.cubs_string_deinit(@as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4)))));
+    }
+}
