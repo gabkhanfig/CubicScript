@@ -329,7 +329,6 @@ static void execute_sync(int64_t* const ipIncrement, const Bytecode* bytecode) {
 
 static void execute_move(const Bytecode bytecode) {
     const OperandsMove operands = *(const OperandsMove*)&bytecode;
-    assert(cubs_interpreter_stack_context_at(operands.dst) == NULL); // ensure not overwriting memory that is being used
 
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src);
     const void* src = cubs_interpreter_stack_value_at(operands.src);
@@ -341,7 +340,6 @@ static void execute_move(const Bytecode bytecode) {
 
 static void execute_clone(const Bytecode bytecode) {
     const OperandsClone operands = *(const OperandsClone*)&bytecode;
-    assert(cubs_interpreter_stack_context_at(operands.dst) == NULL); // ensure not overwriting memory that is being used
 
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src);
     assert(context->clone.func.externC != NULL);
