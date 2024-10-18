@@ -202,6 +202,26 @@ Bytecode cubs_operands_make_deinit(uint16_t src)
     return b;
 }
 
+Bytecode cubs_operands_make_move(uint16_t dst, uint16_t src)
+{
+    assert(dst <= MAX_FRAME_LENGTH);
+    assert(src <= MAX_FRAME_LENGTH);
+    assert(dst != src);
+    BYTECODE_ALIGN const OperandsMove operands = {.reserveOpcode = OpCodeMove, .dst = dst, .src = src};
+    const Bytecode b = *(const Bytecode*)&operands;
+    return b;
+}
+
+Bytecode cubs_operands_make_clone(uint16_t dst, uint16_t src)
+{
+    assert(dst <= MAX_FRAME_LENGTH);
+    assert(src <= MAX_FRAME_LENGTH);
+    assert(dst != src);
+    BYTECODE_ALIGN const OperandsClone operands = {.reserveOpcode = OpCodeClone, .dst = dst, .src = src};
+    const Bytecode b = *(const Bytecode*)&operands;
+    return b;
+}
+
 Bytecode operands_make_increment_dst(bool canOverflow, uint16_t dst, uint16_t src)
 {
     assert(dst <= MAX_FRAME_LENGTH);

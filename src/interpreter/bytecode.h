@@ -29,9 +29,10 @@ typedef enum OpCode {
     /// Adds multiple values in the stack frame to the sync queue, and then queues them.
     /// This avoids deadlocks, and also can leverage read-only, OR read-write access.
     OpCodeSync,
-    // TODO this operation
+    /// Moves some data from `src` to `dst`, making the `src` location invalid memory. Conceptually this is a destructive move,
+    /// as trying to access that uninitialized will either result in a debug assertion, or undefined behaviour.
     OpCodeMove,
-    // TODO this operation
+    /// Makes a clone of `src`, storing it in `dst`. Both memory locations will be valid after the clone.
     OpCodeClone,
     // TODO this operation
     OpCodeCast,

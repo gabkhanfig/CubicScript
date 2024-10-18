@@ -327,6 +327,30 @@ static void execute_sync(int64_t* const ipIncrement, const Bytecode* bytecode) {
     }
 }
 
+static void execute_move(const Bytecode bytecode) {
+    const OperandsMove operands = *(const OperandsMove*)&bytecode;
+    assert(cubs_interpreter_stack_context_at(operands.dst) == NULL); // ensure not overwriting memory that is being used
+
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src);
+    const void* src = cubs_interpreter_stack_value_at(operands.src);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+    memcpy(dst, src, context->sizeOfType);
+    cubs_interpreter_stack_set_context_at(operands.dst, context);
+    cubs_interpreter_stack_set_null_context_at(operands.src); // invalidate original location
+}
+
+static void execute_clone(const Bytecode bytecode) {
+    const OperandsClone operands = *(const OperandsClone*)&bytecode;
+    assert(cubs_interpreter_stack_context_at(operands.dst) == NULL); // ensure not overwriting memory that is being used
+
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src);
+    assert(context->clone.func.externC != NULL);
+    const void* src = cubs_interpreter_stack_value_at(operands.src);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+    cubs_context_fast_clone(dst, src, context);
+    cubs_interpreter_stack_set_context_at(operands.dst, context);
+}
+
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode bytecode) {
     const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src);
@@ -465,6 +489,12 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         } break;
         case OpCodeSync: {
             execute_sync(&ipIncrement, instructionPointer);
+        } break;
+        case OpCodeMove: {
+            execute_move(*instructionPointer);
+        } break;
+        case OpCodeClone: {
+            execute_clone(*instructionPointer);
         } break;
         case OpCodeIncrement: {
             potentialErr = execute_increment(program, *instructionPointer);
