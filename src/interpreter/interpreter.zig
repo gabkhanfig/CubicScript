@@ -1241,3 +1241,67 @@ test "move" {
         c.cubs_string_deinit(@as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4)))));
     }
 }
+
+test "clone" {
+    { // 1 byte (bool)
+        const bytecode = c.cubs_operands_make_clone(1, 0);
+        c.cubs_interpreter_push_frame(2, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+
+        src.* = true;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_BOOL_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(src.* == true);
+        try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+        try expect(c.cubs_interpreter_stack_context_at(1) == &c.CUBS_BOOL_CONTEXT);
+    }
+    { // 8 bytes, full stack slot (64 bit int)
+        const bytecode = c.cubs_operands_make_clone(1, 0);
+        c.cubs_interpreter_push_frame(2, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+
+        src.* = 55;
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(src.* == 55);
+        try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_INT_CONTEXT);
+        try expect(dst.* == 55);
+        try expect(c.cubs_interpreter_stack_context_at(1) == &c.CUBS_INT_CONTEXT);
+    }
+    { // 32 bytes, multiple stack slots (string)
+        const bytecode = c.cubs_operands_make_clone(4, 0);
+        c.cubs_interpreter_push_frame(8, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src = @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4))));
+
+        const s = "hello to this fantastical world!";
+        const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
+        src.* = c.cubs_string_init_unchecked(slice);
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_string_eql_slice(src, slice));
+        try expect(c.cubs_interpreter_stack_context_at(0) == &c.CUBS_STRING_CONTEXT);
+        try expect(c.cubs_string_eql_slice(dst, slice));
+        try expect(c.cubs_interpreter_stack_context_at(4) == &c.CUBS_STRING_CONTEXT);
+        c.cubs_string_deinit(src);
+        c.cubs_string_deinit(dst);
+    }
+}
