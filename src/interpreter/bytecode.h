@@ -5,7 +5,7 @@
 #include "../util/unreachable.h"
 #include "../util/panic.h"
 #include <assert.h>
-#include "interpreter.h"
+#include "stack.h"
 
 typedef enum OpCode {
     /// No operation. Useful for debugging purposes.
@@ -26,17 +26,20 @@ typedef enum OpCode {
     /// Most of the time, stack unwinding is good enough, however there may be specific cases where explicit 
     /// deinitialization is necessary, whether through variable reassignment, or whatever else.
     OpCodeDeinit = 5,
-    // TODO this operation
+    /// Adds multiple values in the stack frame to the sync queue, and then queues them.
+    /// This avoids deadlocks, and also can leverage read-only, OR read-write access.
     OpCodeSync,
-    // TODO this operation
+    /// Moves some data from `src` to `dst`, making the `src` location invalid memory. Conceptually this is a destructive move.
+    /// Does not validate that the memory being moved to is not in use.
     OpCodeMove,
-    // TODO this operation
+    /// Makes a clone of `src`, storing it in `dst`. Both memory locations will be valid after the clone.
+    /// Does not validate that the memory being moved to is not in use.
     OpCodeClone,
     // TODO this operation
     OpCodeCast,
-    // TODO this operation
+    /// Performs `src1 == src2`, storing the bool result in dst.
     OpCodeEqual,
-    // TODO this operation
+    /// Performs `src1 != src2`, storing the bool result in dst.
     OpCodeNotEqual,
     // TODO this operation
     OpCodeLess,

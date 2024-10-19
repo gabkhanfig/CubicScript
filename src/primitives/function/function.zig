@@ -496,12 +496,12 @@ test "zig function many args and return" {
 }
 
 test "nested frame function call" {
-    const interpreter = @cImport({
-        @cInclude("interpreter/interpreter.h");
+    const stack = @cImport({
+        @cInclude("interpreter/stack.h");
     });
 
-    interpreter.cubs_interpreter_push_frame(10, null, null);
-    defer interpreter.cubs_interpreter_pop_frame();
+    stack.cubs_interpreter_push_frame(10, null, null);
+    defer stack.cubs_interpreter_pop_frame();
 
     const Example = struct {
         fn example(_: i64) void {}

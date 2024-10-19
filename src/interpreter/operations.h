@@ -4,8 +4,8 @@
 #define XSTRINGIFY(s) str(s)
 #define STRINGIFY(s) #s
 #define VALIDATE_SIZE_ALIGN_OPERANDS(OperandsT) \
-_Static_assert(sizeof(OperandsT) == sizeof(Bytecode), "Size of " STRINGIFY(OperandsT) " must match that of InterpreterBytecode"); \
-_Static_assert(_Alignof(OperandsT) == _Alignof(Bytecode), "Align of " STRINGIFY(OperandsT) " must match that of InterpreterBytecode");
+_Static_assert(sizeof(OperandsT) <= sizeof(Bytecode), "Size of " STRINGIFY(OperandsT) " must be less than or equal to Bytecode"); \
+_Static_assert(_Alignof(OperandsT) <= _Alignof(Bytecode), "Align of " STRINGIFY(OperandsT) " must be less than or equal to Bytecode");
 
 enum LoadOperationType {
     LOAD_TYPE_IMMEDIATE = 0,
@@ -144,10 +144,57 @@ typedef struct {
     uint64_t optSrc: BITS_PER_STACK_OPERAND;
     int64_t jumpAmount: 32;
 } OperandsJump;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsJump);
 
 /// If `jumpType == JUMP_TYPE_DEFAULT`, `jumpSrc` is ignored.
 /// Jump amount is any 32 bit signed integer, but must be in range of function bytecode.
 Bytecode cubs_operands_make_jump(enum JumpType jumpType, int32_t jumpAmount, uint16_t jumpSrc);
+
+#pragma endregion
+
+#pragma region Sync
+
+enum SyncType {
+    SYNC_TYPE_SYNC = 0,
+    SYNC_TYPE_UNSYNC = 1,
+
+    RESERVE_BITS_SYNC_TYPE = 1,
+};
+
+enum SyncLockType {
+    SYNC_LOCK_TYPE_READ = 0,
+    SYNC_LOCK_TYPE_WRITE = 1,
+
+    RESERVE_BITS_SYNC_LOCK_TYPE = 1,
+};
+
+typedef struct {
+    uint16_t src;
+    enum SyncLockType lock;
+} SyncLockSource;
+
+typedef struct {
+    uint16_t src: BITS_PER_STACK_OPERAND;
+    uint16_t lock: RESERVE_BITS_SYNC_LOCK_TYPE;
+} OperandsSyncLockSource;
+_Static_assert(sizeof(OperandsSyncLockSource) == sizeof(uint16_t), "SyncLockSource must only occupy 2 bytes");
+
+/// Holds the first and second sources inline the operands. Any further sync sources will need
+typedef struct {
+    uint16_t reserveOpcode: OPCODE_USED_BITS;
+    uint16_t opType: RESERVE_BITS_SYNC_TYPE;
+    /// If `opType == SYNC_TYPE_SYNC`, is the amount of things to lock and is always non-zero, otherwise unused. 
+    uint16_t num: BITS_PER_STACK_OPERAND;
+    /// If `opType != SYNC_TYPE_SYNC`, unused. Inline the first sync source in the operands. Is an instance of SyncLockSource.
+    /// Guaranteed to be used.
+    OperandsSyncLockSource src1;
+    /// If `opType != SYNC_TYPE_SYNC`, unused. Inline the second sync source in the operands. Is an instance of SyncLockSource.
+    OperandsSyncLockSource src2;
+} OperandsSync;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsSync);
+
+/// Reads up to `sources[num - 1]`
+void cubs_operands_make_sync(Bytecode* bytecodeArr, size_t availableBytecode, enum SyncType syncType, uint16_t num, const SyncLockSource* sources);
 
 #pragma endregion
 
@@ -159,6 +206,57 @@ typedef struct {
 } OperandsDeinit;
 
 Bytecode cubs_operands_make_deinit(uint16_t src);
+
+#pragma endregion
+
+#pragma region Move
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+} OperandsMove;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsMove);
+/// Debug asserts `dst != src`.
+Bytecode cubs_operands_make_move(uint16_t dst, uint16_t src);
+
+#pragma endregion
+
+#pragma region Clone
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+} OperandsClone;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsClone);
+/// Debug asserts `dst != src`.
+Bytecode cubs_operands_make_clone(uint16_t dst, uint16_t src);
+
+#pragma endregion
+
+#pragma region Compare
+
+enum CompareOperationType {
+    COMPARE_OP_EQUAL = 0,
+    COMPARE_OP_NOT_EQUAL = 1,
+    COMPARE_OP_LESS = 2,
+    COMPARE_OP_GREATER = 3,
+    COMPARE_OP_LESS_OR_EQUAL = 4,
+    COMPARE_OP_GREATER_OR_EQUAL = 5,
+};
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src1: BITS_PER_STACK_OPERAND;
+    uint64_t src2: BITS_PER_STACK_OPERAND;
+} OperandsUnknownCompare;
+
+typedef OperandsUnknownCompare OperandsEqual;
+typedef OperandsUnknownCompare OperandsNotEqual;
+
+Bytecode cubs_operands_make_compare(enum CompareOperationType compareType, uint16_t dst, uint16_t src1, uint16_t src2);
 
 #pragma endregion
 

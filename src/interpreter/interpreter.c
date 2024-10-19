@@ -1,6 +1,7 @@
 #include "interpreter.h"
 #include "bytecode.h"
 #include "operations.h"
+#include "stack.h"
 #include <stdio.h>
 #include "../util/unreachable.h"
 #include <assert.h>
@@ -16,234 +17,13 @@
 #include "../primitives/error/error.h"
 #include "../primitives/result/result.h"
 #include "../util/math.h"
-#include <string.h>
 #include "function_definition.h"
 #include "../program/function_call_args.h"
 #include "../util/context_size_round.h"
+#include "../sync/sync_queue.h"
 
 extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
 extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
-
-static bool ptr_is_aligned(const void* p, size_t alignment) {
-    return (((uintptr_t)p) % alignment) == 0;
-}
-
-typedef struct InterpreterStackState {
-    const Bytecode* instructionPointer;
-    /// Offset from `stack` and `tags` indicated where the next frame should start
-    size_t nextBaseOffset;
-    InterpreterStackFrame frame;
-    size_t stack[CUBS_STACK_SLOTS];
-    uintptr_t contexts[CUBS_STACK_SLOTS];
-} InterpreterStackState;
-
-static _Thread_local InterpreterStackState threadLocalStack = {0};
-
-void cubs_interpreter_push_frame(size_t frameLength, void* returnValueDst, const CubsTypeContext** returnContextDst) {
-    assert(frameLength <= MAX_FRAME_LENGTH);
-    { // store previous instruction pointer, frame length, return dst, and return tag dst
-        size_t* basePointer = &((size_t*)threadLocalStack.stack)[threadLocalStack.nextBaseOffset];
-        if(threadLocalStack.nextBaseOffset == 0) {
-            basePointer[OLD_INSTRUCTION_POINTER]    = 0;
-            basePointer[OLD_FRAME_LENGTH]           = 0;
-            basePointer[OLD_RETURN_VALUE_DST]       = 0;
-            basePointer[OLD_RETURN_CONTEXT_DST]     = 0;
-        } else {
-            basePointer[OLD_INSTRUCTION_POINTER]    = (size_t)((const void*)threadLocalStack.instructionPointer); // cast ptr to size_t
-            basePointer[OLD_FRAME_LENGTH]           = threadLocalStack.frame.frameLength;
-            basePointer[OLD_RETURN_VALUE_DST]       = (size_t)threadLocalStack.frame.returnValueDst;
-            basePointer[OLD_RETURN_CONTEXT_DST]     = (size_t)threadLocalStack.frame.returnContextDst;
-        }
-    }
-
-    const InterpreterStackFrame newFrame = {
-        .basePointerOffset = threadLocalStack.nextBaseOffset,
-        .frameLength = frameLength,
-        .returnValueDst = returnValueDst,
-        .returnContextDst = returnContextDst
-    };
-    threadLocalStack.frame = newFrame;
-    threadLocalStack.nextBaseOffset += frameLength + RESERVED_SLOTS;  
-}
-
-void cubs_interpreter_pop_frame()
-{
-    assert(threadLocalStack.nextBaseOffset != 0 && "No more frames to pop!");
-
-    const size_t offset = threadLocalStack.frame.frameLength + RESERVED_SLOTS;
-
-    threadLocalStack.nextBaseOffset -= offset;
-    if(threadLocalStack.nextBaseOffset == 0) {
-        return;
-    }
-
-    size_t* const basePointer = &((size_t*)threadLocalStack.stack)[threadLocalStack.frame.basePointerOffset];
-    const size_t oldInstructionPointer = basePointer[OLD_INSTRUCTION_POINTER];
-    const size_t oldFrameLength = basePointer[OLD_FRAME_LENGTH];
-    void* const oldReturnValueDst = (void*)basePointer[OLD_RETURN_VALUE_DST];
-    const CubsTypeContext** const oldReturnTagDst = (const CubsTypeContext**)basePointer[OLD_RETURN_CONTEXT_DST];
-
-    const InterpreterStackFrame newFrame = {
-        .basePointerOffset = threadLocalStack.nextBaseOffset - oldFrameLength - RESERVED_SLOTS,
-        .frameLength = oldFrameLength,
-        .returnValueDst = oldReturnValueDst,
-        .returnContextDst = oldReturnTagDst
-    };   
-    threadLocalStack.frame = newFrame;
-}
-
-InterpreterStackFrame cubs_interpreter_current_stack_frame()
-{
-    return threadLocalStack.frame;
-}
-
-const Bytecode *cubs_interpreter_get_instruction_pointer()
-{
-    return threadLocalStack.instructionPointer;
-}
-
-void *cubs_interpreter_stack_value_at(size_t offset)
-{
-    assert(offset < threadLocalStack.frame.frameLength);
-    return (void*)(&threadLocalStack.stack[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS]);
-}
-
-const CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset)
-{
-    assert(offset < threadLocalStack.frame.frameLength);
-    uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
-    // Mask away the ref tag bit
-    const CubsTypeContext* context = (const CubsTypeContext*)(contextPtr & ~(1ULL));
-    return context;
-}
-
-const CubsTypeContext** cubs_interpreter_stack_context_ptr_at(size_t offset) 
-{
-    assert(offset < threadLocalStack.frame.frameLength);
-    return (const CubsTypeContext**)&threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
-}
-
-static bool is_owning_context_at(size_t offset) {
-    assert(offset < threadLocalStack.frame.frameLength);
-    uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
-
-    return (contextPtr & 1ULL) == 0;
-}
-
-static void stack_set_context_at(size_t offset, const CubsTypeContext* context, bool isReference) {
-    _Static_assert(_Alignof(CubsTypeContext) > 1, "Bottom bit needs to be free for internal use");
-    assert(ptr_is_aligned(context, _Alignof(CubsTypeContext)));
-    assert(offset < threadLocalStack.frame.frameLength);
-    assert((offset + context->sizeOfType) < ((threadLocalStack.frame.frameLength + 1) * sizeof(size_t)));
-
-    uintptr_t contextPtr = (uintptr_t)context;
-    uintptr_t refTag = (uintptr_t)isReference;
-    
-    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS] = contextPtr | refTag;
-    if(context->sizeOfType > 8) {
-        for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset  + RESERVED_SLOTS + i] = (uintptr_t)NULL;
-        }
-    }
-}
-
-void cubs_interpreter_stack_unwind_frame() {
-    uintptr_t* start = &threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + RESERVED_SLOTS];
-    for(size_t i = 0; i < threadLocalStack.frame.frameLength; i++) {
-        const CubsTypeContext* context = cubs_interpreter_stack_context_at(i);
-        const bool isOwningContext = is_owning_context_at(i);        
-        if(context == NULL || !isOwningContext) {
-            continue;
-        }
-
-        cubs_context_fast_deinit(cubs_interpreter_stack_value_at(i), context);
-
-        // While technically it makes the most sense to set to NULL earlier, since nothing gets executed if the type has no destructor,
-        // leaving a previous context for a "dumb" type, such as an integer, is fine.
-        cubs_interpreter_stack_set_null_context_at(i); // set context to NULL
-    }
-}
-
-void cubs_interpreter_stack_set_context_at(size_t offset, const CubsTypeContext* context)
-{
-    stack_set_context_at(offset, context, false);
-}
-
-void cubs_interpreter_stack_set_reference_context_at(size_t offset, const CubsTypeContext *context)
-{
-    stack_set_context_at(offset, context, true);
-}
-
-void cubs_interpreter_stack_set_null_context_at(size_t offset)
-{
-    threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS] = 0;
-}
-
-void cubs_interpreter_set_instruction_pointer(const Bytecode *newIp)
-{
-    assert(newIp != NULL);
-    threadLocalStack.instructionPointer = newIp;
-}
-
-void cubs_interpreter_push_script_function_arg(const void *arg, const CubsTypeContext *context, size_t offset)
-{
-    const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
-
-    memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
-    threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
-    if(context->sizeOfType > 8) {
-        for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[actualOffset + i] = (uintptr_t)NULL;
-        }
-    }
-}
-
-void cubs_interpreter_push_c_function_arg(const void* arg, const struct CubsTypeContext* context, size_t offset, size_t currentArgCount, size_t argTrackOffset)
-{
-    const size_t actualOffset = threadLocalStack.nextBaseOffset + RESERVED_SLOTS + offset;
-    // integer division.
-    // structs with a size less than or equal to 8 will have the track offset set to +1,
-    // otherwise it will be pushed further
-    const size_t newArgTrackOffset = actualOffset + 
-    (ROUND_SIZE_TO_MULTIPLE_OF_8(context->sizeOfType) / 8);
-    if(argTrackOffset > 0) { // with an offset other than 0, it means args have already been pushed.
-        const size_t bytesToMove = sizeof(size_t) + (sizeof(size_t) * (1 + (currentArgCount / 4)));
-        memmove((void*)&threadLocalStack.stack[newArgTrackOffset], (const void*)&threadLocalStack.stack[threadLocalStack.nextBaseOffset + RESERVED_SLOTS + argTrackOffset], bytesToMove); // `offset`
-    }
-    
-    memcpy((void*)&threadLocalStack.stack[actualOffset], arg, context->sizeOfType);
-
-    threadLocalStack.stack[newArgTrackOffset] = currentArgCount + 1;
-    uint16_t* offsetsArrayStart = (uint16_t*)&threadLocalStack.stack[newArgTrackOffset + 1]; // one after the argument count tracker
-    offsetsArrayStart[currentArgCount] = (uint16_t)offset;
-
-    threadLocalStack.contexts[actualOffset] = (uintptr_t)context;
-    if(context->sizeOfType > 8) {
-        for(size_t i = 1; i < (context->sizeOfType / 8); i++) {
-            threadLocalStack.contexts[actualOffset + i] = (uintptr_t)NULL;
-        }
-    }
-}
-
-void cubs_function_take_arg(const CubsCFunctionHandler *self, size_t argIndex, void *outArg, const CubsTypeContext **outContext)
-{
-    assert(outArg != NULL);
-    assert(self->argCount > argIndex);
-
-    const size_t startOfArgPositions = self->_frameBaseOffset + RESERVED_SLOTS + (size_t)self->_offsetForArgs + 1; // add one to make room for arg count
-    const uint16_t* argPositions = (const uint16_t*)&threadLocalStack.stack[startOfArgPositions];
-    const size_t actualArgPosition = argPositions[argIndex];
-
-    const CubsTypeContext* context = cubs_interpreter_stack_context_at(actualArgPosition);
-    assert(context != NULL);
-
-    memcpy(outArg, cubs_interpreter_stack_value_at(actualArgPosition), context->sizeOfType);
-    cubs_interpreter_stack_set_null_context_at(actualArgPosition);
-
-    if(outContext != NULL) {
-        *outContext = context;
-    }
-}
 
 static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
     const OperandsLoadUnknown unknownOperands = *(const OperandsLoadUnknown*)bytecode;
@@ -271,7 +51,7 @@ static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
             assert(operands.immediateValueTag != _CUBS_VALUE_TAG_NONE);
             assert(operands.immediateValueTag != cubsValueTagBool && "Don't use 64 bit immediate load for booleans");
 
-            const uint64_t immediate = threadLocalStack.instructionPointer[1].value;
+            const uint64_t immediate = bytecode[1].value;
             *((uint64_t*)cubs_interpreter_stack_value_at(operands.dst)) = immediate; // will reinterpret cast
             cubs_interpreter_stack_set_context_at(operands.dst, cubs_primitive_context_for_tag(operands.immediateValueTag));      
             (*ipIncrement) += 1; // move instruction pointer further into the bytecode
@@ -304,26 +84,26 @@ static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_STRING_CONTEXT);
                 } break;
                 case cubsValueTagArray: {
-                    const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
+                    const CubsTypeContext* context = (const CubsTypeContext*)bytecode[1].value;
                     *(CubsArray*)dst = cubs_array_init(context);
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_ARRAY_CONTEXT);
                     (*ipIncrement) += 1; // move instruction pointer further into the bytecode
                 } break;
                 case cubsValueTagSet: {
-                    const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
+                    const CubsTypeContext* context = (const CubsTypeContext*)bytecode[1].value;
                     *(CubsSet*)dst = cubs_set_init(context);
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_SET_CONTEXT);
                     (*ipIncrement) += 1; // move instruction pointer further into the bytecode
                 } break;
                 case cubsValueTagMap: {
-                    const CubsTypeContext* keyContext = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
-                    const CubsTypeContext* valueContext = (const CubsTypeContext*)threadLocalStack.instructionPointer[2].value;
+                    const CubsTypeContext* keyContext = (const CubsTypeContext*)bytecode[1].value;
+                    const CubsTypeContext* valueContext = (const CubsTypeContext*)bytecode[2].value;
                     *(CubsMap*)dst = cubs_map_init(keyContext, valueContext);
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_MAP_CONTEXT);
                     (*ipIncrement) += 2; // move instruction pointer further into the bytecode
                 } break;
                 case cubsValueTagOption: {
-                    const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[1].value;
+                    const CubsTypeContext* context = (const CubsTypeContext*)bytecode[1].value;
                     *(CubsOption*)dst = cubs_option_init(context, NULL);
                     cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_SET_CONTEXT);
                     (*ipIncrement) += 1; // move instruction pointer further into the bytecode
@@ -334,66 +114,6 @@ static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
                 case cubsValueTagResult: {
                     cubs_panic("Results do not have a default value");
                 } break;
-                case cubsValueTagVec2i: {
-                    cubs_panic("TODO vec2i");
-                    // const CubsVec2i zeroVec = {0};
-                    // *(CubsVec2i*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec2i) == (2 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec3i: {
-                    cubs_panic("TODO vec3i");
-                    // const CubsVec3i zeroVec = {0};
-                    // *(CubsVec3i*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec3i) == (3 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec4i: {
-                    cubs_panic("TODO vec4i");
-                    // const CubsVec4i zeroVec = {0};
-                    // *(CubsVec4i*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec4i) == (4 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec2f: {
-                    cubs_panic("TODO vec2f");
-                    // const CubsVec2f zeroVec = {0};
-                    // *(CubsVec2f*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec2f) == (2 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec3f: {
-                    cubs_panic("TODO vec3f");
-                    // const CubsVec3f zeroVec = {0};
-                    // *(CubsVec3f*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec3f) == (3 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                } break;
-                case cubsValueTagVec4f: {
-                    cubs_panic("TODO vec4f");
-                    // const CubsVec4f zeroVec = {0};
-                    // *(CubsVec4f*)dst = zeroVec;
-                    // _Static_assert(sizeof(CubsVec4f) == (4 * sizeof(size_t)), "");
-                    // // Must make sure the slots that the array uses are unused
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 1, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 2, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 3, _CUBS_VALUE_TAG_NONE);
-                    // cubs_interpreter_stack_set_tag_at(operands.dst + 4, _CUBS_VALUE_TAG_NONE);
-                } break;
                 default: {
                     cubs_panic("unimplemented default initialization for type");
                 } break;
@@ -402,8 +122,8 @@ static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
         case LOAD_TYPE_CLONE_FROM_PTR: {
             const OperandsLoadCloneFromPtr operands = *(const OperandsLoadCloneFromPtr*)bytecode;
 
-            const void* immediate = (const void*)(uintptr_t)threadLocalStack.instructionPointer[1].value;
-            const CubsTypeContext* context = (const CubsTypeContext*)threadLocalStack.instructionPointer[2].value;
+            const void* immediate = (const void*)(uintptr_t)bytecode[1].value;
+            const CubsTypeContext* context = (const CubsTypeContext*)bytecode[2].value;
 
             assert(immediate != NULL);
             assert(context != NULL);
@@ -425,16 +145,17 @@ static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
 static void execute_return(int64_t* const ipIncrement, const Bytecode bytecode) {
     const OperandsReturn operands = *(const OperandsReturn*)&bytecode;
 
-    if(operands.hasReturn) {      
-        assert(threadLocalStack.frame.returnValueDst != NULL);
-        assert(threadLocalStack.frame.returnContextDst != NULL);
+    if(operands.hasReturn) {
+        const CubsFunctionReturn ret = cubs_interpreter_return_dst();
+        assert(ret.value != NULL);
+        assert(ret.context != NULL);
 
         void* src = cubs_interpreter_stack_value_at(operands.returnSrc);
         const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.returnSrc);
         cubs_interpreter_stack_set_null_context_at(operands.returnSrc);
 
-        memcpy(threadLocalStack.frame.returnValueDst, src, context->sizeOfType);
-        *threadLocalStack.frame.returnContextDst = context;
+        memcpy(ret.value, src, context->sizeOfType);
+        *ret.context = context;
     }
 
     cubs_interpreter_stack_unwind_frame();
@@ -445,6 +166,7 @@ static void execute_call(int64_t* const ipIncrement, const Bytecode* bytecode) {
     const OperandsCallUnknown operands = *(const OperandsCallUnknown*)&bytecode[0];
     const enum CallType opType = (enum CallType)operands.opType;
     const unsigned int argCount = (unsigned int)operands.argCount;
+    void* returnSrc;
 
     const uint16_t* argsSrcs = NULL;
     CubsFunction func = {0};
@@ -543,6 +265,120 @@ static void execute_deinit(const Bytecode bytecode) {
     cubs_interpreter_stack_set_null_context_at(operands.src);
 }
 
+static void sync_value_at(OperandsSyncLockSource src) {
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(src.src);
+    const enum SyncLockType lockType = (enum SyncLockType)src.lock;
+    void* value = cubs_interpreter_stack_value_at(src.src);
+    if(context == &CUBS_UNIQUE_CONTEXT) {
+        if(src.lock == SYNC_LOCK_TYPE_READ) {
+            cubs_sync_queue_unique_add_shared((const struct CubsUnique*)value);
+        } else {
+            cubs_sync_queue_unique_add_exclusive((struct CubsUnique*)value);
+        }
+    } else if(context == &CUBS_SHARED_CONTEXT) {
+        if(src.lock == SYNC_LOCK_TYPE_READ) {
+            cubs_sync_queue_shared_add_shared((const struct CubsShared*)value);
+        } else {
+            cubs_sync_queue_shared_add_exclusive((struct CubsShared*)value);
+        }
+    } else if(context == &CUBS_WEAK_CONTEXT) {
+        if(src.lock == SYNC_LOCK_TYPE_READ) {
+            cubs_sync_queue_weak_add_shared((const struct CubsWeak*)value);
+        } else {
+            cubs_sync_queue_weak_add_exclusive((struct CubsWeak*)value);
+        }
+    } else {
+        cubs_panic("Cannot sync non-sync type");
+    }
+}
+
+static void execute_sync(int64_t* const ipIncrement, const Bytecode* bytecode) {
+    const OperandsSync operands = *(const OperandsSync*)&bytecode[0];
+    const enum SyncType syncType = (enum SyncType)operands.opType;
+    if(syncType == SYNC_TYPE_UNSYNC) {
+        cubs_sync_queue_unlock();
+    } else {
+        // first is guaranteed to get sync'd
+        sync_value_at(operands.src1);
+    
+        if(operands.num > 1) {
+            sync_value_at(operands.src2);
+
+            const OperandsSyncLockSource* sources = (const OperandsSyncLockSource*)&bytecode[1];
+
+            const size_t extended = operands.num - 2;
+            for(uint16_t i = 0; i < extended; i++) {
+                sync_value_at(sources[i]);
+            }
+
+            if(extended > 0) { // increment
+                /// Initial bytecode
+                int64_t requiredBytecode = 1;
+                if((extended % 4) == 0) {
+                    requiredBytecode += (extended / 4);
+                } else {
+                    requiredBytecode += (extended / 4) + 1;
+                }
+                *ipIncrement = requiredBytecode;
+            }
+        }
+
+        cubs_sync_queue_lock();
+    }
+}
+
+static void execute_move(const Bytecode bytecode) {
+    const OperandsMove operands = *(const OperandsMove*)&bytecode;
+
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src);
+    const void* src = cubs_interpreter_stack_value_at(operands.src);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+    memcpy(dst, src, context->sizeOfType);
+    cubs_interpreter_stack_set_context_at(operands.dst, context);
+    cubs_interpreter_stack_set_null_context_at(operands.src); // invalidate original location
+}
+
+static void execute_clone(const Bytecode bytecode) {
+    const OperandsClone operands = *(const OperandsClone*)&bytecode;
+
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src);
+    assert(context->clone.func.externC != NULL);
+    const void* src = cubs_interpreter_stack_value_at(operands.src);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+    cubs_context_fast_clone(dst, src, context);
+    cubs_interpreter_stack_set_context_at(operands.dst, context);
+}
+
+static void execute_equal(const Bytecode bytecode) {
+    const OperandsEqual operands = *(const OperandsEqual*)&bytecode;
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src1);
+    assert(context == cubs_interpreter_stack_context_at(operands.src2));
+
+    const void* src1 = cubs_interpreter_stack_value_at(operands.src1);
+    const void* src2 = cubs_interpreter_stack_value_at(operands.src2);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+
+    const bool eq = cubs_context_fast_eql(src1, src2, context);
+
+    *(bool*)dst = eq; // normal
+    cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_BOOL_CONTEXT);
+}
+
+static void execute_not_equal(const Bytecode bytecode) {
+    const OperandsNotEqual operands = *(const OperandsNotEqual*)&bytecode;
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src1);
+    assert(context == cubs_interpreter_stack_context_at(operands.src2));
+
+    const void* src1 = cubs_interpreter_stack_value_at(operands.src1);
+    const void* src2 = cubs_interpreter_stack_value_at(operands.src2);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+
+    const bool eq = cubs_context_fast_eql(src1, src2, context);
+
+    *(bool*)dst = !eq; // not
+    cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_BOOL_CONTEXT);
+}
+
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode bytecode) {
     const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src);
@@ -559,10 +395,8 @@ static CubsProgramRuntimeError execute_increment(const CubsProgram* program, con
                 char errBuf[256];
                 #if defined(_WIN32) || defined(WIN32)
                 const int len = sprintf_s(errBuf, 256, "Increment integer overflow detected -> %lld + 1\n", a);
-                #elif __APPLE__
-                const int len = sprintf(errBuf, "increment integer overflow detected -> %lld + 1\n", a);
                 #else
-                const int len = sprintf(errBuf, "increment integer overflow detected -> %ld + 1\n", a);
+                const int len = sprintf(errBuf, "increment integer overflow detected -> %lld + 1\n", a);
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorIncrementIntegerOverflow, errBuf, len);             
@@ -610,10 +444,8 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
                 char errBuf[256];
                 #if defined(_WIN32) || defined(WIN32)
                 const int len = sprintf_s(errBuf, 256, "Integer overflow detected -> %lld + %lld\n", a, b);
-                #elif __APPLE__
-                const int len = sprintf(errBuf, "Integer overflow detected -> %lld + %lld\n", a, b);
                 #else
-                const int len = sprintf(errBuf, "Integer overflow detected -> %ld + %ld\n", a, b);
+                const int len = sprintf(errBuf, "Integer overflow detected -> %lld + %lld\n", a, b);
                 #endif
                 assert(len >= 0);           
                 _cubs_internal_program_runtime_error(program, cubsProgramRuntimeErrorAdditionIntegerOverflow, errBuf, len);             
@@ -660,8 +492,8 @@ static CubsProgramRuntimeError execute_add(const CubsProgram *program, const Byt
 CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *program)
 {
     int64_t ipIncrement = 1;
-    const Bytecode bytecode = *threadLocalStack.instructionPointer;
-    const OpCode opcode = cubs_bytecode_get_opcode(bytecode);
+    const Bytecode* instructionPointer = cubs_interpreter_get_instruction_pointer();
+    const OpCode opcode = cubs_bytecode_get_opcode(*instructionPointer);
 
     CubsProgramRuntimeError potentialErr = cubsProgramRuntimeErrorNone;
     switch(opcode) {
@@ -669,37 +501,52 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
             fprintf(stderr, "nop :)\n");
         } break;
         case OpCodeLoad: {
-            execute_load(&ipIncrement, threadLocalStack.instructionPointer);
+            execute_load(&ipIncrement, instructionPointer);
         } break;
         case OpCodeReturn: {
-            execute_return(&ipIncrement, bytecode);
+            execute_return(&ipIncrement, *instructionPointer);
         } break;
         case OpCodeCall: {
-            execute_call(&ipIncrement, threadLocalStack.instructionPointer);
+            execute_call(&ipIncrement, instructionPointer);
         } break;
         case OpCodeJump: {
-            execute_jump(&ipIncrement, bytecode);
+            execute_jump(&ipIncrement, *instructionPointer);
         } break;
         case OpCodeDeinit: {
-            execute_deinit(bytecode);
+            execute_deinit(*instructionPointer);
+        } break;
+        case OpCodeSync: {
+            execute_sync(&ipIncrement, instructionPointer);
+        } break;
+        case OpCodeMove: {
+            execute_move(*instructionPointer);
+        } break;
+        case OpCodeClone: {
+            execute_clone(*instructionPointer);
+        } break;
+        case OpCodeEqual: {
+            execute_equal(*instructionPointer);
+        } break;
+        case OpCodeNotEqual: {
+            execute_not_equal(*instructionPointer);
         } break;
         case OpCodeIncrement: {
-            potentialErr = execute_increment(program, bytecode);
+            potentialErr = execute_increment(program, *instructionPointer);
         } break;
         case OpCodeAdd: {
-            potentialErr = execute_add(program, bytecode);
+            potentialErr = execute_add(program, *instructionPointer);
         } break;
         default: {
             unreachable();
         } break;
     }
-    threadLocalStack.instructionPointer = &threadLocalStack.instructionPointer[ipIncrement];
+    cubs_interpreter_set_instruction_pointer(&instructionPointer[ipIncrement]);
     return potentialErr;
 }
 
 static CubsProgramRuntimeError interpreter_execute_continuous(const CubsProgram *program) {
     while(true) {
-        const Bytecode bytecode = *threadLocalStack.instructionPointer;
+        const Bytecode bytecode = *cubs_interpreter_get_instruction_pointer();
         const OpCode opcode = cubs_bytecode_get_opcode(bytecode);
         const bool isReturn = opcode == OpCodeReturn;
 
