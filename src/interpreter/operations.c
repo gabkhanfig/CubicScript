@@ -222,6 +222,28 @@ Bytecode cubs_operands_make_clone(uint16_t dst, uint16_t src)
     return b;
 }
 
+Bytecode cubs_operands_make_compare(enum CompareOperationType compareType, uint16_t dst, uint16_t src1, uint16_t src2)
+{    
+    assert(dst <= MAX_FRAME_LENGTH);
+    assert(src1 <= MAX_FRAME_LENGTH);
+    assert(src2 <= MAX_FRAME_LENGTH);
+    Bytecode b;
+    switch(compareType) {
+        case COMPARE_OP_EQUAL: {
+            BYTECODE_ALIGN const OperandsEqual operands = {.reserveOpcode = OpCodeEqual, .dst = dst, .src1 = src1, .src2 = src2};
+            b = *(const Bytecode*)&operands;
+        } break;
+        case COMPARE_OP_NOT_EQUAL: {
+            BYTECODE_ALIGN const OperandsNotEqual operands = {.reserveOpcode = OpCodeNotEqual, .dst = dst, .src1 = src1, .src2 = src2};
+            b = *(const Bytecode*)&operands;
+        } break;
+        default: {
+            cubs_panic("not implemented compare operation yet");
+        } break;
+    }
+    return b;
+}
+
 Bytecode operands_make_increment_dst(bool canOverflow, uint16_t dst, uint16_t src)
 {
     assert(dst <= MAX_FRAME_LENGTH);

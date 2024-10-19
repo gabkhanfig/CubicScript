@@ -235,6 +235,31 @@ Bytecode cubs_operands_make_clone(uint16_t dst, uint16_t src);
 
 #pragma endregion
 
+#pragma region Compare
+
+enum CompareOperationType {
+    COMPARE_OP_EQUAL = 0,
+    COMPARE_OP_NOT_EQUAL = 1,
+    COMPARE_OP_LESS = 2,
+    COMPARE_OP_GREATER = 3,
+    COMPARE_OP_LESS_OR_EQUAL = 4,
+    COMPARE_OP_GREATER_OR_EQUAL = 5,
+};
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src1: BITS_PER_STACK_OPERAND;
+    uint64_t src2: BITS_PER_STACK_OPERAND;
+} OperandsUnknownCompare;
+
+typedef OperandsUnknownCompare OperandsEqual;
+typedef OperandsUnknownCompare OperandsNotEqual;
+
+Bytecode cubs_operands_make_compare(enum CompareOperationType compareType, uint16_t dst, uint16_t src1, uint16_t src2);
+
+#pragma endregion
+
 enum MathOperationType {
     MATH_TYPE_DST,
     MATH_TYPE_SRC_ASSIGN,

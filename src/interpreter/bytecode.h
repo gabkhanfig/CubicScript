@@ -37,9 +37,9 @@ typedef enum OpCode {
     OpCodeClone,
     // TODO this operation
     OpCodeCast,
-    // TODO this operation
+    /// Performs `src1 == src2`, storing the bool result in dst.
     OpCodeEqual,
-    // TODO this operation
+    /// Performs `src1 != src2`, storing the bool result in dst.
     OpCodeNotEqual,
     // TODO this operation
     OpCodeLess,

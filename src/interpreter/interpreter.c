@@ -349,6 +349,38 @@ static void execute_clone(const Bytecode bytecode) {
     cubs_interpreter_stack_set_context_at(operands.dst, context);
 }
 
+static void execute_equal(const Bytecode bytecode) {
+    const OperandsEqual operands = *(const OperandsEqual*)&bytecode;
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src1);
+    assert(context == cubs_interpreter_stack_context_at(operands.src2));
+
+    const void* src1 = cubs_interpreter_stack_value_at(operands.src1);
+    const void* src2 = cubs_interpreter_stack_value_at(operands.src2);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+
+    const bool eq = cubs_context_fast_eql(src1, src2, context);
+
+    *(bool*)dst = eq; // normal
+    cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_BOOL_CONTEXT);
+}
+
+static void execute_not_equal(const Bytecode bytecode) {
+    const OperandsNotEqual operands = *(const OperandsNotEqual*)&bytecode;
+
+    const OperandsEqual operands = *(const OperandsEqual*)&bytecode;
+    const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src1);
+    assert(context == cubs_interpreter_stack_context_at(operands.src2));
+
+    const void* src1 = cubs_interpreter_stack_value_at(operands.src1);
+    const void* src2 = cubs_interpreter_stack_value_at(operands.src2);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+
+    const bool eq = cubs_context_fast_eql(src1, src2, context);
+
+    *(bool*)dst = !eq; // not
+    cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_BOOL_CONTEXT);
+}
+
 static CubsProgramRuntimeError execute_increment(const CubsProgram* program, const Bytecode bytecode) {
     const OperandsIncrementUnknown unknownOperands = *(const OperandsIncrementUnknown*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(unknownOperands.src);
@@ -493,6 +525,12 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         } break;
         case OpCodeClone: {
             execute_clone(*instructionPointer);
+        } break;
+        case OpCodeEqual: {
+            execute_equal(*instructionPointer);
+        } break;
+        case OpCodeNotEqual: {
+            execute_not_equal(*instructionPointer);
         } break;
         case OpCodeIncrement: {
             potentialErr = execute_increment(program, *instructionPointer);
