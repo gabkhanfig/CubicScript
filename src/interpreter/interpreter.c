@@ -366,8 +366,6 @@ static void execute_equal(const Bytecode bytecode) {
 
 static void execute_not_equal(const Bytecode bytecode) {
     const OperandsNotEqual operands = *(const OperandsNotEqual*)&bytecode;
-
-    const OperandsEqual operands = *(const OperandsEqual*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src1);
     assert(context == cubs_interpreter_stack_context_at(operands.src2));
 
