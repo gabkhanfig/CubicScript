@@ -1402,3 +1402,100 @@ test "equal" {
         c.cubs_string_deinit(src2);
     }
 }
+
+test "not equal" {
+    { // i64 not equal false
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_NOT_EQUAL, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == false);
+    }
+    { // i64 not equal true
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_NOT_EQUAL, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 26;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+    }
+    { // string not equal false
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_NOT_EQUAL, 8, 0, 4);
+        c.cubs_interpreter_push_frame(9, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(8))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(4, &c.CUBS_STRING_CONTEXT);
+
+        const s1 = "holy guacamole this is excellent!";
+        const s2 = s1;
+        src1.* = c.cubs_string_init_unchecked(.{ .str = s1.ptr, .len = s1.len });
+        src2.* = c.cubs_string_init_unchecked(.{ .str = s2.ptr, .len = s2.len });
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(8) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == false);
+
+        c.cubs_string_deinit(src1);
+        c.cubs_string_deinit(src2);
+    }
+    { // string not equal true
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_NOT_EQUAL, 8, 0, 4);
+        c.cubs_interpreter_push_frame(9, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*c.CubsString, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(4))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(8))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_STRING_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(4, &c.CUBS_STRING_CONTEXT);
+
+        const s1 = "holy guacamole this is excellent!";
+        const s2 = "holy guacamole this isn't cool...";
+        src1.* = c.cubs_string_init_unchecked(.{ .str = s1.ptr, .len = s1.len });
+        src2.* = c.cubs_string_init_unchecked(.{ .str = s2.ptr, .len = s2.len });
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(8) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+
+        c.cubs_string_deinit(src1);
+        c.cubs_string_deinit(src2);
+    }
+}
