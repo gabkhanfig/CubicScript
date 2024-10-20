@@ -1,4 +1,5 @@
 #include "program.h"
+#include "program_internal.h"
 #include "../sync/locks.h"
 #include <stdio.h>
 #include "../platform/mem.h"

@@ -15,6 +15,7 @@ const c = @cImport({
     @cInclude("primitives/set/set.h");
     @cInclude("primitives/map/map.h");
     @cInclude("program/program.h");
+    @cInclude("program/program_internal.h");
 });
 
 fn ScriptContextTestRuntimeError(comptime errTag: c.CubsProgramRuntimeError) type {

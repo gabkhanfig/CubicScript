@@ -4,7 +4,7 @@
 
 CubsModule cubs_module_clone(const CubsModule *self)
 {
-    const CubsModule newModule = {.name = cubs_String_clone(&self->name), .rootSource = self->rootSource};
+    const CubsModule newModule = {.name = cubs_string_clone(&self->name), .rootSource = self->rootSource};
     return newModule;
 }
 
