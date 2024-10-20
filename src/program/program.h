@@ -41,7 +41,7 @@ typedef struct CubsProgramInitParams {
     CubsProgramContext* context;
 } CubsProgramInitParams;
 
-CubsProgram cubs_program_compile(CubsProgramInitParams params, CubsBuildOptions build);
+CubsProgram cubs_program_compile(CubsProgramInitParams params, const CubsBuildOptions* build);
 
 /// If `params.context == NULL`, uses the default context. Otherwise, copies `params.context`, taking ownership of it, 
 /// and setting the original reference to `NULL`, ie. `params.context->ptr = NULL`.

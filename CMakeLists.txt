@@ -23,6 +23,7 @@ add_library(CubicScript STATIC
     "src/interpreter/function_definition.c"
     "src/interpreter/operations.c"
     "src/interpreter/stack.c"
+    "src/compiler/build_options.c"
     "src/sync/atomic.c"
     "src/sync/locks.c"
     "src/sync/sync_queue.c"

@@ -122,6 +122,7 @@
         "context.h": "c",
         "operations.h": "c",
         "sync_queue.h": "c",
-        "result.h": "c"
+        "result.h": "c",
+        "build_options.h": "c"
     }
 }
