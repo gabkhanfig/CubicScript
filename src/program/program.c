@@ -54,6 +54,12 @@ static Inner* as_inner_mut(CubsProgram* self) {
     return (Inner*)self->_inner;
 }
 
+CubsProgram cubs_program_compile(CubsProgramInitParams params, CubsBuildOptions build)
+{
+    CubsProgram self = cubs_program_init(params);
+    return self;
+}
+
 CubsProgram cubs_program_init(CubsProgramInitParams params)
 {
     CubsProgramContext context;
