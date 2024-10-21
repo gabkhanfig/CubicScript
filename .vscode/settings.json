@@ -124,6 +124,7 @@
         "sync_queue.h": "c",
         "result.h": "c",
         "build_options.h": "c",
-        "locks.h": "c"
+        "locks.h": "c",
+        "program_internal.h": "c"
     }
 }
