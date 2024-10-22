@@ -8,6 +8,8 @@ comptime {
     _ = @import("interpreter/function_definition.zig");
     _ = @import("program/protected_arena.zig");
 
+    _ = @import("compiler/parser.zig");
+
     // Many tests are within the structs themselves, so importing .ScriptThread for example is necessary.
     _ = @import("sync/thread.zig").ScriptThread;
     _ = @import("sync/locks.zig").Mutex;
