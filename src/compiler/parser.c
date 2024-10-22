@@ -1,4 +1,6 @@
 #include "parser.h"
+#include <assert.h>
+#include <stdio.h>
 
 // TODO figure out fast way to get the token.
 // Could look at SIMD, or hashing, or even 8 byte compare if all tokens (not identifiers)
@@ -14,28 +16,60 @@ typedef struct NextToken {
     size_t newColumn;
 } NextToken;
 
-/// Checks if `source` starts with `find`, and that the character after the substring isn't an invalid characters.
-/// The valid characters that can be after are `' '`, `'\n'`, `'\t'`, `','`, `'.'`, `';'`. 
-static bool has_substring_and_valid_token(CubsStringSlice source, CubsStringSlice find) {
+// /// The valid characters that can be after are `' '`, `'\n'`, `'\t'`, `','`, `'.'`, `';'`. 
+
+/// Checks if `source` starts with `find`.
+static bool starts_with_substring(const CubsStringSlice source, const CubsStringSlice find) {
     size_t i = 0;
     for(; i < find.len; i++) {
+        if(source.len <= i) {
+            return false;
+        }
         if(source.str[i] != find.str[i]) {
             return false;
         }
     }
-
-    const char charAfterToken = source.str[i];
-    if(charAfterToken == ' ' || charAfterToken == '\n' || charAfterToken == '\t' 
-        || charAfterToken == ','|| charAfterToken == '.'|| charAfterToken == ';')
-    {
-        return true;
-    } else {
-        return false;
-    }
+    return true;
+    // const char charAfterToken = source.str[i];
+    // if(charAfterToken == ' ' || charAfterToken == '\n' || charAfterToken == '\t' 
+    //     || charAfterToken == ','|| charAfterToken == '.'|| charAfterToken == ';')
+    // {
+    //     return true;
+    // } else {
+    //     return false;
+    // }
 }
 
+static const CubsStringSlice CONST_KEYWORD_SLICE = {.str = "const", .len = 5};
+
 static NextToken get_next_token(const ParserIter* self) {
-    const NextToken next = {0};
+    const NextToken noneNext = {0};
+
+    Token found = TOKEN_NONE;
+    CubsStringSlice foundSlice = {0};
+    NextToken next = {0};
+    next.newLine = self->currentLine;
+    next.newColumn = self->currentColumn;
+
+    if(self->currentPosition >= self->source.len) {
+        return next;
+    } else {
+        const CubsStringSlice tokenStart = {
+            .str = &self->source.str[self->currentPosition], 
+            .len = self->source.len - self->currentPosition
+        };
+
+        if(starts_with_substring(tokenStart, CONST_KEYWORD_SLICE)) {
+            found = CONST_KEYWORD;
+            foundSlice = CONST_KEYWORD_SLICE;
+        } else {
+            return next;
+        }
+    }
+
+    next.hasNextToken = true;
+    next.next = found;
+    next.newPosition = self->currentPosition + foundSlice.len;
     return next;
 }
 
@@ -50,16 +84,31 @@ ParserIter cubs_parser_iter_init(CubsStringSlice source)
         .next = TOKEN_NONE,
     };
 
+    const NextToken next = get_next_token(&self);
+    if(next.hasNextToken) {
+        self.currentPosition = next.newPosition;
+        self.currentLine = next.newLine;
+        self.currentColumn = next.newColumn;
+        self.next = next.next;
+    }
 
     return self;
 }
 
 Token cubs_parser_iter_next(ParserIter *self)
 {
-    return TOKEN_NONE;
+    const NextToken next = get_next_token(self);
+    if(next.hasNextToken) {
+        self->currentPosition = next.newPosition;
+        self->currentLine = next.newLine;
+        self->currentColumn = next.newColumn;
+        self->next = next.next;
+    } else {
+        return TOKEN_NONE;
+    }
 }
 
 Token cubs_parser_iter_peek(const ParserIter *self)
 {
-    return TOKEN_NONE;
+    return self->next;
 }
