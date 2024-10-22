@@ -21,6 +21,7 @@ typedef struct NextToken {
 /// Checks if `source` starts with `find`.
 static bool starts_with_substring(const CubsStringSlice source, const CubsStringSlice find) {
     size_t i = 0;
+    fprintf(stderr, "searching for keyword [%s] in source [%s]\n", find.str, source.str);
     for(; i < find.len; i++) {
         if(source.len <= i) {
             return false;
@@ -98,14 +99,18 @@ ParserIter cubs_parser_iter_init(CubsStringSlice source)
 Token cubs_parser_iter_next(ParserIter *self)
 {
     const NextToken next = get_next_token(self);
+    const Token oldNext = self->next;
     if(next.hasNextToken) {
         self->currentPosition = next.newPosition;
         self->currentLine = next.newLine;
         self->currentColumn = next.newColumn;
+        self->current = self->next;
         self->next = next.next;
     } else {
-        return TOKEN_NONE;
+        self->current = self->next;
+        self->next = TOKEN_NONE;
     }
+    return oldNext;
 }
 
 Token cubs_parser_iter_peek(const ParserIter *self)
