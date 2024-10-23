@@ -21,7 +21,6 @@ typedef struct NextToken {
 /// Checks if `source` starts with `find`.
 static bool starts_with_substring(const CubsStringSlice source, const CubsStringSlice find) {
     size_t i = 0;
-    fprintf(stderr, "searching for keyword [%s] in source [%s]\n", find.str, source.str);
     for(; i < find.len; i++) {
         if(source.len <= i) {
             return false;
@@ -41,6 +40,44 @@ static bool starts_with_substring(const CubsStringSlice source, const CubsString
     // }
 }
 
+/// Skips over any whitespace or newlines. Returns an empty slice if there is no token start from the iters
+/// current position within the source string slice.
+static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t* outOffset) {
+    
+    const CubsStringSlice tempStart = {
+        .str = &self->source.str[self->currentPosition], 
+        .len = self->source.len - self->currentPosition
+    };
+    size_t i = 0;
+    for(; i < tempStart.len; i++) {
+        const char c = tempStart.str[i];
+        if(c == ' ' || c == '\t' || c == '\n') {
+            continue;
+        }
+        if(c == '\r') { // CRLF
+            if((i + 1) < tempStart.len) {
+                if(tempStart.str[i + 1] == '\n') { 
+                    i += 1; // step further
+                    continue;
+                } 
+            }
+        }
+
+        const CubsStringSlice tokenStart = {
+            .str = &tempStart.str[i], 
+            .len = tempStart.len - i,
+        };
+        *outOffset = i;
+        return tokenStart;
+    }
+
+    const CubsStringSlice empty = {
+        .str = NULL, 
+        .len = 0
+    };
+    return empty;
+}
+
 static const CubsStringSlice CONST_KEYWORD_SLICE = {.str = "const", .len = 5};
 
 static NextToken get_next_token(const ParserIter* self) {
@@ -51,14 +88,12 @@ static NextToken get_next_token(const ParserIter* self) {
     NextToken next = {0};
     next.newLine = self->currentLine;
     next.newColumn = self->currentColumn;
+    size_t whitespaceOffset = 0;
 
     if(self->currentPosition >= self->source.len) {
         return next;
     } else {
-        const CubsStringSlice tokenStart = {
-            .str = &self->source.str[self->currentPosition], 
-            .len = self->source.len - self->currentPosition
-        };
+        const CubsStringSlice tokenStart = get_next_token_start_slice(self, &whitespaceOffset);
 
         if(starts_with_substring(tokenStart, CONST_KEYWORD_SLICE)) {
             found = CONST_KEYWORD;
@@ -70,7 +105,7 @@ static NextToken get_next_token(const ParserIter* self) {
 
     next.hasNextToken = true;
     next.next = found;
-    next.newPosition = self->currentPosition + foundSlice.len;
+    next.newPosition = self->currentPosition + foundSlice.len + whitespaceOffset;
     return next;
 }
 
