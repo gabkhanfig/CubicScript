@@ -99,8 +99,6 @@ test "parse keyword const with whitespace characters" {
         try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
-        std.debug.print("found peek token {}\n", .{parserIterPeek(parser)});
-
         try expect(parserIterPeek(parser) == c.TOKEN_NONE);
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
@@ -136,6 +134,68 @@ test "parse keyword const with whitespace characters" {
 
         try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+
+        try expect(parserIterPeek(parser) == c.TOKEN_NONE);
+        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+    }
+}
+
+test "parse const with characters after" {
+    { // valid token
+        { // space
+            var parser = parserIterInit("const ");
+
+            try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
+            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+
+            try expect(parserIterPeek(parser) == c.TOKEN_NONE);
+            try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        }
+        { // new line
+            var parser = parserIterInit("const\n");
+
+            try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
+            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+
+            try expect(parserIterPeek(parser) == c.TOKEN_NONE);
+            try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        }
+        { // tab
+            var parser = parserIterInit("const\t");
+
+            try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
+            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+
+            try expect(parserIterPeek(parser) == c.TOKEN_NONE);
+            try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        }
+        { // carriage return
+            var parser = parserIterInit("const\r");
+
+            try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
+            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        }
+        { // comma
+            var parser = parserIterInit("const,");
+
+            try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
+            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        }
+        { // period
+            var parser = parserIterInit("const.");
+
+            try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
+            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        }
+        { // semicolon
+            var parser = parserIterInit("const;");
+
+            try expect(parserIterPeek(parser) == c.CONST_KEYWORD);
+            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        }
+    }
+    { // invalid token
+        var parser = parserIterInit("constt");
 
         try expect(parserIterPeek(parser) == c.TOKEN_NONE);
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
