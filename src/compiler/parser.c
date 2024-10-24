@@ -29,15 +29,18 @@ static bool starts_with_substring(const CubsStringSlice source, const CubsString
             return false;
         }
     }
-    return true;
-    // const char charAfterToken = source.str[i];
-    // if(charAfterToken == ' ' || charAfterToken == '\n' || charAfterToken == '\t' 
-    //     || charAfterToken == ','|| charAfterToken == '.'|| charAfterToken == ';')
-    // {
-    //     return true;
-    // } else {
-    //     return false;
-    // }
+    if(source.len < i) {
+        return true; // end of source, thus no tokens are after
+    } else {
+        const char charAfterToken = source.str[i];
+        if(charAfterToken == ' ' || charAfterToken == '\n' || charAfterToken == '\t'  || charAfterToken == '\r'
+            || charAfterToken == ','|| charAfterToken == '.'|| charAfterToken == ';')
+        {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
 
 /// Skips over any whitespace or newlines. Returns an empty slice if there is no token start from the iters
