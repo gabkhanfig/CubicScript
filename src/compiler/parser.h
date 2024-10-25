@@ -111,6 +111,9 @@ typedef enum Token {
     STR_LITERAL,
 
     IDENTIFIER,
+    
+    // TODO should modulo be an operator? also should there be a distinction between modulo and remainder?
+    // TODO also power?
 
     ASSIGN_OPERATOR,
     EQUAL_OPERATOR,

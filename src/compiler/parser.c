@@ -81,7 +81,41 @@ static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t
     return empty;
 }
 
-static const CubsStringSlice CONST_KEYWORD_SLICE = {.str = "const", .len = 5};
+
+
+// static const CubsStringSlice _KEYWORD_SLICE = {.str = "", .len = };
+
+/// Define a static const variable named `name` as a string slice with the string content of `string`.
+#define TOKEN_CONSTANT(name, string) static const CubsStringSlice name = {.str = string, .len = sizeof(string) - 1}
+
+TOKEN_CONSTANT(CONST_KEYWORD_SLICE, "const");
+TOKEN_CONSTANT(MUT_KEYWORD_SLICE, "mut");
+TOKEN_CONSTANT(RETURN_KEYWORD_SLICE, "return");
+TOKEN_CONSTANT(FN_KEYWORD_SLICE, "fn");
+TOKEN_CONSTANT(PUB_KEYWORD_SLICE, "pub");
+TOKEN_CONSTANT(IF_KEYWORD_SLICE, "if");
+TOKEN_CONSTANT(ELSE_KEYWORD_SLICE, "else");
+TOKEN_CONSTANT(SWITCH_KEYWORD_SLICE, "switch");
+TOKEN_CONSTANT(WHILE_KEYWORD_SLICE, "while");
+TOKEN_CONSTANT(FOR_KEYWORD_SLICE, "for");
+TOKEN_CONSTANT(BREAK_KEYWORD_SLICE, "break");
+TOKEN_CONSTANT(CONTINUE_KEYWORD_SLICE, "continue");
+TOKEN_CONSTANT(STRUCT_KEYWORD_SLICE, "struct");
+TOKEN_CONSTANT(ENUM_KEYWORD_SLICE, "enum");
+TOKEN_CONSTANT(UNION_KEYWORD_SLICE, "union");
+TOKEN_CONSTANT(SYNC_KEYWORD_SLICE, "sync");
+TOKEN_CONSTANT(UNSAFE_KEYWORD_SLICE, "unsafe");
+TOKEN_CONSTANT(TRUE_KEYWORD_SLICE, "true");
+TOKEN_CONSTANT(FALSE_KEYWORD_SLICE, "false");
+TOKEN_CONSTANT(BOOL_KEYWORD_SLICE, "bool");
+TOKEN_CONSTANT(INT_KEYWORD_SLICE, "int");
+TOKEN_CONSTANT(FLOAT_KEYWORD_SLICE, "float");
+TOKEN_CONSTANT(STR_KEYWORD_SLICE, "str");
+TOKEN_CONSTANT(CHAR_KEYWORD_SLICE, "char");
+TOKEN_CONSTANT(IMPORT_KEYWORD_SLICE, "import");
+TOKEN_CONSTANT(MOD_KEYWORD_SLICE, "mod");
+TOKEN_CONSTANT(AND_KEYWORD_SLICE, "and");
+TOKEN_CONSTANT(OR_KEYWORD_SLICE, "or");
 
 static NextToken get_next_token(const ParserIter* self) {
     const NextToken noneNext = {0};
