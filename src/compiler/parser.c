@@ -29,7 +29,7 @@ static bool starts_with_substring(const CubsStringSlice source, const CubsString
             return false;
         }
     }
-    if(source.len < i) {
+    if(source.len <= i) {
         return true; // end of source, thus no tokens are after
     } else {
         const char charAfterToken = source.str[i];
@@ -101,6 +101,84 @@ static NextToken get_next_token(const ParserIter* self) {
         if(starts_with_substring(tokenStart, CONST_KEYWORD_SLICE)) {
             found = CONST_KEYWORD;
             foundSlice = CONST_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, MUT_KEYWORD_SLICE)) {
+            found = MUT_KEYWORD;
+            foundSlice = MUT_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, RETURN_KEYWORD_SLICE)) {
+            found = RETURN_KEYWORD;
+            foundSlice = RETURN_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, FN_KEYWORD_SLICE)) {
+            found = FN_KEYWORD;
+            foundSlice = FN_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, PUB_KEYWORD_SLICE)) {
+            found = PUB_KEYWORD;
+            foundSlice = PUB_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, IF_KEYWORD_SLICE)) {
+            found = IF_KEYWORD;
+            foundSlice = IF_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, ELSE_KEYWORD_SLICE)) {
+            found = ELSE_KEYWORD;
+            foundSlice = ELSE_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, SWITCH_KEYWORD_SLICE)) {
+            found = SWITCH_KEYWORD;
+            foundSlice = SWITCH_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, WHILE_KEYWORD_SLICE)) {
+            found = WHILE_KEYWORD;
+            foundSlice = WHILE_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, FOR_KEYWORD_SLICE)) {
+            found = FOR_KEYWORD;
+            foundSlice = FOR_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, BREAK_KEYWORD_SLICE)) {
+            found = BREAK_KEYWORD;
+            foundSlice = BREAK_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, CONTINUE_KEYWORD_SLICE)) {
+            found = CONTINUE_KEYWORD;
+            foundSlice = CONTINUE_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, STRUCT_KEYWORD_SLICE)) {
+            found = STRUCT_KEYWORD;
+            foundSlice = STRUCT_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, ENUM_KEYWORD_SLICE)) {
+            found = ENUM_KEYWORD;
+            foundSlice = ENUM_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, SYNC_KEYWORD_SLICE)) {
+            found = SYNC_KEYWORD;
+            foundSlice = SYNC_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, UNSAFE_KEYWORD_SLICE)) {
+            found = UNSAFE_KEYWORD;
+            foundSlice = UNSAFE_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, TRUE_KEYWORD_SLICE)) {
+            found = TRUE_KEYWORD;
+            foundSlice = TRUE_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, FALSE_KEYWORD_SLICE)) {
+            found = FALSE_KEYWORD;
+            foundSlice = FALSE_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, BOOL_KEYWORD_SLICE)) {
+            found = BOOL_KEYWORD;
+            foundSlice = BOOL_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, INT_KEYWORD_SLICE)) {
+            found = INT_KEYWORD;
+            foundSlice = INT_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, FLOAT_KEYWORD_SLICE)) {
+            found = FLOAT_KEYWORD;
+            foundSlice = FLOAT_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, STR_KEYWORD_SLICE)) {
+            found = STR_KEYWORD;
+            foundSlice = STR_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, CHAR_KEYWORD_SLICE)) {
+            found = CHAR_KEYWORD;
+            foundSlice = CHAR_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, IMPORT_KEYWORD_SLICE)) {
+            found = IMPORT_KEYWORD;
+            foundSlice = IMPORT_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, MOD_KEYWORD_SLICE)) {
+            found = MOD_KEYWORD;
+            foundSlice = MOD_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, AND_KEYWORD_SLICE)) {
+            found = AND_KEYWORD;
+            foundSlice = AND_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, OR_KEYWORD_SLICE)) {
+            found = OR_KEYWORD;
+            foundSlice = OR_KEYWORD_SLICE;
         } else {
             return next;
         }
