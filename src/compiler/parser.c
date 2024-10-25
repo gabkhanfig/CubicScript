@@ -174,6 +174,9 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_substring(tokenStart, ENUM_KEYWORD_SLICE)) {
             found = ENUM_KEYWORD;
             foundSlice = ENUM_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, UNION_KEYWORD_SLICE)) {
+            found = UNION_KEYWORD;
+            foundSlice = UNION_KEYWORD_SLICE;
         } else if(starts_with_substring(tokenStart, SYNC_KEYWORD_SLICE)) {
             found = SYNC_KEYWORD;
             foundSlice = SYNC_KEYWORD_SLICE;
