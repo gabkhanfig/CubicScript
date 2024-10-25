@@ -425,6 +425,10 @@ test "struct" {
     validateParseKeyword("struct", c.STRUCT_KEYWORD);
 }
 
+test "interface" {
+    validateParseKeyword("interface", c.INTERFACE_KEYWORD);
+}
+
 test "enum" {
     validateParseKeyword("enum", c.ENUM_KEYWORD);
 }

@@ -101,6 +101,7 @@ TOKEN_CONSTANT(FOR_KEYWORD_SLICE, "for");
 TOKEN_CONSTANT(BREAK_KEYWORD_SLICE, "break");
 TOKEN_CONSTANT(CONTINUE_KEYWORD_SLICE, "continue");
 TOKEN_CONSTANT(STRUCT_KEYWORD_SLICE, "struct");
+TOKEN_CONSTANT(INTERFACE_KEYWORD_SLICE, "interface");
 TOKEN_CONSTANT(ENUM_KEYWORD_SLICE, "enum");
 TOKEN_CONSTANT(UNION_KEYWORD_SLICE, "union");
 TOKEN_CONSTANT(SYNC_KEYWORD_SLICE, "sync");
@@ -171,6 +172,9 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_substring(tokenStart, STRUCT_KEYWORD_SLICE)) {
             found = STRUCT_KEYWORD;
             foundSlice = STRUCT_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, INTERFACE_KEYWORD_SLICE)) {
+            found = INTERFACE_KEYWORD;
+            foundSlice = INTERFACE_KEYWORD_SLICE;
         } else if(starts_with_substring(tokenStart, ENUM_KEYWORD_SLICE)) {
             found = ENUM_KEYWORD;
             foundSlice = ENUM_KEYWORD_SLICE;

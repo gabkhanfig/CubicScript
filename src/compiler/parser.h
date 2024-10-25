@@ -89,6 +89,7 @@ typedef enum Token {
     BREAK_KEYWORD,
     CONTINUE_KEYWORD,
     STRUCT_KEYWORD,
+    INTERFACE_KEYWORD, // TODO should be trait? what are the linguistic differences between "interface" and "trait" ?
     ENUM_KEYWORD,
     UNION_KEYWORD,
     SYNC_KEYWORD,
