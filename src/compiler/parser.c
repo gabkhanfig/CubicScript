@@ -303,51 +303,51 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_substring(tokenStart, ADD_OPERATOR_SLICE)) {
             found = ADD_OPERATOR;
             foundSlice = ADD_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, SUBTRACT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to  check
+        } else if(starts_with_substring(tokenStart, SUBTRACT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to subtract check
             found = SUBTRACT_ASSIGN_OPERATOR;
             foundSlice = SUBTRACT_ASSIGN_OPERATOR_SLICE;
         } else if(starts_with_substring(tokenStart, SUBTRACT_OPERATOR_SLICE)) {
             found = SUBTRACT_OPERATOR;
             foundSlice = SUBTRACT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, MULTIPLY_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to  check
+        } else if(starts_with_substring(tokenStart, MULTIPLY_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to multiply check
             found = MULTIPLY_ASSIGN_OPERATOR;
             foundSlice = MULTIPLY_ASSIGN_OPERATOR_SLICE;
         } else if(starts_with_substring(tokenStart, MULTIPLY_OPERATOR_SLICE)) {
             found = MULTIPLY_OPERATOR;
             foundSlice = MULTIPLY_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, DIVIDE_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to  check
+        } else if(starts_with_substring(tokenStart, DIVIDE_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to divide check
             found = DIVIDE_ASSIGN_OPERATOR;
             foundSlice = DIVIDE_ASSIGN_OPERATOR_SLICE;
         } else if(starts_with_substring(tokenStart, DIVIDE_OPERATOR_SLICE)) {
             found = DIVIDE_OPERATOR;
             foundSlice = DIVIDE_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BITSHIFT_LEFT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to  check
+        } else if(starts_with_substring(tokenStart, BITSHIFT_LEFT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bitshift left check
             found = BITSHIFT_LEFT_ASSIGN_OPERATOR;
             foundSlice = BITSHIFT_LEFT_ASSIGN_OPERATOR_SLICE;
         } else if(starts_with_substring(tokenStart, BITSHIFT_LEFT_OPERATOR_SLICE)) {
             found = BITSHIFT_LEFT_OPERATOR;
             foundSlice = BITSHIFT_LEFT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BITSHIFT_RIGHT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to  check
+        } else if(starts_with_substring(tokenStart, BITSHIFT_RIGHT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bitshift right check
             found = BITSHIFT_RIGHT_ASSIGN_OPERATOR;
             foundSlice = BITSHIFT_RIGHT_ASSIGN_OPERATOR_SLICE;
         } else if(starts_with_substring(tokenStart, BITSHIFT_RIGHT_OPERATOR_SLICE)) {
             found = BITSHIFT_RIGHT_OPERATOR;
             foundSlice = BITSHIFT_RIGHT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BIT_COMPLEMENT_OPERATOR_SLICE)) { // Must take place prior to  check
+        } else if(starts_with_substring(tokenStart, BIT_COMPLEMENT_OPERATOR_SLICE)) {
             found = BIT_COMPLEMENT_OPERATOR;
             foundSlice = BIT_COMPLEMENT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BIT_OR_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to  check
+        } else if(starts_with_substring(tokenStart, BIT_OR_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit or check
             found = BIT_OR_ASSIGN_OPERATOR;
             foundSlice = BIT_OR_ASSIGN_OPERATOR_SLICE;
         } else if(starts_with_substring(tokenStart, BIT_OR_OPERATOR_SLICE)) {
             found = BIT_OR_OPERATOR;
             foundSlice = BIT_OR_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BIT_AND_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to  check
+        } else if(starts_with_substring(tokenStart, BIT_AND_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit and check, which also is a special case
             found = BIT_AND_ASSIGN_OPERATOR;
             foundSlice = BIT_AND_ASSIGN_OPERATOR_SLICE;
         } 
         // NOTE cannot do BIT_AND_OPERATOR here because its ambiguous with reference operator
-        else if(starts_with_substring(tokenStart, BIT_XOR_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to  check
+        else if(starts_with_substring(tokenStart, BIT_XOR_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit xor check
             found = BIT_XOR_ASSIGN_OPERATOR;
             foundSlice = BIT_XOR_ASSIGN_OPERATOR_SLICE;
         } else if(starts_with_substring(tokenStart, BIT_XOR_OPERATOR_SLICE)) {
