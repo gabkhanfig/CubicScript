@@ -105,13 +105,6 @@ typedef enum Token {
     MOD_KEYWORD,
     AND_KEYWORD,
     OR_KEYWORD,
-
-    INT_LITERAL,
-    FLOAT_LITERAL,
-    CHAR_LITERAL,
-    STR_LITERAL,
-
-    IDENTIFIER,
     
     // TODO should modulo be an operator? also should there be a distinction between modulo and remainder?
     // TODO also power?
@@ -125,16 +118,24 @@ typedef enum Token {
     GREATER_OPERATOR,
     GREATER_EQUAL_OPERATOR,
     ADD_OPERATOR,
+    ADD_ASSIGN_OPERATOR,
     SUBTRACT_OPERATOR,
+    SUBTRACT_ASSIGN_OPERATOR,
     MULTIPLY_OPERATOR,
+    MULTIPLY_ASSIGN_OPERATOR,
     DIVIDE_OPERATOR,
+    DIVIDE_ASSIGN_OPERATOR,
     BITSHIFT_LEFT_OPERATOR,
+    BITSHIFT_LEFT_ASSIGN_OPERATOR,
     BITSHIFT_RIGHT_OPERATOR,
-    BITWISE_COMPLEMENT_OPERATOR,
+    BITSHIFT_RIGHT_ASSIGN_OPERATOR,
+    BIT_COMPLEMENT_OPERATOR,
     BIT_OR_OPERATOR,
-    BIT_XOR_OPERATOR,
+    BIT_OR_ASSIGN_OPERATOR,
     BIT_AND_OPERATOR, // TODO figure out clarify between this and reference
-    
+    BIT_AND_ASSIGN_OPERATOR,
+    BIT_XOR_OPERATOR,
+    BIT_XOR_ASSIGN_OPERATOR,
 
     LEFT_PARENTHESES_SYMBOL,
     RIGHT_PARENTHESES_SYMBOL,
@@ -144,7 +145,16 @@ typedef enum Token {
     RIGHT_BRACE_SYMBOL,
     SEMICOLON_SYMBOL,
     PERIOD_SYMBOL,
+    COMMA_SYMBOL,
     REFERENCE_SYMBOL, // TODO figure out clarify between this and bit and
+    POINTER_SYMBOL, // TODO is necessary?
+
+    INT_LITERAL,
+    FLOAT_LITERAL,
+    CHAR_LITERAL,
+    STR_LITERAL,
+
+    IDENTIFIER,
 
 } Token;
 
