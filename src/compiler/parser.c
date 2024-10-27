@@ -81,7 +81,7 @@ static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t
     return empty;
 }
 
-
+#pragma region Token_Constants
 
 // static const CubsStringSlice _KEYWORD_SLICE = {.str = "", .len = };
 
@@ -163,6 +163,7 @@ TOKEN_CONSTANT(POINTER_SYMBOL_SLICE, "*");
 /// The BIT_AND_OPERATOR can only exist after an identifier or integer literal, 
 /// whereas the REFERENCE_SYMBOL_SLICE cannot exist after either.
 
+#pragma endregion
 
 static NextToken get_next_token(const ParserIter* self) {
     const NextToken noneNext = {0};
