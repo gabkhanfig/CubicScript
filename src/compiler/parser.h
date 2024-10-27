@@ -158,6 +158,7 @@ typedef enum Token {
 
 } Token;
 
+/// A very simple walkthrough parser that allocates no memory.
 typedef struct ParserIter {
     CubsStringSlice source;
     size_t currentPosition;
