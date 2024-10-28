@@ -488,3 +488,154 @@ test "and" {
 test "or" {
     validateParseKeyword("or", c.OR_KEYWORD);
 }
+
+test "equal" {
+    validateParseKeyword("==", c.EQUAL_OPERATOR);
+}
+
+test "assign" {
+    validateParseKeyword("=", c.ASSIGN_OPERATOR);
+}
+
+test "not equal" {
+    validateParseKeyword("!=", c.NOT_EQUAL_OPERATOR);
+}
+
+test "not" {
+    validateParseKeyword("!", c.NOT_OPERATOR);
+}
+
+test "less equal" {
+    validateParseKeyword("<=", c.LESS_EQUAL_OPERATOR);
+}
+
+test "less" {
+    validateParseKeyword("<", c.LESS_OPERATOR);
+}
+
+test "greater equal" {
+    validateParseKeyword(">=", c.GREATER_EQUAL_OPERATOR);
+}
+
+test "greater" {
+    validateParseKeyword(">", c.GREATER_OPERATOR);
+}
+
+test "add assign" {
+    validateParseKeyword("+=", c.ADD_ASSIGN_OPERATOR);
+}
+
+test "add" {
+    validateParseKeyword("+", c.ADD_OPERATOR);
+}
+
+test "subtract assign" {
+    validateParseKeyword("-=", c.SUBTRACT_ASSIGN_OPERATOR);
+}
+
+test "subtract" {
+    validateParseKeyword("-", c.SUBTRACT_OPERATOR);
+}
+
+test "multiply assign" {
+    validateParseKeyword("*=", c.MULTIPLY_ASSIGN_OPERATOR);
+}
+
+test "multiply" {
+    validateParseKeyword("*", c.MULTIPLY_OPERATOR);
+}
+
+test "divide assign" {
+    validateParseKeyword("/=", c.DIVIDE_ASSIGN_OPERATOR);
+}
+
+test "divide" {
+    validateParseKeyword("/", c.DIVIDE_OPERATOR);
+}
+
+test "bitshift left assign" {
+    validateParseKeyword("<<=", c.BITSHIFT_LEFT_ASSIGN_OPERATOR);
+}
+
+test "bitshift left" {
+    validateParseKeyword("<<", c.BITSHIFT_LEFT_OPERATOR);
+}
+
+test "bitshift right assign" {
+    validateParseKeyword(">>=", c.BITSHIFT_RIGHT_ASSIGN_OPERATOR);
+}
+
+test "bitshift right" {
+    validateParseKeyword(">>", c.BITSHIFT_RIGHT_OPERATOR);
+}
+
+test "bit not" {
+    validateParseKeyword("~", c.BIT_COMPLEMENT_OPERATOR);
+}
+
+test "bit or assign" {
+    validateParseKeyword("|=", c.BIT_OR_ASSIGN_OPERATOR);
+}
+
+test "bit or" {
+    validateParseKeyword("|", c.BIT_OR_OPERATOR);
+}
+
+test "bit and assign" {
+    validateParseKeyword("&=", c.BIT_AND_ASSIGN_OPERATOR);
+}
+
+test "bit xor assign" {
+    validateParseKeyword("^=", c.BIT_XOR_ASSIGN_OPERATOR);
+}
+
+test "bit xor" {
+    validateParseKeyword("^", c.BIT_XOR_OPERATOR);
+}
+
+test "left parentheses" {
+    validateParseKeyword("(", c.LEFT_PARENTHESES_SYMBOL);
+}
+
+test "right parentheses" {
+    validateParseKeyword(")", c.RIGHT_PARENTHESES_SYMBOL);
+}
+
+test "left bracket" {
+    validateParseKeyword("[", c.LEFT_BRACKET_SYMBOL);
+}
+
+test "right bracket" {
+    validateParseKeyword("]", c.RIGHT_BRACKET_SYMBOL);
+}
+
+test "left brace" {
+    validateParseKeyword("{", c.LEFT_BRACE_SYMBOL);
+}
+
+test "right brace" {
+    validateParseKeyword("}", c.RIGHT_BRACE_SYMBOL);
+}
+
+test "semicolon" {
+    validateParseKeyword(";", c.SEMICOLON_SYMBOL);
+}
+
+test "period" {
+    validateParseKeyword(".", c.PERIOD_SYMBOL);
+}
+
+test "comma" {
+    validateParseKeyword(",", c.COMMA_SYMBOL);
+}
+
+// test "pointer" {
+//     validateParseKeyword("*", c.POINTER_SYMBOL);
+// }
+
+// This test is a weird one because the symbol "&" is ambiguous.
+// Whether it means a reference or bit-and is contextual.
+// Bit-and requires specific tokens prior to it, so reference should work fine.
+test "reference" {
+    validateParseKeyword("&", c.REFERENCE_SYMBOL);
+}

@@ -46,7 +46,6 @@ static bool starts_with_substring(const CubsStringSlice source, const CubsString
 /// Skips over any whitespace or newlines. Returns an empty slice if there is no token start from the iters
 /// current position within the source string slice.
 static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t* outOffset) {
-    
     const CubsStringSlice tempStart = {
         .str = &self->source.str[self->currentPosition], 
         .len = self->source.len - self->currentPosition
@@ -156,7 +155,7 @@ TOKEN_CONSTANT(SEMICOLON_SYMBOL_SLICE, ";");
 TOKEN_CONSTANT(PERIOD_SYMBOL_SLICE, ".");
 TOKEN_CONSTANT(COMMA_SYMBOL_SLICE, ",");
 TOKEN_CONSTANT(REFERENCE_SYMBOL_SLICE, "&");
-TOKEN_CONSTANT(POINTER_SYMBOL_SLICE, "*");
+//TOKEN_CONSTANT(POINTER_SYMBOL_SLICE, "*");
 
 //! IMPORTANT NOTE
 /// Both BIT_AND_OPERATOR_SLICE and REFERENCE_SYMBOL_SLICE use the same character.
@@ -382,10 +381,11 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_substring(tokenStart, COMMA_SYMBOL_SLICE)) {
             found = COMMA_SYMBOL;
             foundSlice = COMMA_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, POINTER_SYMBOL_SLICE)) {
-            found = POINTER_SYMBOL;
-            foundSlice = POINTER_SYMBOL_SLICE;
-        }
+        } // } else if(starts_with_substring(tokenStart, POINTER_SYMBOL_SLICE)) {
+        //     found = POINTER_SYMBOL;
+        //     foundSlice = POINTER_SYMBOL_SLICE;
+        // }
+        
         // Special case for ampersand -> "&"
         else if(starts_with_substring(tokenStart, AMPERSAND_SLICE)) {
             if(previousToken == INT_LITERAL || previousToken == IDENTIFIER) {
@@ -398,6 +398,7 @@ static NextToken get_next_token(const ParserIter* self) {
         }
         
         else {
+            fprintf(stderr, "what?\n");
             return next;
         }
     }
