@@ -119,6 +119,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/util/math.c",
     "src/util/hash.c",
     "src/util/simd.c",
+    "src/util/utf8.c",
 
     "src/primitives/context.c",
     "src/primitives/string/string.c",

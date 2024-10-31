@@ -35,6 +35,7 @@ add_library(CubicScript STATIC
     "src/util/simd.c"
     "src/util/math.c"
     "src/util/hash.c"
+    "src/util/utf8.c"
     "src/primitives/context.c"
     "src/primitives/string/string.c"
     "src/primitives/array/array.c"
