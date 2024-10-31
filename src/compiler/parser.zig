@@ -481,6 +481,10 @@ test "mod" {
     validateParseKeyword("mod", c.MOD_KEYWORD);
 }
 
+test "extern" {
+    validateParseKeyword("extern", c.EXTERN_KEYWORD);
+}
+
 test "and" {
     validateParseKeyword("and", c.AND_KEYWORD);
 }

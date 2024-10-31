@@ -103,6 +103,7 @@ typedef enum Token {
     CHAR_KEYWORD,
     IMPORT_KEYWORD,
     MOD_KEYWORD,
+    EXTERN_KEYWORD,
     AND_KEYWORD,
     OR_KEYWORD,
     

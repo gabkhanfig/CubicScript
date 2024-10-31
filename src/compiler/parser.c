@@ -114,6 +114,7 @@ TOKEN_CONSTANT(STR_KEYWORD_SLICE, "str");
 TOKEN_CONSTANT(CHAR_KEYWORD_SLICE, "char");
 TOKEN_CONSTANT(IMPORT_KEYWORD_SLICE, "import");
 TOKEN_CONSTANT(MOD_KEYWORD_SLICE, "mod");
+TOKEN_CONSTANT(EXTERN_KEYWORD_SLICE, "extern");
 TOKEN_CONSTANT(AND_KEYWORD_SLICE, "and");
 TOKEN_CONSTANT(OR_KEYWORD_SLICE, "or");
 
@@ -268,6 +269,9 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_substring(tokenStart, MOD_KEYWORD_SLICE)) {
             found = MOD_KEYWORD;
             foundSlice = MOD_KEYWORD_SLICE;
+        } else if(starts_with_substring(tokenStart, EXTERN_KEYWORD_SLICE)) {
+            found = EXTERN_KEYWORD;
+            foundSlice = EXTERN_KEYWORD_SLICE;
         } else if(starts_with_substring(tokenStart, AND_KEYWORD_SLICE)) {
             found = AND_KEYWORD;
             foundSlice = AND_KEYWORD_SLICE;
