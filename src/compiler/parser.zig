@@ -541,10 +541,6 @@ test "multiply assign" {
     validateParseKeyword("*=", c.MULTIPLY_ASSIGN_OPERATOR);
 }
 
-test "multiply" {
-    validateParseKeyword("*", c.MULTIPLY_OPERATOR);
-}
-
 test "divide assign" {
     validateParseKeyword("/=", c.DIVIDE_ASSIGN_OPERATOR);
 }
@@ -629,13 +625,16 @@ test "comma" {
     validateParseKeyword(",", c.COMMA_SYMBOL);
 }
 
-// test "pointer" {
-//     validateParseKeyword("*", c.POINTER_SYMBOL);
-// }
-
 // This test is a weird one because the symbol "&" is ambiguous.
 // Whether it means a reference or bit-and is contextual.
 // Bit-and requires specific tokens prior to it, so reference should work fine.
 test "reference" {
     validateParseKeyword("&", c.REFERENCE_SYMBOL);
+}
+
+// This test is a weird one because the symbol "*" is ambiguous.
+// Whether it means a pointer or multiply is contextual.
+// Bit-and requires specific tokens prior to it, so reference should work fine.
+test "pointer" {
+    validateParseKeyword("*", c.POINTER_SYMBOL);
 }

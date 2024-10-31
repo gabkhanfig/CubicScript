@@ -147,7 +147,7 @@ typedef enum Token {
     PERIOD_SYMBOL,
     COMMA_SYMBOL,
     REFERENCE_SYMBOL, // TODO figure out clarify between this and bit and
-    //POINTER_SYMBOL, // TODO is necessary?
+    POINTER_SYMBOL, // TODO is necessary?
 
     INT_LITERAL,
     FLOAT_LITERAL,

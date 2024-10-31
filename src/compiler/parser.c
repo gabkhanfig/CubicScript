@@ -155,12 +155,15 @@ TOKEN_CONSTANT(SEMICOLON_SYMBOL_SLICE, ";");
 TOKEN_CONSTANT(PERIOD_SYMBOL_SLICE, ".");
 TOKEN_CONSTANT(COMMA_SYMBOL_SLICE, ",");
 TOKEN_CONSTANT(REFERENCE_SYMBOL_SLICE, "&");
-//TOKEN_CONSTANT(POINTER_SYMBOL_SLICE, "*");
+TOKEN_CONSTANT(POINTER_SYMBOL_SLICE, "*");
 
 //! IMPORTANT NOTE
 /// Both BIT_AND_OPERATOR_SLICE and REFERENCE_SYMBOL_SLICE use the same character.
 /// The BIT_AND_OPERATOR can only exist after an identifier or integer literal, 
 /// whereas the REFERENCE_SYMBOL_SLICE cannot exist after either.
+/// Similar problem exists for MULTIPLY_OPERATOR_SLICE and POINTER_SYMBOL.
+/// Multiply can only exist after an identifier, integer literal, or float literal.
+/// Similarly, the opposite is true for pointer.
 
 #pragma endregion
 
@@ -181,6 +184,7 @@ static NextToken get_next_token(const ParserIter* self) {
     } else {
         const CubsStringSlice tokenStart = get_next_token_start_slice(self, &whitespaceOffset);
         const CubsStringSlice AMPERSAND_SLICE = {.str = "&", .len = 1};
+        const CubsStringSlice ASTERISK_SLICE = {.str = "*", .len = 1};
 
         // Keywords
         if(starts_with_substring(tokenStart, CONST_KEYWORD_SLICE)) {
@@ -311,10 +315,9 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_substring(tokenStart, MULTIPLY_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to multiply check
             found = MULTIPLY_ASSIGN_OPERATOR;
             foundSlice = MULTIPLY_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, MULTIPLY_OPERATOR_SLICE)) {
-            found = MULTIPLY_OPERATOR;
-            foundSlice = MULTIPLY_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, DIVIDE_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to divide check
+        } 
+        // NOTE cannot do MULTIPLY_OPERATOR here because its ambiguous with pointer symbol
+        else if(starts_with_substring(tokenStart, DIVIDE_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to divide check
             found = DIVIDE_ASSIGN_OPERATOR;
             foundSlice = DIVIDE_ASSIGN_OPERATOR_SLICE;
         } else if(starts_with_substring(tokenStart, DIVIDE_OPERATOR_SLICE)) {
@@ -396,9 +399,17 @@ static NextToken get_next_token(const ParserIter* self) {
                 foundSlice = REFERENCE_SYMBOL_SLICE;
             }
         }
-        
+        // Special case for asterisk -> "*"
+        else if(starts_with_substring(tokenStart, ASTERISK_SLICE)) {
+            if(previousToken == INT_LITERAL || previousToken == FLOAT_LITERAL ||  previousToken == IDENTIFIER) {
+                found = MULTIPLY_OPERATOR;
+                foundSlice = MULTIPLY_OPERATOR_SLICE;
+            } else {
+                found = POINTER_SYMBOL;
+                foundSlice = POINTER_SYMBOL_SLICE;
+            }
+        }   
         else {
-            fprintf(stderr, "what?\n");
             return next;
         }
     }
