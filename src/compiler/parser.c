@@ -11,6 +11,7 @@
 typedef struct NextToken {
     bool hasNextToken;
     Token next;
+    TokenMetadata nextMetadata;
     size_t newPosition;
     size_t newLine;
     size_t newColumn;
@@ -525,6 +526,8 @@ static NextToken get_next_token(const ParserIter* self) {
             found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart);
             if(found == TOKEN_NONE) {
                 return next;
+            } else {
+                next.nextMetadata = foundMetadata;
             }
         }
     }
@@ -542,17 +545,11 @@ ParserIter cubs_parser_iter_init(CubsStringSlice source)
         .currentPosition = 0,
         .currentLine = 1,
         .currentColumn = 1,
+        .previous = TOKEN_NONE,
         .current = TOKEN_NONE,
-        .next = TOKEN_NONE,
+        .previousMetadata = {0},
+        .currentMetadata = {0},
     };
-
-    const NextToken next = get_next_token(&self);
-    if(next.hasNextToken) {
-        self.currentPosition = next.newPosition;
-        self.currentLine = next.newLine;
-        self.currentColumn = next.newColumn;
-        self.next = next.next;
-    }
 
     return self;
 }
@@ -560,16 +557,18 @@ ParserIter cubs_parser_iter_init(CubsStringSlice source)
 Token cubs_parser_iter_next(ParserIter *self)
 {
     const NextToken next = get_next_token(self);
-    const Token oldNext = self->next;
+    self->previous = self->current;
+    self->previousMetadata = self->currentMetadata;
     if(next.hasNextToken) {
         self->currentPosition = next.newPosition;
         self->currentLine = next.newLine;
         self->currentColumn = next.newColumn;
-        self->current = self->next;
-        self->next = next.next;
+        self->current = next.next;
+        self->currentMetadata = next.nextMetadata;
     } else {
-        self->current = self->next;
-        self->next = TOKEN_NONE;
+        self->current = TOKEN_NONE;
+        const TokenMetadata emptyMetadata = {0};
+        self->currentMetadata = emptyMetadata;
     }
-    return oldNext;
+    return next.next;
 }

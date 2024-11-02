@@ -193,8 +193,10 @@ typedef struct ParserIter {
     size_t currentLine;
     /// Source code column
     size_t currentColumn;
+    Token previous;
     Token current;
-    Token next;
+    TokenMetadata previousMetadata;
+    TokenMetadata currentMetadata;
 } ParserIter;
 
 /// # Debug asserts

@@ -713,4 +713,5 @@ test "int literal" {
     var parser = parserIterInit("0");
 
     try expect(parserIterNext(&parser) == c.INT_LITERAL);
+    try expect(parser.currentMetadata.intLiteral == 0);
 }
