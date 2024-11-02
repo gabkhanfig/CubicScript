@@ -203,6 +203,3 @@ ParserIter cubs_parser_iter_init(CubsStringSlice source);
 
 /// Returns `TOKEN_NONE` if there is no next. Moves the iterator forward.
 Token cubs_parser_iter_next(ParserIter* self);
-
-/// Returns `TOKEN_NONE` if there is no next. Does not move the iterator forward.
-Token cubs_parser_iter_peek(const ParserIter* self);

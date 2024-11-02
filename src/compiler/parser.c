@@ -573,8 +573,3 @@ Token cubs_parser_iter_next(ParserIter *self)
     }
     return oldNext;
 }
-
-Token cubs_parser_iter_peek(const ParserIter *self)
-{
-    return self->next;
-}
