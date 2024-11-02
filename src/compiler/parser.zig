@@ -377,6 +377,147 @@ fn validateParseKeyword(comptime s: []const u8, comptime token: c_int) void {
     }
 }
 
+fn validateParseOperatorOrSymbol(comptime s: []const u8, comptime token: c_int) void {
+    { // normal
+        var parser = parserIterInit(s);
+
+        expect(parserIterNext(&parser) == token) catch unreachable;
+
+        expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+    }
+    { // whitespace before
+        { // space
+            var parser = parserIterInit(" " ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // tab
+            var parser = parserIterInit("   " ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // tab sanity
+            var parser = parserIterInit("\t" ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // new line
+            var parser = parserIterInit("\n" ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // CRLF
+            var parser = parserIterInit("\r\n" ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // multiple spaces
+            var parser = parserIterInit("  " ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // multiple tabs
+            const str = "       " ++ s;
+            var parser = parserIterInit(str);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // multiple tabs sanity
+            var parser = parserIterInit("\t\t" ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // multiple new line
+            var parser = parserIterInit("\n\n" ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // multiple CRLF
+            var parser = parserIterInit("\r\n\r\n" ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+        { // combination
+            var parser = parserIterInit(" \t\n \r\n\r\n \n \t " ++ s);
+
+            expect(parserIterNext(&parser) == token) catch unreachable;
+
+            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        }
+    }
+    { // characters after
+        { // valid token
+            { // space
+                var parser = parserIterInit(s ++ " ");
+
+                expect(parserIterNext(&parser) == token) catch unreachable;
+
+                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            }
+            { // new line
+                var parser = parserIterInit(s ++ "\n");
+
+                expect(parserIterNext(&parser) == token) catch unreachable;
+
+                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            }
+            { // tab
+                var parser = parserIterInit(s ++ "\t");
+
+                expect(parserIterNext(&parser) == token) catch unreachable;
+
+                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            }
+            { // carriage return
+                var parser = parserIterInit(s ++ "\r");
+
+                expect(parserIterNext(&parser) == token) catch unreachable;
+            }
+            { // comma
+                var parser = parserIterInit(s ++ ",");
+
+                expect(parserIterNext(&parser) == token) catch unreachable;
+            }
+            { // period
+                var parser = parserIterInit(s ++ ".");
+
+                expect(parserIterNext(&parser) == token) catch unreachable;
+            }
+            { // semicolon
+                var parser = parserIterInit(s ++ ";");
+
+                expect(parserIterNext(&parser) == token) catch unreachable;
+            }
+            { // invalid token
+                // For keywords and symbols, a character after could be part of an identifier or keyword, making this fine
+                var parser = parserIterInit(s ++ "t");
+
+                expect(parserIterNext(&parser) == token) catch unreachable;
+            }
+        }
+    }
+}
+
 test "mut" {
     validateParseKeyword("mut", c.MUT_KEYWORD);
 }
@@ -494,151 +635,157 @@ test "or" {
 }
 
 test "equal" {
-    validateParseKeyword("==", c.EQUAL_OPERATOR);
+    validateParseOperatorOrSymbol("==", c.EQUAL_OPERATOR);
 }
 
 test "assign" {
-    validateParseKeyword("=", c.ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("=", c.ASSIGN_OPERATOR);
 }
 
 test "not equal" {
-    validateParseKeyword("!=", c.NOT_EQUAL_OPERATOR);
+    validateParseOperatorOrSymbol("!=", c.NOT_EQUAL_OPERATOR);
 }
 
 test "not" {
-    validateParseKeyword("!", c.NOT_OPERATOR);
+    validateParseOperatorOrSymbol("!", c.NOT_OPERATOR);
 }
 
 test "less equal" {
-    validateParseKeyword("<=", c.LESS_EQUAL_OPERATOR);
+    validateParseOperatorOrSymbol("<=", c.LESS_EQUAL_OPERATOR);
 }
 
 test "less" {
-    validateParseKeyword("<", c.LESS_OPERATOR);
+    validateParseOperatorOrSymbol("<", c.LESS_OPERATOR);
 }
 
 test "greater equal" {
-    validateParseKeyword(">=", c.GREATER_EQUAL_OPERATOR);
+    validateParseOperatorOrSymbol(">=", c.GREATER_EQUAL_OPERATOR);
 }
 
 test "greater" {
-    validateParseKeyword(">", c.GREATER_OPERATOR);
+    validateParseOperatorOrSymbol(">", c.GREATER_OPERATOR);
 }
 
 test "add assign" {
-    validateParseKeyword("+=", c.ADD_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("+=", c.ADD_ASSIGN_OPERATOR);
 }
 
 test "add" {
-    validateParseKeyword("+", c.ADD_OPERATOR);
+    validateParseOperatorOrSymbol("+", c.ADD_OPERATOR);
 }
 
 test "subtract assign" {
-    validateParseKeyword("-=", c.SUBTRACT_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("-=", c.SUBTRACT_ASSIGN_OPERATOR);
 }
 
 test "subtract" {
-    validateParseKeyword("-", c.SUBTRACT_OPERATOR);
+    validateParseOperatorOrSymbol("-", c.SUBTRACT_OPERATOR);
 }
 
 test "multiply assign" {
-    validateParseKeyword("*=", c.MULTIPLY_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("*=", c.MULTIPLY_ASSIGN_OPERATOR);
 }
 
 test "divide assign" {
-    validateParseKeyword("/=", c.DIVIDE_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("/=", c.DIVIDE_ASSIGN_OPERATOR);
 }
 
 test "divide" {
-    validateParseKeyword("/", c.DIVIDE_OPERATOR);
+    validateParseOperatorOrSymbol("/", c.DIVIDE_OPERATOR);
 }
 
 test "bitshift left assign" {
-    validateParseKeyword("<<=", c.BITSHIFT_LEFT_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("<<=", c.BITSHIFT_LEFT_ASSIGN_OPERATOR);
 }
 
 test "bitshift left" {
-    validateParseKeyword("<<", c.BITSHIFT_LEFT_OPERATOR);
+    validateParseOperatorOrSymbol("<<", c.BITSHIFT_LEFT_OPERATOR);
 }
 
 test "bitshift right assign" {
-    validateParseKeyword(">>=", c.BITSHIFT_RIGHT_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol(">>=", c.BITSHIFT_RIGHT_ASSIGN_OPERATOR);
 }
 
 test "bitshift right" {
-    validateParseKeyword(">>", c.BITSHIFT_RIGHT_OPERATOR);
+    validateParseOperatorOrSymbol(">>", c.BITSHIFT_RIGHT_OPERATOR);
 }
 
 test "bit not" {
-    validateParseKeyword("~", c.BIT_COMPLEMENT_OPERATOR);
+    validateParseOperatorOrSymbol("~", c.BIT_COMPLEMENT_OPERATOR);
 }
 
 test "bit or assign" {
-    validateParseKeyword("|=", c.BIT_OR_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("|=", c.BIT_OR_ASSIGN_OPERATOR);
 }
 
 test "bit or" {
-    validateParseKeyword("|", c.BIT_OR_OPERATOR);
+    validateParseOperatorOrSymbol("|", c.BIT_OR_OPERATOR);
 }
 
 test "bit and assign" {
-    validateParseKeyword("&=", c.BIT_AND_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("&=", c.BIT_AND_ASSIGN_OPERATOR);
 }
 
 test "bit xor assign" {
-    validateParseKeyword("^=", c.BIT_XOR_ASSIGN_OPERATOR);
+    validateParseOperatorOrSymbol("^=", c.BIT_XOR_ASSIGN_OPERATOR);
 }
 
 test "bit xor" {
-    validateParseKeyword("^", c.BIT_XOR_OPERATOR);
+    validateParseOperatorOrSymbol("^", c.BIT_XOR_OPERATOR);
 }
 
 test "left parentheses" {
-    validateParseKeyword("(", c.LEFT_PARENTHESES_SYMBOL);
+    validateParseOperatorOrSymbol("(", c.LEFT_PARENTHESES_SYMBOL);
 }
 
 test "right parentheses" {
-    validateParseKeyword(")", c.RIGHT_PARENTHESES_SYMBOL);
+    validateParseOperatorOrSymbol(")", c.RIGHT_PARENTHESES_SYMBOL);
 }
 
 test "left bracket" {
-    validateParseKeyword("[", c.LEFT_BRACKET_SYMBOL);
+    validateParseOperatorOrSymbol("[", c.LEFT_BRACKET_SYMBOL);
 }
 
 test "right bracket" {
-    validateParseKeyword("]", c.RIGHT_BRACKET_SYMBOL);
+    validateParseOperatorOrSymbol("]", c.RIGHT_BRACKET_SYMBOL);
 }
 
 test "left brace" {
-    validateParseKeyword("{", c.LEFT_BRACE_SYMBOL);
+    validateParseOperatorOrSymbol("{", c.LEFT_BRACE_SYMBOL);
 }
 
 test "right brace" {
-    validateParseKeyword("}", c.RIGHT_BRACE_SYMBOL);
+    validateParseOperatorOrSymbol("}", c.RIGHT_BRACE_SYMBOL);
 }
 
 test "semicolon" {
-    validateParseKeyword(";", c.SEMICOLON_SYMBOL);
+    validateParseOperatorOrSymbol(";", c.SEMICOLON_SYMBOL);
 }
 
 test "period" {
-    validateParseKeyword(".", c.PERIOD_SYMBOL);
+    validateParseOperatorOrSymbol(".", c.PERIOD_SYMBOL);
 }
 
 test "comma" {
-    validateParseKeyword(",", c.COMMA_SYMBOL);
+    validateParseOperatorOrSymbol(",", c.COMMA_SYMBOL);
 }
 
 // This test is a weird one because the symbol "&" is ambiguous.
 // Whether it means a reference or bit-and is contextual.
 // Bit-and requires specific tokens prior to it, so reference should work fine.
 test "reference" {
-    validateParseKeyword("&", c.REFERENCE_SYMBOL);
+    validateParseOperatorOrSymbol("&", c.REFERENCE_SYMBOL);
 }
 
 // This test is a weird one because the symbol "*" is ambiguous.
 // Whether it means a pointer or multiply is contextual.
 // Bit-and requires specific tokens prior to it, so reference should work fine.
 test "pointer" {
-    validateParseKeyword("*", c.POINTER_SYMBOL);
+    validateParseOperatorOrSymbol("*", c.POINTER_SYMBOL);
+}
+
+test "int literal" {
+    var parser = parserIterInit("0");
+
+    try expect(parserIterNext(&parser) == c.INT_LITERAL);
 }

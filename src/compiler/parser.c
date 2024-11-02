@@ -19,7 +19,7 @@ typedef struct NextToken {
 // /// The valid characters that can be after are `' '`, `'\n'`, `'\t'`, `','`, `'.'`, `';'`. 
 
 /// Checks if `source` starts with `find`.
-static bool starts_with_substring(const CubsStringSlice source, const CubsStringSlice find) {
+static bool starts_with_keyword_substring(const CubsStringSlice source, const CubsStringSlice find) {
     size_t i = 0;
     for(; i < find.len; i++) {
         if(source.len <= i) {
@@ -41,6 +41,21 @@ static bool starts_with_substring(const CubsStringSlice source, const CubsString
             return false;
         }
     }
+}
+
+/// Checks if `source` starts with `find`.
+static bool starts_with_operator_or_symbol_substring(const CubsStringSlice source, const CubsStringSlice find) {
+    size_t i = 0;
+    for(; i < find.len; i++) {
+        if(source.len <= i) {
+            return false;
+        }
+        if(source.str[i] != find.str[i]) {
+            return false;
+        }
+    }
+    // Unlike in `starts_with_keyword_substring`, operators and symbols can have whatever characters afterwards
+    return true;
 }
 
 /// Skips over any whitespace or newlines. Returns an empty slice if there is no token start from the iters
@@ -78,6 +93,97 @@ static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t
         .len = 0
     };
     return empty;
+}
+
+static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source) {
+    bool isNegative;
+    /// If not a decimal number, this will simply be the integer part.
+    int64_t wholePart = 0;
+
+    isNegative = source.str[0] == '-';
+    size_t i = (size_t)isNegative;
+
+    bool isDecimal = false;
+
+    // TODO handle minimum signed 64 bit int, as that cannot be handled with this algorithm
+
+    while(true) {
+        const char c = source.str[i];
+        if(c >= '0' && c <= '9') {
+            int64_t num = (int64_t)(c - '0');
+            wholePart *= 10;
+            wholePart += num;
+        } else if(c == '.') {
+            isDecimal = true;
+            break;
+        } else if(c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == ';' || c == ',') {
+            break;
+        } else {
+            fprintf(stderr, "invalid character found [%c] (ascii %d) in num literal [%s]", c, c, source.str);
+        }
+        i++;
+    }
+
+    if(isNegative) {
+        wholePart *= -1;
+    }
+
+    if(!isDecimal) {
+        const CubsStringSlice literalSlice = {.str = source.str, .len = i};
+        const TokenMetadata metadata = {.intLiteral = wholePart};
+        *outSlice = literalSlice;
+        *outMetadata = metadata;
+        return INT_LITERAL;
+    } else {
+        assert(false && "Cannot parse decimal numbers yet");
+    }
+}
+
+/// Returns `TOKEN_NONE` if cannot find anything, otherwise returns one of:
+/// - `INT_LITERAL`
+/// - `FLOAT_LITERAL`
+/// - `CHAR_LITERAL`
+/// - `STR_LITERAL`
+/// - `IDENTIFIER`
+/// Also stores the string slice for the token in `outSlice, and metadata in the out-param `outMetadata`.
+static Token try_parse_literal_or_identifier(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source) {
+    if(source.len == 0) {
+        return TOKEN_NONE;
+    }
+
+    Token hint = TOKEN_NONE;
+    { // get hint
+        const char firstChar = source.str[0];
+        if(firstChar == '\'') { // 
+            hint = CHAR_LITERAL;
+        } else if(firstChar == '\"') {
+            hint = STR_LITERAL;
+        } else if((firstChar >= '0' && firstChar <= '9') || firstChar == '-') { // TODO hexadecimal, binary, and maybe octal literals
+            hint = INT_LITERAL; // also works for FLOAT_LITERAL
+        } else if( // TODO other language specific characters?
+            (firstChar >= 'A' && firstChar <= 'Z') || (firstChar >= 'a' && firstChar <= 'z') || (firstChar == '_')
+        ) {
+            hint = IDENTIFIER;
+        }
+    }
+    if(hint == TOKEN_NONE) {
+        return TOKEN_NONE;
+    }
+
+    switch(hint) {
+        case CHAR_LITERAL: {
+            assert(false && "char literals not yet implemented");
+        } break;
+        case INT_LITERAL: { // also handles float literal
+            const Token numTokenType = try_parse_num_literal(outSlice, outMetadata, source);
+            if(numTokenType == TOKEN_NONE) {
+                fprintf(stderr, "Failed to parse num literal");
+                return TOKEN_NONE;
+            } else {
+                return numTokenType;
+            }
+        } break;
+    }
 }
 
 #pragma region Token_Constants
@@ -188,213 +294,214 @@ static NextToken get_next_token(const ParserIter* self) {
         const CubsStringSlice ASTERISK_SLICE = {.str = "*", .len = 1};
 
         // Keywords
-        if(starts_with_substring(tokenStart, CONST_KEYWORD_SLICE)) {
+        if(starts_with_keyword_substring(tokenStart, CONST_KEYWORD_SLICE)) {
             found = CONST_KEYWORD;
             foundSlice = CONST_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, MUT_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, MUT_KEYWORD_SLICE)) {
             found = MUT_KEYWORD;
             foundSlice = MUT_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, RETURN_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, RETURN_KEYWORD_SLICE)) {
             found = RETURN_KEYWORD;
             foundSlice = RETURN_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, FN_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, FN_KEYWORD_SLICE)) {
             found = FN_KEYWORD;
             foundSlice = FN_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, PUB_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, PUB_KEYWORD_SLICE)) {
             found = PUB_KEYWORD;
             foundSlice = PUB_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, IF_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, IF_KEYWORD_SLICE)) {
             found = IF_KEYWORD;
             foundSlice = IF_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, ELSE_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, ELSE_KEYWORD_SLICE)) {
             found = ELSE_KEYWORD;
             foundSlice = ELSE_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, SWITCH_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, SWITCH_KEYWORD_SLICE)) {
             found = SWITCH_KEYWORD;
             foundSlice = SWITCH_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, WHILE_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, WHILE_KEYWORD_SLICE)) {
             found = WHILE_KEYWORD;
             foundSlice = WHILE_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, FOR_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, FOR_KEYWORD_SLICE)) {
             found = FOR_KEYWORD;
             foundSlice = FOR_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, BREAK_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, BREAK_KEYWORD_SLICE)) {
             found = BREAK_KEYWORD;
             foundSlice = BREAK_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, CONTINUE_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, CONTINUE_KEYWORD_SLICE)) {
             found = CONTINUE_KEYWORD;
             foundSlice = CONTINUE_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, STRUCT_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, STRUCT_KEYWORD_SLICE)) {
             found = STRUCT_KEYWORD;
             foundSlice = STRUCT_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, INTERFACE_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, INTERFACE_KEYWORD_SLICE)) {
             found = INTERFACE_KEYWORD;
             foundSlice = INTERFACE_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, ENUM_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, ENUM_KEYWORD_SLICE)) {
             found = ENUM_KEYWORD;
             foundSlice = ENUM_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, UNION_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, UNION_KEYWORD_SLICE)) {
             found = UNION_KEYWORD;
             foundSlice = UNION_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, SYNC_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, SYNC_KEYWORD_SLICE)) {
             found = SYNC_KEYWORD;
             foundSlice = SYNC_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, UNSAFE_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, UNSAFE_KEYWORD_SLICE)) {
             found = UNSAFE_KEYWORD;
             foundSlice = UNSAFE_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, TRUE_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, TRUE_KEYWORD_SLICE)) {
             found = TRUE_KEYWORD;
             foundSlice = TRUE_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, FALSE_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, FALSE_KEYWORD_SLICE)) {
             found = FALSE_KEYWORD;
             foundSlice = FALSE_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, BOOL_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, BOOL_KEYWORD_SLICE)) {
             found = BOOL_KEYWORD;
             foundSlice = BOOL_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, INT_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, INT_KEYWORD_SLICE)) {
             found = INT_KEYWORD;
             foundSlice = INT_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, FLOAT_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, FLOAT_KEYWORD_SLICE)) {
             found = FLOAT_KEYWORD;
             foundSlice = FLOAT_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, STR_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, STR_KEYWORD_SLICE)) {
             found = STR_KEYWORD;
             foundSlice = STR_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, CHAR_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, CHAR_KEYWORD_SLICE)) {
             found = CHAR_KEYWORD;
             foundSlice = CHAR_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, IMPORT_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, IMPORT_KEYWORD_SLICE)) {
             found = IMPORT_KEYWORD;
             foundSlice = IMPORT_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, MOD_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, MOD_KEYWORD_SLICE)) {
             found = MOD_KEYWORD;
             foundSlice = MOD_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, EXTERN_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, EXTERN_KEYWORD_SLICE)) {
             found = EXTERN_KEYWORD;
             foundSlice = EXTERN_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, AND_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, AND_KEYWORD_SLICE)) {
             found = AND_KEYWORD;
             foundSlice = AND_KEYWORD_SLICE;
-        } else if(starts_with_substring(tokenStart, OR_KEYWORD_SLICE)) {
+        } else if(starts_with_keyword_substring(tokenStart, OR_KEYWORD_SLICE)) {
             found = OR_KEYWORD;
             foundSlice = OR_KEYWORD_SLICE;
         } 
         // Operators
-        else if(starts_with_substring(tokenStart, EQUAL_OPERATOR_SLICE)) { // Must take place prior to assignment check
+        // The bitshift ones must come first
+        else if(starts_with_operator_or_symbol_substring(tokenStart, BITSHIFT_LEFT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bitshift left check
+            found = BITSHIFT_LEFT_ASSIGN_OPERATOR;
+            foundSlice = BITSHIFT_LEFT_ASSIGN_OPERATOR_SLICE;
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, BITSHIFT_LEFT_OPERATOR_SLICE)) {
+            found = BITSHIFT_LEFT_OPERATOR;
+            foundSlice = BITSHIFT_LEFT_OPERATOR_SLICE;
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, BITSHIFT_RIGHT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bitshift right check
+            found = BITSHIFT_RIGHT_ASSIGN_OPERATOR;
+            foundSlice = BITSHIFT_RIGHT_ASSIGN_OPERATOR_SLICE;
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, BITSHIFT_RIGHT_OPERATOR_SLICE)) {
+            found = BITSHIFT_RIGHT_OPERATOR;
+            foundSlice = BITSHIFT_RIGHT_OPERATOR_SLICE;
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, EQUAL_OPERATOR_SLICE)) { // Must take place prior to assignment check
             found = EQUAL_OPERATOR;
             foundSlice = EQUAL_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, ASSIGN_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, ASSIGN_OPERATOR_SLICE)) {
             found = ASSIGN_OPERATOR;
             foundSlice = ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, NOT_EQUAL_OPERATOR_SLICE)) { // Must take place prior to not check
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, NOT_EQUAL_OPERATOR_SLICE)) { // Must take place prior to not check
             found = NOT_EQUAL_OPERATOR;
             foundSlice = NOT_EQUAL_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, NOT_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, NOT_OPERATOR_SLICE)) {
             found = NOT_OPERATOR;
             foundSlice = NOT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, LESS_EQUAL_OPERATOR_SLICE)) { // Must take place prior to less check
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, LESS_EQUAL_OPERATOR_SLICE)) { // Must take place prior to less check
             found = LESS_EQUAL_OPERATOR;
             foundSlice = LESS_EQUAL_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, LESS_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, LESS_OPERATOR_SLICE)) {
             found = LESS_OPERATOR;
             foundSlice = LESS_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, GREATER_EQUAL_OPERATOR_SLICE)) { // Must take place prior to greater check
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, GREATER_EQUAL_OPERATOR_SLICE)) { // Must take place prior to greater check
             found = GREATER_EQUAL_OPERATOR;
             foundSlice = GREATER_EQUAL_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, GREATER_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, GREATER_OPERATOR_SLICE)) {
             found = GREATER_OPERATOR;
             foundSlice = GREATER_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, ADD_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to add check
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, ADD_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to add check
             found = ADD_ASSIGN_OPERATOR;
             foundSlice = ADD_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, ADD_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, ADD_OPERATOR_SLICE)) {
             found = ADD_OPERATOR;
             foundSlice = ADD_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, SUBTRACT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to subtract check
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, SUBTRACT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to subtract check
             found = SUBTRACT_ASSIGN_OPERATOR;
             foundSlice = SUBTRACT_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, SUBTRACT_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, SUBTRACT_OPERATOR_SLICE)) {
             found = SUBTRACT_OPERATOR;
             foundSlice = SUBTRACT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, MULTIPLY_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to multiply check
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, MULTIPLY_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to multiply check
             found = MULTIPLY_ASSIGN_OPERATOR;
             foundSlice = MULTIPLY_ASSIGN_OPERATOR_SLICE;
         } 
         // NOTE cannot do MULTIPLY_OPERATOR here because its ambiguous with pointer symbol
-        else if(starts_with_substring(tokenStart, DIVIDE_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to divide check
+        else if(starts_with_operator_or_symbol_substring(tokenStart, DIVIDE_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to divide check
             found = DIVIDE_ASSIGN_OPERATOR;
             foundSlice = DIVIDE_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, DIVIDE_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, DIVIDE_OPERATOR_SLICE)) {
             found = DIVIDE_OPERATOR;
             foundSlice = DIVIDE_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BITSHIFT_LEFT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bitshift left check
-            found = BITSHIFT_LEFT_ASSIGN_OPERATOR;
-            foundSlice = BITSHIFT_LEFT_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BITSHIFT_LEFT_OPERATOR_SLICE)) {
-            found = BITSHIFT_LEFT_OPERATOR;
-            foundSlice = BITSHIFT_LEFT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BITSHIFT_RIGHT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bitshift right check
-            found = BITSHIFT_RIGHT_ASSIGN_OPERATOR;
-            foundSlice = BITSHIFT_RIGHT_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BITSHIFT_RIGHT_OPERATOR_SLICE)) {
-            found = BITSHIFT_RIGHT_OPERATOR;
-            foundSlice = BITSHIFT_RIGHT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BIT_COMPLEMENT_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, BIT_COMPLEMENT_OPERATOR_SLICE)) {
             found = BIT_COMPLEMENT_OPERATOR;
             foundSlice = BIT_COMPLEMENT_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BIT_OR_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit or check
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, BIT_OR_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit or check
             found = BIT_OR_ASSIGN_OPERATOR;
             foundSlice = BIT_OR_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BIT_OR_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, BIT_OR_OPERATOR_SLICE)) {
             found = BIT_OR_OPERATOR;
             foundSlice = BIT_OR_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BIT_AND_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit and check, which also is a special case
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, BIT_AND_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit and check, which also is a special case
             found = BIT_AND_ASSIGN_OPERATOR;
             foundSlice = BIT_AND_ASSIGN_OPERATOR_SLICE;
         } 
         // NOTE cannot do BIT_AND_OPERATOR here because its ambiguous with reference operator
-        else if(starts_with_substring(tokenStart, BIT_XOR_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit xor check
+        else if(starts_with_operator_or_symbol_substring(tokenStart, BIT_XOR_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to bit xor check
             found = BIT_XOR_ASSIGN_OPERATOR;
             foundSlice = BIT_XOR_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_substring(tokenStart, BIT_XOR_OPERATOR_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, BIT_XOR_OPERATOR_SLICE)) {
             found = BIT_XOR_OPERATOR;
             foundSlice = BIT_XOR_OPERATOR_SLICE;
         }
         // Symbols
-        else if(starts_with_substring(tokenStart, LEFT_PARENTHESES_SYMBOL_SLICE)) {
+        else if(starts_with_operator_or_symbol_substring(tokenStart, LEFT_PARENTHESES_SYMBOL_SLICE)) {
             found = LEFT_PARENTHESES_SYMBOL;
             foundSlice = LEFT_PARENTHESES_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, RIGHT_PARENTHESES_SYMBOL_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, RIGHT_PARENTHESES_SYMBOL_SLICE)) {
             found = RIGHT_PARENTHESES_SYMBOL;
             foundSlice = RIGHT_PARENTHESES_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, LEFT_BRACKET_SYMBOL_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, LEFT_BRACKET_SYMBOL_SLICE)) {
             found = LEFT_BRACKET_SYMBOL;
             foundSlice = LEFT_BRACKET_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, RIGHT_BRACKET_SYMBOL_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, RIGHT_BRACKET_SYMBOL_SLICE)) {
             found = RIGHT_BRACKET_SYMBOL;
             foundSlice = RIGHT_BRACKET_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, LEFT_BRACE_SYMBOL_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, LEFT_BRACE_SYMBOL_SLICE)) {
             found = LEFT_BRACE_SYMBOL;
             foundSlice = LEFT_BRACE_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, RIGHT_BRACE_SYMBOL_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, RIGHT_BRACE_SYMBOL_SLICE)) {
             found = RIGHT_BRACE_SYMBOL;
             foundSlice = RIGHT_BRACE_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, SEMICOLON_SYMBOL_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, SEMICOLON_SYMBOL_SLICE)) {
             found = SEMICOLON_SYMBOL;
             foundSlice = SEMICOLON_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, PERIOD_SYMBOL_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, PERIOD_SYMBOL_SLICE)) {
             found = PERIOD_SYMBOL;
             foundSlice = PERIOD_SYMBOL_SLICE;
-        } else if(starts_with_substring(tokenStart, COMMA_SYMBOL_SLICE)) {
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, COMMA_SYMBOL_SLICE)) {
             found = COMMA_SYMBOL;
             foundSlice = COMMA_SYMBOL_SLICE;
-        } // } else if(starts_with_substring(tokenStart, POINTER_SYMBOL_SLICE)) {
+        } // } else if(starts_with_operator_or_symbol_substring(tokenStart, POINTER_SYMBOL_SLICE)) {
         //     found = POINTER_SYMBOL;
         //     foundSlice = POINTER_SYMBOL_SLICE;
         // }
         
         // Special case for ampersand -> "&"
-        else if(starts_with_substring(tokenStart, AMPERSAND_SLICE)) {
+        else if(starts_with_operator_or_symbol_substring(tokenStart, AMPERSAND_SLICE)) {
             if(previousToken == INT_LITERAL || previousToken == IDENTIFIER) {
                 found = BIT_AND_OPERATOR;
                 foundSlice = BIT_AND_OPERATOR_SLICE;
@@ -404,7 +511,7 @@ static NextToken get_next_token(const ParserIter* self) {
             }
         }
         // Special case for asterisk -> "*"
-        else if(starts_with_substring(tokenStart, ASTERISK_SLICE)) {
+        else if(starts_with_operator_or_symbol_substring(tokenStart, ASTERISK_SLICE)) {
             if(previousToken == INT_LITERAL || previousToken == FLOAT_LITERAL ||  previousToken == IDENTIFIER) {
                 found = MULTIPLY_OPERATOR;
                 foundSlice = MULTIPLY_OPERATOR_SLICE;
@@ -414,7 +521,11 @@ static NextToken get_next_token(const ParserIter* self) {
             }
         }   
         else {
-            return next;
+            TokenMetadata foundMetadata = {0};
+            found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart);
+            if(found == TOKEN_NONE) {
+                return next;
+            }
         }
     }
 

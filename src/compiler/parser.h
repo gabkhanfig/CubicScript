@@ -163,6 +163,12 @@ typedef enum Token {
 
 } Token;
 
+/// Intermediatary struct to denote that special handling is required to convert
+/// this into an actual `CubsString`.
+typedef struct CubsStringTokenLiteral {
+    CubsStringSlice slice;
+} CubsStringTokenLiteral;
+
 /// Corresponding with a `enum Token` instance.
 /// The active union member depends on which token it is:
 /// - `INT_LITERAL` => `intLiteral`
@@ -175,7 +181,7 @@ typedef union TokenMetadata {
     int64_t intLiteral;
     double floatLiteral;
     CubsChar charLiteral;
-    CubsStringSlice strLiteral;
+    CubsStringTokenLiteral strLiteral;
     CubsStringSlice identifier;
 } TokenMetadata;
 
