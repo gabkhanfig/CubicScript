@@ -759,4 +759,10 @@ test "int literal" {
             i *= 2;
         }
     }
+    { // max int 64
+        Validate.int(std.math.maxInt(i64));
+    }
+    { // min int 64
+        Validate.int(std.math.minInt(i64));
+    }
 }

@@ -1,6 +1,7 @@
 #include "parser.h"
 #include <assert.h>
 #include <stdio.h>
+#include "../util/math.h"
 
 // TODO figure out fast way to get the token.
 // Could look at SIMD, or hashing, or even 8 byte compare if all tokens (not identifiers)
@@ -106,14 +107,26 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
 
     bool isDecimal = false;
 
-    // TODO handle minimum signed 64 bit int, as that cannot be handled with this algorithm
+    // Max and Min
+    // 9223372036854775807
+    // -9223372036854775808
 
     while(true) {
         const char c = source.str[i];
         if(c >= '0' && c <= '9') {
             int64_t num = (int64_t)(c - '0');
             wholePart *= 10;
-            wholePart += num;
+            if(wholePart == 9223372036854775800 && c == '8') { // min int 64
+                wholePart = -9223372036854775808;
+                isNegative = false;
+            } else {
+                if(cubs_math_would_add_overflow(wholePart, num)) {
+                    fprintf(stderr, "detected int literal beyond 64 bit range. trying to add %lld with %lld", wholePart, num);
+                    return TOKEN_NONE;
+                }
+                wholePart += num;
+            }
+            
         } else if(c == '.') {
             isDecimal = true;
             break;
