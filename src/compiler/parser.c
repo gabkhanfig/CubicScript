@@ -293,6 +293,7 @@ static NextToken get_next_token(const ParserIter* self) {
         const CubsStringSlice tokenStart = get_next_token_start_slice(self, &whitespaceOffset);
         const CubsStringSlice AMPERSAND_SLICE = {.str = "&", .len = 1};
         const CubsStringSlice ASTERISK_SLICE = {.str = "*", .len = 1};
+        const CubsStringSlice MINUS_SLICE = {.str = "-", .len = 1};
 
         // Keywords
         if(starts_with_keyword_substring(tokenStart, CONST_KEYWORD_SLICE)) {
@@ -433,9 +434,6 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_operator_or_symbol_substring(tokenStart, SUBTRACT_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to subtract check
             found = SUBTRACT_ASSIGN_OPERATOR;
             foundSlice = SUBTRACT_ASSIGN_OPERATOR_SLICE;
-        } else if(starts_with_operator_or_symbol_substring(tokenStart, SUBTRACT_OPERATOR_SLICE)) {
-            found = SUBTRACT_OPERATOR;
-            foundSlice = SUBTRACT_OPERATOR_SLICE;
         } else if(starts_with_operator_or_symbol_substring(tokenStart, MULTIPLY_ASSIGN_OPERATOR_SLICE)) { // Must take place prior to multiply check
             found = MULTIPLY_ASSIGN_OPERATOR;
             foundSlice = MULTIPLY_ASSIGN_OPERATOR_SLICE;
@@ -520,7 +518,22 @@ static NextToken get_next_token(const ParserIter* self) {
                 found = POINTER_SYMBOL;
                 foundSlice = POINTER_SYMBOL_SLICE;
             }
-        }   
+        } 
+        // Special case for minus sign -> "-"
+        else if(starts_with_operator_or_symbol_substring(tokenStart, MINUS_SLICE)) {
+            if(previousToken == INT_LITERAL || previousToken == FLOAT_LITERAL ||  previousToken == IDENTIFIER) {
+                found = SUBTRACT_OPERATOR;
+                foundSlice = SUBTRACT_OPERATOR_SLICE;
+            } else {
+                TokenMetadata foundMetadata = {0};
+                found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart);
+                if(found == TOKEN_NONE) {
+                    return next;
+                } else {
+                    next.nextMetadata = foundMetadata;
+                }
+            }
+        }  
         else {
             TokenMetadata foundMetadata = {0};
             found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart);
