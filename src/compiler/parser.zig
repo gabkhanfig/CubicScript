@@ -710,8 +710,22 @@ test "pointer" {
 }
 
 test "int literal" {
-    var parser = parserIterInit("0");
+    {
+        var parser = parserIterInit("0");
 
-    try expect(parserIterNext(&parser) == c.INT_LITERAL);
-    try expect(parser.currentMetadata.intLiteral == 0);
+        try expect(parserIterNext(&parser) == c.INT_LITERAL);
+        try expect(parser.currentMetadata.intLiteral == 0);
+    }
+    {
+        var parser = parserIterInit("1");
+
+        try expect(parserIterNext(&parser) == c.INT_LITERAL);
+        try expect(parser.currentMetadata.intLiteral == 1);
+    }
+    {
+        var parser = parserIterInit("10");
+
+        try expect(parserIterNext(&parser) == c.INT_LITERAL);
+        try expect(parser.currentMetadata.intLiteral == 10);
+    }
 }
