@@ -766,3 +766,62 @@ test "int literal" {
         Validate.int(std.math.minInt(i64));
     }
 }
+
+test "float literal" {
+    const Validate = struct {
+        fn wholeWithPointZero(num: f64) void {
+            std.debug.assert(num == @floor(num));
+
+            var buf: [256]u8 = undefined;
+            _ = std.fmt.bufPrintZ(&buf, "{d:.1}", .{num}) catch unreachable;
+
+            var parser = parserIterInit(&buf);
+            expect(parserIterNext(&parser) == c.FLOAT_LITERAL) catch unreachable;
+            expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch unreachable;
+        }
+    };
+    { // single digit
+        for (0..10) |i| {
+            Validate.wholeWithPointZero(@floatFromInt(i));
+        }
+    }
+    { // double digits
+        for (10..100) |i| {
+            Validate.wholeWithPointZero(@floatFromInt(i));
+        }
+    }
+    { // many digits
+        var i: i64 = 128;
+        for (0..40) |_| {
+            Validate.wholeWithPointZero(@floatFromInt(i));
+            i <<= 1;
+        }
+    }
+    { // negative single digit
+        var i: i64 = -9;
+        for (0..10) |_| {
+            Validate.wholeWithPointZero(@floatFromInt(i));
+            i += 1;
+        }
+    }
+    { // negative double digits
+        var i: i64 = -99;
+        for (0..90) |_| {
+            Validate.wholeWithPointZero(@floatFromInt(i));
+            i += 1;
+        }
+    }
+    { // negative many digits
+        var i: i64 = -128;
+        for (0..40) |_| {
+            Validate.wholeWithPointZero(@floatFromInt(i));
+            i *= 2;
+        }
+    }
+    { // max int 64
+        Validate.wholeWithPointZero(@floatFromInt(std.math.maxInt(i64)));
+    }
+    { // min int 64
+        Validate.wholeWithPointZero(@floatFromInt(std.math.minInt(i64)));
+    }
+}

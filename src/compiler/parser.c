@@ -98,11 +98,12 @@ static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t
 }
 
 static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source) {
-    bool isNegative;
+    const bool isNegative = source.str[0] == '-';
+    bool isFloat = false;
     /// If not a decimal number, this will simply be the integer part.
-    int64_t wholePart = 0;
+    int64_t wholePartInt = 0;
+    double wholePartFloat = 0;
 
-    isNegative = source.str[0] == '-';
     size_t i = (size_t)isNegative;
 
     bool isDecimal = false;
@@ -115,18 +116,29 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         const char c = source.str[i];
         if(c >= '0' && c <= '9') {
             int64_t num = (int64_t)(c - '0');
-            wholePart *= 10;
-            if(wholePart == 9223372036854775800 && c == '8') { // min int 64
-                wholePart = -9223372036854775808;
-                isNegative = false;
+            if(isFloat) {
+                wholePartFloat *= 10;
+                wholePartFloat += (double)num;
             } else {
-                if(cubs_math_would_add_overflow(wholePart, num)) {
-                    fprintf(stderr, "detected int literal beyond 64 bit range. trying to add %lld with %lld", wholePart, num);
-                    return TOKEN_NONE;
+                if(wholePartInt == 922337203685477580 && c == '8' ) { // skip one digit for min int
+                    wholePartInt = -9223372036854775808;
+                } else {
+                    if(cubs_math_would_mul_overflow(wholePartInt, 10)) {
+                        isFloat = true;
+                        wholePartFloat = (double)wholePartInt;
+                        wholePartFloat += num;
+                        continue;
+                    }
+                    wholePartInt *= 10; 
+                    if(cubs_math_would_add_overflow(wholePartInt, num)) {
+                        isFloat = true;
+                        wholePartFloat = (double)wholePartInt;
+                        wholePartFloat += num;
+                    } else {
+                        wholePartInt += num;
+                    }         
                 }
-                wholePart += num;
-            }
-            
+            }       
         } else if(c == '.') {
             isDecimal = true;
             break;
@@ -134,22 +146,69 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
             break;
         } else {
             fprintf(stderr, "invalid character found [%c] (ascii %d) in num literal [%s]", c, c, source.str);
+            return TOKEN_NONE;
         }
         i++;
     }
 
     if(isNegative) {
-        wholePart *= -1;
+        if(isFloat) {
+            wholePartFloat *= -1.0;
+        } else {
+            if(wholePartInt != -9223372036854775808) {
+                wholePartInt *= -1;
+            } 
+        }      
     }
 
     if(!isDecimal) {
         const CubsStringSlice literalSlice = {.str = source.str, .len = i};
-        const TokenMetadata metadata = {.intLiteral = wholePart};
         *outSlice = literalSlice;
-        *outMetadata = metadata;
-        return INT_LITERAL;
+        if(isFloat) {
+            const TokenMetadata metadata = {.floatLiteral = wholePartFloat};
+            *outMetadata = metadata;
+            return FLOAT_LITERAL;
+        } else {  
+            const TokenMetadata metadata = {.intLiteral = wholePartInt};
+            *outMetadata = metadata;
+            return INT_LITERAL;
+        }
     } else {
-        assert(false && "Cannot parse decimal numbers yet");
+        // found '.' character
+        if(!isFloat) { // set to float
+            isFloat = true;
+            wholePartFloat = (double)wholePartInt;
+        }
+        i += 1; // skip past '.' character
+
+        double decimalPart = 0; 
+        double denominator = 1;
+
+        while(true) {
+            const char c = source.str[i];
+            if(c >= '0' && c <= '9') {
+                double num = (double)(c - '0');
+                decimalPart *= 10.0;
+                decimalPart += num;
+                denominator *= 10;
+            }  else if(c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == ';' || c == ',') {
+                break;
+            } else if(c == '.') {
+                fprintf(stderr, "more than one decimal found in float literal [%s]", source.str);
+                return TOKEN_NONE;
+            } else {
+                fprintf(stderr, "invalid character found [%c] (ascii %d) in num literal [%s]", c, c, source.str);
+                return TOKEN_NONE;
+            }
+            i++;
+        }
+        const CubsStringSlice literalSlice = {.str = source.str, .len = i};
+        *outSlice = literalSlice;
+
+        const double actualFloatNum = wholePartFloat + (decimalPart / denominator);
+        const TokenMetadata metadata = {.floatLiteral = actualFloatNum};
+        *outMetadata = metadata;
+        return FLOAT_LITERAL;
     }
 }
 
