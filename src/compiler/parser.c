@@ -120,8 +120,8 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
                 wholePartFloat *= 10;
                 wholePartFloat += (double)num;
             } else {
-                if(wholePartInt == 922337203685477580 && c == '8' ) { // skip one digit for min int
-                    wholePartInt = -9223372036854775808;
+                if(wholePartInt == 922337203685477580LL && c == '8' ) { // skip one digit for min int
+                    wholePartInt = INT64_MIN;
                 } else {
                     if(cubs_math_would_mul_overflow(wholePartInt, 10)) {
                         isFloat = true;
@@ -151,7 +151,7 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         i++;
     }
 
-    if(isNegative && !isFloat && wholePartInt != -9223372036854775808) {
+    if(isNegative && !isFloat && wholePartInt != INT64_MIN) {
         wholePartInt *= -1;    
     }
 
