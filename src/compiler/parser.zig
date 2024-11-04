@@ -779,55 +779,95 @@ test "float literal" {
             expect(parserIterNext(&parser) == c.FLOAT_LITERAL) catch unreachable;
             expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch unreachable;
         }
+
+        fn decimal(num: f64) void {
+            var buf: [1080]u8 = undefined;
+            _ = std.fmt.bufPrintZ(&buf, "{d}", .{num}) catch unreachable;
+
+            var parser = parserIterInit(&buf);
+            const nextToken = parserIterNext(&parser);
+            if (nextToken == c.INT_LITERAL) {
+                std.debug.assert(num == @floor(num));
+                expect(num == @as(f64, @floatFromInt(parser.currentMetadata.intLiteral))) catch unreachable;
+            } else {
+                expect(nextToken == c.FLOAT_LITERAL) catch unreachable;
+                expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch unreachable;
+            }
+        }
     };
-    { // single digit
-        for (0..10) |i| {
-            Validate.wholeWithPointZero(@floatFromInt(i));
+    { // whole numbers
+        { // single digit
+            for (0..10) |i| {
+                Validate.wholeWithPointZero(@floatFromInt(i));
+            }
+        }
+        { // double digits
+            for (10..100) |i| {
+                Validate.wholeWithPointZero(@floatFromInt(i));
+            }
+        }
+        { // many digits
+            var i: i64 = 128;
+            for (0..40) |_| {
+                Validate.wholeWithPointZero(@floatFromInt(i));
+                i <<= 1;
+            }
+        }
+        { // negative single digit
+            var i: i64 = -9;
+            for (0..10) |_| {
+                Validate.wholeWithPointZero(@floatFromInt(i));
+                i += 1;
+            }
+        }
+        { // negative double digits
+            var i: i64 = -99;
+            for (0..90) |_| {
+                Validate.wholeWithPointZero(@floatFromInt(i));
+                i += 1;
+            }
+        }
+        { // negative many digits
+            var i: i64 = -128;
+            for (0..40) |_| {
+                Validate.wholeWithPointZero(@floatFromInt(i));
+                i *= 2;
+            }
+        }
+        { // max int 64
+            Validate.wholeWithPointZero(@floatFromInt(std.math.maxInt(i64)));
+        }
+        { // min int 64
+            Validate.wholeWithPointZero(@floatFromInt(std.math.minInt(i64)));
+        }
+        { // random extreme whole numbers
+            Validate.wholeWithPointZero(12345678901234567890123.0);
+            Validate.wholeWithPointZero(-12345678901234567890123.0);
+            Validate.wholeWithPointZero(40387460187246018726450187365017624971826587.0);
+            Validate.wholeWithPointZero(-40387460187246018726450187365017624971826587.0);
         }
     }
-    { // double digits
-        for (10..100) |i| {
-            Validate.wholeWithPointZero(@floatFromInt(i));
+    { // decimal numbers
+        { // 1 digit decimals
+            var i: f64 = 0.5;
+            for (0..100) |_| {
+                Validate.decimal(i);
+                i += 1.0;
+            }
         }
-    }
-    { // many digits
-        var i: i64 = 128;
-        for (0..40) |_| {
-            Validate.wholeWithPointZero(@floatFromInt(i));
-            i <<= 1;
+        { // many decimals, and outside of 64 bit int range
+            var i: f64 = 0.1234567;
+            for (0..74) |_| {
+                Validate.decimal(i);
+                i *= 2.3;
+            }
         }
-    }
-    { // negative single digit
-        var i: i64 = -9;
-        for (0..10) |_| {
-            Validate.wholeWithPointZero(@floatFromInt(i));
-            i += 1;
+        { // negatives
+            var i: f64 = -0.1325741;
+            for (0..1) |_| {
+                Validate.decimal(i);
+                i *= 2.3;
+            }
         }
-    }
-    { // negative double digits
-        var i: i64 = -99;
-        for (0..90) |_| {
-            Validate.wholeWithPointZero(@floatFromInt(i));
-            i += 1;
-        }
-    }
-    { // negative many digits
-        var i: i64 = -128;
-        for (0..40) |_| {
-            Validate.wholeWithPointZero(@floatFromInt(i));
-            i *= 2;
-        }
-    }
-    { // max int 64
-        Validate.wholeWithPointZero(@floatFromInt(std.math.maxInt(i64)));
-    }
-    { // min int 64
-        Validate.wholeWithPointZero(@floatFromInt(std.math.minInt(i64)));
-    }
-    { // random extreme whole numbers
-        Validate.wholeWithPointZero(12345678901234567890123.0);
-        Validate.wholeWithPointZero(-12345678901234567890123.0);
-        Validate.wholeWithPointZero(40387460187246018726450187365017624971826587.0);
-        Validate.wholeWithPointZero(-40387460187246018726450187365017624971826587.0);
     }
 }

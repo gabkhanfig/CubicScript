@@ -109,6 +109,8 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
     bool isDecimal = false;
 
     // Max and Min
+    // 28474151598943410
+    // 28474151598943408
     // 9223372036854775807
     // -9223372036854775808
 
@@ -151,21 +153,19 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         i++;
     }
 
-    if(isNegative) {
-        if(isFloat) {
-            wholePartFloat *= -1.0;
-        } else {
-            if(wholePartInt != -9223372036854775808) {
-                wholePartInt *= -1;
-            } 
-        }      
+    if(isNegative && !isFloat && wholePartInt != -9223372036854775808) {
+        wholePartInt *= -1;    
     }
 
     if(!isDecimal) {
         const CubsStringSlice literalSlice = {.str = source.str, .len = i};
         *outSlice = literalSlice;
         if(isFloat) {
-            const TokenMetadata metadata = {.floatLiteral = wholePartFloat};
+            double actualFloatNum = wholePartFloat;
+            if(isNegative) {
+                actualFloatNum *= -1.0;
+            }
+            const TokenMetadata metadata = {.floatLiteral = actualFloatNum};
             *outMetadata = metadata;
             return FLOAT_LITERAL;
         } else {  
@@ -205,7 +205,10 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         const CubsStringSlice literalSlice = {.str = source.str, .len = i};
         *outSlice = literalSlice;
 
-        const double actualFloatNum = wholePartFloat + (decimalPart / denominator);
+        double actualFloatNum = wholePartFloat + (decimalPart / denominator);
+        if(isNegative && actualFloatNum > 0.0) {
+            actualFloatNum *= -1.0;
+        }
         const TokenMetadata metadata = {.floatLiteral = actualFloatNum};
         *outMetadata = metadata;
         return FLOAT_LITERAL;
