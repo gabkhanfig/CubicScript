@@ -205,10 +205,17 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         const CubsStringSlice literalSlice = {.str = source.str, .len = i};
         *outSlice = literalSlice;
 
-        double actualFloatNum = wholePartFloat + (decimalPart / denominator);
+        const double fraction = (decimalPart / denominator);
+        double actualFloatNum = wholePartFloat;     
+        if(actualFloatNum >= 0.0) {
+            actualFloatNum += fraction;
+        } else {      
+            actualFloatNum -= fraction;
+        }
         if(isNegative && actualFloatNum > 0.0) {
             actualFloatNum *= -1.0;
         }
+        
         const TokenMetadata metadata = {.floatLiteral = actualFloatNum};
         *outMetadata = metadata;
         return FLOAT_LITERAL;
