@@ -777,7 +777,9 @@ test "float literal" {
 
             var parser = parserIterInit(&buf);
             expect(parserIterNext(&parser) == c.FLOAT_LITERAL) catch unreachable;
-            expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch unreachable;
+            expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch {
+                std.debug.panic("invalid whole equal: found num {d} and parsed {d}\n", .{ num, parser.currentMetadata.floatLiteral });
+            };
         }
 
         fn decimal(num: f64) void {
@@ -791,7 +793,9 @@ test "float literal" {
                 expect(num == @as(f64, @floatFromInt(parser.currentMetadata.intLiteral))) catch unreachable;
             } else {
                 expect(nextToken == c.FLOAT_LITERAL) catch unreachable;
-                expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch unreachable;
+                expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch {
+                    std.debug.panic("invalid decimal equal: found num {d} and parsed {d}\n", .{ num, parser.currentMetadata.floatLiteral });
+                };
             }
         }
     };
@@ -857,17 +861,23 @@ test "float literal" {
         }
         { // many decimals, and outside of 64 bit int range
             var i: f64 = 0.1234567;
-            for (0..74) |_| {
+            for (0..65) |_| {
                 Validate.decimal(i);
                 i *= 2.3;
             }
         }
         { // negatives
             var i: f64 = -0.1325741;
-            for (0..1) |_| {
+            for (0..65) |_| {
                 Validate.decimal(i);
                 i *= 2.3;
             }
+        }
+        { // random extreme decimal numbers
+            Validate.decimal(12345678901234567890123.269487162031287332986);
+            Validate.wholeWithPointZero(-12345678901234567890123.269487162031287332986);
+            Validate.wholeWithPointZero(40387460187246018726450187365017624971826587.1273670238975601874263);
+            Validate.wholeWithPointZero(-40387460187246018726450187365017624971826587.1273670238975601874263);
         }
     }
 }
