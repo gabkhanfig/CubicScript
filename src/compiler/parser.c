@@ -109,8 +109,6 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
     bool isDecimal = false;
 
     // Max and Min
-    // 28474151598943410
-    // 28474151598943408
     // 9223372036854775807
     // -9223372036854775808
 
@@ -576,11 +574,7 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_operator_or_symbol_substring(tokenStart, COMMA_SYMBOL_SLICE)) {
             found = COMMA_SYMBOL;
             foundSlice = COMMA_SYMBOL_SLICE;
-        } // } else if(starts_with_operator_or_symbol_substring(tokenStart, POINTER_SYMBOL_SLICE)) {
-        //     found = POINTER_SYMBOL;
-        //     foundSlice = POINTER_SYMBOL_SLICE;
-        // }
-        
+        }
         // Special case for ampersand -> "&"
         else if(starts_with_operator_or_symbol_substring(tokenStart, AMPERSAND_SLICE)) {
             if(previousToken == INT_LITERAL || previousToken == IDENTIFIER) {
