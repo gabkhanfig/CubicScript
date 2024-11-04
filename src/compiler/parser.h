@@ -36,6 +36,7 @@ import
 mod (? module)
 and
 or
+null
 
 ! LITERALS
 int literal
@@ -110,6 +111,7 @@ typedef enum Token {
     EXTERN_KEYWORD,
     AND_KEYWORD,
     OR_KEYWORD,
+    NULL_KEYWORD,
     
     // TODO should modulo be an operator? also should there be a distinction between modulo and remainder?
     // TODO also power?

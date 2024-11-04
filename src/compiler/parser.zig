@@ -559,6 +559,10 @@ test "or" {
     validateParseKeyword("or", c.OR_KEYWORD);
 }
 
+test "null" {
+    validateParseKeyword("null", c.NULL_KEYWORD);
+}
+
 test "equal" {
     validateParseOperatorOrSymbol("==", c.EQUAL_OPERATOR);
 }

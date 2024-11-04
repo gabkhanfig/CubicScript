@@ -304,6 +304,7 @@ TOKEN_CONSTANT(MOD_KEYWORD_SLICE, "mod");
 TOKEN_CONSTANT(EXTERN_KEYWORD_SLICE, "extern");
 TOKEN_CONSTANT(AND_KEYWORD_SLICE, "and");
 TOKEN_CONSTANT(OR_KEYWORD_SLICE, "or");
+TOKEN_CONSTANT(NULL_KEYWORD_SLICE, "null");
 
 TOKEN_CONSTANT(EQUAL_OPERATOR_SLICE, "==");
 TOKEN_CONSTANT(ASSIGN_OPERATOR_SLICE, "=");
@@ -466,6 +467,9 @@ static NextToken get_next_token(const ParserIter* self) {
         } else if(starts_with_keyword_substring(tokenStart, OR_KEYWORD_SLICE)) {
             found = OR_KEYWORD;
             foundSlice = OR_KEYWORD_SLICE;
+        } else if(starts_with_keyword_substring(tokenStart, NULL_KEYWORD_SLICE)) {
+            found = NULL_KEYWORD;
+            foundSlice = NULL_KEYWORD_SLICE;
         } 
         // Operators
         // The bitshift ones must come first
