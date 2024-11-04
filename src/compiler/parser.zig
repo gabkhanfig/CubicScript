@@ -824,4 +824,10 @@ test "float literal" {
     { // min int 64
         Validate.wholeWithPointZero(@floatFromInt(std.math.minInt(i64)));
     }
+    { // random extreme whole numbers
+        Validate.wholeWithPointZero(12345678901234567890123.0);
+        Validate.wholeWithPointZero(-12345678901234567890123.0);
+        Validate.wholeWithPointZero(40387460187246018726450187365017624971826587.0);
+        Validate.wholeWithPointZero(-40387460187246018726450187365017624971826587.0);
+    }
 }
