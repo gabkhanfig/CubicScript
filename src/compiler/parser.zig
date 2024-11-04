@@ -718,9 +718,38 @@ test "int literal" {
     const Validate = struct {
         fn int(num: i64) void {
             var buf: [24]u8 = undefined;
-            _ = std.fmt.bufPrintZ(&buf, "{}", .{num}) catch unreachable;
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{} ", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{}\n", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{}\t", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, " {}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "\n{}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "\t{}", .{num}) catch unreachable,
+            );
+        }
 
-            var parser = parserIterInit(&buf);
+        fn validateParse(num: i64, buf: []const u8) void {
+            var parser = parserIterInit(buf);
             expect(parserIterNext(&parser) == c.INT_LITERAL) catch unreachable;
             expect(parser.currentMetadata.intLiteral == num) catch unreachable;
         }
