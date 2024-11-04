@@ -777,20 +777,72 @@ test "float literal" {
             std.debug.assert(num == @floor(num));
 
             var buf: [256]u8 = undefined;
-            _ = std.fmt.bufPrintZ(&buf, "{d:.1}", .{num}) catch unreachable;
 
-            var parser = parserIterInit(&buf);
-            expect(parserIterNext(&parser) == c.FLOAT_LITERAL) catch unreachable;
-            expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch {
-                std.debug.panic("invalid whole equal: found num {d} and parsed {d}\n", .{ num, parser.currentMetadata.floatLiteral });
-            };
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{d:.1}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{d:.1} ", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{d:.1}\n", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{d:.1}\t", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, " {d:.1}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "\n{d:.1}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "\t{d:.1}", .{num}) catch unreachable,
+            );
         }
 
         fn decimal(num: f64) void {
             var buf: [1080]u8 = undefined;
-            _ = std.fmt.bufPrintZ(&buf, "{d}", .{num}) catch unreachable;
 
-            var parser = parserIterInit(&buf);
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{d}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{d} ", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{d}\n", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "{d}\t", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, " {d}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "\n{d}", .{num}) catch unreachable,
+            );
+            validateParse(
+                num,
+                std.fmt.bufPrintZ(&buf, "\t{d}", .{num}) catch unreachable,
+            );
+        }
+
+        fn validateParse(num: f64, buf: []const u8) void {
+            var parser = parserIterInit(buf);
             const nextToken = parserIterNext(&parser);
             if (nextToken == c.INT_LITERAL) {
                 std.debug.assert(num == @floor(num));
