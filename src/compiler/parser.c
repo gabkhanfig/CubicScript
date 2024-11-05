@@ -18,7 +18,11 @@ typedef struct NextToken {
     size_t newColumn;
 } NextToken;
 
-// /// The valid characters that can be after are `' '`, `'\n'`, `'\t'`, `','`, `'.'`, `';'`. 
+static bool is_space(char c) {
+    // https://www.geeksforgeeks.org/isspace-in-c/
+    // no need to include whole header
+    return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
 
 /// Checks if `source` starts with `find`.
 static bool starts_with_keyword_substring(const CubsStringSlice source, const CubsStringSlice find) {
@@ -35,8 +39,7 @@ static bool starts_with_keyword_substring(const CubsStringSlice source, const Cu
         return true; // end of source, thus no tokens are after
     } else {
         const char charAfterToken = source.str[i];
-        if(charAfterToken == ' ' || charAfterToken == '\n' || charAfterToken == '\t'  || charAfterToken == '\r'
-            || charAfterToken == ','|| charAfterToken == '.'|| charAfterToken == ';')
+        if(is_space(charAfterToken) || charAfterToken == ','|| charAfterToken == '.'|| charAfterToken == ';')
         {
             return true;
         } else {
@@ -70,16 +73,8 @@ static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t
     size_t i = 0;
     for(; i < tempStart.len; i++) {
         const char c = tempStart.str[i];
-        if(c == ' ' || c == '\t' || c == '\n') {
+        if(is_space(c)) {
             continue;
-        }
-        if(c == '\r') { // CRLF
-            if((i + 1) < tempStart.len) {
-                if(tempStart.str[i + 1] == '\n') { 
-                    i += 1; // step further
-                    continue;
-                } 
-            }
         }
 
         const CubsStringSlice tokenStart = {
@@ -142,7 +137,7 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         } else if(c == '.') {
             isDecimal = true;
             break;
-        } else if(c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == ';' || c == ',') {
+        } else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
             break;
         } else {
             fprintf(stderr, "invalid character found [%c] (ascii %d) in num literal [%s]", c, c, source.str);
