@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-#include <stddef.h>
+#include "compiler_callbacks.h"
 #include "../primitives/string/string.h"
 
 /* ==== TOKENS ====
@@ -190,6 +189,7 @@ typedef union TokenMetadata {
 /// A very simple walkthrough parser that allocates no memory.
 typedef struct ParserIter {
     CubsStringSlice source;
+    CubsSyntaxErrorCallback errCallback;
     size_t currentPosition;
     /// Source code line number
     size_t currentLine;
@@ -203,7 +203,7 @@ typedef struct ParserIter {
 
 /// # Debug asserts
 /// Must be valid utf8
-ParserIter cubs_parser_iter_init(CubsStringSlice source);
+ParserIter cubs_parser_iter_init(CubsStringSlice source, CubsSyntaxErrorCallback errCallback);
 
 /// Returns `TOKEN_NONE` if there is no next. Moves the iterator forward.
 Token cubs_parser_iter_next(ParserIter* self);

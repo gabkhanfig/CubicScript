@@ -7,9 +7,9 @@ const c = @cImport({
 const ParserIter = c.ParserIter;
 const Token = c.Token;
 
-fn parserIterInit(s: []const u8) ParserIter {
+fn parserIterInit(s: []const u8, errCallback: c.CubsSyntaxErrorCallback) ParserIter {
     const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
-    return c.cubs_parser_iter_init(slice);
+    return c.cubs_parser_iter_init(slice, errCallback);
 }
 
 fn parserIterNext(self: *ParserIter) Token {
@@ -17,13 +17,13 @@ fn parserIterNext(self: *ParserIter) Token {
 }
 
 test "parse nothing" {
-    var parser = parserIterInit("");
+    var parser = parserIterInit("", null);
 
     try expect(parserIterNext(&parser) == c.TOKEN_NONE);
 }
 
 test "parse keyword const" {
-    var parser = parserIterInit("const");
+    var parser = parserIterInit("const", null);
 
     try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
@@ -32,42 +32,42 @@ test "parse keyword const" {
 
 test "parse keyword const with whitespace characters" {
     { // space
-        var parser = parserIterInit(" const");
+        var parser = parserIterInit(" const", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // tab
-        var parser = parserIterInit("   const");
+        var parser = parserIterInit("   const", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // tab sanity
-        var parser = parserIterInit("\tconst");
+        var parser = parserIterInit("\tconst", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // new line
-        var parser = parserIterInit("\nconst");
+        var parser = parserIterInit("\nconst", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // CRLF
-        var parser = parserIterInit("\r\nconst");
+        var parser = parserIterInit("\r\nconst", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple spaces
-        var parser = parserIterInit("  const");
+        var parser = parserIterInit("  const", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
@@ -75,35 +75,35 @@ test "parse keyword const with whitespace characters" {
     }
     { // multiple tabs
         const s = "       const";
-        var parser = parserIterInit(s);
+        var parser = parserIterInit(s, null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple tabs sanity
-        var parser = parserIterInit("\t\tconst");
+        var parser = parserIterInit("\t\tconst", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple new line
-        var parser = parserIterInit("\n\nconst");
+        var parser = parserIterInit("\n\nconst", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple CRLF
-        var parser = parserIterInit("\r\n\r\nconst");
+        var parser = parserIterInit("\r\n\r\nconst", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
     { // combination
-        var parser = parserIterInit(" \t\n \r\n\r\n \n \t const");
+        var parser = parserIterInit(" \t\n \r\n\r\n \n \t const", null);
 
         try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
@@ -114,49 +114,49 @@ test "parse keyword const with whitespace characters" {
 test "parse const with characters after" {
     { // valid token
         { // space
-            var parser = parserIterInit("const ");
+            var parser = parserIterInit("const ", null);
 
             try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
             try expect(parserIterNext(&parser) == c.TOKEN_NONE);
         }
         { // new line
-            var parser = parserIterInit("const\n");
+            var parser = parserIterInit("const\n", null);
 
             try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
             try expect(parserIterNext(&parser) == c.TOKEN_NONE);
         }
         { // tab
-            var parser = parserIterInit("const\t");
+            var parser = parserIterInit("const\t", null);
 
             try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
 
             try expect(parserIterNext(&parser) == c.TOKEN_NONE);
         }
         { // carriage return
-            var parser = parserIterInit("const\r");
+            var parser = parserIterInit("const\r", null);
 
             try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
         }
         { // comma
-            var parser = parserIterInit("const,");
+            var parser = parserIterInit("const,", null);
 
             try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
         }
         { // period
-            var parser = parserIterInit("const.");
+            var parser = parserIterInit("const.", null);
 
             try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
         }
         { // semicolon
-            var parser = parserIterInit("const;");
+            var parser = parserIterInit("const;", null);
 
             try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
         }
     }
     { // invalid token
-        var parser = parserIterInit("constt");
+        var parser = parserIterInit("constt", null);
 
         try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     }
@@ -164,7 +164,7 @@ test "parse const with characters after" {
 
 fn validateParseKeyword(comptime s: []const u8, comptime token: c_int) void {
     { // normal
-        var parser = parserIterInit(s);
+        var parser = parserIterInit(s, null);
 
         expect(parserIterNext(&parser) == token) catch unreachable;
 
@@ -172,42 +172,42 @@ fn validateParseKeyword(comptime s: []const u8, comptime token: c_int) void {
     }
     { // whitespace before
         { // space
-            var parser = parserIterInit(" " ++ s);
+            var parser = parserIterInit(" " ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // tab
-            var parser = parserIterInit("   " ++ s);
+            var parser = parserIterInit("   " ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // tab sanity
-            var parser = parserIterInit("\t" ++ s);
+            var parser = parserIterInit("\t" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // new line
-            var parser = parserIterInit("\n" ++ s);
+            var parser = parserIterInit("\n" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // CRLF
-            var parser = parserIterInit("\r\n" ++ s);
+            var parser = parserIterInit("\r\n" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple spaces
-            var parser = parserIterInit("  " ++ s);
+            var parser = parserIterInit("  " ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
@@ -215,35 +215,35 @@ fn validateParseKeyword(comptime s: []const u8, comptime token: c_int) void {
         }
         { // multiple tabs
             const str = "       " ++ s;
-            var parser = parserIterInit(str);
+            var parser = parserIterInit(str, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple tabs sanity
-            var parser = parserIterInit("\t\t" ++ s);
+            var parser = parserIterInit("\t\t" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple new line
-            var parser = parserIterInit("\n\n" ++ s);
+            var parser = parserIterInit("\n\n" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple CRLF
-            var parser = parserIterInit("\r\n\r\n" ++ s);
+            var parser = parserIterInit("\r\n\r\n" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // combination
-            var parser = parserIterInit(" \t\n \r\n\r\n \n \t " ++ s);
+            var parser = parserIterInit(" \t\n \r\n\r\n \n \t " ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
@@ -253,49 +253,49 @@ fn validateParseKeyword(comptime s: []const u8, comptime token: c_int) void {
     { // characters after
         { // valid token
             { // space
-                var parser = parserIterInit(s ++ " ");
+                var parser = parserIterInit(s ++ " ", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
 
                 expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // new line
-                var parser = parserIterInit(s ++ "\n");
+                var parser = parserIterInit(s ++ "\n", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
 
                 expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // tab
-                var parser = parserIterInit(s ++ "\t");
+                var parser = parserIterInit(s ++ "\t", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
 
                 expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // carriage return
-                var parser = parserIterInit(s ++ "\r");
+                var parser = parserIterInit(s ++ "\r", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
             { // comma
-                var parser = parserIterInit(s ++ ",");
+                var parser = parserIterInit(s ++ ",", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
             { // period
-                var parser = parserIterInit(s ++ ".");
+                var parser = parserIterInit(s ++ ".", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
             { // semicolon
-                var parser = parserIterInit(s ++ ";");
+                var parser = parserIterInit(s ++ ";", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
         }
         { // invalid token
-            var parser = parserIterInit(s ++ "t");
+            var parser = parserIterInit(s ++ "t", null);
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
@@ -304,7 +304,7 @@ fn validateParseKeyword(comptime s: []const u8, comptime token: c_int) void {
 
 fn validateParseOperatorOrSymbol(comptime s: []const u8, comptime token: c_int) void {
     { // normal
-        var parser = parserIterInit(s);
+        var parser = parserIterInit(s, null);
 
         expect(parserIterNext(&parser) == token) catch unreachable;
 
@@ -312,42 +312,42 @@ fn validateParseOperatorOrSymbol(comptime s: []const u8, comptime token: c_int) 
     }
     { // whitespace before
         { // space
-            var parser = parserIterInit(" " ++ s);
+            var parser = parserIterInit(" " ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // tab
-            var parser = parserIterInit("   " ++ s);
+            var parser = parserIterInit("   " ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // tab sanity
-            var parser = parserIterInit("\t" ++ s);
+            var parser = parserIterInit("\t" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // new line
-            var parser = parserIterInit("\n" ++ s);
+            var parser = parserIterInit("\n" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // CRLF
-            var parser = parserIterInit("\r\n" ++ s);
+            var parser = parserIterInit("\r\n" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple spaces
-            var parser = parserIterInit("  " ++ s);
+            var parser = parserIterInit("  " ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
@@ -355,35 +355,35 @@ fn validateParseOperatorOrSymbol(comptime s: []const u8, comptime token: c_int) 
         }
         { // multiple tabs
             const str = "       " ++ s;
-            var parser = parserIterInit(str);
+            var parser = parserIterInit(str, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple tabs sanity
-            var parser = parserIterInit("\t\t" ++ s);
+            var parser = parserIterInit("\t\t" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple new line
-            var parser = parserIterInit("\n\n" ++ s);
+            var parser = parserIterInit("\n\n" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple CRLF
-            var parser = parserIterInit("\r\n\r\n" ++ s);
+            var parser = parserIterInit("\r\n\r\n" ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
             expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // combination
-            var parser = parserIterInit(" \t\n \r\n\r\n \n \t " ++ s);
+            var parser = parserIterInit(" \t\n \r\n\r\n \n \t " ++ s, null);
 
             expect(parserIterNext(&parser) == token) catch unreachable;
 
@@ -393,49 +393,49 @@ fn validateParseOperatorOrSymbol(comptime s: []const u8, comptime token: c_int) 
     { // characters after
         { // valid token
             { // space
-                var parser = parserIterInit(s ++ " ");
+                var parser = parserIterInit(s ++ " ", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
 
                 expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // new line
-                var parser = parserIterInit(s ++ "\n");
+                var parser = parserIterInit(s ++ "\n", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
 
                 expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // tab
-                var parser = parserIterInit(s ++ "\t");
+                var parser = parserIterInit(s ++ "\t", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
 
                 expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // carriage return
-                var parser = parserIterInit(s ++ "\r");
+                var parser = parserIterInit(s ++ "\r", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
             { // comma
-                var parser = parserIterInit(s ++ ",");
+                var parser = parserIterInit(s ++ ",", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
             { // period
-                var parser = parserIterInit(s ++ ".");
+                var parser = parserIterInit(s ++ ".", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
             { // semicolon
-                var parser = parserIterInit(s ++ ";");
+                var parser = parserIterInit(s ++ ";", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
             { // invalid token
                 // For keywords and symbols, a character after could be part of an identifier or keyword, making this fine
-                var parser = parserIterInit(s ++ "t");
+                var parser = parserIterInit(s ++ "t", null);
 
                 expect(parserIterNext(&parser) == token) catch unreachable;
             }
@@ -749,7 +749,7 @@ test "int literal" {
         }
 
         fn validateParse(num: i64, buf: []const u8) void {
-            var parser = parserIterInit(buf);
+            var parser = parserIterInit(buf, null);
             expect(parserIterNext(&parser) == c.INT_LITERAL) catch unreachable;
             expect(parser.currentMetadata.intLiteral == num) catch unreachable;
         }
@@ -871,7 +871,7 @@ test "float literal" {
         }
 
         fn validateParse(num: f64, buf: []const u8) void {
-            var parser = parserIterInit(buf);
+            var parser = parserIterInit(buf, null);
             const nextToken = parserIterNext(&parser);
             if (nextToken == c.INT_LITERAL) {
                 std.debug.assert(num == @floor(num));

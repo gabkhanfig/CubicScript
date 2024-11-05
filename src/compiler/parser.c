@@ -184,7 +184,7 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
                 decimalPart *= 10.0;
                 decimalPart += num;
                 denominator *= 10;
-            }  else if(c == ' ' || c == '\t' || c == '\n' || c == '\0' || c == ';' || c == ',') {
+            }  else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
                 break;
             } else if(c == '.') {
                 fprintf(stderr, "more than one decimal found in float literal [%s]", source.str);
@@ -626,10 +626,11 @@ static NextToken get_next_token(const ParserIter* self) {
     return next;
 }
 
-ParserIter cubs_parser_iter_init(CubsStringSlice source)
+ParserIter cubs_parser_iter_init(CubsStringSlice source, CubsSyntaxErrorCallback errCallback)
 {
     ParserIter self = {
-        .source = source, 
+        .source = source,
+        .errCallback = errCallback,
         .currentPosition = 0,
         .currentLine = 1,
         .currentColumn = 1,
