@@ -6,10 +6,10 @@
 
 /// Callback for if any syntax errors are encountered.
 /// This results in a compiler error, and compilation stopping.
-/// @param message Error message. Is null terminated.
-/// @param sourceName Name of the source file. Can be empty.
-/// @param sourceContents Full file contents.
-/// @param errLocation Character (byte) where the error began at.
+/// @param message Error message. Is nevermind empty and is null terminated.
+/// @param sourceName Name of the source file. Can be empty, and may not be null terminated.
+/// @param sourceContents Full file contents. May not be null terminated.
+/// @param errLocation Index of character (byte) where the error began at.
 /// @param line Line where error occurs in `sourceContents`. Starts at 1.
 /// @param column Column where error occurs in `sourceContents`. Starts at 1.
 typedef void (*CubsSyntaxErrorCallback)

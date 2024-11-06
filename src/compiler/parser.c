@@ -93,7 +93,15 @@ static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t
     return empty;
 }
 
+typedef struct TokenLiteralOrIdentifier {
+    Token token;
+    CubsStringSlice slice;
+    TokenMetadata metadata;
+} TokenLiteralOrIdentifier;
+
 static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source, CubsSyntaxErrorCallback errCallback) {
+    const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
+    
     const bool isNegative = source.str[0] == '-';
     bool isFloat = false;
     /// If not a decimal number, this will simply be the integer part.
