@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include "../util/math.h"
+#include "../platform/mem.h"
 
 // TODO figure out fast way to get the token.
 // Could look at SIMD, or hashing, or even 8 byte compare if all tokens (not identifiers)
@@ -92,7 +93,7 @@ static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t
     return empty;
 }
 
-static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source) {
+static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source, CubsSyntaxErrorCallback errCallback) {
     const bool isNegative = source.str[0] == '-';
     bool isFloat = false;
     /// If not a decimal number, this will simply be the integer part.
@@ -140,7 +141,20 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         } else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
             break;
         } else {
-            fprintf(stderr, "invalid character found [%c] (ascii %d) in num literal [%s]", c, c, source.str);
+            // TODO isolate slice for num literal
+            const size_t errBufCapacity = 256 + source.len;
+            char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
+            #if defined(_WIN32) || defined(WIN32)
+            const int len = sprintf_s(errBuf, errBufCapacity, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, source.len, source.str);
+            #else
+            const int len = sprintf(errBuf, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, source.len, source.str);
+            #endif
+            assert(len >= 0);
+            const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
+            const CubsStringSlice emptySourceFileName = {0};
+            // TODO get other data like line, column, position, and file name
+            errCallback(errMessage, emptySourceFileName, source, 0, 1, 1);
+            cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
             return TOKEN_NONE;
         }
         i++;
@@ -187,10 +201,36 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
             }  else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
                 break;
             } else if(c == '.') {
-                fprintf(stderr, "more than one decimal found in float literal [%s]", source.str);
+                // TODO isolate slice for num literal
+                const size_t errBufCapacity = 256 + source.len;
+                char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
+                #if defined(_WIN32) || defined(WIN32)
+                const int len = sprintf_s(errBuf, errBufCapacity, "more than one decimal found in float literal [%.*s]", source.len, source.str);
+                #else
+                const int len = sprintf(errBuf, "more than one decimal found in float literal [%.*s]", source.len, source.str);
+                #endif
+                assert(len >= 0);
+                const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
+                const CubsStringSlice emptySourceFileName = {0};
+                // TODO get other data like line, column, position, and file name
+                errCallback(errMessage, emptySourceFileName, source, 0, 1, 1);
+                cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
                 return TOKEN_NONE;
             } else {
-                fprintf(stderr, "invalid character found [%c] (ascii %d) in num literal [%s]", c, c, source.str);
+                // TODO isolate slice for num literal
+                const size_t errBufCapacity = 256 + source.len;
+                char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
+                #if defined(_WIN32) || defined(WIN32)
+                const int len = sprintf_s(errBuf, errBufCapacity, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, source.len, source.str);
+                #else
+                const int len = sprintf(errBuf, "invalid character found [%c] (ascii %d) in num literal [%.*s]", source.len, source.str);
+                #endif
+                assert(len >= 0);
+                const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
+                const CubsStringSlice emptySourceFileName = {0};
+                // TODO get other data like line, column, position, and file name
+                errCallback(errMessage, emptySourceFileName, source, 0, 1, 1);
+                cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
                 return TOKEN_NONE;
             }
             i++;
@@ -199,7 +239,7 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         *outSlice = literalSlice;
 
         const double fraction = (decimalPart / denominator);
-        double actualFloatNum = wholePartFloat;     
+        double actualFloatNum = wholePartFloat;
         if(actualFloatNum >= 0.0) {
             actualFloatNum += fraction;
         } else {      
@@ -222,7 +262,7 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
 /// - `STR_LITERAL`
 /// - `IDENTIFIER`
 /// Also stores the string slice for the token in `outSlice, and metadata in the out-param `outMetadata`.
-static Token try_parse_literal_or_identifier(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source) {
+static Token try_parse_literal_or_identifier(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source, CubsSyntaxErrorCallback errCallback) {
     if(source.len == 0) {
         return TOKEN_NONE;
     }
@@ -251,7 +291,7 @@ static Token try_parse_literal_or_identifier(CubsStringSlice* outSlice, TokenMet
             assert(false && "char literals not yet implemented");
         } break;
         case INT_LITERAL: { // also handles float literal
-            const Token numTokenType = try_parse_num_literal(outSlice, outMetadata, source);
+            const Token numTokenType = try_parse_num_literal(outSlice, outMetadata, source, errCallback);
             if(numTokenType == TOKEN_NONE) {
                 fprintf(stderr, "Failed to parse num literal");
                 return TOKEN_NONE;
@@ -259,6 +299,9 @@ static Token try_parse_literal_or_identifier(CubsStringSlice* outSlice, TokenMet
                 return numTokenType;
             }
         } break;
+        default: {
+            return TOKEN_NONE;
+        }
     }
 }
 
@@ -601,7 +644,7 @@ static NextToken get_next_token(const ParserIter* self) {
                 foundSlice = SUBTRACT_OPERATOR_SLICE;
             } else {
                 TokenMetadata foundMetadata = {0};
-                found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart);
+                found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart, self->errCallback);
                 if(found == TOKEN_NONE) {
                     return next;
                 } else {
@@ -611,7 +654,7 @@ static NextToken get_next_token(const ParserIter* self) {
         }  
         else {
             TokenMetadata foundMetadata = {0};
-            found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart);
+            found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart, self->errCallback);
             if(found == TOKEN_NONE) {
                 return next;
             } else {
