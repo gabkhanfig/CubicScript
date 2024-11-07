@@ -9,7 +9,13 @@ const Token = c.Token;
 
 fn parserIterInit(s: []const u8, errCallback: c.CubsSyntaxErrorCallback) ParserIter {
     const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
-    return c.cubs_parser_iter_init(slice, errCallback);
+    return c.cubs_parser_iter_init(std.mem.zeroes(c.CubsStringSlice), slice, errCallback);
+}
+
+fn parserIterInitName(name: []const u8, s: []const u8, errCallback: c.CubsSyntaxErrorCallback) ParserIter {
+    const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
+    const n = c.CubsStringSlice{ .str = name.ptr, .len = name.len };
+    return c.cubs_parser_iter_init(n, slice, errCallback);
 }
 
 fn parserIterNext(self: *ParserIter) Token {
