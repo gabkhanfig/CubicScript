@@ -99,10 +99,10 @@ typedef struct TokenLiteralOrIdentifier {
     TokenMetadata metadata;
 } TokenLiteralOrIdentifier;
 
-static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source, CubsSyntaxErrorCallback errCallback) {
+static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, const CubsStringSlice tokenStart) {
     const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
     
-    const bool isNegative = source.str[0] == '-';
+    const bool isNegative = tokenStart.str[0] == '-';
     bool isFloat = false;
     /// If not a decimal number, this will simply be the integer part.
     int64_t wholePartInt = 0;
@@ -117,7 +117,7 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
     // -9223372036854775808
 
     while(true) {
-        const char c = source.str[i];
+        const char c = tokenStart.str[i];
         if(c >= '0' && c <= '9') {
             int64_t num = (int64_t)(c - '0');
             if(isFloat) {
@@ -150,20 +150,20 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
             break;
         } else {
             // TODO isolate slice for num literal
-            const size_t errBufCapacity = 256 + source.len;
+            const size_t errBufCapacity = 256 + tokenStart.len;
             char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
             #if defined(_WIN32) || defined(WIN32)
-            const int len = sprintf_s(errBuf, errBufCapacity, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, source.len, source.str);
+            const int len = sprintf_s(errBuf, errBufCapacity, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, tokenStart.len, tokenStart.str);
             #else
-            const int len = sprintf(errBuf, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, source.len, source.str);
+            const int len = sprintf(errBuf, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, tokenStart.len, tokenStart.str);
             #endif
             assert(len >= 0);
             const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
             const CubsStringSlice emptySourceFileName = {0};
             // TODO get other data like line, column, position, and file name
-            errCallback(errMessage, emptySourceFileName, source, 0, 1, 1);
+            self->errCallback(errMessage, emptySourceFileName, tokenStart, 0, 1, 1);
             cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
-            return TOKEN_NONE;
+            return emptyTokenLiteralOrIdentifier;
         }
         i++;
     }
@@ -173,20 +173,19 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
     }
 
     if(!isDecimal) {
-        const CubsStringSlice literalSlice = {.str = source.str, .len = i};
-        *outSlice = literalSlice;
+        const CubsStringSlice literalSlice = {.str = tokenStart.str, .len = i};
         if(isFloat) {
             double actualFloatNum = wholePartFloat;
             if(isNegative) {
                 actualFloatNum *= -1.0;
             }
             const TokenMetadata metadata = {.floatLiteral = actualFloatNum};
-            *outMetadata = metadata;
-            return FLOAT_LITERAL;
+            const TokenLiteralOrIdentifier outToken = {.token = FLOAT_LITERAL, .slice = literalSlice, .metadata = metadata};
+            return outToken;
         } else {  
             const TokenMetadata metadata = {.intLiteral = wholePartInt};
-            *outMetadata = metadata;
-            return INT_LITERAL;
+            const TokenLiteralOrIdentifier outToken = {.token = INT_LITERAL, .slice = literalSlice, .metadata = metadata};
+            return outToken;
         }
     } else {
         // found '.' character
@@ -200,7 +199,7 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         double denominator = 1;
 
         while(true) {
-            const char c = source.str[i];
+            const char c = tokenStart.str[i];
             if(c >= '0' && c <= '9') {
                 double num = (double)(c - '0');
                 decimalPart *= 10.0;
@@ -210,41 +209,40 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
                 break;
             } else if(c == '.') {
                 // TODO isolate slice for num literal
-                const size_t errBufCapacity = 256 + source.len;
+                const size_t errBufCapacity = 256 + tokenStart.len;
                 char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
                 #if defined(_WIN32) || defined(WIN32)
-                const int len = sprintf_s(errBuf, errBufCapacity, "more than one decimal found in float literal [%.*s]", source.len, source.str);
+                const int len = sprintf_s(errBuf, errBufCapacity, "more than one decimal found in float literal [%.*s]", tokenStart.len, tokenStart.str);
                 #else
-                const int len = sprintf(errBuf, "more than one decimal found in float literal [%.*s]", source.len, source.str);
+                const int len = sprintf(errBuf, "more than one decimal found in float literal [%.*s]", tokenStart.len, tokenStart.str);
                 #endif
                 assert(len >= 0);
                 const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
                 const CubsStringSlice emptySourceFileName = {0};
                 // TODO get other data like line, column, position, and file name
-                errCallback(errMessage, emptySourceFileName, source, 0, 1, 1);
+                self->errCallback(errMessage, emptySourceFileName, tokenStart, 0, 1, 1);
                 cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
-                return TOKEN_NONE;
+                return emptyTokenLiteralOrIdentifier;
             } else {
                 // TODO isolate slice for num literal
-                const size_t errBufCapacity = 256 + source.len;
+                const size_t errBufCapacity = 256 + tokenStart.len;
                 char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
                 #if defined(_WIN32) || defined(WIN32)
-                const int len = sprintf_s(errBuf, errBufCapacity, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, source.len, source.str);
+                const int len = sprintf_s(errBuf, errBufCapacity, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, tokenStart.len, tokenStart.str);
                 #else
-                const int len = sprintf(errBuf, "invalid character found [%c] (ascii %d) in num literal [%.*s]", source.len, source.str);
+                const int len = sprintf(errBuf, "invalid character found [%c] (ascii %d) in num literal [%.*s]", tokenStart.len, tokenStart.str);
                 #endif
                 assert(len >= 0);
                 const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
                 const CubsStringSlice emptySourceFileName = {0};
                 // TODO get other data like line, column, position, and file name
-                errCallback(errMessage, emptySourceFileName, source, 0, 1, 1);
+                self->errCallback(errMessage, emptySourceFileName, tokenStart, 0, 1, 1);
                 cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
-                return TOKEN_NONE;
+                return emptyTokenLiteralOrIdentifier;
             }
             i++;
         }
-        const CubsStringSlice literalSlice = {.str = source.str, .len = i};
-        *outSlice = literalSlice;
+        const CubsStringSlice literalSlice = {.str = tokenStart.str, .len = i};
 
         const double fraction = (decimalPart / denominator);
         double actualFloatNum = wholePartFloat;
@@ -258,8 +256,8 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
         }
         
         const TokenMetadata metadata = {.floatLiteral = actualFloatNum};
-        *outMetadata = metadata;
-        return FLOAT_LITERAL;
+        const TokenLiteralOrIdentifier outToken = {.token = FLOAT_LITERAL, .slice = literalSlice, .metadata = metadata};
+        return outToken;
     }
 }
 
@@ -270,14 +268,16 @@ static Token try_parse_num_literal(CubsStringSlice* outSlice, TokenMetadata* out
 /// - `STR_LITERAL`
 /// - `IDENTIFIER`
 /// Also stores the string slice for the token in `outSlice, and metadata in the out-param `outMetadata`.
-static Token try_parse_literal_or_identifier(CubsStringSlice* outSlice, TokenMetadata* outMetadata, const CubsStringSlice source, CubsSyntaxErrorCallback errCallback) {
-    if(source.len == 0) {
-        return TOKEN_NONE;
+static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const ParserIter* self, const CubsStringSlice tokenStart) {
+    const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
+
+    if(tokenStart.len == 0) {
+        return emptyTokenLiteralOrIdentifier;
     }
 
     Token hint = TOKEN_NONE;
     { // get hint
-        const char firstChar = source.str[0];
+        const char firstChar = tokenStart.str[0];
         if(firstChar == '\'') { // 
             hint = CHAR_LITERAL;
         } else if(firstChar == '\"') {
@@ -291,7 +291,7 @@ static Token try_parse_literal_or_identifier(CubsStringSlice* outSlice, TokenMet
         }
     }
     if(hint == TOKEN_NONE) {
-        return TOKEN_NONE;
+        return emptyTokenLiteralOrIdentifier;
     }
 
     switch(hint) {
@@ -299,16 +299,10 @@ static Token try_parse_literal_or_identifier(CubsStringSlice* outSlice, TokenMet
             assert(false && "char literals not yet implemented");
         } break;
         case INT_LITERAL: { // also handles float literal
-            const Token numTokenType = try_parse_num_literal(outSlice, outMetadata, source, errCallback);
-            if(numTokenType == TOKEN_NONE) {
-                fprintf(stderr, "Failed to parse num literal");
-                return TOKEN_NONE;
-            } else {
-                return numTokenType;
-            }
+            return try_parse_num_literal(self, tokenStart);
         } break;
         default: {
-            return TOKEN_NONE;
+            return emptyTokenLiteralOrIdentifier;
         }
     }
 }
@@ -651,22 +645,24 @@ static NextToken get_next_token(const ParserIter* self) {
                 found = SUBTRACT_OPERATOR;
                 foundSlice = SUBTRACT_OPERATOR_SLICE;
             } else {
-                TokenMetadata foundMetadata = {0};
-                found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart, self->errCallback);
-                if(found == TOKEN_NONE) {
+                const TokenLiteralOrIdentifier parsedLiteralOrIdentifier = try_parse_num_literal(self, tokenStart);
+                if(parsedLiteralOrIdentifier.token == TOKEN_NONE) {
                     return next;
                 } else {
-                    next.nextMetadata = foundMetadata;
+                    found = parsedLiteralOrIdentifier.token;
+                    foundSlice = parsedLiteralOrIdentifier.slice;
+                    next.nextMetadata = parsedLiteralOrIdentifier.metadata;
                 }
             }
         }  
         else {
-            TokenMetadata foundMetadata = {0};
-            found = try_parse_literal_or_identifier(&foundSlice, &foundMetadata, tokenStart, self->errCallback);
-            if(found == TOKEN_NONE) {
+            const TokenLiteralOrIdentifier parsedLiteralOrIdentifier = try_parse_literal_or_identifier(self, tokenStart);
+            if(parsedLiteralOrIdentifier.token == TOKEN_NONE) {
                 return next;
             } else {
-                next.nextMetadata = foundMetadata;
+                found = parsedLiteralOrIdentifier.token;
+                foundSlice = parsedLiteralOrIdentifier.slice;
+                next.nextMetadata = parsedLiteralOrIdentifier.metadata;
             }
         }
     }
@@ -677,9 +673,10 @@ static NextToken get_next_token(const ParserIter* self) {
     return next;
 }
 
-ParserIter cubs_parser_iter_init(CubsStringSlice source, CubsSyntaxErrorCallback errCallback)
+ParserIter cubs_parser_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback)
 {
     ParserIter self = {
+        .name = name,
         .source = source,
         .errCallback = errCallback,
         .currentPosition = 0,

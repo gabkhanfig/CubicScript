@@ -188,6 +188,9 @@ typedef union TokenMetadata {
 
 /// A very simple walkthrough parser that allocates no memory.
 typedef struct ParserIter {
+    /// Name of the source. Generally it's the file name.
+    CubsStringSlice name;
+    /// The actual source code.
     CubsStringSlice source;
     CubsSyntaxErrorCallback errCallback;
     size_t currentPosition;
@@ -203,7 +206,7 @@ typedef struct ParserIter {
 
 /// # Debug asserts
 /// Must be valid utf8
-ParserIter cubs_parser_iter_init(CubsStringSlice source, CubsSyntaxErrorCallback errCallback);
+ParserIter cubs_parser_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback);
 
 /// Returns `TOKEN_NONE` if there is no next. Moves the iterator forward.
 Token cubs_parser_iter_next(ParserIter* self);
