@@ -1,0 +1,25 @@
+{
+    "tasks": [
+        {
+            "label": "Zig: Build",
+            "detail": "zig build",
+            "command": "zig build",
+            "type": "shell",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent",
+                "revealProblems": "onProblem",
+                "close": true
+            }
+        },
+        {
+            "label": "Zig: Run All Tests",
+            "detail": "zig build test --summary all",
+            "command": "zig build test --summary all",
+            "type": "shell",
+            "problemMatcher": [],
+        },
+    ],
+
+    "version": "2.0.0"
+}

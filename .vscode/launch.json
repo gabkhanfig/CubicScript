@@ -1,0 +1,37 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "name": "Zig Debug All Tests",
+            "request": "launch",
+            "program": "${workspaceFolder}/zig-out/test/test.exe",
+            "preLaunchTask": "Zig: Build",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "name": "C++ Debug All Tests",
+            "request": "launch",
+            "program": "${workspaceFolder}/zig-out/test/cpp_unit_tests.exe",
+            "preLaunchTask": "Zig: Build",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "All Tests",
+            "configurations": ["Zig Debug All Tests", "C++ Debug All Tests"],
+            "presentation": {
+                "hidden": false,
+                "group": "",
+                "order": 1,
+            }
+        }
+    ]
+}
