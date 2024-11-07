@@ -46,7 +46,7 @@ pub fn build(b: *std.Build) void {
         lib_unit_tests.linkLibC();
         lib_unit_tests.defineCMacro(CUBS_USING_ZIG_ALLOCATOR, "1");
 
-        const cpp_unit_tests = b.addExecutable(.{ .name = "cpp unit tests", .target = target, .optimize = optimize });
+        const cpp_unit_tests = b.addExecutable(.{ .name = "cpp_unit_tests", .target = target, .optimize = optimize });
         cpp_unit_tests.addIncludePath(b.path("src"));
         cpp_unit_tests.linkLibC();
         cpp_unit_tests.linkLibCpp();
@@ -58,6 +58,16 @@ pub fn build(b: *std.Build) void {
 
         for (cubic_script_cpp_test_sources) |c_file| {
             cpp_unit_tests.addCSourceFile(.{ .file = b.path(c_file), .flags = &c_flags });
+        }
+
+        // Always create test artifacts
+        {
+            const options = Build.Step.InstallArtifact.Options{ .dest_dir = .{
+                .override = .{ .custom = "test" },
+            } };
+
+            b.getInstallStep().dependOn(&b.addInstallArtifact(lib_unit_tests, options).step);
+            b.getInstallStep().dependOn(&b.addInstallArtifact(cpp_unit_tests, options).step);
         }
 
         // On running "zig build test" on the command line, it will build both the zig tests, and c++ tests
