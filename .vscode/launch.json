@@ -8,7 +8,7 @@
             "type": "lldb",
             "name": "Zig Debug All Tests",
             "request": "launch",
-            "program": "${workspaceFolder}/zig-out/test/test.exe",
+            "program": "${workspaceFolder}/zig-out/test/test",
             "preLaunchTask": "Zig: Build",
             "args": [],
             "cwd": "${workspaceFolder}"
@@ -17,7 +17,7 @@
             "type": "lldb",
             "name": "C++ Debug All Tests",
             "request": "launch",
-            "program": "${workspaceFolder}/zig-out/test/cpp_unit_tests.exe",
+            "program": "${workspaceFolder}/zig-out/test/cpp_unit_tests",
             "preLaunchTask": "Zig: Build",
             "args": [],
             "cwd": "${workspaceFolder}"
