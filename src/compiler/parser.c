@@ -14,15 +14,37 @@ typedef struct NextToken {
     bool hasNextToken;
     Token next;
     TokenMetadata nextMetadata;
-    size_t newPosition;
-    size_t newLine;
-    size_t newColumn;
+    CubsSourceFileCharPosition newPosition;
 } NextToken;
 
 static bool is_space(char c) {
     // https://www.geeksforgeeks.org/isspace-in-c/
     // no need to include whole header
     return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
+
+/// @param currentPos 
+/// @param start Beginning of string
+/// @param end Inclusive
+static CubsSourceFileCharPosition get_updated_position(CubsSourceFileCharPosition currentPos, const char* start, size_t end) { 
+    CubsSourceFileCharPosition newPos = currentPos;
+    newPos.index += end;
+    for(size_t i = 0; i <= end; i++) {
+        const char c = start[i];
+        assert(c != '\0');
+
+        if(c == '\n') {
+            newPos.line += 1;
+            newPos.column = 1;
+        }
+        // TODO figure out to handle tab widths?
+        else if(c == '\t') {
+            newPos.column += 4;
+        } else {
+            newPos.column += 1;
+        }
+    }
+    return newPos;
 }
 
 /// Checks if `source` starts with `find`.
@@ -68,8 +90,8 @@ static bool starts_with_operator_or_symbol_substring(const CubsStringSlice sourc
 /// current position within the source string slice.
 static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t* outOffset) {
     const CubsStringSlice tempStart = {
-        .str = &self->source.str[self->currentPosition], 
-        .len = self->source.len - self->currentPosition
+        .str = &self->source.str[self->position.index], 
+        .len = self->source.len - self->position.index
     };
     size_t i = 0;
     for(; i < tempStart.len; i++) {
@@ -99,7 +121,7 @@ typedef struct TokenLiteralOrIdentifier {
     TokenMetadata metadata;
 } TokenLiteralOrIdentifier;
 
-static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, const CubsStringSlice tokenStart) {
+static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
     const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
     
     const bool isNegative = tokenStart.str[0] == '-';
@@ -148,21 +170,10 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, co
             break;
         } else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
             break;
-        } else {
-            // TODO isolate slice for num literal
-            const size_t errBufCapacity = 256 + tokenStart.len;
-            char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
-            #if defined(_WIN32) || defined(WIN32)
-            const int len = sprintf_s(errBuf, errBufCapacity, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, tokenStart.len, tokenStart.str);
-            #else
-            const int len = sprintf(errBuf, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, tokenStart.len, tokenStart.str);
-            #endif
-            assert(len >= 0);
-            const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
-            const CubsStringSlice emptySourceFileName = {0};
+        } else {            
             // TODO get other data like line, column, position, and file name
-            self->errCallback(errMessage, emptySourceFileName, tokenStart, 0, 1, 1);
-            cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
+            const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
+            self->errCallback(cubsSyntaxErrNumLiteralInvalidChar, self->name, self->source, errPos);
             return emptyTokenLiteralOrIdentifier;
         }
         i++;
@@ -208,36 +219,14 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, co
             }  else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
                 break;
             } else if(c == '.') {
-                // TODO isolate slice for num literal
-                const size_t errBufCapacity = 256 + tokenStart.len;
-                char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
-                #if defined(_WIN32) || defined(WIN32)
-                const int len = sprintf_s(errBuf, errBufCapacity, "more than one decimal found in float literal [%.*s]", tokenStart.len, tokenStart.str);
-                #else
-                const int len = sprintf(errBuf, "more than one decimal found in float literal [%.*s]", tokenStart.len, tokenStart.str);
-                #endif
-                assert(len >= 0);
-                const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
-                const CubsStringSlice emptySourceFileName = {0};
                 // TODO get other data like line, column, position, and file name
-                self->errCallback(errMessage, emptySourceFileName, tokenStart, 0, 1, 1);
-                cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
+                const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
+                self->errCallback(cubsSyntaxErrNumLiteralTooManyDecimal, self->name, self->source, errPos);
                 return emptyTokenLiteralOrIdentifier;
             } else {
-                // TODO isolate slice for num literal
-                const size_t errBufCapacity = 256 + tokenStart.len;
-                char* errBuf = cubs_malloc(errBufCapacity, _Alignof(size_t));
-                #if defined(_WIN32) || defined(WIN32)
-                const int len = sprintf_s(errBuf, errBufCapacity, "invalid character found [%c] (ascii %d) in num literal [%.*s]", c, c, tokenStart.len, tokenStart.str);
-                #else
-                const int len = sprintf(errBuf, "invalid character found [%c] (ascii %d) in num literal [%.*s]", tokenStart.len, tokenStart.str);
-                #endif
-                assert(len >= 0);
-                const CubsStringSlice errMessage = {.str = errBuf, .len = (size_t)len};
-                const CubsStringSlice emptySourceFileName = {0};
                 // TODO get other data like line, column, position, and file name
-                self->errCallback(errMessage, emptySourceFileName, tokenStart, 0, 1, 1);
-                cubs_free((void*)errBuf, errBufCapacity, _Alignof(size_t));
+                const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
+                self->errCallback(cubsSyntaxErrNumLiteralInvalidChar, self->name, self->source, errPos);
                 return emptyTokenLiteralOrIdentifier;
             }
             i++;
@@ -268,7 +257,7 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, co
 /// - `STR_LITERAL`
 /// - `IDENTIFIER`
 /// Also stores the string slice for the token in `outSlice, and metadata in the out-param `outMetadata`.
-static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const ParserIter* self, const CubsStringSlice tokenStart) {
+static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
     const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
 
     if(tokenStart.len == 0) {
@@ -299,7 +288,7 @@ static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const ParserIter
             assert(false && "char literals not yet implemented");
         } break;
         case INT_LITERAL: { // also handles float literal
-            return try_parse_num_literal(self, tokenStart);
+            return try_parse_num_literal(self, pos, tokenStart);
         } break;
         default: {
             return emptyTokenLiteralOrIdentifier;
@@ -402,19 +391,25 @@ static NextToken get_next_token(const ParserIter* self) {
     Token found = TOKEN_NONE;
     CubsStringSlice foundSlice = {0};
     NextToken next = {0};
-    next.newLine = self->currentLine;
-    next.newColumn = self->currentColumn;
+    next.newPosition = self->position;
     size_t whitespaceOffset = 0;
 
     const Token previousToken = self->current;
 
-    if(self->currentPosition >= self->source.len) {
+    if(self->position.index >= self->source.len) {
         return next;
     } else {
         const CubsStringSlice tokenStart = get_next_token_start_slice(self, &whitespaceOffset);
         const CubsStringSlice AMPERSAND_SLICE = {.str = "&", .len = 1};
         const CubsStringSlice ASTERISK_SLICE = {.str = "*", .len = 1};
         const CubsStringSlice MINUS_SLICE = {.str = "-", .len = 1};
+
+        // update current char position to go past whitespace
+        const CubsSourceFileCharPosition pastWhitespacePos = get_updated_position(
+            self->position, 
+            &self->source.str[self->position.index], 
+            whitespaceOffset
+        );
 
         // Keywords
         if(starts_with_keyword_substring(tokenStart, CONST_KEYWORD_SLICE)) {
@@ -645,7 +640,7 @@ static NextToken get_next_token(const ParserIter* self) {
                 found = SUBTRACT_OPERATOR;
                 foundSlice = SUBTRACT_OPERATOR_SLICE;
             } else {
-                const TokenLiteralOrIdentifier parsedLiteralOrIdentifier = try_parse_num_literal(self, tokenStart);
+                const TokenLiteralOrIdentifier parsedLiteralOrIdentifier = try_parse_num_literal(self, pastWhitespacePos, tokenStart);
                 if(parsedLiteralOrIdentifier.token == TOKEN_NONE) {
                     return next;
                 } else {
@@ -656,7 +651,7 @@ static NextToken get_next_token(const ParserIter* self) {
             }
         }  
         else {
-            const TokenLiteralOrIdentifier parsedLiteralOrIdentifier = try_parse_literal_or_identifier(self, tokenStart);
+            const TokenLiteralOrIdentifier parsedLiteralOrIdentifier = try_parse_literal_or_identifier(self, pastWhitespacePos, tokenStart);
             if(parsedLiteralOrIdentifier.token == TOKEN_NONE) {
                 return next;
             } else {
@@ -669,19 +664,18 @@ static NextToken get_next_token(const ParserIter* self) {
 
     next.hasNextToken = true;
     next.next = found;
-    next.newPosition = self->currentPosition + foundSlice.len + whitespaceOffset;
+    next.newPosition.index = self->position.index + foundSlice.len + whitespaceOffset;
     return next;
 }
 
 ParserIter cubs_parser_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback)
 {
-    ParserIter self = {
+    const CubsSourceFileCharPosition pos = {.index = 0, .line = 1, .column = 1};
+    const ParserIter self = {
         .name = name,
         .source = source,
         .errCallback = errCallback,
-        .currentPosition = 0,
-        .currentLine = 1,
-        .currentColumn = 1,
+        .position = pos,
         .previous = TOKEN_NONE,
         .current = TOKEN_NONE,
         .previousMetadata = {0},
@@ -697,9 +691,7 @@ Token cubs_parser_iter_next(ParserIter *self)
     self->previous = self->current;
     self->previousMetadata = self->currentMetadata;
     if(next.hasNextToken) {
-        self->currentPosition = next.newPosition;
-        self->currentLine = next.newLine;
-        self->currentColumn = next.newColumn;
+        self->position = next.newPosition;
         self->current = next.next;
         self->currentMetadata = next.nextMetadata;
     } else {

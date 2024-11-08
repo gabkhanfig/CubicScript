@@ -193,11 +193,7 @@ typedef struct ParserIter {
     /// The actual source code.
     CubsStringSlice source;
     CubsSyntaxErrorCallback errCallback;
-    size_t currentPosition;
-    /// Source code line number
-    size_t currentLine;
-    /// Source code column
-    size_t currentColumn;
+    CubsSourceFileCharPosition position;
     Token previous;
     Token current;
     TokenMetadata previousMetadata;

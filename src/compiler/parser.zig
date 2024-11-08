@@ -977,7 +977,8 @@ test "fail parse int literal invalid character" {
     const Fail = struct {
         var gotError: bool = false;
 
-        fn errCallback(_: c.CubsStringSlice, _: c.CubsStringSlice, _: c.CubsStringSlice, _: usize, _: usize, _: usize) callconv(.C) void {
+        fn errCallback(e: c.CubsSyntaxErrorType, _: c.CubsStringSlice, _: c.CubsStringSlice, _: c.CubsSourceFileCharPosition) callconv(.C) void {
+            std.debug.assert(e == c.cubsSyntaxErrNumLiteralInvalidChar);
             gotError = true;
         }
     };
@@ -991,12 +992,28 @@ test "fail parse float literal many period" {
     const Fail = struct {
         var gotError: bool = false;
 
-        fn errCallback(_: c.CubsStringSlice, _: c.CubsStringSlice, _: c.CubsStringSlice, _: usize, _: usize, _: usize) callconv(.C) void {
+        fn errCallback(e: c.CubsSyntaxErrorType, _: c.CubsStringSlice, _: c.CubsStringSlice, _: c.CubsSourceFileCharPosition) callconv(.C) void {
+            std.debug.assert(e == c.cubsSyntaxErrNumLiteralTooManyDecimal);
             gotError = true;
         }
     };
 
     var parser = parserIterInit("1.0.1", &Fail.errCallback);
+    try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+    try expect(Fail.gotError == true);
+}
+
+test "fail parse float literal invalid char after decimal" {
+    const Fail = struct {
+        var gotError: bool = false;
+
+        fn errCallback(e: c.CubsSyntaxErrorType, _: c.CubsStringSlice, _: c.CubsStringSlice, _: c.CubsSourceFileCharPosition) callconv(.C) void {
+            std.debug.assert(e == c.cubsSyntaxErrNumLiteralInvalidChar);
+            gotError = true;
+        }
+    };
+
+    var parser = parserIterInit("1.0r", &Fail.errCallback);
     try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     try expect(Fail.gotError == true);
 }
