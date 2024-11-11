@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "../util/math.h"
 #include "../platform/mem.h"
+#include "../util/unreachable.h"
 
 // TODO figure out fast way to get the token.
 // Could look at SIMD, or hashing, or even 8 byte compare if all tokens (not identifiers)
@@ -21,6 +22,10 @@ static bool is_space(char c) {
     // https://www.geeksforgeeks.org/isspace-in-c/
     // no need to include whole header
     return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
+
+static bool is_alphabetic_or_underscore(char c) {
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c == '_');
 }
 
 /// @param currentPos 
@@ -170,8 +175,7 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, co
             break;
         } else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
             break;
-        } else {            
-            // TODO get other data like line, column, position, and file name
+        } else {
             const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
             self->errCallback(cubsSyntaxErrNumLiteralInvalidChar, self->name, self->source, errPos);
             return emptyTokenLiteralOrIdentifier;
@@ -219,12 +223,10 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, co
             }  else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
                 break;
             } else if(c == '.') {
-                // TODO get other data like line, column, position, and file name
                 const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
                 self->errCallback(cubsSyntaxErrNumLiteralTooManyDecimal, self->name, self->source, errPos);
                 return emptyTokenLiteralOrIdentifier;
             } else {
-                // TODO get other data like line, column, position, and file name
                 const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
                 self->errCallback(cubsSyntaxErrNumLiteralInvalidChar, self->name, self->source, errPos);
                 return emptyTokenLiteralOrIdentifier;
@@ -248,6 +250,62 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, co
         const TokenLiteralOrIdentifier outToken = {.token = FLOAT_LITERAL, .slice = literalSlice, .metadata = metadata};
         return outToken;
     }
+}
+
+static TokenLiteralOrIdentifier try_parse_string_literal(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
+    assert(tokenStart.str[0] == '\"');
+    
+    const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
+    if(tokenStart.len == 1) {
+        return emptyTokenLiteralOrIdentifier;
+    }
+
+    const char* start = &tokenStart.str[1];
+    size_t i = 0;
+    while(true) {      
+        if(i >= (tokenStart.len + 1)) {
+            const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
+            self->errCallback(cubsSyntaxErrTerminatedStringLiteral, self->name, self->source, errPos);
+            return emptyTokenLiteralOrIdentifier;
+        }
+        const char c = start[i];
+        if(c == '\0') {
+            const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
+            self->errCallback(cubsSyntaxErrTerminatedStringLiteral, self->name, self->source, errPos);
+            return emptyTokenLiteralOrIdentifier;
+        } else if(c == '\\') {
+            i += 2; // skip past next character
+        } else if(c == '\"') {
+            break;
+        } else {
+            i += 1;
+        }
+    }
+
+    const CubsStringSlice stringLiteralSlice = {.str = start, .len = i};
+    const CubsStringSlice stringLiteralSliceWithQuotes = {.str = tokenStart.str, .len = i + 2};
+    const TokenMetadata metadata = {.strLiteral = { stringLiteralSlice }};
+    const TokenLiteralOrIdentifier outToken = {.token = STR_LITERAL, .slice = stringLiteralSliceWithQuotes, .metadata = metadata};
+    return outToken;
+}
+
+static TokenLiteralOrIdentifier try_parse_identifier(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
+    assert(is_alphabetic_or_underscore(tokenStart.str[0]));
+    
+    size_t i = 1;
+    while(true) {
+        const char c = tokenStart.str[i];
+        if(is_alphabetic_or_underscore(c)) {
+            i += 1;
+        } else {
+            break;
+        }
+    }
+
+    const CubsStringSlice identifierSlice = {.str = tokenStart.str, .len = i};
+    const TokenMetadata metadata = {.identifier = identifierSlice};
+    const TokenLiteralOrIdentifier outToken = {.token = STR_LITERAL, .slice = identifierSlice, .metadata = metadata};
+    return outToken;
 }
 
 /// Returns `TOKEN_NONE` if cannot find anything, otherwise returns one of:
