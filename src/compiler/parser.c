@@ -304,7 +304,7 @@ static TokenLiteralOrIdentifier try_parse_identifier(const ParserIter* self, con
 
     const CubsStringSlice identifierSlice = {.str = tokenStart.str, .len = i};
     const TokenMetadata metadata = {.identifier = identifierSlice};
-    const TokenLiteralOrIdentifier outToken = {.token = STR_LITERAL, .slice = identifierSlice, .metadata = metadata};
+    const TokenLiteralOrIdentifier outToken = {.token = IDENTIFIER, .slice = identifierSlice, .metadata = metadata};
     return outToken;
 }
 
@@ -331,9 +331,7 @@ static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const ParserIter
             hint = STR_LITERAL;
         } else if((firstChar >= '0' && firstChar <= '9') || firstChar == '-') { // TODO hexadecimal, binary, and maybe octal literals
             hint = INT_LITERAL; // also works for FLOAT_LITERAL
-        } else if( // TODO other language specific characters?
-            (firstChar >= 'A' && firstChar <= 'Z') || (firstChar >= 'a' && firstChar <= 'z') || (firstChar == '_')
-        ) {
+        } else if(is_alphabetic_or_underscore(firstChar)) { // TODO other language specific characters?
             hint = IDENTIFIER;
         }
     }
@@ -348,6 +346,12 @@ static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const ParserIter
         case INT_LITERAL: { // also handles float literal
             return try_parse_num_literal(self, pos, tokenStart);
         } break;
+        case STR_LITERAL: {
+            return try_parse_string_literal(self, pos, tokenStart);
+        } break;
+        case IDENTIFIER: {
+            return try_parse_identifier(self, pos, tokenStart);
+        }
         default: {
             return emptyTokenLiteralOrIdentifier;
         }

@@ -164,7 +164,7 @@ test "parse const with characters after" {
     { // invalid token
         var parser = parserIterInit("constt", null);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
     }
 }
 
@@ -303,7 +303,7 @@ fn validateParseKeyword(comptime s: []const u8, comptime token: c_int) void {
         { // invalid token
             var parser = parserIterInit(s ++ "t", null);
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(parserIterNext(&parser) == c.IDENTIFIER) catch unreachable;
         }
     }
 }
