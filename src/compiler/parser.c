@@ -295,7 +295,8 @@ static TokenLiteralOrIdentifier try_parse_identifier(const ParserIter* self, con
     size_t i = 1;
     while(true) {
         const char c = tokenStart.str[i];
-        if(is_alphabetic_or_underscore(c)) {
+        // can also have numeric characters as long as it doesn't start with it
+        if(is_alphabetic_or_underscore(c) || (c >= '0' && c <= '9')) { 
             i += 1;
         } else {
             break;
