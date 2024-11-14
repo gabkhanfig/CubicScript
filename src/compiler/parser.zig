@@ -1017,3 +1017,72 @@ test "fail parse float literal invalid char after decimal" {
     try expect(parserIterNext(&parser) == c.TOKEN_NONE);
     try expect(Fail.gotError == true);
 }
+
+test "parse string literal empty" {
+    const s = "\"\"";
+    var parser = parserIterInit(s, null);
+    try expect(parserIterNext(&parser) == c.STR_LITERAL);
+
+    {
+        const foundSlice = parser.currentMetadata.strLiteral.slice;
+        try expect(foundSlice.len == 0);
+    }
+}
+
+test "parse string literal alphanumeric" {
+    const f = "abcdefg123416246";
+    const s = "\"" ++ f ++ "\"";
+    var parser = parserIterInit(s, null);
+    try expect(parserIterNext(&parser) == c.STR_LITERAL);
+
+    {
+        const foundSlice = parser.currentMetadata.strLiteral.slice;
+        try expect(foundSlice.len == f.len);
+        try expect(std.mem.eql(u8, foundSlice.str[0..foundSlice.len], f));
+    }
+}
+
+test "parse string literal escape sequence" {
+    const f = "\\n\\t\\r\\v";
+    const s = "\"" ++ f ++ "\"";
+    var parser = parserIterInit(s, null);
+    try expect(parserIterNext(&parser) == c.STR_LITERAL);
+
+    {
+        const foundSlice = parser.currentMetadata.strLiteral.slice;
+        try expect(foundSlice.len == f.len);
+        try expect(std.mem.eql(u8, foundSlice.str[0..foundSlice.len], f));
+    }
+}
+
+test "fail parse string" {
+    const Fail = struct {
+        var gotError: bool = false;
+
+        fn errCallback(e: c.CubsSyntaxErrorType, _: c.CubsStringSlice, _: c.CubsStringSlice, _: c.CubsSourceFileCharPosition) callconv(.C) void {
+            std.debug.assert(e == c.cubsSyntaxErrTerminatedStringLiteral);
+            gotError = true;
+        }
+    };
+
+    {
+        const s = "\"";
+        var parser = parserIterInit(s, &Fail.errCallback);
+        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(Fail.gotError == true);
+        Fail.gotError = false;
+    }
+    {
+        const s = "\"a";
+        var parser = parserIterInit(s, &Fail.errCallback);
+        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(Fail.gotError == true);
+        Fail.gotError = false;
+    }
+    {
+        const s = "\"\\n";
+        var parser = parserIterInit(s, &Fail.errCallback);
+        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(Fail.gotError == true);
+    }
+}
