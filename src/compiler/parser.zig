@@ -1086,3 +1086,63 @@ test "fail parse string" {
         try expect(Fail.gotError == true);
     }
 }
+
+test "parse identifier" {
+    {
+        const identifier = "a";
+        var parser = parserIterInit(identifier, null);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+    }
+    {
+        const identifier = "hello";
+        var parser = parserIterInit(identifier, null);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+    }
+    {
+        const identifier = "b6";
+        var parser = parserIterInit(identifier, null);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+    }
+    {
+        const identifier = "h3llo";
+        var parser = parserIterInit(identifier, null);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+    }
+    {
+        const identifier = "HELLO";
+        var parser = parserIterInit(identifier, null);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+    }
+    {
+        const identifier = "_whoa";
+        var parser = parserIterInit(identifier, null);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+    }
+    {
+        const identifier = "_1sur3";
+        var parser = parserIterInit(identifier, null);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+    }
+    {
+        const identifier = "GOOD_MORNING";
+        var parser = parserIterInit(identifier, null);
+        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+    }
+    {
+        const Fail = struct {
+            fn errCallback(_: c.CubsSyntaxErrorType, _: c.CubsStringSlice, _: c.CubsStringSlice, _: c.CubsSourceFileCharPosition) callconv(.C) void {}
+        };
+
+        const identifier = "3llo";
+        var parser = parserIterInit(identifier, &Fail.errCallback);
+        try expect(parserIterNext(&parser) != c.IDENTIFIER);
+    }
+}
