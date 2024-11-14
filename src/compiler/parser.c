@@ -253,27 +253,27 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, co
 }
 
 static TokenLiteralOrIdentifier try_parse_string_literal(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
+    assert(tokenStart.len > 0);
     assert(tokenStart.str[0] == '\"');
     
     const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
-    if(tokenStart.len == 1) {
+    if(tokenStart.len == 1) { // must have start and end quotation marks, which is 2 characters
+        const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, 0);
+        self->errCallback(cubsSyntaxErrTerminatedStringLiteral, self->name, self->source, errPos);
         return emptyTokenLiteralOrIdentifier;
     }
 
     const char* start = &tokenStart.str[1];
     size_t i = 0;
-    while(true) {      
-        if(i >= (tokenStart.len + 1)) {
+    while(true) {
+        if(i >= (tokenStart.len - 1)) {
             const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
             self->errCallback(cubsSyntaxErrTerminatedStringLiteral, self->name, self->source, errPos);
             return emptyTokenLiteralOrIdentifier;
         }
         const char c = start[i];
-        if(c == '\0') {
-            const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
-            self->errCallback(cubsSyntaxErrTerminatedStringLiteral, self->name, self->source, errPos);
-            return emptyTokenLiteralOrIdentifier;
-        } else if(c == '\\') {
+        assert(c != '\0');
+        if(c == '\\') {
             i += 2; // skip past next character
         } else if(c == '\"') {
             break;
