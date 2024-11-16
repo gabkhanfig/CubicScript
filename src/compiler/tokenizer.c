@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "tokenizer.h"
 #include <assert.h>
 #include <stdio.h>
 #include "../util/math.h"
@@ -93,7 +93,7 @@ static bool starts_with_operator_or_symbol_substring(const CubsStringSlice sourc
 
 /// Skips over any whitespace or newlines. Returns an empty slice if there is no token start from the iters
 /// current position within the source string slice.
-static CubsStringSlice get_next_token_start_slice(const ParserIter* self, size_t* outOffset) {
+static CubsStringSlice get_next_token_start_slice(const TokenIter* self, size_t* outOffset) {
     const CubsStringSlice tempStart = {
         .str = &self->source.str[self->position.index], 
         .len = self->source.len - self->position.index
@@ -126,7 +126,7 @@ typedef struct TokenLiteralOrIdentifier {
     TokenMetadata metadata;
 } TokenLiteralOrIdentifier;
 
-static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
+static TokenLiteralOrIdentifier try_parse_num_literal(const TokenIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
     const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
     
     const bool isNegative = tokenStart.str[0] == '-';
@@ -252,7 +252,7 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const ParserIter* self, co
     }
 }
 
-static TokenLiteralOrIdentifier try_parse_string_literal(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
+static TokenLiteralOrIdentifier try_parse_string_literal(const TokenIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
     assert(tokenStart.len > 0);
     assert(tokenStart.str[0] == '\"');
     
@@ -289,7 +289,7 @@ static TokenLiteralOrIdentifier try_parse_string_literal(const ParserIter* self,
     return outToken;
 }
 
-static TokenLiteralOrIdentifier try_parse_identifier(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
+static TokenLiteralOrIdentifier try_parse_identifier(const TokenIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
     assert(is_alphabetic_or_underscore(tokenStart.str[0]));
     
     size_t i = 1;
@@ -316,7 +316,7 @@ static TokenLiteralOrIdentifier try_parse_identifier(const ParserIter* self, con
 /// - `STR_LITERAL`
 /// - `IDENTIFIER`
 /// Also stores the string slice for the token in `outSlice, and metadata in the out-param `outMetadata`.
-static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const ParserIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
+static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const TokenIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
     const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
 
     if(tokenStart.len == 0) {
@@ -448,7 +448,7 @@ TOKEN_CONSTANT(POINTER_SYMBOL_SLICE, "*");
 
 #pragma endregion
 
-static NextToken get_next_token(const ParserIter* self) {
+static NextToken get_next_token(const TokenIter* self) {
     const NextToken noneNext = {0};
 
     Token found = TOKEN_NONE;
@@ -731,10 +731,10 @@ static NextToken get_next_token(const ParserIter* self) {
     return next;
 }
 
-ParserIter cubs_parser_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback)
+TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback)
 {
     const CubsSourceFileCharPosition pos = {.index = 0, .line = 1, .column = 1};
-    const ParserIter self = {
+    const TokenIter self = {
         .name = name,
         .source = source,
         .errCallback = errCallback,
@@ -748,7 +748,7 @@ ParserIter cubs_parser_iter_init(CubsStringSlice name, CubsStringSlice source, C
     return self;
 }
 
-Token cubs_parser_iter_next(ParserIter *self)
+Token cubs_token_iter_next(TokenIter *self)
 {
     const NextToken next = get_next_token(self);
     self->previous = self->current;

@@ -26,7 +26,7 @@ add_library(CubicScript STATIC
     "src/compiler/build_options.c"
     "src/compiler/compiler.c"
     "src/compiler/ast.c"
-    "src/compiler/parser.c"
+    "src/compiler/tokenizer.c"
     "src/sync/atomic.c"
     "src/sync/locks.c"
     "src/sync/sync_queue.c"

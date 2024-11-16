@@ -186,8 +186,8 @@ typedef union TokenMetadata {
     CubsStringSlice identifier;
 } TokenMetadata;
 
-/// A very simple walkthrough parser that allocates no memory.
-typedef struct ParserIter {
+/// A very simple walkthrough tokenizer that allocates no memory.
+typedef struct TokenIter {
     /// Name of the source. Generally it's the file name.
     CubsStringSlice name;
     /// The actual source code.
@@ -198,11 +198,11 @@ typedef struct ParserIter {
     Token current;
     TokenMetadata previousMetadata;
     TokenMetadata currentMetadata;
-} ParserIter;
+} TokenIter;
 
 /// # Debug asserts
 /// Must be valid utf8
-ParserIter cubs_parser_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback);
+TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback);
 
 /// Returns `TOKEN_NONE` if there is no next. Moves the iterator forward.
-Token cubs_parser_iter_next(ParserIter* self);
+Token cubs_token_iter_next(TokenIter* self);

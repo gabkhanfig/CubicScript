@@ -1,449 +1,449 @@
 const std = @import("std");
 const expect = std.testing.expect;
 const c = @cImport({
-    @cInclude("compiler/parser.h");
+    @cInclude("compiler/tokenizer.h");
 });
 
-const ParserIter = c.ParserIter;
+const TokenIter = c.TokenIter;
 const Token = c.Token;
 
-fn parserIterInit(s: []const u8, errCallback: c.CubsSyntaxErrorCallback) ParserIter {
+fn tokenIterInit(s: []const u8, errCallback: c.CubsSyntaxErrorCallback) TokenIter {
     const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
-    return c.cubs_parser_iter_init(std.mem.zeroes(c.CubsStringSlice), slice, errCallback);
+    return c.cubs_token_iter_init(std.mem.zeroes(c.CubsStringSlice), slice, errCallback);
 }
 
-fn parserIterInitName(name: []const u8, s: []const u8, errCallback: c.CubsSyntaxErrorCallback) ParserIter {
+fn tokenIterInitName(name: []const u8, s: []const u8, errCallback: c.CubsSyntaxErrorCallback) TokenIter {
     const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
     const n = c.CubsStringSlice{ .str = name.ptr, .len = name.len };
-    return c.cubs_parser_iter_init(n, slice, errCallback);
+    return c.cubs_token_iter_init(n, slice, errCallback);
 }
 
-fn parserIterNext(self: *ParserIter) Token {
-    return c.cubs_parser_iter_next(self);
+fn tokenIterNext(self: *TokenIter) Token {
+    return c.cubs_token_iter_next(self);
 }
 
 test "parse nothing" {
-    var parser = parserIterInit("", null);
+    var parser = tokenIterInit("", null);
 
-    try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+    try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
 }
 
 test "parse keyword const" {
-    var parser = parserIterInit("const", null);
+    var parser = tokenIterInit("const", null);
 
-    try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+    try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-    try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+    try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
 }
 
 test "parse keyword const with whitespace characters" {
     { // space
-        var parser = parserIterInit(" const", null);
+        var parser = tokenIterInit(" const", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // tab
-        var parser = parserIterInit("   const", null);
+        var parser = tokenIterInit("   const", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // tab sanity
-        var parser = parserIterInit("\tconst", null);
+        var parser = tokenIterInit("\tconst", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // new line
-        var parser = parserIterInit("\nconst", null);
+        var parser = tokenIterInit("\nconst", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // CRLF
-        var parser = parserIterInit("\r\nconst", null);
+        var parser = tokenIterInit("\r\nconst", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple spaces
-        var parser = parserIterInit("  const", null);
+        var parser = tokenIterInit("  const", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple tabs
         const s = "       const";
-        var parser = parserIterInit(s, null);
+        var parser = tokenIterInit(s, null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple tabs sanity
-        var parser = parserIterInit("\t\tconst", null);
+        var parser = tokenIterInit("\t\tconst", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple new line
-        var parser = parserIterInit("\n\nconst", null);
+        var parser = tokenIterInit("\n\nconst", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // multiple CRLF
-        var parser = parserIterInit("\r\n\r\nconst", null);
+        var parser = tokenIterInit("\r\n\r\nconst", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
     { // combination
-        var parser = parserIterInit(" \t\n \r\n\r\n \n \t const", null);
+        var parser = tokenIterInit(" \t\n \r\n\r\n \n \t const", null);
 
-        try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+        try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     }
 }
 
 test "parse const with characters after" {
     { // valid token
         { // space
-            var parser = parserIterInit("const ", null);
+            var parser = tokenIterInit("const ", null);
 
-            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+            try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-            try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+            try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
         }
         { // new line
-            var parser = parserIterInit("const\n", null);
+            var parser = tokenIterInit("const\n", null);
 
-            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+            try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-            try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+            try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
         }
         { // tab
-            var parser = parserIterInit("const\t", null);
+            var parser = tokenIterInit("const\t", null);
 
-            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+            try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
 
-            try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+            try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
         }
         { // carriage return
-            var parser = parserIterInit("const\r", null);
+            var parser = tokenIterInit("const\r", null);
 
-            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+            try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
         }
         { // comma
-            var parser = parserIterInit("const,", null);
+            var parser = tokenIterInit("const,", null);
 
-            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+            try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
         }
         { // period
-            var parser = parserIterInit("const.", null);
+            var parser = tokenIterInit("const.", null);
 
-            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+            try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
         }
         { // semicolon
-            var parser = parserIterInit("const;", null);
+            var parser = tokenIterInit("const;", null);
 
-            try expect(parserIterNext(&parser) == c.CONST_KEYWORD);
+            try expect(tokenIterNext(&parser) == c.CONST_KEYWORD);
         }
     }
     { // invalid token
-        var parser = parserIterInit("constt", null);
+        var parser = tokenIterInit("constt", null);
 
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
     }
 }
 
 fn validateParseKeyword(comptime s: []const u8, comptime token: c_int) void {
     { // normal
-        var parser = parserIterInit(s, null);
+        var parser = tokenIterInit(s, null);
 
-        expect(parserIterNext(&parser) == token) catch unreachable;
+        expect(tokenIterNext(&parser) == token) catch unreachable;
 
-        expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
     }
     { // whitespace before
         { // space
-            var parser = parserIterInit(" " ++ s, null);
+            var parser = tokenIterInit(" " ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // tab
-            var parser = parserIterInit("   " ++ s, null);
+            var parser = tokenIterInit("   " ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // tab sanity
-            var parser = parserIterInit("\t" ++ s, null);
+            var parser = tokenIterInit("\t" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // new line
-            var parser = parserIterInit("\n" ++ s, null);
+            var parser = tokenIterInit("\n" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // CRLF
-            var parser = parserIterInit("\r\n" ++ s, null);
+            var parser = tokenIterInit("\r\n" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple spaces
-            var parser = parserIterInit("  " ++ s, null);
+            var parser = tokenIterInit("  " ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple tabs
             const str = "       " ++ s;
-            var parser = parserIterInit(str, null);
+            var parser = tokenIterInit(str, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple tabs sanity
-            var parser = parserIterInit("\t\t" ++ s, null);
+            var parser = tokenIterInit("\t\t" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple new line
-            var parser = parserIterInit("\n\n" ++ s, null);
+            var parser = tokenIterInit("\n\n" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple CRLF
-            var parser = parserIterInit("\r\n\r\n" ++ s, null);
+            var parser = tokenIterInit("\r\n\r\n" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // combination
-            var parser = parserIterInit(" \t\n \r\n\r\n \n \t " ++ s, null);
+            var parser = tokenIterInit(" \t\n \r\n\r\n \n \t " ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
     }
     { // characters after
         { // valid token
             { // space
-                var parser = parserIterInit(s ++ " ", null);
+                var parser = tokenIterInit(s ++ " ", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
 
-                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+                expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // new line
-                var parser = parserIterInit(s ++ "\n", null);
+                var parser = tokenIterInit(s ++ "\n", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
 
-                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+                expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // tab
-                var parser = parserIterInit(s ++ "\t", null);
+                var parser = tokenIterInit(s ++ "\t", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
 
-                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+                expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // carriage return
-                var parser = parserIterInit(s ++ "\r", null);
+                var parser = tokenIterInit(s ++ "\r", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
             { // comma
-                var parser = parserIterInit(s ++ ",", null);
+                var parser = tokenIterInit(s ++ ",", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
             { // period
-                var parser = parserIterInit(s ++ ".", null);
+                var parser = tokenIterInit(s ++ ".", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
             { // semicolon
-                var parser = parserIterInit(s ++ ";", null);
+                var parser = tokenIterInit(s ++ ";", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
         }
         { // invalid token
-            var parser = parserIterInit(s ++ "t", null);
+            var parser = tokenIterInit(s ++ "t", null);
 
-            expect(parserIterNext(&parser) == c.IDENTIFIER) catch unreachable;
+            expect(tokenIterNext(&parser) == c.IDENTIFIER) catch unreachable;
         }
     }
 }
 
 fn validateParseOperatorOrSymbol(comptime s: []const u8, comptime token: c_int) void {
     { // normal
-        var parser = parserIterInit(s, null);
+        var parser = tokenIterInit(s, null);
 
-        expect(parserIterNext(&parser) == token) catch unreachable;
+        expect(tokenIterNext(&parser) == token) catch unreachable;
 
-        expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+        expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
     }
     { // whitespace before
         { // space
-            var parser = parserIterInit(" " ++ s, null);
+            var parser = tokenIterInit(" " ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // tab
-            var parser = parserIterInit("   " ++ s, null);
+            var parser = tokenIterInit("   " ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // tab sanity
-            var parser = parserIterInit("\t" ++ s, null);
+            var parser = tokenIterInit("\t" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // new line
-            var parser = parserIterInit("\n" ++ s, null);
+            var parser = tokenIterInit("\n" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // CRLF
-            var parser = parserIterInit("\r\n" ++ s, null);
+            var parser = tokenIterInit("\r\n" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple spaces
-            var parser = parserIterInit("  " ++ s, null);
+            var parser = tokenIterInit("  " ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple tabs
             const str = "       " ++ s;
-            var parser = parserIterInit(str, null);
+            var parser = tokenIterInit(str, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple tabs sanity
-            var parser = parserIterInit("\t\t" ++ s, null);
+            var parser = tokenIterInit("\t\t" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple new line
-            var parser = parserIterInit("\n\n" ++ s, null);
+            var parser = tokenIterInit("\n\n" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // multiple CRLF
-            var parser = parserIterInit("\r\n\r\n" ++ s, null);
+            var parser = tokenIterInit("\r\n\r\n" ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
         { // combination
-            var parser = parserIterInit(" \t\n \r\n\r\n \n \t " ++ s, null);
+            var parser = tokenIterInit(" \t\n \r\n\r\n \n \t " ++ s, null);
 
-            expect(parserIterNext(&parser) == token) catch unreachable;
+            expect(tokenIterNext(&parser) == token) catch unreachable;
 
-            expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+            expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
         }
     }
     { // characters after
         { // valid token
             { // space
-                var parser = parserIterInit(s ++ " ", null);
+                var parser = tokenIterInit(s ++ " ", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
 
-                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+                expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // new line
-                var parser = parserIterInit(s ++ "\n", null);
+                var parser = tokenIterInit(s ++ "\n", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
 
-                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+                expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // tab
-                var parser = parserIterInit(s ++ "\t", null);
+                var parser = tokenIterInit(s ++ "\t", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
 
-                expect(parserIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
+                expect(tokenIterNext(&parser) == c.TOKEN_NONE) catch unreachable;
             }
             { // carriage return
-                var parser = parserIterInit(s ++ "\r", null);
+                var parser = tokenIterInit(s ++ "\r", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
             { // comma
-                var parser = parserIterInit(s ++ ",", null);
+                var parser = tokenIterInit(s ++ ",", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
             { // period
-                var parser = parserIterInit(s ++ ".", null);
+                var parser = tokenIterInit(s ++ ".", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
             { // semicolon
-                var parser = parserIterInit(s ++ ";", null);
+                var parser = tokenIterInit(s ++ ";", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
             { // invalid token
                 // For keywords and symbols, a character after could be part of an identifier or keyword, making this fine
-                var parser = parserIterInit(s ++ "t", null);
+                var parser = tokenIterInit(s ++ "t", null);
 
-                expect(parserIterNext(&parser) == token) catch unreachable;
+                expect(tokenIterNext(&parser) == token) catch unreachable;
             }
         }
     }
@@ -755,8 +755,8 @@ test "int literal" {
         }
 
         fn validateParse(num: i64, buf: []const u8) void {
-            var parser = parserIterInit(buf, null);
-            expect(parserIterNext(&parser) == c.INT_LITERAL) catch unreachable;
+            var parser = tokenIterInit(buf, null);
+            expect(tokenIterNext(&parser) == c.INT_LITERAL) catch unreachable;
             expect(parser.currentMetadata.intLiteral == num) catch unreachable;
         }
     };
@@ -877,8 +877,8 @@ test "float literal" {
         }
 
         fn validateParse(num: f64, buf: []const u8) void {
-            var parser = parserIterInit(buf, null);
-            const nextToken = parserIterNext(&parser);
+            var parser = tokenIterInit(buf, null);
+            const nextToken = tokenIterNext(&parser);
             if (nextToken == c.INT_LITERAL) {
                 std.debug.assert(num == @floor(num));
                 expect(num == @as(f64, @floatFromInt(parser.currentMetadata.intLiteral))) catch unreachable;
@@ -983,8 +983,8 @@ test "fail parse int literal invalid character" {
         }
     };
 
-    var parser = parserIterInit("1r", &Fail.errCallback);
-    try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+    var parser = tokenIterInit("1r", &Fail.errCallback);
+    try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     try expect(Fail.gotError == true);
 }
 
@@ -998,8 +998,8 @@ test "fail parse float literal many period" {
         }
     };
 
-    var parser = parserIterInit("1.0.1", &Fail.errCallback);
-    try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+    var parser = tokenIterInit("1.0.1", &Fail.errCallback);
+    try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     try expect(Fail.gotError == true);
 }
 
@@ -1013,15 +1013,15 @@ test "fail parse float literal invalid char after decimal" {
         }
     };
 
-    var parser = parserIterInit("1.0r", &Fail.errCallback);
-    try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+    var parser = tokenIterInit("1.0r", &Fail.errCallback);
+    try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
     try expect(Fail.gotError == true);
 }
 
 test "parse string literal empty" {
     const s = "\"\"";
-    var parser = parserIterInit(s, null);
-    try expect(parserIterNext(&parser) == c.STR_LITERAL);
+    var parser = tokenIterInit(s, null);
+    try expect(tokenIterNext(&parser) == c.STR_LITERAL);
 
     {
         const foundSlice = parser.currentMetadata.strLiteral.slice;
@@ -1032,8 +1032,8 @@ test "parse string literal empty" {
 test "parse string literal alphanumeric" {
     const f = "abcdefg123416246";
     const s = "\"" ++ f ++ "\"";
-    var parser = parserIterInit(s, null);
-    try expect(parserIterNext(&parser) == c.STR_LITERAL);
+    var parser = tokenIterInit(s, null);
+    try expect(tokenIterNext(&parser) == c.STR_LITERAL);
 
     {
         const foundSlice = parser.currentMetadata.strLiteral.slice;
@@ -1045,8 +1045,8 @@ test "parse string literal alphanumeric" {
 test "parse string literal escape sequence" {
     const f = "\\n\\t\\r\\v";
     const s = "\"" ++ f ++ "\"";
-    var parser = parserIterInit(s, null);
-    try expect(parserIterNext(&parser) == c.STR_LITERAL);
+    var parser = tokenIterInit(s, null);
+    try expect(tokenIterNext(&parser) == c.STR_LITERAL);
 
     {
         const foundSlice = parser.currentMetadata.strLiteral.slice;
@@ -1067,22 +1067,22 @@ test "fail parse string" {
 
     {
         const s = "\"";
-        var parser = parserIterInit(s, &Fail.errCallback);
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        var parser = tokenIterInit(s, &Fail.errCallback);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
         try expect(Fail.gotError == true);
         Fail.gotError = false;
     }
     {
         const s = "\"a";
-        var parser = parserIterInit(s, &Fail.errCallback);
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        var parser = tokenIterInit(s, &Fail.errCallback);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
         try expect(Fail.gotError == true);
         Fail.gotError = false;
     }
     {
         const s = "\"\\n";
-        var parser = parserIterInit(s, &Fail.errCallback);
-        try expect(parserIterNext(&parser) == c.TOKEN_NONE);
+        var parser = tokenIterInit(s, &Fail.errCallback);
+        try expect(tokenIterNext(&parser) == c.TOKEN_NONE);
         try expect(Fail.gotError == true);
     }
 }
@@ -1090,50 +1090,50 @@ test "fail parse string" {
 test "parse identifier" {
     {
         const identifier = "a";
-        var parser = parserIterInit(identifier, null);
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, null);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
         try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
     }
     {
         const identifier = "hello";
-        var parser = parserIterInit(identifier, null);
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, null);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
         try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
     }
     {
         const identifier = "b6";
-        var parser = parserIterInit(identifier, null);
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, null);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
         try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
     }
     {
         const identifier = "h3llo";
-        var parser = parserIterInit(identifier, null);
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, null);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
         try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
     }
     {
         const identifier = "HELLO";
-        var parser = parserIterInit(identifier, null);
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, null);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
         try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
     }
     {
         const identifier = "_whoa";
-        var parser = parserIterInit(identifier, null);
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, null);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
         try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
     }
     {
         const identifier = "_1sur3";
-        var parser = parserIterInit(identifier, null);
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, null);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
         try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
     }
     {
         const identifier = "GOOD_MORNING";
-        var parser = parserIterInit(identifier, null);
-        try expect(parserIterNext(&parser) == c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, null);
+        try expect(tokenIterNext(&parser) == c.IDENTIFIER);
         try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
     }
     {
@@ -1142,7 +1142,7 @@ test "parse identifier" {
         };
 
         const identifier = "3llo";
-        var parser = parserIterInit(identifier, &Fail.errCallback);
-        try expect(parserIterNext(&parser) != c.IDENTIFIER);
+        var parser = tokenIterInit(identifier, &Fail.errCallback);
+        try expect(tokenIterNext(&parser) != c.IDENTIFIER);
     }
 }
