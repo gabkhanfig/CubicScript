@@ -6,7 +6,7 @@
 struct CubsProgram;
 struct Ast;
 
-typedef size_t(*AstNodeProcess)(const void* self, struct Ast* ast);
+typedef size_t(*AstNodeProcess)(const void* self, struct CubsProgram* program);
 typedef CubsStringSlice(*AstNodeToString)(const void* self);
 
 typedef struct AstNodeVTable {
