@@ -7,10 +7,6 @@ static void file_node_deinit(FileNode* self) {
     cubs_free(self, sizeof(FileNode), _Alignof(FileNode));
 }
 
-static void file_node_process(const FileNode* self, CubsProgram* program) {
-
-} 
-
 static CubsStringSlice file_node_to_string(const FileNode* self) {
     const CubsStringSlice emptyString = {0};
     return emptyString;
@@ -18,7 +14,7 @@ static CubsStringSlice file_node_to_string(const FileNode* self) {
 
 static AstNodeVTable file_node_vtable = {
     .deinit = (AstNodeDeinit)&file_node_deinit,
-    .process = (AstNodeProcess)&file_node_process,
+    .process = NULL,
     .toString = (AstNodeToString)&file_node_to_string,
 };
 
