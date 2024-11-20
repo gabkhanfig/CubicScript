@@ -1,9 +1,8 @@
 #include "../ast.h"
+#include "ast_node_array.h"
 
 typedef struct FileNode {
-    AstNode* items;
-    size_t itemsLen;
-    size_t itemsCapacity;
+    AstNodeArray items;
 } FileNode;
 
 AstNode cubs_file_node_init(const TokenIter* iter);
