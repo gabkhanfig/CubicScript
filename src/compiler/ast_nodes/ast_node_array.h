@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "../../platform/mem.h"
 
-inline static const size_t NODE_ALIGN = 8;
+static const size_t NODE_ALIGN = 8;
 
 /// Should be zero initialized.
 typedef struct AstNodeArray {
