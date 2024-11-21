@@ -30,6 +30,7 @@ add_library(CubicScript STATIC
     "src/compiler/ast.c"
     "src/compiler/tokenizer.c"
     "src/compiler/ast_nodes/file_node.c"
+    "src/compiler/ast_nodes/function_node.c"
 
     "src/sync/atomic.c"
     "src/sync/locks.c"
