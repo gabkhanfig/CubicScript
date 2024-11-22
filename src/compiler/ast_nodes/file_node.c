@@ -4,6 +4,7 @@
 #include "../../platform/mem.h"
 
 static void file_node_deinit(FileNode* self) {
+    ast_node_array_deinit(&self->items);
     cubs_free(self, sizeof(FileNode), _Alignof(FileNode));
 }
 
@@ -20,7 +21,7 @@ static AstNodeVTable file_node_vtable = {
 
 AstNode cubs_file_node_init(const TokenIter *iter)
 {
-    FileNode* self = cubs_malloc(sizeof(FileNode), _Alignof(FileNode));
+    FileNode* self = (FileNode*)cubs_malloc(sizeof(FileNode), _Alignof(FileNode));
     self->items = (AstNodeArray){0};
 
     const AstNode node = {.ptr = (void*)self, .vtable = &file_node_vtable};
