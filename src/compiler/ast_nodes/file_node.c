@@ -15,8 +15,9 @@ static CubsStringSlice file_node_to_string(const FileNode* self) {
 
 static AstNodeVTable file_node_vtable = {
     .deinit = (AstNodeDeinit)&file_node_deinit,
-    .process = NULL,
+    .compile = NULL,
     .toString = (AstNodeToString)&file_node_to_string,
+    .buildFunction = NULL,
 };
 
 AstNode cubs_file_node_init(const TokenIter *iter)

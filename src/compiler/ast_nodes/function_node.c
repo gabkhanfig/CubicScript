@@ -11,8 +11,9 @@ static CubsStringSlice function_node_to_string(const FunctionNode* self) {
 
 static AstNodeVTable function_node_vtable = {
     .deinit = (AstNodeDeinit)&function_node_deinit,
-    .process = NULL,
+    .compile = NULL,
     .toString = (AstNodeToString)&function_node_to_string,
+    .buildFunction = NULL,
 };
 
 
