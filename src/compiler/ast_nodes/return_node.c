@@ -22,7 +22,7 @@ AstNode cubs_return_node_init(TokenIter *iter)
     ReturnNode* self = (ReturnNode*)cubs_malloc(sizeof(ReturnNode), _Alignof(ReturnNode));
 
     {
-        const Token next = cubs_token_iter_next(iter);  
+        const Token next = cubs_token_iter_next(iter);
         if(next == SEMICOLON_SYMBOL) {
             self->hasReturn = false;
         } else if(next == INT_LITERAL || next == FLOAT_LITERAL || next == CHAR_LITERAL || next == STR_LITERAL || next == IDENTIFIER) {
@@ -37,7 +37,7 @@ AstNode cubs_return_node_init(TokenIter *iter)
         }
     }
 
-    { // statement must end in semicolon
+    if(self->hasReturn) { // statement must end in semicolon
         const Token next = cubs_token_iter_next(iter);
         if(next != SEMICOLON_SYMBOL) {
             cubs_panic("return statement must end with semicolon");
