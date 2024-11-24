@@ -121,6 +121,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/compiler/tokenizer.c",
     "src/compiler/ast_nodes/file_node.c",
     "src/compiler/ast_nodes/function_node.c",
+    "src/compiler/ast_nodes/return_node.c",
 
     "src/sync/atomic.c",
     "src/sync/locks.c",
