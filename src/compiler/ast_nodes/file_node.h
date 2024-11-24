@@ -5,4 +5,4 @@ typedef struct FileNode {
     AstNodeArray items;
 } FileNode;
 
-AstNode cubs_file_node_init(const TokenIter* iter);
+AstNode cubs_file_node_init(TokenIter* iter);

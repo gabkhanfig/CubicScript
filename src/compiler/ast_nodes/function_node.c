@@ -17,7 +17,7 @@ static AstNodeVTable function_node_vtable = {
 };
 
 
-AstNode cubs_function_node_init(const TokenIter *iter)
+AstNode cubs_function_node_init(TokenIter *iter)
 {
     assert(iter->current == FN_KEYWORD);
     FunctionNode* self = (FunctionNode*)cubs_malloc(sizeof(FunctionNode), _Alignof(FunctionNode));

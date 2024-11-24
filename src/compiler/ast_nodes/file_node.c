@@ -20,7 +20,7 @@ static AstNodeVTable file_node_vtable = {
     .buildFunction = NULL,
 };
 
-AstNode cubs_file_node_init(const TokenIter *iter)
+AstNode cubs_file_node_init(TokenIter *iter)
 {
     FileNode* self = (FileNode*)cubs_malloc(sizeof(FileNode), _Alignof(FileNode));
     self->items = (AstNodeArray){0};

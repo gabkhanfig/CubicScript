@@ -6,4 +6,4 @@ typedef struct FunctionNode {
     AstNodeArray items;
 } FunctionNode;
 
-AstNode cubs_function_node_init(const TokenIter* iter);
+AstNode cubs_function_node_init(TokenIter* iter);
