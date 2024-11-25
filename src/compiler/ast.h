@@ -13,7 +13,7 @@ struct FunctionBuilder;
 typedef void (*AstNodeDeinit)(void* self);
 typedef void(*AstNodeCompile)(const void* self, struct CubsProgram* program);
 typedef CubsStringSlice(*AstNodeToString)(const void* self);
-typedef void(*AstNodeBuildFunction)(const void* self, struct FunctionBuilder* builder);
+typedef void(*AstNodeBuildFunction)(const void* self, struct FunctionBuilder* builder, const void* reserveStackAssignments);
 
 typedef struct AstNodeVTable {
     AstNodeDeinit deinit;
@@ -39,8 +39,8 @@ inline static CubsStringSlice ast_node_to_string(const AstNode* self) {
     return self->vtable->toString(self->ptr);
 }
 
-inline static void ast_node_build_function(const AstNode* self, struct FunctionBuilder* builder) {
-    self->vtable->buildFunction(self->ptr, builder);
+inline static void ast_node_build_function(const AstNode* self, struct FunctionBuilder* builder, const void* reserveStackAssignments) {
+    self->vtable->buildFunction(self->ptr, builder, reserveStackAssignments);
 }
 
 typedef struct Ast {
