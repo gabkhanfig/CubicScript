@@ -1,5 +1,7 @@
 #include "return_node.h"
 #include "../../util/panic.h"
+#include "../../platform/mem.h"
+#include <assert.h>
 
 static void return_node_deinit(ReturnNode* self) {
     cubs_free(self, sizeof(ReturnNode), _Alignof(ReturnNode));
