@@ -245,8 +245,7 @@ const CubsScriptFunctionPtr *cubs_function_map_find(const FunctionMap *self, Cub
         assert(fullyQualifiedName.str != NULL);
     }
     #endif
-    // TODO actual hash
-    const size_t hashCode = fullyQualifiedName.len == 0 ? 0 : fullyQualifiedName.len + (((size_t)(fullyQualifiedName.str[0])) << 56);
+    const size_t hashCode = bytes_hash((const void*)fullyQualifiedName.str, fullyQualifiedName.len);
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
     const size_t groupIndex = groupBitmask.value % self->qualifiedGroupCount;
     const FunctionMapQualifiedGroup* group = &self->qualifiedGroups[groupIndex];
@@ -265,8 +264,7 @@ void cubs_function_map_insert(FunctionMap *self, ProtectedArena* arena, CubsScri
 
     CubsStringSlice fullyQualifiedName = cubs_string_as_slice(&function->fullyQualifiedName);
     
-    // TODO actual hash
-    const size_t hashCode = fullyQualifiedName.len == 0 ? 0 : fullyQualifiedName.len + (((size_t)(fullyQualifiedName.str[0])) << 56);
+    const size_t hashCode = bytes_hash((const void*)fullyQualifiedName.str, fullyQualifiedName.len);
     const CubsHashGroupBitmask groupBitmask = cubs_hash_group_bitmask_init(hashCode);
     const size_t groupIndex = groupBitmask.value % self->qualifiedGroupCount;
     FunctionMapQualifiedGroup* group = &self->qualifiedGroups[groupIndex];
