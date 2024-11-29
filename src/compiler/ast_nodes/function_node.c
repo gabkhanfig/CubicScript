@@ -1,4 +1,5 @@
 #include "function_node.h"
+#include "return_node.h"
 
 static void function_node_deinit(FunctionNode* self) {
     ast_node_array_deinit(&self->items);
@@ -53,9 +54,16 @@ AstNode cubs_function_node_init(TokenIter *iter)
 
     { // statements
         Token token = cubs_token_iter_next(iter);
-        assert(token == RETURN_KEYWORD);
-    }
 
+        if(token == RIGHT_BRACKET_SYMBOL) { // function has no statements
+
+        } else {
+            // for now only 1 statement, being a return statement
+            assert(token == RETURN_KEYWORD);
+            AstNode returnNode = cubs_return_node_init(iter);
+            ast_node_array_push(&self->items, returnNode);
+        }
+    }
 
     const AstNode node = {.ptr = (void*)self, .vtable = &function_node_vtable};
     return node;
