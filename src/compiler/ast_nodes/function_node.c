@@ -1,5 +1,14 @@
 #include "function_node.h"
 #include "return_node.h"
+#include "../../program/program.h"
+#include "../../program/program_internal.h"
+#include "../../platform/mem.h"
+#include "../../primitives/context.h"
+#include "../../interpreter/bytecode.h"
+#include "../../interpreter/interpreter.h"
+#include "../../interpreter/operations.h"
+#include "../../interpreter/function_definition.h"
+#include "../../primitives/string/string.h"
 
 static void function_node_deinit(FunctionNode* self) {
     ast_node_array_deinit(&self->items);
@@ -10,9 +19,53 @@ static CubsStringSlice function_node_to_string(const FunctionNode* self) {
     return (CubsStringSlice){0};
 }
 
+static void function_node_compile(const FunctionNode* self, CubsProgram* program) {
+    FunctionBuilder builder = {0};
+
+    { // function name
+        CubsString functionName;
+        assert(cubs_string_init(&functionName, self->functionName) == cubsStringErrorNone);
+        builder.fullyQualifiedName = functionName;
+        builder.name = cubs_string_clone(&functionName);
+    }
+
+    { // return type
+        switch(self->retInfo.retTag) {
+            case functionReturnNone: break;
+
+            case functionReturnToken: {
+
+                switch(self->retInfo.retType.token) {
+                    case INT_LITERAL: {
+                        builder.optReturnType = &CUBS_INT_CONTEXT;
+                    } break;
+                }
+            } break;
+
+            case functionReturnIdentifier: {
+                assert(false && "Cannot handle return values other than none and int");
+            } break;
+        }
+    }
+
+    { // arguments
+    }
+
+    { // statements
+        for(size_t i = 0; i < self->items.len; i++) {
+            const AstNode node = self->items.nodes[i];
+            // TODO allow nodes that don't just do code gen, such as nested structs maybe? or lambdas? to determine
+            assert(node.vtable->buildFunction != NULL);
+            ast_node_build_function(node.ptr, &builder, NULL); // TODO stack variable assignment
+        }
+    }
+
+    cubs_function_builder_build(&builder, program);
+}
+
 static AstNodeVTable function_node_vtable = {
     .deinit = (AstNodeDeinit)&function_node_deinit,
-    .compile = NULL,
+    .compile = (AstNodeCompile)&function_node_compile,
     .toString = (AstNodeToString)&function_node_to_string,
     .buildFunction = NULL,
 };
