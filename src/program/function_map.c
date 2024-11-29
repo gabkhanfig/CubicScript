@@ -30,6 +30,20 @@ typedef struct FunctionMapQualifiedGroup {
     // uint16_t is not viable here because of forced alignment and padding.
 } FunctionMapQualifiedGroup;
 
+/// Cannot use strcmp because the slices may not be null terminated
+static bool string_slices_eql(CubsStringSlice s1, CubsStringSlice s2) {
+    if(s1.len != s2.len) {
+        return false;
+    }
+
+    for(size_t i = 0; i < s1.len; i++) {
+        if(s1.str[i] != s2.str[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static size_t group_allocation_size(size_t requiredCapacity) {
     assert(requiredCapacity % ALIGNMENT == 0);
 
@@ -108,7 +122,7 @@ static size_t qualified_group_find(const FunctionMapQualifiedGroup* self, CubsSt
 
             const size_t actualIndex = index + i;
             Pair pair = qualified_group_pair_buf_start(self)[actualIndex];
-            if((name.len != pair.name.len) || (strcmp(name.str, pair.name.str) != 0)) {        
+            if((name.len != pair.name.len) || !string_slices_eql(name, pair.name)) {        
                 resultMask = (resultMask & ~(1U << index));
                 continue;
             }
