@@ -2,6 +2,7 @@
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include "../../platform/mem.h"
+#include "function_node.h"
 
 static void file_node_deinit(FileNode* self) {
     ast_node_array_deinit(&self->items);
@@ -23,7 +24,21 @@ static AstNodeVTable file_node_vtable = {
 AstNode cubs_file_node_init(TokenIter *iter)
 {
     FileNode* self = (FileNode*)cubs_malloc(sizeof(FileNode), _Alignof(FileNode));
-    self->items = (AstNodeArray){0};
+    *self = (FileNode){0};
+
+    assert(iter->current == TOKEN_NONE && "File node should begin at the start of the iterator");
+
+    { // function node
+        const Token next = cubs_token_iter_next(iter);
+        if(next == TOKEN_NONE) { // end of file
+
+        } else {
+            assert(next == FN_KEYWORD);
+
+            const AstNode functionNode = cubs_function_node_init(iter);
+            ast_node_array_push(&self->items.nodes, functionNode);
+        }
+    }
 
     const AstNode node = {.ptr = (void*)self, .vtable = &file_node_vtable};
     return node;
