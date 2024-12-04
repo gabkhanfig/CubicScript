@@ -89,8 +89,8 @@ AstNode cubs_function_node_init(TokenIter *iter)
 
     { // return type
         Token token = cubs_token_iter_next(iter);
-        if(token != LEFT_BRACKET_SYMBOL) { // has return type            
-            if(token == INT_LITERAL) {
+        if(token != LEFT_BRACE_SYMBOL) { // has return type            
+            if(token == INT_KEYWORD) {
                 self->retInfo.retTag = functionReturnToken;
                 self->retInfo.retType.token = INT_KEYWORD;
             }
@@ -101,7 +101,7 @@ AstNode cubs_function_node_init(TokenIter *iter)
             }
 
             token = cubs_token_iter_next(iter); // left bracket should follow after token
-            assert(token == LEFT_BRACKET_SYMBOL); 
+            assert(token == LEFT_BRACE_SYMBOL); 
         }
         // TODO more complex return types, for now just nothing or ints           
     }
@@ -109,7 +109,7 @@ AstNode cubs_function_node_init(TokenIter *iter)
     { // statements
         Token token = cubs_token_iter_next(iter);
 
-        if(token == RIGHT_BRACKET_SYMBOL) { // function has no statements
+        if(token == RIGHT_BRACE_SYMBOL) { // function has no statements
 
         } else {
             // for now only 1 statement, being a return statement
