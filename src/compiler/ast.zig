@@ -1,0 +1,29 @@
+const std = @import("std");
+const expect = std.testing.expect;
+const c = @cImport({
+    @cInclude("program/program.h");
+    @cInclude("program/program_internal.h");
+    @cInclude("compiler/tokenizer.h");
+    @cInclude("compiler/ast.h");
+    @cInclude("compiler/ast_nodes/file_node.h");
+    @cInclude("compiler/ast_nodes/function_node.h");
+    @cInclude("compiler/ast_nodes/return_node.h");
+});
+
+const TokenIter = c.TokenIter;
+const Token = c.Token;
+
+fn tokenIterInit(s: []const u8, errCallback: c.CubsSyntaxErrorCallback) TokenIter {
+    const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
+    return c.cubs_token_iter_init(std.mem.zeroes(c.CubsStringSlice), slice, errCallback);
+}
+
+test "function no args no return no statement" {
+    const source = "fn testFunc() {}";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+}

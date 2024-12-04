@@ -9,6 +9,7 @@ comptime {
     _ = @import("program/protected_arena.zig");
 
     _ = @import("compiler/tokenizer.zig");
+    _ = @import("compiler/ast.zig");
 
     // Many tests are within the structs themselves, so importing .ScriptThread for example is necessary.
     _ = @import("sync/thread.zig").ScriptThread;
