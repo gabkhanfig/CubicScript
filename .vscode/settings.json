@@ -126,6 +126,7 @@
         "build_options.h": "c",
         "locks.h": "c",
         "program_internal.h": "c",
-        "parser.h": "c"
+        "parser.h": "c",
+        "file_node.h": "c"
     }
 }
