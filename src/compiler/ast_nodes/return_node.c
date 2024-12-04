@@ -33,6 +33,7 @@ static void return_node_build_function(const ReturnNode* self, FunctionBuilder* 
 }
 
 static AstNodeVTable return_node_vtable = {
+    .nodeType = astNodeTypeReturn,
     .deinit = (AstNodeDeinit)&return_node_deinit,
     .compile = NULL,
     .toString = (AstNodeToString)&return_node_to_string,

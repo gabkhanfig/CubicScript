@@ -10,12 +10,19 @@ struct CubsProgram;
 struct Ast;
 struct FunctionBuilder;
 
+enum AstNodeType {
+    astNodeTypeFile,
+    astNodeTypeFunction,
+    astNodeTypeReturn,
+};
+
 typedef void (*AstNodeDeinit)(void* self);
 typedef void(*AstNodeCompile)(const void* self, struct CubsProgram* program);
 typedef CubsStringSlice(*AstNodeToString)(const void* self);
 typedef void(*AstNodeBuildFunction)(const void* self, struct FunctionBuilder* builder, const void* reserveStackAssignments);
 
 typedef struct AstNodeVTable {
+    enum AstNodeType nodeType;
     AstNodeDeinit deinit;
     AstNodeCompile compile;
     AstNodeToString toString;

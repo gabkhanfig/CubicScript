@@ -64,6 +64,7 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
 }
 
 static AstNodeVTable function_node_vtable = {
+    .nodeType = astNodeTypeFunction,
     .deinit = (AstNodeDeinit)&function_node_deinit,
     .compile = (AstNodeCompile)&function_node_compile,
     .toString = (AstNodeToString)&function_node_to_string,
