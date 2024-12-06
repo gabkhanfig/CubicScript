@@ -5,6 +5,7 @@
 #include "../../interpreter/function_definition.h"
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
+#include <stdio.h>
 
 static void return_node_deinit(ReturnNode* self) {
     cubs_free(self, sizeof(ReturnNode), _Alignof(ReturnNode));
@@ -44,6 +45,7 @@ AstNode cubs_return_node_init(TokenIter *iter)
 {
     assert(iter->current == RETURN_KEYWORD);
     ReturnNode* self = (ReturnNode*)cubs_malloc(sizeof(ReturnNode), _Alignof(ReturnNode));
+    *self = (ReturnNode){0};
 
     {
         const Token next = cubs_token_iter_next(iter);
@@ -52,10 +54,11 @@ AstNode cubs_return_node_init(TokenIter *iter)
         } else if(next == INT_LITERAL || next == FLOAT_LITERAL || next == CHAR_LITERAL || next == STR_LITERAL || next == IDENTIFIER) {
             if(next != INT_LITERAL) {
                 cubs_panic("TODO return stuff other than int literals");
-            }    
+            }
 
             self->retInfo = next;
             self->retValue = iter->currentMetadata;
+            self->hasReturn = true;
         } else {
             cubs_panic("Invalid token after return");
         }
