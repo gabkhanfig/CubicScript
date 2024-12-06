@@ -63,7 +63,7 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
             const AstNode node = self->items.nodes[i];
             // TODO allow nodes that don't just do code gen, such as nested structs maybe? or lambdas? to determine
             assert(node.vtable->buildFunction != NULL);
-            ast_node_build_function(node.ptr, &builder, NULL); // TODO stack variable assignment
+            ast_node_build_function(&node, &builder, NULL); // TODO stack variable assignment
         }
     }
 
