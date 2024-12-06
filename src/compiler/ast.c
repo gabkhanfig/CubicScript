@@ -20,6 +20,8 @@ void cubs_ast_deinit(Ast *self)
 
 void cubs_ast_codegen(const Ast *self)
 {
+    assert(self->rootNode.vtable->compile != NULL);
+    ast_node_compile(&self->rootNode, self->program);
 }
 
 void cubs_ast_print(const Ast *self)

@@ -3,6 +3,7 @@
 #include "../../program/program_internal.h"
 #include "../../platform/mem.h"
 #include "function_node.h"
+#include <stdio.h>
 
 static void file_node_deinit(FileNode* self) {
     ast_node_array_deinit(&self->items);
@@ -14,10 +15,18 @@ static CubsStringSlice file_node_to_string(const FileNode* self) {
     return emptyString;
 }
 
+static void file_node_compile(const FileNode* self, struct CubsProgram* program) {
+    for(size_t i = 0; i < self->items.len; i++) {
+        const AstNode node = self->items.nodes[i];
+        assert(node.vtable->compile != NULL);
+        ast_node_compile(&node, program);
+    }
+}
+
 static AstNodeVTable file_node_vtable = {
     .nodeType = astNodeTypeFile,
     .deinit = (AstNodeDeinit)&file_node_deinit,
-    .compile = NULL,
+    .compile = (AstNodeCompile)&file_node_compile,
     .toString = (AstNodeToString)&file_node_to_string,
     .buildFunction = NULL,
 };
