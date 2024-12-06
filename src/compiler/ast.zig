@@ -54,3 +54,22 @@ test "function no args no return no statement compile" {
         try expect(false);
     }
 }
+
+test "function no args no return no statement run" {
+    const source = "fn testFunc() {}";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+}
