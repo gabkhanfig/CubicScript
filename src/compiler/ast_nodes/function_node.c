@@ -9,6 +9,7 @@
 #include "../../interpreter/operations.h"
 #include "../../interpreter/function_definition.h"
 #include "../../primitives/string/string.h"
+//#include <stdio.h>
 
 static void function_node_deinit(FunctionNode* self) {
     ast_node_array_deinit(&self->items);
@@ -27,6 +28,7 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
         assert(cubs_string_init(&functionName, self->functionName) == cubsStringErrorNone);
         builder.fullyQualifiedName = functionName;
         builder.name = cubs_string_clone(&functionName);
+        //fprintf(stderr, "function node compiling [%s]\n", cubs_string_as_slice(&builder.name).str);
     }
 
     { // return type
@@ -51,7 +53,12 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
     { // arguments
     }
 
-    { // statements
+    // Statements
+    // If there are no statements, a single return bytecode is required.
+    if(self->items.len == 0) {
+        const Bytecode bytecode = operands_make_return(false, 0);
+        cubs_function_builder_push_bytecode(&builder, bytecode);
+    } else {
         for(size_t i = 0; i < self->items.len; i++) {
             const AstNode node = self->items.nodes[i];
             // TODO allow nodes that don't just do code gen, such as nested structs maybe? or lambdas? to determine
