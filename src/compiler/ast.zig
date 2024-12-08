@@ -74,6 +74,53 @@ test "function no args no return no statement run" {
     }
 }
 
+test "function no args no return 1 return statement" {
+    const source = "fn testFunc() { return; }";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+}
+
+test "function no args no return 1 return statement compile" {
+    const source = "fn testFunc() { return; }";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        _ = func;
+    } else {
+        try expect(false);
+    }
+}
+
+test "function no args no return 1 return statement run" {
+    const source = "fn testFunc() { return; }";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0); } 
+    else {
+        try expect(false);
+    }
+}
+
 test "function no args int return 1 return statement" {
     const source = "fn testFunc() int { return 5; }";
     const tokenIter = tokenIterInit(source, null);
@@ -103,7 +150,7 @@ test "function no args int return 1 return statement compile" {
 }
 
 test "function no args int return 1 return statement run" {
-    const source = "fn testFunc() int {\n return 5;\n }";
+    const source = "fn testFunc() int { return 5; }";
     const tokenIter = tokenIterInit(source, null);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
@@ -118,7 +165,6 @@ test "function no args int return 1 return statement run" {
         var retValue: i64 = undefined;
         var retContext: *const c.CubsTypeContext = undefined;
         try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
-        std.debug.print("script function returned {}\n", .{retValue});
         try expect(retValue == 5);
     } else {
         try expect(false);
