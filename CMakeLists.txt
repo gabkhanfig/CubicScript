@@ -29,6 +29,7 @@ add_library(CubicScript STATIC
     "src/compiler/compiler.c"
     "src/compiler/ast.c"
     "src/compiler/tokenizer.c"
+    "src/compiler/stack_assignment.c"
     "src/compiler/ast_nodes/file_node.c"
     "src/compiler/ast_nodes/function_node.c"
     "src/compiler/ast_nodes/return_node.c"
