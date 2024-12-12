@@ -7,6 +7,9 @@
 /// Zero initialize.
 /// Stores stack positions of all variables within a stack frame
 typedef struct StackAssignment {
+    /// Store strings instead of slices because it's possible that dynamically
+    /// generated variable names will need to be used. For example, for
+    /// temporary values.
     CubsString* names;
     uint16_t* positions;
     size_t len;
