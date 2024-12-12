@@ -1,8 +1,8 @@
-#include "stack_assignment.h"
+#include "stack_variables.h"
 #include "../platform/mem.h"
 #include <assert.h>
 
-void cubs_stack_assignment_deinit(StackAssignment *self)
+void cubs_stack_assignment_deinit(StackVariablesAssignment *self)
 {
     for(size_t i = 0; i < self->len; i++) {
         cubs_string_deinit(&self->names[i]);
@@ -16,10 +16,10 @@ void cubs_stack_assignment_deinit(StackAssignment *self)
         cubs_free((void*)self->positions, self->capacity * sizeof(uint16_t), _Alignof(uint16_t));
     }
 
-    *self = (StackAssignment){0};
+    *self = (StackVariablesAssignment){0};
 }
 
-uint16_t cubs_stack_assignment_push(StackAssignment *self, CubsString name, size_t sizeOfType)
+uint16_t cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString name, size_t sizeOfType)
 {
     assert(self->requiredFrameSize < UINT16_MAX);
     const uint16_t position = (uint16_t)self->requiredFrameSize;
@@ -66,7 +66,7 @@ uint16_t cubs_stack_assignment_push(StackAssignment *self, CubsString name, size
     return position;
 }
 
-uint16_t cubs_stack_assignment_find(const StackAssignment *self, const CubsString *name)
+uint16_t cubs_stack_assignment_find(const StackVariablesAssignment *self, const CubsString *name)
 {
     // TODO does this need optimization?
 
