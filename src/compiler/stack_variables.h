@@ -3,6 +3,35 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../primitives/string/string.h"
+#include "../primitives/context.h"
+
+typedef struct StackVariableInfo {
+    /// Use string instead of slice because this variable name
+    /// may need to be generated, such as with a temporary value.
+    CubsString name;
+    /// May be NULL, indicating that the type info for this variable
+    /// has not been fully resolved.
+    const CubsTypeContext* context;
+    /// The type name found within the source code. For example
+    /// `const a: int = ...`, which `taggedName` will hold the slice
+    /// `"int"`. If this string is empty, there is no tag.
+    CubsStringSlice taggedName;
+} StackVariableInfo;
+
+void cubs_stack_variable_info_deinit(StackVariableInfo* self);
+
+typedef struct StackVariablesArray {
+    StackVariableInfo* variables;
+    size_t len;
+    size_t capacity;
+} StackVariablesArray;
+
+void cubs_stack_variables_array_deinit(StackVariablesArray* self);
+
+/// Expects `variable` to have a unique name. Returns true if a variable with 
+/// the name of `variable.name` does not already exist in the array, otherwise
+/// returns false.
+bool cubs_stack_variables_array_push(StackVariablesArray* self, StackVariableInfo variable);
 
 /// Zero initialize.
 /// Stores stack positions of all variables within a stack frame
