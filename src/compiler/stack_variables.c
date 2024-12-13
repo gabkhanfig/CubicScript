@@ -52,32 +52,40 @@ bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInf
 
 void cubs_stack_assignment_deinit(StackVariablesAssignment *self)
 {
-    for(size_t i = 0; i < self->len; i++) {
-        cubs_string_deinit(&self->names[i]);
-    }
-
     if(self->capacity > 0) {
         assert(self->names != NULL);
         assert(self->positions != NULL);
 
-        cubs_free((void*)self->names, self->capacity * sizeof(CubsString), _Alignof(CubsString));
+        cubs_free((void*)self->names, self->capacity * sizeof(CubsStringSlice), _Alignof(CubsStringSlice));
         cubs_free((void*)self->positions, self->capacity * sizeof(uint16_t), _Alignof(uint16_t));
     }
 
     *self = (StackVariablesAssignment){0};
 }
 
-bool cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString name, size_t sizeOfType)
+static bool slices_eql(CubsStringSlice lhs, CubsStringSlice rhs) {
+    if(lhs.len != rhs.len) {
+        return false;
+    }
+
+    for(size_t i = 0; i < lhs.len; i++) {
+        if(lhs.str[i] != rhs.str[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool cubs_stack_assignment_push(StackVariablesAssignment *self, CubsStringSlice name, size_t sizeOfType)
 {
     for(size_t i = 0; i < self->len; i++) {
-        if(cubs_string_eql(&self->names[i], &name)) {
-            cubs_string_deinit(&name);
+        if(slices_eql(self->names[i], name)) {
             return false;
         }
     }
 
     if(self->requiredFrameSize >= UINT16_MAX) { //TODO fix to actual maximum size
-        cubs_string_deinit(&name);
         return false;
     }
 
@@ -97,7 +105,7 @@ bool cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString name,
     if(self->len == self->capacity) {
         const size_t newCapacity = self->capacity == 0 ? 2 : self->capacity << 1;
 
-        CubsString* newNames = (CubsString*)cubs_malloc(newCapacity * sizeof(CubsString), _Alignof(CubsString));
+        CubsStringSlice* newNames = (CubsStringSlice*)cubs_malloc(newCapacity * sizeof(CubsStringSlice), _Alignof(CubsStringSlice));
         uint16_t* newPositions = (uint16_t*)cubs_malloc(newCapacity * sizeof(uint16_t), _Alignof(uint16_t));
 
         if(self->names != NULL) {
@@ -108,7 +116,7 @@ bool cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString name,
                 newPositions[i] = self->positions[i];
             }
 
-            cubs_free((void*)self->names, self->capacity * sizeof(CubsString), _Alignof(CubsString));
+            cubs_free((void*)self->names, self->capacity * sizeof(CubsStringSlice), _Alignof(CubsStringSlice));
             cubs_free((void*)self->positions, self->capacity * sizeof(uint16_t), _Alignof(uint16_t));
         } else {
             // Validation
@@ -117,6 +125,7 @@ bool cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString name,
 
         self->names = newNames;
         self->positions = newPositions;
+        self->capacity = newCapacity;
     }
 
     self->names[self->len] = name;
@@ -126,12 +135,12 @@ bool cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString name,
     return true;
 }
 
-uint16_t cubs_stack_assignment_find(const StackVariablesAssignment *self, const CubsString *name)
+uint16_t cubs_stack_assignment_find(const StackVariablesAssignment *self, CubsStringSlice name)
 {
     // TODO does this need optimization?
 
     for(size_t i = 0; i < self->len; i++) {
-        if(cubs_string_eql(&self->names[i], name)) {
+        if(slices_eql(self->names[i], name)) {
             return self->positions[i];
         }
     }

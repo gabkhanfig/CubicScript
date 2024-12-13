@@ -40,7 +40,7 @@ typedef struct StackVariablesAssignment {
     /// Store strings instead of slices because it's possible that dynamically
     /// generated variable names will need to be used. For example, for
     /// temporary values.
-    CubsString* names;
+    CubsStringSlice* names;
     uint16_t* positions;
     size_t len;
     /// How many slots is required to store all of the variables
@@ -55,6 +55,6 @@ void cubs_stack_assignment_deinit(StackVariablesAssignment* self);
 /// the stack frame given the size of the type. Expect `name` to be unique.
 /// Returns true if a variable within the stack assignments does not already
 /// exist, otherwise returns false.
-bool cubs_stack_assignment_push(StackVariablesAssignment* self, CubsString name, size_t sizeOfType);
+bool cubs_stack_assignment_push(StackVariablesAssignment* self, CubsStringSlice name, size_t sizeOfType);
 
-uint16_t cubs_stack_assignment_find(const StackVariablesAssignment* self, const CubsString* name);
+uint16_t cubs_stack_assignment_find(const StackVariablesAssignment* self, CubsStringSlice name);
