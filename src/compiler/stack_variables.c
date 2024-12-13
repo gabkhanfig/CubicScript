@@ -26,6 +26,7 @@ bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInf
 {
     for(size_t i = 0; i < self->len; i++) {
         if(cubs_string_eql(&self->variables[i].name, &variable.name)) {
+            cubs_stack_variable_info_deinit(&variable);
             return false;
         }
     }
@@ -66,8 +67,20 @@ void cubs_stack_assignment_deinit(StackVariablesAssignment *self)
     *self = (StackVariablesAssignment){0};
 }
 
-uint16_t cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString name, size_t sizeOfType)
+bool cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString name, size_t sizeOfType)
 {
+    for(size_t i = 0; i < self->len; i++) {
+        if(cubs_string_eql(&self->names[i], &name)) {
+            cubs_string_deinit(&name);
+            return false;
+        }
+    }
+
+    if(self->requiredFrameSize >= UINT16_MAX) { //TODO fix to actual maximum size
+        cubs_string_deinit(&name);
+        return false;
+    }
+
     assert(self->requiredFrameSize < UINT16_MAX);
     const uint16_t position = (uint16_t)self->requiredFrameSize;
 
@@ -110,7 +123,7 @@ uint16_t cubs_stack_assignment_push(StackVariablesAssignment *self, CubsString n
     self->positions[self->len] = position;
     self->len += 1;
 
-    return position;
+    return true;
 }
 
 uint16_t cubs_stack_assignment_find(const StackVariablesAssignment *self, const CubsString *name)

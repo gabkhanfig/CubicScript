@@ -28,6 +28,7 @@ typedef struct StackVariablesArray {
 
 void cubs_stack_variables_array_deinit(StackVariablesArray* self);
 
+/// Takes ownership of `variable`. 
 /// Expects `variable` to have a unique name. Returns true if a variable with 
 /// the name of `variable.name` does not already exist in the array, otherwise
 /// returns false.
@@ -50,9 +51,10 @@ typedef struct StackVariablesAssignment {
 
 void cubs_stack_assignment_deinit(StackVariablesAssignment* self);
 
-/// Takes ownership of `name`.
-/// Determines the position of the variable within the stack frame given the size of the type.
-/// Returns the position, but can be ignored.
-uint16_t cubs_stack_assignment_push(StackVariablesAssignment* self, CubsString name, size_t sizeOfType);
+/// Takes ownership of `name`. Determines the position of the variable within
+/// the stack frame given the size of the type. Expect `name` to be unique.
+/// Returns true if a variable within the stack assignments does not already
+/// exist, otherwise returns false.
+bool cubs_stack_assignment_push(StackVariablesAssignment* self, CubsString name, size_t sizeOfType);
 
 uint16_t cubs_stack_assignment_find(const StackVariablesAssignment* self, const CubsString* name);
