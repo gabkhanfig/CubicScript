@@ -9,6 +9,7 @@
 struct CubsProgram;
 struct Ast;
 struct FunctionBuilder;
+struct StackVariablesAssignment;
 
 enum AstNodeType {
     astNodeTypeFile,
@@ -19,7 +20,11 @@ enum AstNodeType {
 typedef void (*AstNodeDeinit)(void* self);
 typedef void(*AstNodeCompile)(const void* self, struct CubsProgram* program);
 typedef CubsStringSlice(*AstNodeToString)(const void* self);
-typedef void(*AstNodeBuildFunction)(const void* self, struct FunctionBuilder* builder, const void* reserveStackAssignments);
+typedef void(*AstNodeBuildFunction)(
+    const void* self,
+    struct FunctionBuilder* builder,
+    const struct StackVariablesAssignment* stackAssignment
+);
 
 typedef struct AstNodeVTable {
     enum AstNodeType nodeType;

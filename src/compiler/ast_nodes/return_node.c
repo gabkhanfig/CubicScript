@@ -5,6 +5,7 @@
 #include "../../interpreter/function_definition.h"
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
+#include "../stack_variables.h"
 #include <stdio.h>
 
 static void return_node_deinit(ReturnNode* self) {
@@ -15,7 +16,11 @@ static CubsStringSlice return_node_to_string(const ReturnNode* self) {
     return (CubsStringSlice){0};
 }
 
-static void return_node_build_function(const ReturnNode* self, FunctionBuilder* builder, const void* reserveStackAssignments) {  
+static void return_node_build_function(
+    const ReturnNode* self,
+    FunctionBuilder* builder,
+    const StackVariablesAssignment* stackAssignment
+) {  
     if(!self->hasReturn) {
         const Bytecode bytecode = operands_make_return(false, 0);
         cubs_function_builder_push_bytecode(builder, bytecode);
