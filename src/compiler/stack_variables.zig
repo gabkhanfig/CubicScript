@@ -51,8 +51,6 @@ test "stack assignment two variables one slot each" {
     var assignment = StackVariablesAssignment{};
     defer c.cubs_stack_assignment_deinit(&assignment);
 
-    try expect(assignment.len == 0);
-
     const v1 = CubsStringSlice{ .str = "hello".ptr, .len = 5 };
     const v2 = CubsStringSlice{ .str = "world".ptr, .len = 5 };
     // Use size of i64 because it only occupies one stack slot
@@ -80,8 +78,6 @@ test "stack assignment two variables one slot each" {
 test "stack assignment one variable multi slot" {
     var assignment = StackVariablesAssignment{};
     defer c.cubs_stack_assignment_deinit(&assignment);
-
-    try expect(assignment.len == 0);
 
     const variableName = CubsStringSlice{ .str = "hello".ptr, .len = 5 };
 
@@ -128,8 +124,6 @@ test "stack assignment two variables multi slot each" {
 test "stack assignment many variables one slot each" {
     var assignment = StackVariablesAssignment{};
     defer c.cubs_stack_assignment_deinit(&assignment);
-
-    try expect(assignment.len == 0);
 
     const v1 = sliceFromLiteral("asdpiyahpsdiuhapsiduhapsiudhp");
     const v2 = sliceFromLiteral("hello world!");
@@ -210,8 +204,6 @@ test "stack assignment many variables one slot each" {
 test "stack assignment many variables many slot each" {
     var assignment = StackVariablesAssignment{};
     defer c.cubs_stack_assignment_deinit(&assignment);
-
-    try expect(assignment.len == 0);
 
     const v1 = sliceFromLiteral("asdpiyahpsdiuhapsiduhapsiudhp");
     const v2 = sliceFromLiteral("hello world!");
@@ -294,8 +286,6 @@ test "stack assignment two variables mixed sizes" {
         var assignment = StackVariablesAssignment{};
         defer c.cubs_stack_assignment_deinit(&assignment);
 
-        try expect(assignment.len == 0);
-
         const v1 = sliceFromLiteral("hello");
         const v2 = sliceFromLiteral("world");
 
@@ -321,8 +311,6 @@ test "stack assignment two variables mixed sizes" {
         var assignment = StackVariablesAssignment{};
         defer c.cubs_stack_assignment_deinit(&assignment);
 
-        try expect(assignment.len == 0);
-
         const v1 = sliceFromLiteral("hello");
         const v2 = sliceFromLiteral("world");
 
@@ -344,4 +332,20 @@ test "stack assignment two variables mixed sizes" {
             try expect(assignment.requiredFrameSize == 5);
         }
     }
+}
+
+test "stack assignment duplicate names" {
+    var assignment = StackVariablesAssignment{};
+    defer c.cubs_stack_assignment_deinit(&assignment);
+
+    try expect(assignment.len == 0);
+
+    const variableName = sliceFromLiteral("hello");
+
+    try expect(c.cubs_stack_assignment_push(&assignment, variableName, @sizeOf(i64)));
+    try expect(c.cubs_stack_assignment_push(
+        &assignment,
+        variableName,
+        @sizeOf(i64),
+    ) == false);
 }
