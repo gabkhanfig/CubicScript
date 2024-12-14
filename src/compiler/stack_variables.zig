@@ -348,4 +348,8 @@ test "stack assignment duplicate names" {
         variableName,
         @sizeOf(i64),
     ) == false);
+
+    // Adding duplicate variable name should fail, leaving only 1 variable in the assignments
+    try expect(assignment.len == 1);
+    try expect(assignment.requiredFrameSize == 1);
 }
