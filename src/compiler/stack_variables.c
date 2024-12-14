@@ -50,6 +50,20 @@ bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInf
     return true;
 }
 
+StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray *variables)
+{
+    StackVariablesAssignment self = {0};
+    for(size_t i = 0; i < variables->len; i++) {
+        const StackVariableInfo* info = &variables->variables[i];
+        assert(info->context != NULL);
+        const bool success = cubs_stack_assignment_push(
+            &self, cubs_string_as_slice(&info->name), info->context->sizeOfType
+        );
+        assert(success);
+    }
+    return self;
+}
+
 void cubs_stack_assignment_deinit(StackVariablesAssignment *self)
 {
     if(self->capacity > 0) {

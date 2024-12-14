@@ -49,6 +49,8 @@ typedef struct StackVariablesAssignment {
     size_t capacity;
 } StackVariablesAssignment;
 
+StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray* variables);
+
 void cubs_stack_assignment_deinit(StackVariablesAssignment* self);
 
 /// Takes ownership of `name`. Determines the position of the variable within
