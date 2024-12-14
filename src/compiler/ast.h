@@ -51,8 +51,8 @@ inline static CubsStringSlice ast_node_to_string(const AstNode* self) {
     return self->vtable->toString(self->ptr);
 }
 
-inline static void ast_node_build_function(const AstNode* self, struct FunctionBuilder* builder, const void* reserveStackAssignments) {
-    self->vtable->buildFunction(self->ptr, builder, reserveStackAssignments);
+inline static void ast_node_build_function(const AstNode* self, struct FunctionBuilder* builder, const struct StackVariablesAssignment* stackAssignments) {
+    self->vtable->buildFunction(self->ptr, builder, stackAssignments);
 }
 
 typedef struct Ast {
