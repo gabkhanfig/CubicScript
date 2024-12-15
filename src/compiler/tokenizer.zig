@@ -694,6 +694,10 @@ test "right brace" {
     validateParseOperatorOrSymbol("}", c.RIGHT_BRACE_SYMBOL);
 }
 
+test "colon" {
+    validateParseOperatorOrSymbol(":", c.COLON_SYMBOL);
+}
+
 test "semicolon" {
     validateParseOperatorOrSymbol(";", c.SEMICOLON_SYMBOL);
 }

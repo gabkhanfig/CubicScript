@@ -432,6 +432,7 @@ TOKEN_CONSTANT(LEFT_BRACKET_SYMBOL_SLICE, "[");
 TOKEN_CONSTANT(RIGHT_BRACKET_SYMBOL_SLICE, "]");
 TOKEN_CONSTANT(LEFT_BRACE_SYMBOL_SLICE, "{");
 TOKEN_CONSTANT(RIGHT_BRACE_SYMBOL_SLICE, "}");
+TOKEN_CONSTANT(COLON_SYMBOL_SLICE, ":");
 TOKEN_CONSTANT(SEMICOLON_SYMBOL_SLICE, ";");
 TOKEN_CONSTANT(PERIOD_SYMBOL_SLICE, ".");
 TOKEN_CONSTANT(COMMA_SYMBOL_SLICE, ",");
@@ -667,6 +668,9 @@ static NextToken get_next_token(const TokenIter* self) {
         } else if(starts_with_operator_or_symbol_substring(tokenStart, RIGHT_BRACE_SYMBOL_SLICE)) {
             found = RIGHT_BRACE_SYMBOL;
             foundSlice = RIGHT_BRACE_SYMBOL_SLICE;
+        } else if(starts_with_operator_or_symbol_substring(tokenStart, COLON_SYMBOL_SLICE)) {
+            found = COLON_SYMBOL;
+            foundSlice = COLON_SYMBOL_SLICE;
         } else if(starts_with_operator_or_symbol_substring(tokenStart, SEMICOLON_SYMBOL_SLICE)) {
             found = SEMICOLON_SYMBOL;
             foundSlice = SEMICOLON_SYMBOL_SLICE;

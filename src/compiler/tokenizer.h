@@ -70,6 +70,7 @@ string literal
 ]
 {
 }
+:
 ;
 .
 &
@@ -149,6 +150,7 @@ typedef enum Token {
     RIGHT_BRACKET_SYMBOL,
     LEFT_BRACE_SYMBOL,
     RIGHT_BRACE_SYMBOL,
+    COLON_SYMBOL,
     SEMICOLON_SYMBOL,
     PERIOD_SYMBOL,
     COMMA_SYMBOL,
