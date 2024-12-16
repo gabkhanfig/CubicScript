@@ -80,6 +80,9 @@ static AstNodeVTable function_node_vtable = {
     .buildFunction = NULL,
 };
 
+/// Parses from `'('` to `')'`.
+/// After calling, assuming no parsing errors occur,
+/// `iter->current` will be `RIGHT_PARENTHESES_SYMBOL`
 static StackVariablesArray parse_function_args(TokenIter *iter) {
     assert(iter->current == LEFT_PARENTHESES_SYMBOL);
 
@@ -130,6 +133,34 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
     return variables;
 }
 
+/// Parses from `')'` to `'{'`.
+/// After calling, assuming no parsing errors occur,
+/// `iter->current` will be `LEFT_BRACE_SYMBOL`
+static FunctionReturnType parse_function_return(TokenIter* iter) {
+    assert(iter->current = RIGHT_PARENTHESES_SYMBOL);
+
+    // Zeroed means void return type
+    FunctionReturnType ret = {0};
+
+    Token token = cubs_token_iter_next(iter);
+    if(token != LEFT_BRACE_SYMBOL) { // has return type            
+        if(token == INT_KEYWORD) {
+            ret.retTag = functionReturnToken;
+            ret.retType.token = INT_KEYWORD;
+        }
+        if(token == IDENTIFIER) {
+            assert("Cannot handle identifier returns yet");
+        } else {
+            assert("Cannot handle other stuff for function return yet");
+        }
+
+        token = cubs_token_iter_next(iter); // left bracket should follow after token
+        assert(token == LEFT_BRACE_SYMBOL); 
+    }
+    // TODO more complex return types, for now just nothing or ints
+    return ret;
+}
+
 
 AstNode cubs_function_node_init(TokenIter *iter)
 {
@@ -148,24 +179,8 @@ AstNode cubs_function_node_init(TokenIter *iter)
     self->variables = parse_function_args(iter);
     assert(iter->current = RIGHT_PARENTHESES_SYMBOL);
 
-    { // return type
-        Token token = cubs_token_iter_next(iter);
-        if(token != LEFT_BRACE_SYMBOL) { // has return type            
-            if(token == INT_KEYWORD) {
-                self->retInfo.retTag = functionReturnToken;
-                self->retInfo.retType.token = INT_KEYWORD;
-            }
-            if(token == IDENTIFIER) {
-                assert("Cannot handle identifier returns yet");
-            } else {
-                assert("Cannot handle other stuff for function return yet");
-            }
-
-            token = cubs_token_iter_next(iter); // left bracket should follow after token
-            assert(token == LEFT_BRACE_SYMBOL); 
-        }
-        // TODO more complex return types, for now just nothing or ints
-    }
+    self->retInfo = parse_function_return(iter);
+    assert(iter->current == LEFT_BRACE_SYMBOL); 
 
     { // statements
         Token token = cubs_token_iter_next(iter);
