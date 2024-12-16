@@ -115,8 +115,8 @@ test "function no args no return 1 return statement run" {
 
     if (findFunction(&program, "testFunc")) |func| {
         const call = c.cubs_function_start_call(&func);
-        try expect(c.cubs_function_call(call, .{}) == 0); } 
-    else {
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
         try expect(false);
     }
 }
