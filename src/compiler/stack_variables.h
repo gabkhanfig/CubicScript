@@ -6,9 +6,14 @@
 #include "../primitives/context.h"
 
 typedef struct StackVariableInfo {
+    /// NON-OWNING reference to the name of this variable.
+    /// Useful because it allows mutating the name in certain circumstances
+    /// such as temporary variables.
     /// Use string instead of slice because this variable name
     /// may need to be generated, such as with a temporary value.
-    CubsString name;
+    CubsString* name;
+    /// If this is a temporary variable, `name` is allowed to be mutated freely
+    bool isTemporary;
     /// May be NULL, indicating that the type info for this variable
     /// has not been fully resolved.
     const CubsTypeContext* context;
@@ -32,7 +37,17 @@ void cubs_stack_variables_array_deinit(StackVariablesArray* self);
 /// Expects `variable` to have a unique name. Returns true if a variable with 
 /// the name of `variable.name` does not already exist in the array, otherwise
 /// returns false.
-bool cubs_stack_variables_array_push(StackVariablesArray* self, StackVariableInfo variable);
+/// Will mutate any existing temporary variables if the name already exists.
+/// # Debug Asserts
+/// `variable.isTemporary == false`
+bool cubs_stack_variables_array_push(StackVariablesArray* self, const StackVariableInfo variable);
+
+/// Takes ownership of `variable`.
+/// If a variable with the name `variable.name` already exists, `variable.name`
+/// will be mutated until it doesn't exist already.
+/// # Debug Asserts
+/// `variable.isTemporary == true`
+void cubs_stack_variables_array_push_temporary(StackVariablesArray* self, StackVariableInfo variable);
 
 /// Zero initialize.
 /// Stores stack positions of all variables within a stack frame

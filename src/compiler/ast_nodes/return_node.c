@@ -71,12 +71,13 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
             // Need somewhere to store temporary return value for literal
 
             StackVariableInfo temporaryVariable = {
-                .name = cubs_string_clone(&self->variableName),
+                .name = &self->variableName,
+                .isTemporary = true,
                 .context = &CUBS_INT_CONTEXT,
                 .taggedName = {0},
             };
 
-            assert(cubs_stack_variables_array_push(variables, temporaryVariable));
+            cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
         } else {
             cubs_panic("Invalid token after return");
         }

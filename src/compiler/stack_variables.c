@@ -5,7 +5,7 @@
 
 void cubs_stack_variable_info_deinit(StackVariableInfo *self)
 {
-    cubs_string_deinit(&self->name);
+    //cubs_string_deinit(&self->name);
     *self = (StackVariableInfo){0};
 }
 
@@ -23,32 +23,68 @@ void cubs_stack_variables_array_deinit(StackVariablesArray *self)
     *self = (StackVariablesArray){0};
 }
 
-bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInfo variable)
-{
+static bool is_variable_in_array(const StackVariablesArray* self, const StackVariableInfo* variable) {
     for(size_t i = 0; i < self->len; i++) {
-        if(cubs_string_eql(&self->variables[i].name, &variable.name)) {
-            cubs_stack_variable_info_deinit(&variable);
-            return false;
+        if(cubs_string_eql(self->variables[i].name, variable->name)) {
+            return true;
         }
     }
+    return false;
+}
 
-    if(self->len == self->capacity) {
-        const size_t newCapacity = self->capacity == 0 ? 2 : self->capacity << 1;
-
-        StackVariableInfo* newVariables = (StackVariableInfo*)cubs_malloc(sizeof(StackVariableInfo) * newCapacity, _Alignof(StackVariableInfo));
-        if(self->variables != NULL) {
-            for(uint32_t i = 0; i < self->len; i++) {
-                newVariables[i] = self->variables[i];
-            }
-            cubs_free((void*)self->variables, sizeof(StackVariableInfo) * self->capacity, _Alignof(StackVariableInfo));
-        }
-        self->variables = newVariables;
-        self->capacity = newCapacity;
+/// Ensure array has capacity for one more
+static void ensure_array_capacity_add_one(StackVariablesArray *self) {
+    if(self->len < self->capacity) {
+        return;
     }
 
+    const size_t newCapacity = self->capacity == 0 ? 2 : self->capacity << 1;
+
+    StackVariableInfo* newVariables = (StackVariableInfo*)cubs_malloc(sizeof(StackVariableInfo) * newCapacity, _Alignof(StackVariableInfo));
+    if(self->variables != NULL) {
+        for(size_t i = 0; i < self->len; i++) {
+            newVariables[i] = self->variables[i];
+        }
+        cubs_free((void*)self->variables, sizeof(StackVariableInfo) * self->capacity, _Alignof(StackVariableInfo));
+    }
+    self->variables = newVariables;
+    self->capacity = newCapacity;
+}
+
+bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInfo variable)
+{    
+    assert(!variable.isTemporary);
+
+    // TODO mutate temporary if duplicate of temporary
+
+    if(is_variable_in_array(self, &variable)) {
+        cubs_stack_variable_info_deinit(&variable);
+        return false;
+    }
+
+    ensure_array_capacity_add_one(self);
+    
     self->variables[self->len] = variable;
     self->len += 1;
     return true;
+}
+
+void cubs_stack_variables_array_push_temporary(StackVariablesArray *self, StackVariableInfo variable)
+{
+    assert(variable.isTemporary);
+
+    while(is_variable_in_array(self, &variable)) {
+        // Come up with smarter method other than appending underscores
+        const CubsStringSlice appending = {.str = "_", .len = 1};
+        const CubsString temp = cubs_string_concat_slice_unchecked(variable.name, appending);
+        cubs_string_deinit(variable.name);
+        *variable.name = temp;
+    }
+
+    ensure_array_capacity_add_one(self);
+    
+    self->variables[self->len] = variable;
+    self->len += 1;
 }
 
 StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray *variables)
@@ -58,7 +94,7 @@ StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray *v
         const StackVariableInfo* info = &variables->variables[i];
         assert(info->context != NULL);
         const bool success = cubs_stack_assignment_push(
-            &self, cubs_string_as_slice(&info->name), info->context->sizeOfType
+            &self, cubs_string_as_slice(info->name), info->context->sizeOfType
         );
         assert(success);
     }
