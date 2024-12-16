@@ -80,6 +80,56 @@ static AstNodeVTable function_node_vtable = {
     .buildFunction = NULL,
 };
 
+StackVariablesArray parse_function_args(TokenIter *iter) {
+    assert(iter->current == LEFT_PARENTHESES_SYMBOL);
+
+    Token token = cubs_token_iter_next(iter);
+    StackVariablesArray variables = {0};
+
+    if(token == RIGHT_PARENTHESES_SYMBOL) { // has no arguments
+        return variables;
+    }
+
+    while(token != RIGHT_PARENTHESES_SYMBOL) {
+        StackVariableInfo info = {0};
+
+        const Token variableNameToken = token;
+        assert(variableNameToken == IDENTIFIER && "Expected identifier for function argument variable name");
+        const CubsStringError variableNameErr = cubs_string_init(&info.name, iter->currentMetadata.identifier);
+        assert(variableNameErr == cubsStringErrorNone && "Invalid UTF8 variable identifier");
+        
+        const Token colonToken = cubs_token_iter_next(iter);
+        assert(colonToken == COLON_SYMBOL && "Expected \':\' following function argument variable name");
+
+        const Token typeNameToken = cubs_token_iter_next(iter);
+        switch(typeNameToken) {
+            case INT_KEYWORD: {
+                info.context = &CUBS_INT_CONTEXT;
+            } break;
+            // case IDENTIFIER: { // TODO handle other types
+            //     info.taggedName = iter->currentMetadata.identifier;
+            // } break;
+            default: {
+                assert(false && "Unexpected token following variable name and \':\'");
+            } break;
+        }
+
+        cubs_stack_variables_array_push(&variables, info);
+
+        // move iterator forward. while loop will check this
+        token = cubs_token_iter_next(iter);
+        if(token != COMMA_SYMBOL && token != RIGHT_PARENTHESES_SYMBOL) {
+            assert(false && "Expected comma or right parentheses to follow function argument");
+        }
+        if(token == COMMA_SYMBOL) {
+            // move forward again to next argument or parentheses
+            token = cubs_token_iter_next(iter);
+        }
+    }
+
+    return variables;
+}
+
 
 AstNode cubs_function_node_init(TokenIter *iter)
 {
@@ -94,7 +144,9 @@ AstNode cubs_function_node_init(TokenIter *iter)
     }
 
     assert(cubs_token_iter_next(iter) == LEFT_PARENTHESES_SYMBOL);
-    assert(cubs_token_iter_next(iter) == RIGHT_PARENTHESES_SYMBOL); // no arguments for now
+
+    self->variables = parse_function_args(iter);
+    assert(iter->current = RIGHT_PARENTHESES_SYMBOL);
 
     { // return type
         Token token = cubs_token_iter_next(iter);
@@ -112,7 +164,7 @@ AstNode cubs_function_node_init(TokenIter *iter)
             token = cubs_token_iter_next(iter); // left bracket should follow after token
             assert(token == LEFT_BRACE_SYMBOL); 
         }
-        // TODO more complex return types, for now just nothing or ints           
+        // TODO more complex return types, for now just nothing or ints
     }
 
     { // statements
