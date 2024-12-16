@@ -128,6 +128,8 @@
         "program_internal.h": "c",
         "parser.h": "c",
         "file_node.h": "c",
-        "stack_variables.h": "c"
+        "stack_variables.h": "c",
+        "return_node.h": "c",
+        "ast.h": "c"
     }
 }
