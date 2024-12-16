@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 static void return_node_deinit(ReturnNode* self) {
+    cubs_string_deinit(&self->variableName);
     cubs_free(self, sizeof(ReturnNode), _Alignof(ReturnNode));
 }
 
@@ -25,10 +26,8 @@ static void return_node_build_function(
         const Bytecode bytecode = operands_make_return(false, 0);
         cubs_function_builder_push_bytecode(builder, bytecode);
     } else {
-        const uint16_t returnSrc = 0; // TODO get actual src
+        const uint16_t returnSrc = cubs_stack_assignment_find(stackAssignment, cubs_string_as_slice(&self->variableName));
         assert(self->retInfo == INT_LITERAL);
-
-        builder->stackSpaceRequired = 1;
 
         Bytecode loadImmediateLong[2];
         operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, returnSrc, self->retValue.intLiteral);
@@ -48,7 +47,7 @@ static AstNodeVTable return_node_vtable = {
     .buildFunction = (AstNodeBuildFunction)&return_node_build_function,
 };
 
-AstNode cubs_return_node_init(TokenIter *iter)
+AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
 {
     assert(iter->current == RETURN_KEYWORD);
     ReturnNode* self = (ReturnNode*)cubs_malloc(sizeof(ReturnNode), _Alignof(ReturnNode));
@@ -66,6 +65,18 @@ AstNode cubs_return_node_init(TokenIter *iter)
             self->retInfo = next;
             self->retValue = iter->currentMetadata;
             self->hasReturn = true;
+            // TODO come up with proper system for temporary values
+            self->variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tempRet", .len = 8});
+
+            // Need somewhere to store temporary return value for literal
+
+            StackVariableInfo temporaryVariable = {
+                .name = cubs_string_clone(&self->variableName),
+                .context = &CUBS_INT_CONTEXT,
+                .taggedName = {0},
+            };
+
+            cubs_stack_variables_array_push(variables, temporaryVariable);
         } else {
             cubs_panic("Invalid token after return");
         }

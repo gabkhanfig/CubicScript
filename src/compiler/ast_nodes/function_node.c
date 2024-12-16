@@ -13,6 +13,7 @@
 
 static void function_node_deinit(FunctionNode* self) {
     ast_node_array_deinit(&self->items);
+    cubs_stack_variables_array_deinit(&self->variables);
     cubs_free(self, sizeof(FunctionNode), _Alignof(FunctionNode));
 }
 
@@ -50,7 +51,8 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
         }
     }
 
-    const StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables);
+    StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables);
+    builder.stackSpaceRequired = stackAssignment.requiredFrameSize;
 
     { // arguments
     }
@@ -70,6 +72,9 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
     }
 
     cubs_function_builder_build(&builder, program);
+
+    // cleanup
+    cubs_stack_assignment_deinit(&stackAssignment);
 }
 
 static AstNodeVTable function_node_vtable = {
@@ -182,6 +187,8 @@ AstNode cubs_function_node_init(TokenIter *iter)
     self->retInfo = parse_function_return(iter);
     assert(iter->current == LEFT_BRACE_SYMBOL); 
 
+    // TODO figure out how to handle temporary variables
+
     { // statements
         Token token = cubs_token_iter_next(iter);
 
@@ -190,7 +197,7 @@ AstNode cubs_function_node_init(TokenIter *iter)
         } else {
             // for now only 1 statement, being a return statement
             assert(token == RETURN_KEYWORD);
-            AstNode returnNode = cubs_return_node_init(iter);
+            AstNode returnNode = cubs_return_node_init(iter, &self->variables);
             ast_node_array_push(&self->items, returnNode);
         }
     }

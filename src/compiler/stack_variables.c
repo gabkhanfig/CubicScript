@@ -1,6 +1,7 @@
 #include "stack_variables.h"
 #include "../platform/mem.h"
 #include <assert.h>
+#include <stdio.h>
 
 void cubs_stack_variable_info_deinit(StackVariableInfo *self)
 {
