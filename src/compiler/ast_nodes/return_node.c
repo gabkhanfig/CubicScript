@@ -76,7 +76,7 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
                 .taggedName = {0},
             };
 
-            cubs_stack_variables_array_push(variables, temporaryVariable);
+            assert(cubs_stack_variables_array_push(variables, temporaryVariable));
         } else {
             cubs_panic("Invalid token after return");
         }
