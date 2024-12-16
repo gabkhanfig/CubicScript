@@ -80,7 +80,7 @@ static AstNodeVTable function_node_vtable = {
     .buildFunction = NULL,
 };
 
-StackVariablesArray parse_function_args(TokenIter *iter) {
+static StackVariablesArray parse_function_args(TokenIter *iter) {
     assert(iter->current == LEFT_PARENTHESES_SYMBOL);
 
     Token token = cubs_token_iter_next(iter);
