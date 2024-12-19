@@ -170,3 +170,24 @@ test "function no args int return 1 return statement run" {
         try expect(false);
     }
 }
+
+test "function 1 arg no return no statement ast" {
+    const source = "fn testFunc(arg: int) {}";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        var call = c.cubs_function_start_call(&func);
+        var arg: i64 = 10;
+        c.cubs_function_push_arg(&call, &arg, &c.CUBS_INT_CONTEXT);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+}
