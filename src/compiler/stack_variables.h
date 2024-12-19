@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "../primitives/string/string.h"
 #include "../primitives/context.h"
 
@@ -40,7 +41,7 @@ void cubs_stack_variables_array_deinit(StackVariablesArray* self);
 /// Will mutate any existing temporary variables if the name already exists.
 /// # Debug Asserts
 /// `variable.isTemporary == false`
-bool cubs_stack_variables_array_push(StackVariablesArray* self, const StackVariableInfo variable);
+bool cubs_stack_variables_array_push(StackVariablesArray* self, StackVariableInfo variable);
 
 /// Takes ownership of `variable`.
 /// If a variable with the name `variable.name` already exists, `variable.name`

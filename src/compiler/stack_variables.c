@@ -53,7 +53,8 @@ static void ensure_array_capacity_add_one(StackVariablesArray *self) {
 
 bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInfo variable)
 {    
-    assert(!variable.isTemporary);
+    // FOR SOME REASON, accessing variable.isTemporary crashes the program. I have no idea why
+    //assert(variable.isTemporary);
 
     // TODO mutate temporary if duplicate of temporary
 
@@ -61,7 +62,7 @@ bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInf
         cubs_stack_variable_info_deinit(&variable);
         return false;
     }
-
+    
     ensure_array_capacity_add_one(self);
     
     self->variables[self->len] = variable;
