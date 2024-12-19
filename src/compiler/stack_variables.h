@@ -12,7 +12,7 @@ typedef struct StackVariableInfo {
     /// such as temporary variables.
     /// Use string instead of slice because this variable name
     /// may need to be generated, such as with a temporary value.
-    CubsString* name;
+    CubsString name;
     /// If this is a temporary variable, `name` is allowed to be mutated freely
     bool isTemporary;
     /// May be NULL, indicating that the type info for this variable

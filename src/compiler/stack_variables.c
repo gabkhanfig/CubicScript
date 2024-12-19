@@ -5,7 +5,7 @@
 
 void cubs_stack_variable_info_deinit(StackVariableInfo *self)
 {
-    //cubs_string_deinit(&self->name);
+    cubs_string_deinit(&self->name);
     *self = (StackVariableInfo){0};
 }
 
@@ -25,7 +25,7 @@ void cubs_stack_variables_array_deinit(StackVariablesArray *self)
 
 static bool is_variable_in_array(const StackVariablesArray* self, const StackVariableInfo* variable) {
     for(size_t i = 0; i < self->len; i++) {
-        if(cubs_string_eql(self->variables[i].name, variable->name)) {
+        if(cubs_string_eql(&self->variables[i].name, &variable->name)) {
             return true;
         }
     }
@@ -52,9 +52,8 @@ static void ensure_array_capacity_add_one(StackVariablesArray *self) {
 }
 
 bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInfo variable)
-{    
-    // FOR SOME REASON, accessing variable.isTemporary crashes the program. I have no idea why
-    //assert(variable.isTemporary);
+{
+    assert(!variable.isTemporary);
 
     // TODO mutate temporary if duplicate of temporary
 
@@ -62,7 +61,7 @@ bool cubs_stack_variables_array_push(StackVariablesArray *self, StackVariableInf
         cubs_stack_variable_info_deinit(&variable);
         return false;
     }
-    
+
     ensure_array_capacity_add_one(self);
     
     self->variables[self->len] = variable;
@@ -77,9 +76,9 @@ void cubs_stack_variables_array_push_temporary(StackVariablesArray *self, StackV
     while(is_variable_in_array(self, &variable)) {
         // Come up with smarter method other than appending underscores
         const CubsStringSlice appending = {.str = "_", .len = 1};
-        const CubsString temp = cubs_string_concat_slice_unchecked(variable.name, appending);
-        cubs_string_deinit(variable.name);
-        *variable.name = temp;
+        const CubsString temp = cubs_string_concat_slice_unchecked(&variable.name, appending);
+        cubs_string_deinit(&variable.name);
+        variable.name = temp;
     }
 
     ensure_array_capacity_add_one(self);
@@ -94,9 +93,8 @@ StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray *v
     for(size_t i = 0; i < variables->len; i++) {
         const StackVariableInfo* info = &variables->variables[i];
         assert(info->context != NULL);
-        const bool success = cubs_stack_assignment_push(
-            &self, cubs_string_as_slice(info->name), info->context->sizeOfType
-        );
+        const CubsStringSlice slice = cubs_string_as_slice(&info->name);
+        const bool success = cubs_stack_assignment_push(&self, slice, info->context->sizeOfType);
         assert(success);
     }
     return self;

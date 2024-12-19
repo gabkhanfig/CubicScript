@@ -54,7 +54,9 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
     StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables);
     builder.stackSpaceRequired = stackAssignment.requiredFrameSize;
 
-    { // arguments
+    // arguments
+    for(size_t i = 0; i < self->argCount; i++) {
+        cubs_function_builder_add_arg(&builder, self->variables.variables[i].context);
     }
 
     // Statements
@@ -118,7 +120,7 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
             //     info.taggedName = iter->currentMetadata.identifier;
             // } break;
             default: {
-                assert(false && "Unexpected token following variable name and \':\'");
+                assert(false && "Unexpected token following variable name and ':'");
             } break;
         }
 
@@ -182,6 +184,7 @@ AstNode cubs_function_node_init(TokenIter *iter)
     assert(cubs_token_iter_next(iter) == LEFT_PARENTHESES_SYMBOL);
 
     self->variables = parse_function_args(iter);
+    self->argCount = self->variables.len;
     assert(iter->current = RIGHT_PARENTHESES_SYMBOL);
 
     self->retInfo = parse_function_return(iter);

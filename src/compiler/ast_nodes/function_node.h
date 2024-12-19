@@ -24,6 +24,9 @@ typedef struct FunctionNode {
     AstNodeArray items;
     FunctionReturnType retInfo;
     StackVariablesArray variables;
+    /// indices `0` to `argCount` will be the function argument variables
+    /// stored within `variables`.
+    size_t argCount;
 } FunctionNode;
 
 AstNode cubs_function_node_init(TokenIter* iter);

@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 static void return_node_deinit(ReturnNode* self) {
-    cubs_string_deinit(&self->variableName);
+    //cubs_string_deinit(&self->variableName);
     cubs_free(self, sizeof(ReturnNode), _Alignof(ReturnNode));
 }
 
@@ -26,7 +26,9 @@ static void return_node_build_function(
         const Bytecode bytecode = operands_make_return(false, 0);
         cubs_function_builder_push_bytecode(builder, bytecode);
     } else {
-        const uint16_t returnSrc = cubs_stack_assignment_find(stackAssignment, cubs_string_as_slice(&self->variableName));
+        assert(self->variableNameIndex < stackAssignment->len);
+        const CubsStringSlice variableName = stackAssignment->names[self->variableNameIndex];
+        const uint16_t returnSrc = stackAssignment->positions[self->variableNameIndex]; //cubs_stack_assignment_find(stackAssignment, variableName);
         assert(self->retInfo == INT_LITERAL);
 
         Bytecode loadImmediateLong[2];
@@ -66,17 +68,18 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
             self->retValue = iter->currentMetadata;
             self->hasReturn = true;
             // TODO come up with proper system for temporary values
-            self->variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tempRet", .len = 8});
-
-            // Need somewhere to store temporary return value for literal
-
+            const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tempRet", .len = 8});
+            
             StackVariableInfo temporaryVariable = {
-                .name = &self->variableName,
+                .name = variableName,
                 .isTemporary = true,
                 .context = &CUBS_INT_CONTEXT,
                 .taggedName = {0},
             };
 
+            // Variable order is preserved
+            self->variableNameIndex = variables->len;
+            // variables->len will be increased by 1
             cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
         } else {
             cubs_panic("Invalid token after return");
