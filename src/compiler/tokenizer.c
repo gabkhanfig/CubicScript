@@ -67,7 +67,8 @@ static bool starts_with_keyword_substring(const CubsStringSlice source, const Cu
         return true; // end of source, thus no tokens are after
     } else {
         const char charAfterToken = source.str[i];
-        if(is_space(charAfterToken) || charAfterToken == ','|| charAfterToken == '.'|| charAfterToken == ';')
+        if(is_space(charAfterToken) || charAfterToken == ','|| charAfterToken == '.'|| charAfterToken == ';'
+            || charAfterToken == '(' || charAfterToken == ')') // TODO other bracket ones as well?
         {
             return true;
         } else {
