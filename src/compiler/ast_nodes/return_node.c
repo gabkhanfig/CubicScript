@@ -7,6 +7,7 @@
 #include "../../interpreter/operations.h"
 #include "../stack_variables.h"
 #include <stdio.h>
+#include "../../util/unreachable.h"
 
 static void return_node_deinit(ReturnNode* self) {
     //cubs_string_deinit(&self->variableName);
@@ -27,16 +28,21 @@ static void return_node_build_function(
         cubs_function_builder_push_bytecode(builder, bytecode);
     } else {
         assert(self->variableNameIndex < stackAssignment->len);
-        const CubsStringSlice variableName = stackAssignment->names[self->variableNameIndex];
+        //const CubsStringSlice variableName = stackAssignment->names[self->variableNameIndex];
         const uint16_t returnSrc = stackAssignment->positions[self->variableNameIndex]; //cubs_stack_assignment_find(stackAssignment, variableName);
-        assert(self->retInfo == INT_LITERAL);
+        switch(self->retInfo) {
+            case IDENTIFIER: break;
+            case INT_LITERAL: {
+                Bytecode loadImmediateLong[2];
+                operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, returnSrc, self->retValue.intLiteral);
+                cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
+            } break;
+            default: {
+                cubs_panic("Cannot handle non identifier or int literal returns yet");
+            } break;
+        }
 
-        Bytecode loadImmediateLong[2];
-        operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, returnSrc, self->retValue.intLiteral);
-
-        const Bytecode returnBytecode = operands_make_return(true, returnSrc);
-        
-        cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
+        const Bytecode returnBytecode = operands_make_return(true, returnSrc);     
         cubs_function_builder_push_bytecode(builder, returnBytecode);
     }
 }
@@ -59,7 +65,25 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
         const Token next = cubs_token_iter_next(iter);
         if(next == SEMICOLON_SYMBOL) {
             self->hasReturn = false;
-        } else if(next == INT_LITERAL || next == FLOAT_LITERAL || next == CHAR_LITERAL || next == STR_LITERAL || next == IDENTIFIER) {
+        } 
+        else if(next == IDENTIFIER) {
+            self->retInfo = next;
+            self->retValue = iter->currentMetadata;
+            self->hasReturn = true;
+            
+            const CubsStringSlice variableNameSlice = iter->currentMetadata.identifier;
+
+            bool foundVariableNameIndex = false;
+            for(size_t i = 0; i < variables->len; i++) {
+                if(cubs_string_eql_slice(&variables->variables[i].name, variableNameSlice)) {
+                    foundVariableNameIndex = true;
+                    self->variableNameIndex = i;
+                    break;
+                }
+            }
+            assert(foundVariableNameIndex);
+        } 
+        else if(next == INT_LITERAL || next == FLOAT_LITERAL || next == CHAR_LITERAL || next == STR_LITERAL) {
             if(next != INT_LITERAL) {
                 cubs_panic("TODO return stuff other than int literals");
             }
@@ -67,7 +91,7 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
             self->retInfo = next;
             self->retValue = iter->currentMetadata;
             self->hasReturn = true;
-            // TODO come up with proper system for temporary values
+            // TODO come up with proper naming scheme for temporary values
             const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tempRet", .len = 8});
             
             StackVariableInfo temporaryVariable = {
