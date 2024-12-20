@@ -206,14 +206,16 @@ test "function 1 arg 1 return ast" {
     if (findFunction(&program, "testFunc")) |func| {
         var call = c.cubs_function_start_call(&func);
 
-        var arg: i64 = 10;
+        const desiredValue: i64 = 10;
+
+        var arg: i64 = desiredValue;
         c.cubs_function_push_arg(&call, &arg, &c.CUBS_INT_CONTEXT);
 
         var retValue: i64 = undefined;
         var retContext: *const c.CubsTypeContext = undefined;
         try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
 
-        try expect(retValue == arg);
+        try expect(retValue == desiredValue);
     } else {
         try expect(false);
     }
