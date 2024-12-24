@@ -78,7 +78,7 @@ string literal
 
 */
 
-typedef enum Token {
+typedef enum TokenType {
     TOKEN_NONE = 0,
 
     CONST_KEYWORD,
@@ -164,7 +164,7 @@ typedef enum Token {
 
     IDENTIFIER,
 
-} Token;
+} TokenType;
 
 /// Intermediatary struct to denote that special handling is required to convert
 /// this into an actual `CubsString`.
@@ -196,8 +196,8 @@ typedef struct TokenIter {
     CubsStringSlice source;
     CubsSyntaxErrorCallback errCallback;
     CubsSourceFileCharPosition position;
-    Token previous;
-    Token current;
+    TokenType previous;
+    TokenType current;
     TokenMetadata previousMetadata;
     TokenMetadata currentMetadata;
 } TokenIter;
@@ -207,4 +207,4 @@ typedef struct TokenIter {
 TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback);
 
 /// Returns `TOKEN_NONE` if there is no next. Moves the iterator forward.
-Token cubs_token_iter_next(TokenIter* self);
+TokenType cubs_token_iter_next(TokenIter* self);

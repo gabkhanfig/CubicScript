@@ -93,7 +93,7 @@ static AstNodeVTable function_node_vtable = {
 static StackVariablesArray parse_function_args(TokenIter *iter) {
     assert(iter->current == LEFT_PARENTHESES_SYMBOL);
 
-    Token token = cubs_token_iter_next(iter);
+    TokenType token = cubs_token_iter_next(iter);
     StackVariablesArray variables = {0};
 
     if(token == RIGHT_PARENTHESES_SYMBOL) { // has no arguments
@@ -103,15 +103,15 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
     while(token != RIGHT_PARENTHESES_SYMBOL) {
         StackVariableInfo info = {0};
 
-        const Token variableNameToken = token;
+        const TokenType variableNameToken = token;
         assert(variableNameToken == IDENTIFIER && "Expected identifier for function argument variable name");
         const CubsStringError variableNameErr = cubs_string_init(&info.name, iter->currentMetadata.identifier);
         assert(variableNameErr == cubsStringErrorNone && "Invalid UTF8 variable identifier");
         
-        const Token colonToken = cubs_token_iter_next(iter);
+        const TokenType colonToken = cubs_token_iter_next(iter);
         assert(colonToken == COLON_SYMBOL && "Expected \':\' following function argument variable name");
 
-        const Token typeNameToken = cubs_token_iter_next(iter);
+        const TokenType typeNameToken = cubs_token_iter_next(iter);
         switch(typeNameToken) {
             case INT_KEYWORD: {
                 info.context = &CUBS_INT_CONTEXT;
@@ -149,7 +149,7 @@ static FunctionReturnType parse_function_return(TokenIter* iter) {
     // Zeroed means void return type
     FunctionReturnType ret = {0};
 
-    Token token = cubs_token_iter_next(iter);
+    TokenType token = cubs_token_iter_next(iter);
     if(token != LEFT_BRACE_SYMBOL) { // has return type            
         if(token == INT_KEYWORD) {
             ret.retTag = functionReturnToken;
@@ -176,7 +176,7 @@ AstNode cubs_function_node_init(TokenIter *iter)
     *self = (FunctionNode){0}; // 0 initialize everything. Means no return type by default
 
     { // function name
-        const Token token = cubs_token_iter_next(iter);
+        const TokenType token = cubs_token_iter_next(iter);
         assert(token == IDENTIFIER && "Identifier must occur after fn keyword");
         self->functionName = iter->currentMetadata.identifier;
     }
@@ -193,7 +193,7 @@ AstNode cubs_function_node_init(TokenIter *iter)
     // TODO figure out how to handle temporary variables
 
     { // statements
-        Token token = cubs_token_iter_next(iter);
+        TokenType token = cubs_token_iter_next(iter);
 
         if(token == RIGHT_BRACE_SYMBOL) { // function has no statements
 

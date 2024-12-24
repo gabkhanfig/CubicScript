@@ -10,7 +10,7 @@ enum FunctionReturnEType {
 };
 
 union FunctionReturnUType {
-    Token token;
+    TokenType token;
     CubsStringSlice identifier;
 };
 

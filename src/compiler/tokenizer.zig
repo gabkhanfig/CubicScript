@@ -5,7 +5,7 @@ const c = @cImport({
 });
 
 const TokenIter = c.TokenIter;
-const Token = c.Token;
+const TokenType = c.TokenType;
 
 fn tokenIterInit(s: []const u8, errCallback: c.CubsSyntaxErrorCallback) TokenIter {
     const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
@@ -18,7 +18,7 @@ fn tokenIterInitName(name: []const u8, s: []const u8, errCallback: c.CubsSyntaxE
     return c.cubs_token_iter_init(n, slice, errCallback);
 }
 
-fn tokenIterNext(self: *TokenIter) Token {
+fn tokenIterNext(self: *TokenIter) TokenType {
     return c.cubs_token_iter_next(self);
 }
 

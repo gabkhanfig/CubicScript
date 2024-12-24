@@ -13,7 +13,7 @@
 
 typedef struct NextToken {
     bool hasNextToken;
-    Token next;
+    TokenType next;
     TokenMetadata nextMetadata;
     CubsSourceFileCharPosition newPosition;
 } NextToken;
@@ -122,7 +122,7 @@ static CubsStringSlice get_next_token_start_slice(const TokenIter* self, size_t*
 }
 
 typedef struct TokenLiteralOrIdentifier {
-    Token token;
+    TokenType token;
     CubsStringSlice slice;
     TokenMetadata metadata;
 } TokenLiteralOrIdentifier;
@@ -324,7 +324,7 @@ static TokenLiteralOrIdentifier try_parse_literal_or_identifier(const TokenIter*
         return emptyTokenLiteralOrIdentifier;
     }
 
-    Token hint = TOKEN_NONE;
+    TokenType hint = TOKEN_NONE;
     { // get hint
         const char firstChar = tokenStart.str[0];
         if(firstChar == '\'') { // 
@@ -453,13 +453,13 @@ TOKEN_CONSTANT(POINTER_SYMBOL_SLICE, "*");
 static NextToken get_next_token(const TokenIter* self) {
     const NextToken noneNext = {0};
 
-    Token found = TOKEN_NONE;
+    TokenType found = TOKEN_NONE;
     CubsStringSlice foundSlice = {0};
     NextToken next = {0};
     next.newPosition = self->position;
     size_t whitespaceOffset = 0;
 
-    const Token previousToken = self->current;
+    const TokenType previousToken = self->current;
 
     if(self->position.index >= self->source.len) {
         return next;
@@ -753,7 +753,7 @@ TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source, Cub
     return self;
 }
 
-Token cubs_token_iter_next(TokenIter *self)
+TokenType cubs_token_iter_next(TokenIter *self)
 {
     const NextToken next = get_next_token(self);
     self->previous = self->current;

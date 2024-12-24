@@ -62,7 +62,7 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
     *self = (ReturnNode){0};
 
     {
-        const Token next = cubs_token_iter_next(iter);
+        const TokenType next = cubs_token_iter_next(iter);
         if(next == SEMICOLON_SYMBOL) {
             self->hasReturn = false;
         } 
@@ -111,7 +111,7 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
     }
 
     if(self->hasReturn) { // statement must end in semicolon
-        const Token next = cubs_token_iter_next(iter);
+        const TokenType next = cubs_token_iter_next(iter);
         if(next != SEMICOLON_SYMBOL) {
             cubs_panic("return statement must end with semicolon");
         }

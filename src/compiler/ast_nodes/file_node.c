@@ -39,7 +39,7 @@ AstNode cubs_file_node_init(TokenIter *iter)
     assert(iter->current == TOKEN_NONE && "File node should begin at the start of the iterator");
 
     { // function node
-        const Token next = cubs_token_iter_next(iter);
+        const TokenType next = cubs_token_iter_next(iter);
         if(next == TOKEN_NONE) { // end of file
 
         } else {
