@@ -188,6 +188,12 @@ typedef union TokenMetadata {
     CubsStringSlice identifier;
 } TokenMetadata;
 
+/// Tagged union
+typedef struct Token {
+    TokenType tag;
+    TokenMetadata value;
+} Token;
+
 /// A very simple walkthrough tokenizer that allocates no memory.
 typedef struct TokenIter {
     /// Name of the source. Generally it's the file name.
@@ -196,10 +202,8 @@ typedef struct TokenIter {
     CubsStringSlice source;
     CubsSyntaxErrorCallback errCallback;
     CubsSourceFileCharPosition position;
-    TokenType previous;
-    TokenType current;
-    TokenMetadata previousMetadata;
-    TokenMetadata currentMetadata;
+    Token previous;
+    Token current;
 } TokenIter;
 
 /// # Debug asserts

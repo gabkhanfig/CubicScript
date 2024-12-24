@@ -761,7 +761,7 @@ test "int literal" {
         fn validateParse(num: i64, buf: []const u8) void {
             var parser = tokenIterInit(buf, null);
             expect(tokenIterNext(&parser) == c.INT_LITERAL) catch unreachable;
-            expect(parser.currentMetadata.intLiteral == num) catch unreachable;
+            expect(parser.current.value.intLiteral == num) catch unreachable;
         }
     };
     { // single digit
@@ -885,11 +885,11 @@ test "float literal" {
             const nextToken = tokenIterNext(&parser);
             if (nextToken == c.INT_LITERAL) {
                 std.debug.assert(num == @floor(num));
-                expect(num == @as(f64, @floatFromInt(parser.currentMetadata.intLiteral))) catch unreachable;
+                expect(num == @as(f64, @floatFromInt(parser.current.value.intLiteral))) catch unreachable;
             } else {
                 expect(nextToken == c.FLOAT_LITERAL) catch unreachable;
-                expect(std.math.approxEqRel(f64, num, parser.currentMetadata.floatLiteral, std.math.floatEps(f64))) catch {
-                    std.debug.panic("invalid decimal equal: found num {d} and parsed {d}\n", .{ num, parser.currentMetadata.floatLiteral });
+                expect(std.math.approxEqRel(f64, num, parser.current.value.floatLiteral, std.math.floatEps(f64))) catch {
+                    std.debug.panic("invalid decimal equal: found num {d} and parsed {d}\n", .{ num, parser.current.value.floatLiteral });
                 };
             }
         }
@@ -1028,7 +1028,7 @@ test "parse string literal empty" {
     try expect(tokenIterNext(&parser) == c.STR_LITERAL);
 
     {
-        const foundSlice = parser.currentMetadata.strLiteral.slice;
+        const foundSlice = parser.current.value.strLiteral.slice;
         try expect(foundSlice.len == 0);
     }
 }
@@ -1040,7 +1040,7 @@ test "parse string literal alphanumeric" {
     try expect(tokenIterNext(&parser) == c.STR_LITERAL);
 
     {
-        const foundSlice = parser.currentMetadata.strLiteral.slice;
+        const foundSlice = parser.current.value.strLiteral.slice;
         try expect(foundSlice.len == f.len);
         try expect(std.mem.eql(u8, foundSlice.str[0..foundSlice.len], f));
     }
@@ -1053,7 +1053,7 @@ test "parse string literal escape sequence" {
     try expect(tokenIterNext(&parser) == c.STR_LITERAL);
 
     {
-        const foundSlice = parser.currentMetadata.strLiteral.slice;
+        const foundSlice = parser.current.value.strLiteral.slice;
         try expect(foundSlice.len == f.len);
         try expect(std.mem.eql(u8, foundSlice.str[0..foundSlice.len], f));
     }
@@ -1096,49 +1096,49 @@ test "parse identifier" {
         const identifier = "a";
         var parser = tokenIterInit(identifier, null);
         try expect(tokenIterNext(&parser) == c.IDENTIFIER);
-        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+        try expect(std.mem.eql(u8, identifier, parser.current.value.identifier.str[0..parser.current.value.identifier.len]));
     }
     {
         const identifier = "hello";
         var parser = tokenIterInit(identifier, null);
         try expect(tokenIterNext(&parser) == c.IDENTIFIER);
-        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+        try expect(std.mem.eql(u8, identifier, parser.current.value.identifier.str[0..parser.current.value.identifier.len]));
     }
     {
         const identifier = "b6";
         var parser = tokenIterInit(identifier, null);
         try expect(tokenIterNext(&parser) == c.IDENTIFIER);
-        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+        try expect(std.mem.eql(u8, identifier, parser.current.value.identifier.str[0..parser.current.value.identifier.len]));
     }
     {
         const identifier = "h3llo";
         var parser = tokenIterInit(identifier, null);
         try expect(tokenIterNext(&parser) == c.IDENTIFIER);
-        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+        try expect(std.mem.eql(u8, identifier, parser.current.value.identifier.str[0..parser.current.value.identifier.len]));
     }
     {
         const identifier = "HELLO";
         var parser = tokenIterInit(identifier, null);
         try expect(tokenIterNext(&parser) == c.IDENTIFIER);
-        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+        try expect(std.mem.eql(u8, identifier, parser.current.value.identifier.str[0..parser.current.value.identifier.len]));
     }
     {
         const identifier = "_whoa";
         var parser = tokenIterInit(identifier, null);
         try expect(tokenIterNext(&parser) == c.IDENTIFIER);
-        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+        try expect(std.mem.eql(u8, identifier, parser.current.value.identifier.str[0..parser.current.value.identifier.len]));
     }
     {
         const identifier = "_1sur3";
         var parser = tokenIterInit(identifier, null);
         try expect(tokenIterNext(&parser) == c.IDENTIFIER);
-        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+        try expect(std.mem.eql(u8, identifier, parser.current.value.identifier.str[0..parser.current.value.identifier.len]));
     }
     {
         const identifier = "GOOD_MORNING";
         var parser = tokenIterInit(identifier, null);
         try expect(tokenIterNext(&parser) == c.IDENTIFIER);
-        try expect(std.mem.eql(u8, identifier, parser.currentMetadata.identifier.str[0..parser.currentMetadata.identifier.len]));
+        try expect(std.mem.eql(u8, identifier, parser.current.value.identifier.str[0..parser.current.value.identifier.len]));
     }
     {
         const Fail = struct {

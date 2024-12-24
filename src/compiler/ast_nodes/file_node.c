@@ -36,7 +36,7 @@ AstNode cubs_file_node_init(TokenIter *iter)
     FileNode* self = (FileNode*)cubs_malloc(sizeof(FileNode), _Alignof(FileNode));
     *self = (FileNode){0};
 
-    assert(iter->current == TOKEN_NONE && "File node should begin at the start of the iterator");
+    assert(iter->current.tag == TOKEN_NONE && "File node should begin at the start of the iterator");
 
     { // function node
         const TokenType next = cubs_token_iter_next(iter);
@@ -46,7 +46,7 @@ AstNode cubs_file_node_init(TokenIter *iter)
             assert(next == FN_KEYWORD);
 
             const AstNode functionNode = cubs_function_node_init(iter);
-            ast_node_array_push(&self->items.nodes, functionNode);
+            ast_node_array_push(&self->items, functionNode);
         }
     }
 

@@ -13,8 +13,7 @@
 
 typedef struct NextToken {
     bool hasNextToken;
-    TokenType next;
-    TokenMetadata nextMetadata;
+    Token next;
     CubsSourceFileCharPosition newPosition;
 } NextToken;
 
@@ -459,7 +458,7 @@ static NextToken get_next_token(const TokenIter* self) {
     next.newPosition = self->position;
     size_t whitespaceOffset = 0;
 
-    const TokenType previousToken = self->current;
+    const TokenType previousToken = self->current.tag;
 
     if(self->position.index >= self->source.len) {
         return next;
@@ -714,7 +713,7 @@ static NextToken get_next_token(const TokenIter* self) {
                 } else {
                     found = parsedLiteralOrIdentifier.token;
                     foundSlice = parsedLiteralOrIdentifier.slice;
-                    next.nextMetadata = parsedLiteralOrIdentifier.metadata;
+                    next.next.value = parsedLiteralOrIdentifier.metadata;
                 }
             }
         }  
@@ -725,13 +724,13 @@ static NextToken get_next_token(const TokenIter* self) {
             } else {
                 found = parsedLiteralOrIdentifier.token;
                 foundSlice = parsedLiteralOrIdentifier.slice;
-                next.nextMetadata = parsedLiteralOrIdentifier.metadata;
+                next.next.value = parsedLiteralOrIdentifier.metadata;
             }
         }
     }
 
     next.hasNextToken = true;
-    next.next = found;
+    next.next.tag = found;
     next.newPosition.index = self->position.index + foundSlice.len + whitespaceOffset;
     return next;
 }
@@ -744,10 +743,8 @@ TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source, Cub
         .source = source,
         .errCallback = errCallback,
         .position = pos,
-        .previous = TOKEN_NONE,
-        .current = TOKEN_NONE,
-        .previousMetadata = {0},
-        .currentMetadata = {0},
+        .previous = {0},
+        .current = {0},
     };
 
     return self;
@@ -757,15 +754,11 @@ TokenType cubs_token_iter_next(TokenIter *self)
 {
     const NextToken next = get_next_token(self);
     self->previous = self->current;
-    self->previousMetadata = self->currentMetadata;
     if(next.hasNextToken) {
         self->position = next.newPosition;
         self->current = next.next;
-        self->currentMetadata = next.nextMetadata;
     } else {
-        self->current = TOKEN_NONE;
-        const TokenMetadata emptyMetadata = {0};
-        self->currentMetadata = emptyMetadata;
+        self->current = (Token){0};
     }
-    return next.next;
+    return next.next.tag;
 }

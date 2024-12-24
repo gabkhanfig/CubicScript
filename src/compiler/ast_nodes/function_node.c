@@ -91,7 +91,7 @@ static AstNodeVTable function_node_vtable = {
 /// After calling, assuming no parsing errors occur,
 /// `iter->current` will be `RIGHT_PARENTHESES_SYMBOL`
 static StackVariablesArray parse_function_args(TokenIter *iter) {
-    assert(iter->current == LEFT_PARENTHESES_SYMBOL);
+    assert(iter->current.tag == LEFT_PARENTHESES_SYMBOL);
 
     TokenType token = cubs_token_iter_next(iter);
     StackVariablesArray variables = {0};
@@ -105,7 +105,7 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
 
         const TokenType variableNameToken = token;
         assert(variableNameToken == IDENTIFIER && "Expected identifier for function argument variable name");
-        const CubsStringError variableNameErr = cubs_string_init(&info.name, iter->currentMetadata.identifier);
+        const CubsStringError variableNameErr = cubs_string_init(&info.name, iter->current.value.identifier);
         assert(variableNameErr == cubsStringErrorNone && "Invalid UTF8 variable identifier");
         
         const TokenType colonToken = cubs_token_iter_next(iter);
@@ -144,7 +144,7 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
 /// After calling, assuming no parsing errors occur,
 /// `iter->current` will be `LEFT_BRACE_SYMBOL`
 static FunctionReturnType parse_function_return(TokenIter* iter) {
-    assert(iter->current = RIGHT_PARENTHESES_SYMBOL);
+    assert(iter->current.tag = RIGHT_PARENTHESES_SYMBOL);
 
     // Zeroed means void return type
     FunctionReturnType ret = {0};
@@ -171,24 +171,24 @@ static FunctionReturnType parse_function_return(TokenIter* iter) {
 
 AstNode cubs_function_node_init(TokenIter *iter)
 {
-    assert(iter->current == FN_KEYWORD);
+    assert(iter->current.tag == FN_KEYWORD);
     FunctionNode* self = (FunctionNode*)cubs_malloc(sizeof(FunctionNode), _Alignof(FunctionNode));
     *self = (FunctionNode){0}; // 0 initialize everything. Means no return type by default
 
     { // function name
         const TokenType token = cubs_token_iter_next(iter);
         assert(token == IDENTIFIER && "Identifier must occur after fn keyword");
-        self->functionName = iter->currentMetadata.identifier;
+        self->functionName = iter->current.value.identifier;
     }
 
     assert(cubs_token_iter_next(iter) == LEFT_PARENTHESES_SYMBOL);
 
     self->variables = parse_function_args(iter);
     self->argCount = self->variables.len;
-    assert(iter->current = RIGHT_PARENTHESES_SYMBOL);
+    assert(iter->current.tag = RIGHT_PARENTHESES_SYMBOL);
 
     self->retInfo = parse_function_return(iter);
-    assert(iter->current == LEFT_BRACE_SYMBOL); 
+    assert(iter->current.tag == LEFT_BRACE_SYMBOL); 
 
     // TODO figure out how to handle temporary variables
 

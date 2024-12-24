@@ -5,8 +5,7 @@ struct StackVariablesArray;
 
 typedef struct ReturnNode {
     bool hasReturn;
-    TokenType retInfo;
-    TokenMetadata retValue;
+    Token retInfo;
     /// Index within the stack variables to find the name of the return value.
     size_t variableNameIndex;
 } ReturnNode;

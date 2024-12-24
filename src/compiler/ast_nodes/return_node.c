@@ -30,11 +30,11 @@ static void return_node_build_function(
         assert(self->variableNameIndex < stackAssignment->len);
         //const CubsStringSlice variableName = stackAssignment->names[self->variableNameIndex];
         const uint16_t returnSrc = stackAssignment->positions[self->variableNameIndex]; //cubs_stack_assignment_find(stackAssignment, variableName);
-        switch(self->retInfo) {
+        switch(self->retInfo.tag) {
             case IDENTIFIER: break;
             case INT_LITERAL: {
                 Bytecode loadImmediateLong[2];
-                operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, returnSrc, self->retValue.intLiteral);
+                operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, returnSrc, self->retInfo.value.intLiteral);
                 cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
             } break;
             default: {
@@ -57,7 +57,7 @@ static AstNodeVTable return_node_vtable = {
 
 AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
 {
-    assert(iter->current == RETURN_KEYWORD);
+    assert(iter->current.tag == RETURN_KEYWORD);
     ReturnNode* self = (ReturnNode*)cubs_malloc(sizeof(ReturnNode), _Alignof(ReturnNode));
     *self = (ReturnNode){0};
 
@@ -67,11 +67,10 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
             self->hasReturn = false;
         } 
         else if(next == IDENTIFIER) {
-            self->retInfo = next;
-            self->retValue = iter->currentMetadata;
+            self->retInfo = iter->current;
             self->hasReturn = true;
             
-            const CubsStringSlice variableNameSlice = iter->currentMetadata.identifier;
+            const CubsStringSlice variableNameSlice = self->retInfo.value.identifier;
 
             bool foundVariableNameIndex = false;
             for(size_t i = 0; i < variables->len; i++) {
@@ -88,8 +87,7 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
                 cubs_panic("TODO return stuff other than int literals");
             }
 
-            self->retInfo = next;
-            self->retValue = iter->currentMetadata;
+            self->retInfo = iter->current;
             self->hasReturn = true;
             // TODO come up with proper naming scheme for temporary values
             const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tempRet", .len = 8});
