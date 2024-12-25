@@ -33,7 +33,7 @@ add_library(CubicScript STATIC
     "src/compiler/ast_nodes/file_node.c"
     "src/compiler/ast_nodes/function_node.c"
     "src/compiler/ast_nodes/return_node.c"
-    "src/compiler/ast_nodes/math_operation_node.c"
+    "src/compiler/ast_nodes/binary_expression.c"
 
     "src/sync/atomic.c"
     "src/sync/locks.c"
