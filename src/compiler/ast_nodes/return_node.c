@@ -72,14 +72,8 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
             
             const CubsStringSlice variableNameSlice = self->retInfo.value.identifier;
 
-            bool foundVariableNameIndex = false;
-            for(size_t i = 0; i < variables->len; i++) {
-                if(cubs_string_eql_slice(&variables->variables[i].name, variableNameSlice)) {
-                    foundVariableNameIndex = true;
-                    self->variableNameIndex = i;
-                    break;
-                }
-            }
+            const bool foundVariableNameIndex = 
+                cubs_stack_variables_array_find(variables, &self->variableNameIndex, variableNameSlice);
             assert(foundVariableNameIndex);
         } 
         else if(next == INT_LITERAL || next == FLOAT_LITERAL || next == CHAR_LITERAL || next == STR_LITERAL) {

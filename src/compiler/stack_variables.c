@@ -87,6 +87,19 @@ void cubs_stack_variables_array_push_temporary(StackVariablesArray *self, StackV
     self->len += 1;
 }
 
+bool cubs_stack_variables_array_find(const StackVariablesArray* self, size_t* outIndex, CubsStringSlice name)
+{
+    bool foundVariableNameIndex = false;
+    for(size_t i = 0; i < self->len; i++) {
+        if(cubs_string_eql_slice(&self->variables[i].name, name)) {
+            foundVariableNameIndex = true;
+            *outIndex = i;
+            break;
+        }
+    }
+    return foundVariableNameIndex;
+}
+
 StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray *variables)
 {
     StackVariablesAssignment self = {0};

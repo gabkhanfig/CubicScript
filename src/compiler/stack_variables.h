@@ -50,6 +50,8 @@ bool cubs_stack_variables_array_push(StackVariablesArray* self, StackVariableInf
 /// `variable.isTemporary == true`
 void cubs_stack_variables_array_push_temporary(StackVariablesArray* self, StackVariableInfo variable);
 
+bool cubs_stack_variables_array_find(const StackVariablesArray* self, size_t* outIndex, CubsStringSlice name);
+
 /// Zero initialize.
 /// Stores stack positions of all variables within a stack frame
 typedef struct StackVariablesAssignment {
