@@ -39,8 +39,8 @@ AstNode cubs_binary_expr_node_init(
     struct StackVariablesArray* variables,
     CubsStringSlice optionalOutputName,
     BinaryExprOp operation,
-    BinaryExprValue lhs,
-    BinaryExprValue rhs
+    ExprValue lhs,
+    ExprValue rhs
 ) {
     BinaryExprNode* self = MALLOC_TYPE(BinaryExprNode);
     *self = (BinaryExprNode){0};
