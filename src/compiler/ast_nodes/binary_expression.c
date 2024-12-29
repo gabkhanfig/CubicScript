@@ -18,7 +18,7 @@ static void binary_expr_node_build_function(
 }
 
 static AstNodeVTable binary_expr_node_vtable = {
-    .nodeType = 0,
+    .nodeType = astNodeBinaryExpression,
     .deinit = (AstNodeDeinit)&binary_expr_node_deinit,
     .compile = NULL,
     .toString = NULL,

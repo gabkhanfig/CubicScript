@@ -15,6 +15,8 @@ enum AstNodeType {
     astNodeTypeFile,
     astNodeTypeFunction,
     astNodeTypeReturn,
+    astNodeBinaryExpression,
+    astNodeVariableDeclaration,
 };
 
 typedef void (*AstNodeDeinit)(void* self);

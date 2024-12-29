@@ -130,6 +130,7 @@
         "file_node.h": "c",
         "stack_variables.h": "c",
         "return_node.h": "c",
-        "ast.h": "c"
+        "ast.h": "c",
+        "string_slice.h": "c"
     }
 }
