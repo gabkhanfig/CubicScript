@@ -28,3 +28,12 @@ typedef struct ExprValue {
     enum ExprValueType tag;
     union ExprValueMetadata value;
 } ExprValue;
+
+inline static void expr_value_deinit(ExprValue* self) {
+    switch(self->tag) {
+        case Expression: {
+            ast_node_deinit(&self->value.expression);
+        } break;
+        default: break;
+    }
+}

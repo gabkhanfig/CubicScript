@@ -4,18 +4,8 @@
 #include "../../interpreter/function_definition.h"
 
 static void binary_expr_node_deinit(BinaryExprNode* self) {
-    switch(self->lhs.tag) {
-        case Expression: {
-            ast_node_deinit(&self->lhs.value.expression);
-        } break;
-        default: break;
-    }
-    switch(self->rhs.tag) {
-        case Expression: {
-            ast_node_deinit(&self->rhs.value.expression);
-        } break;
-        default: break;
-    }
+    expr_value_deinit(&self->lhs);
+    expr_value_deinit(&self->rhs);
     FREE_TYPE(BinaryExprNode, self);
 }
 
