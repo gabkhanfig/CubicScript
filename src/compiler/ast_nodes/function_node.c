@@ -194,14 +194,11 @@ AstNode cubs_function_node_init(TokenIter *iter)
 
     { // statements
         TokenType token = cubs_token_iter_next(iter);
-
-        if(token == RIGHT_BRACE_SYMBOL) { // function has no statements
-
-        } else {
-            // for now only 1 statement, being a return statement
+        while(token != RIGHT_BRACE_SYMBOL) {
             assert(token == RETURN_KEYWORD);
             AstNode returnNode = cubs_return_node_init(iter, &self->variables);
             ast_node_array_push(&self->items, returnNode);
+            token = cubs_token_iter_next(iter);
         }
     }
 
