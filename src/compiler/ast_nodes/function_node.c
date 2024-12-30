@@ -195,6 +195,10 @@ AstNode cubs_function_node_init(TokenIter *iter)
     { // statements
         TokenType token = cubs_token_iter_next(iter);
         while(token != RIGHT_BRACE_SYMBOL) {
+            if(token == TOKEN_NONE) {
+                break;
+            }
+
             assert(token == RETURN_KEYWORD);
             AstNode returnNode = cubs_return_node_init(iter, &self->variables);
             ast_node_array_push(&self->items, returnNode);
