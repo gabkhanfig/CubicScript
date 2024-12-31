@@ -1,5 +1,6 @@
 #include "function_node.h"
 #include "return_node.h"
+#include "variable_declaration.h"
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include "../../platform/mem.h"
@@ -193,16 +194,38 @@ AstNode cubs_function_node_init(TokenIter *iter)
     // TODO figure out how to handle temporary variables
 
     { // statements
+        bool endsWithReturn = false;
+
         TokenType token = cubs_token_iter_next(iter);
         while(token != RIGHT_BRACE_SYMBOL) {
+            endsWithReturn = false;
             if(token == TOKEN_NONE) {
                 break;
             }
-
-            assert(token == RETURN_KEYWORD);
-            AstNode returnNode = cubs_return_node_init(iter, &self->variables);
-            ast_node_array_push(&self->items, returnNode);
+            switch(token) {
+                case RETURN_KEYWORD: 
+                {
+                    AstNode returnNode = cubs_return_node_init(iter, &self->variables);
+                    ast_node_array_push(&self->items, returnNode);
+                    endsWithReturn = true;
+                } break;
+                case CONST_KEYWORD: // fallthrough
+                case MUT_KEYWORD: 
+                {
+                    AstNode variableDeclarationNode = cubs_variable_declaration_node_init(iter, &self->variables);
+                    ast_node_array_push(&self->items, variableDeclarationNode);
+                } break;
+                default: 
+                {
+                    assert(false && "Invalid token in function statements");
+                } break;
+            }
             token = cubs_token_iter_next(iter);
+        }
+
+        if(endsWithReturn == false) {
+            AstNode emptyReturnNode = cubs_return_node_init_empty();
+            ast_node_array_push(&self->items, emptyReturnNode);
         }
     }
 
