@@ -13,3 +13,5 @@ typedef struct ReturnNode {
 } ReturnNode;
 
 AstNode cubs_return_node_init(TokenIter* iter, struct StackVariablesArray* variables);
+
+AstNode cubs_return_node_init_empty();

@@ -112,3 +112,14 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
     const AstNode node = {.ptr = (void*)self, .vtable = &return_node_vtable};
     return node;
 }
+
+AstNode cubs_return_node_init_empty()
+{
+    ReturnNode* self = (ReturnNode*)cubs_malloc(sizeof(ReturnNode), _Alignof(ReturnNode));
+    *self = (ReturnNode){0};
+
+    self->hasReturn = false;
+
+    const AstNode node = {.ptr = (void*)self, .vtable = &return_node_vtable};
+    return node;
+}
