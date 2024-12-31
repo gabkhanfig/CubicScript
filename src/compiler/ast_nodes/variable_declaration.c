@@ -9,6 +9,7 @@
 
 static void variable_declaration_node_deinit(VariableDeclarationNode* self) {
     expr_value_deinit(&self->initialValue);
+    FREE_TYPE(VariableDeclarationNode, self);
 }
 
 static void variable_declaration_node_build_function(
@@ -19,7 +20,7 @@ static void variable_declaration_node_build_function(
     const uint16_t returnSrc = stackAssignment->positions[self->variableNameIndex];
 
     switch(self->initialValue.tag) {
-        case INT_LITERAL: {
+        case IntLit: {
             Bytecode loadImmediateLong[2];
             operands_make_load_immediate_long(
                 loadImmediateLong,
@@ -104,7 +105,7 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
                     value.tag = IntLit;
                     value.value.intLiteral = 0;
                     self->initialValue = value;
-                }
+                } break;
                 default: {
                     assert(false && "Cannot zero initialize other types");
                 }
@@ -137,7 +138,7 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
     self->variableNameIndex = variables->len;
     // variables->len will be increased by 1
     const bool doesntExist = cubs_stack_variables_array_push(variables, variableInfo);
-    assert(doesntExist == false);
+    assert(doesntExist == true);
 
     const AstNode node = {.ptr = (void*)self, .vtable = &variable_declaration_node_vtable};
     return node;
