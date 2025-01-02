@@ -221,8 +221,65 @@ test "function 1 arg 1 return ast" {
     }
 }
 
-test "function no arg no return 1 variable declaration" {
+test "function no arg no return 1 mut variable declaration" {
     const source = "fn testFunc() { mut testVar: int; }";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+}
+
+test "function no arg no return 1 const variable declaration" {
+    const source = "fn testFunc() { const testVar: int; }";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+}
+
+test "function no arg no return 1 mut variable declaration with initial value" {
+    const source = "fn testFunc() { mut testVar: int = 6; }";
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+}
+
+test "function no arg no return 1 const variable declaration with initial value" {
+    const source = "fn testFunc() { const testVar: int = 6; }";
     const tokenIter = tokenIterInit(source, null);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
