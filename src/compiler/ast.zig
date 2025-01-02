@@ -320,3 +320,30 @@ test "function no arg no return 2 statements variable declaration" {
         try expect(false);
     }
 }
+
+test "function no args int 2 statement return stack variable" {
+    const source =
+        \\fn testFunc() { 
+        \\  const testVar: int = 5;
+        \\  return testVar;
+        \\};
+    ;
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retValue == 5);
+    } else {
+        try expect(false);
+    }
+}
