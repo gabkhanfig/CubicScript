@@ -111,7 +111,7 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
                 }
             }
         } else {
-            assert(followingTypename == EQUAL_OPERATOR);
+            assert(followingTypename == ASSIGN_OPERATOR);
             isNonZeroedInitial = true;
         }
     }
@@ -132,6 +132,8 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
                 assert(false && "Cannot handle anything other than int literals");
             } break;
         }
+        const TokenType mustBeSemicolon = cubs_token_iter_next(iter);
+        assert(mustBeSemicolon && "Expected semicolon to follow variable initial value");
     }
 
     // Variable order is preserved
