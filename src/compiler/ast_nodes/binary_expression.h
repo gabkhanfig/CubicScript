@@ -18,10 +18,10 @@ typedef struct BinaryExprNode {
     ExprValue rhs;
 } BinaryExprNode;
 
-/// `optionalOutputName` can be an empty string, indicating a temporary output variable must be used.
+/// A binary expression will already have a pre-known destination
 AstNode cubs_binary_expr_node_init(
     struct StackVariablesArray* variables,
-    CubsStringSlice optionalOutputName,
+    size_t outputVariableIndex,
     BinaryExprOp operation,
     ExprValue lhs,
     ExprValue rhs

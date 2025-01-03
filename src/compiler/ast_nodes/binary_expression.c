@@ -27,7 +27,7 @@ static AstNodeVTable binary_expr_node_vtable = {
 
 AstNode cubs_binary_expr_node_init(
     struct StackVariablesArray* variables,
-    CubsStringSlice optionalOutputName,
+    size_t outputVariableIndex,
     BinaryExprOp operation,
     ExprValue lhs,
     ExprValue rhs
@@ -35,32 +35,33 @@ AstNode cubs_binary_expr_node_init(
     BinaryExprNode* self = MALLOC_TYPE(BinaryExprNode);
     *self = (BinaryExprNode){0};
 
-    if(optionalOutputName.len == 0) { // empty string
-        const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tempBinaryExpr", .len = 15});
+    // if(optionalOutputName.len == 0) { // empty string
+    //     const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tempBinaryExpr", .len = 15});
             
-        StackVariableInfo temporaryVariable = {
-            .name = variableName,
-            .isTemporary = true,
-            .context = &CUBS_INT_CONTEXT,
-            .taggedName = {0},
-        };
+    //     StackVariableInfo temporaryVariable = {
+    //         .name = variableName,
+    //         .isTemporary = true,
+    //         .context = &CUBS_INT_CONTEXT,
+    //         .taggedName = {0},
+    //     };
         
-        // Variable order is preserved
-        self->outputVariableIndex = variables->len;
-        // variables->len will be increased by 1
-        cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
-    } else {
-        bool foundVariableNameIndex = false;
-        for(size_t i = 0; i < variables->len; i++) {
-            if(cubs_string_eql_slice(&variables->variables[i].name, optionalOutputName)) {
-                foundVariableNameIndex = true;
-                self->outputVariableIndex = i;
-                break;
-            }
-        }
-        assert(foundVariableNameIndex);
-    }
+    //     // Variable order is preserved
+    //     self->outputVariableIndex = variables->len;
+    //     // variables->len will be increased by 1
+    //     cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+    // } else {
+    //     bool foundVariableNameIndex = false;
+    //     for(size_t i = 0; i < variables->len; i++) {
+    //         if(cubs_string_eql_slice(&variables->variables[i].name, optionalOutputName)) {
+    //             foundVariableNameIndex = true;
+    //             self->outputVariableIndex = i;
+    //             break;
+    //         }
+    //     }
+    //     assert(foundVariableNameIndex);
+    // }
 
+    self->outputVariableIndex = outputVariableIndex;
     self->operation = operation;
     self->lhs = lhs;
     self->rhs = rhs;
