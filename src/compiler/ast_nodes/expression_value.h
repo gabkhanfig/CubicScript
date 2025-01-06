@@ -3,6 +3,8 @@
 #include "../../c_basic_types.h"
 #include "../ast.h"
 
+struct StackVariablesArray;
+
 union ExprValueMetadata {
     /// Index within the stack variables to find the name of the variable
     size_t variableIndex;
@@ -28,6 +30,17 @@ typedef struct ExprValue {
     enum ExprValueType tag;
     union ExprValueMetadata value;
 } ExprValue;
+
+/// If `hasDestination` is false, this expression does not "store"
+/// the resulting value anywhere.
+/// If `hasDestination` is true, this expression stores the resulting
+/// value at `destinationVariableIndex`
+ExprValue cubs_parse_expression(
+    TokenIter* iter, 
+    struct StackVariablesArray* variables, 
+    bool hasDestination, 
+    size_t destinationVariableIndex
+);
 
 inline static void expr_value_deinit(ExprValue* self) {
     switch(self->tag) {
