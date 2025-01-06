@@ -3,8 +3,7 @@
 #include "../../platform/mem.h"
 #include "../../interpreter/function_definition.h"
 
-bool cubs_parse_expression(
-    ExprValue* out,
+ExprValue cubs_parse_expression(
     TokenIter* iter, 
     struct StackVariablesArray* variables, 
     bool hasDestination, 
@@ -13,17 +12,14 @@ bool cubs_parse_expression(
     const TokenType firstToken = cubs_token_iter_next(iter);
     // If the expression is just ";", for now return zeroed integer
     // TODO handle true empty value
-    if(firstToken == SEMICOLON_SYMBOL) {
-        return false;
-    }
+    assert(firstToken != SEMICOLON_SYMBOL);
+
+    ExprValue value = {0};
 
     switch(firstToken) {
         case INT_LITERAL: {
-
-            ExprValue value = {0};
             value.tag = IntLit;
             value.value.intLiteral = iter->current.value.intLiteral;
-            *out = value;
         } break;
         default: {
             assert(false && "Cannot handle anything other than int literals");
@@ -34,4 +30,5 @@ bool cubs_parse_expression(
 
     const TokenType mustBeSemicolon = cubs_token_iter_next(iter);
     assert(mustBeSemicolon == SEMICOLON_SYMBOL && "Expected semicolon to follow variable initial value");
+    return value;
 }

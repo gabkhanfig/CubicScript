@@ -93,27 +93,11 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
         }
     }
 
-    // if(cubs_parse_expression(
-    //     &self->initialValue, 
-    //     iter, 
-    //     variables, 
-    //     true, 
-    //     self->variableNameIndex
-    // ) == false) {
-    //     // Set initial value to zero if one was not supplied by the user,
-    //     // if possible for the given type
-    //     switch(typenameToken) {
-    //         case INT_KEYWORD: {
-    //             ExprValue value = {0};
-    //             value.tag = IntLit;
-    //             value.value.intLiteral = 0;
-    //             self->initialValue = value;
-    //         } break;
-    //         default: {
-    //             assert(false && "Cannot zero initialize other types");
-    //         }
-    //     }
-    // }
+    // Variable order is preserved
+    self->variableNameIndex = variables->len;
+    // variables->len will be increased by 1
+    const bool doesntExist = cubs_stack_variables_array_push(variables, variableInfo);
+    assert(doesntExist == true);
 
     bool isNonZeroedInitial = false;
     { // next will either be a semicolon or the assignment
@@ -140,29 +124,10 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
 
     // Parse the literal or expression
     if(isNonZeroedInitial) {
-        const TokenType firstAfterAssignment = cubs_token_iter_next(iter);
-        switch(firstAfterAssignment) {
-            case INT_LITERAL: {
-
-                ExprValue value = {0};
-                value.tag = IntLit;
-                value.value.intLiteral = iter->current.value.intLiteral;
-                self->initialValue = value;
-
-            } break;
-            default: {
-                assert(false && "Cannot handle anything other than int literals");
-            } break;
-        }
-        const TokenType mustBeSemicolon = cubs_token_iter_next(iter);
-        assert(mustBeSemicolon && "Expected semicolon to follow variable initial value");
+        self->initialValue = cubs_parse_expression(
+            iter, variables, true, self->variableNameIndex
+        );
     }
-
-    // Variable order is preserved
-    self->variableNameIndex = variables->len;
-    // variables->len will be increased by 1
-    const bool doesntExist = cubs_stack_variables_array_push(variables, variableInfo);
-    assert(doesntExist == true);
 
     const AstNode node = {.ptr = (void*)self, .vtable = &variable_declaration_node_vtable};
     return node;
