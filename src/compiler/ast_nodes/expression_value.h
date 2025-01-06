@@ -34,8 +34,12 @@ typedef struct ExprValue {
 /// If `hasDestination` is false, this expression does not "store"
 /// the resulting value anywhere.
 /// If `hasDestination` is true, this expression stores the resulting
-/// value at `destinationVariableIndex`
-ExprValue cubs_parse_expression(
+/// value at `destinationVariableIndex`.
+/// Returns `false` if no expression could be found, such as immediate semicolon.
+/// Returns `true` if the expression is parsed successfully.
+/// The `iter` after calling will have the current token be a semicolon always.
+bool cubs_parse_expression(
+    ExprValue* out,
     TokenIter* iter, 
     struct StackVariablesArray* variables, 
     bool hasDestination, 

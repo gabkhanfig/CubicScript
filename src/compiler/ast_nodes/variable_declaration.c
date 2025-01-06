@@ -93,6 +93,28 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
         }
     }
 
+    // if(cubs_parse_expression(
+    //     &self->initialValue, 
+    //     iter, 
+    //     variables, 
+    //     true, 
+    //     self->variableNameIndex
+    // ) == false) {
+    //     // Set initial value to zero if one was not supplied by the user,
+    //     // if possible for the given type
+    //     switch(typenameToken) {
+    //         case INT_KEYWORD: {
+    //             ExprValue value = {0};
+    //             value.tag = IntLit;
+    //             value.value.intLiteral = 0;
+    //             self->initialValue = value;
+    //         } break;
+    //         default: {
+    //             assert(false && "Cannot zero initialize other types");
+    //         }
+    //     }
+    // }
+
     bool isNonZeroedInitial = false;
     { // next will either be a semicolon or the assignment
         const TokenType followingTypename = cubs_token_iter_next(iter);
