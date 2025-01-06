@@ -329,7 +329,7 @@ size_t _cubs_simd_string_hash_sso(const char *ssoBuffer, size_t len)
 
 #if __ARM_NEON__
 size_t _cubs_simd_string_hash_heap(const char *heapBuffer, size_t len) {
-    return murmurHash64A(heapBuffer, len, cubs_hash_seed());
+    return bytes_hash((const void*)heapBuffer, len);
 }
 #else
 size_t _cubs_simd_string_hash_heap(const char *heapBuffer, size_t len)
