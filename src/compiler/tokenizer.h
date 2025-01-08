@@ -166,6 +166,43 @@ typedef enum TokenType {
 
 } TokenType;
 
+static inline bool is_token_operator(enum TokenType tokenType) {
+    switch(tokenType) {
+        case ASSIGN_OPERATOR:
+        case EQUAL_OPERATOR:
+        case NOT_EQUAL_OPERATOR:
+        case NOT_OPERATOR:
+        case LESS_OPERATOR:
+        case LESS_EQUAL_OPERATOR:
+        case GREATER_OPERATOR:
+        case GREATER_EQUAL_OPERATOR:
+        case ADD_OPERATOR:
+        case ADD_ASSIGN_OPERATOR:
+        case SUBTRACT_OPERATOR:
+        case SUBTRACT_ASSIGN_OPERATOR:
+        case MULTIPLY_OPERATOR:
+        case MULTIPLY_ASSIGN_OPERATOR:
+        case DIVIDE_OPERATOR:
+        case DIVIDE_ASSIGN_OPERATOR:
+        case BITSHIFT_LEFT_OPERATOR:
+        case BITSHIFT_LEFT_ASSIGN_OPERATOR:
+        case BITSHIFT_RIGHT_OPERATOR:
+        case BITSHIFT_RIGHT_ASSIGN_OPERATOR:
+        case BIT_COMPLEMENT_OPERATOR:
+        case BIT_OR_OPERATOR:
+        case BIT_OR_ASSIGN_OPERATOR:
+        case BIT_AND_OPERATOR:
+        case BIT_AND_ASSIGN_OPERATOR:
+        case BIT_XOR_OPERATOR:
+        case BIT_XOR_ASSIGN_OPERATOR: {
+            return true;
+        } break;
+        default: {
+            return false;
+        }
+    }
+}
+
 /// Intermediatary struct to denote that special handling is required to convert
 /// this into an actual `CubsString`.
 typedef struct CubsStringTokenLiteral {
