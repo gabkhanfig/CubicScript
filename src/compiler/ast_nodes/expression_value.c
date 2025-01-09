@@ -14,21 +14,30 @@ ExprValue cubs_parse_expression(
     // TODO handle true empty value
     assert(firstToken != SEMICOLON_SYMBOL);
 
-    ExprValue value = {0};
+    ExprValue firstValue = {0};
 
     switch(firstToken) {
         case INT_LITERAL: {
-            value.tag = IntLit;
-            value.value.intLiteral = iter->current.value.intLiteral;
+            firstValue.tag = IntLit;
+            firstValue.value.intLiteral = iter->current.value.intLiteral;
         } break;
         default: {
             assert(false && "Cannot handle anything other than int literals");
         } break;
     }
 
-    // TODO handle other expressions such as binary expression
+    
+    const TokenType tokenAfterFirst = cubs_token_iter_next(iter);
+    // Means first token is the only one in the expression
+    if(tokenAfterFirst == SEMICOLON_SYMBOL) {
+        return firstValue;
+    }
 
-    const TokenType mustBeSemicolon = cubs_token_iter_next(iter);
-    assert(mustBeSemicolon == SEMICOLON_SYMBOL && "Expected semicolon to follow variable initial value");
-    return value;
+    if(tokenAfterFirst == LEFT_PARENTHESES_SYMBOL) {
+        assert(false && "Cannot currently handle function calls");
+    }
+
+    // TODO handle other expressions such as binary expression
+    assert(false && "TODO handle other expressions");
+    return firstValue;
 }
