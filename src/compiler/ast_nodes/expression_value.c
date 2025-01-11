@@ -53,6 +53,10 @@ ExprValue cubs_parse_expression(
         assert(false && "Cannot currently handle function calls");
     }
 
+    if(is_token_operator(tokenAfterFirst)) {
+        assert(false && "Cannot handle operators yet");
+    }
+
     // TODO handle other expressions such as binary expression
     assert(false && "TODO handle other expressions");
     return firstValue;
