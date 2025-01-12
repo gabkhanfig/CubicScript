@@ -34,8 +34,6 @@ enum ExprValueType {
 typedef struct ExprValue {
     enum ExprValueType tag;
     union ExprValueMetadata value;
-    /// 
-    size_t variableIndex;
 } ExprValue;
 
 /// If `hasDestination` is false, this expression does not "store"
