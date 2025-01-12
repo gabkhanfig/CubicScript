@@ -5,11 +5,16 @@
 
 struct StackVariablesArray;
 
+struct ExprValueIntLiteral {
+    int64_t literal;
+    size_t variableIndex;
+};
+
 union ExprValueMetadata {
     /// Index within the stack variables to find the name of the variable
     size_t variableIndex;
-    int64_t intLiteral;
-    double floatLiteral;
+    struct ExprValueIntLiteral intLiteral;
+    //double floatLiteral;
     AstNode expression;
     // TODO
     void* functionCall;
@@ -29,6 +34,8 @@ enum ExprValueType {
 typedef struct ExprValue {
     enum ExprValueType tag;
     union ExprValueMetadata value;
+    /// 
+    size_t variableIndex;
 } ExprValue;
 
 /// If `hasDestination` is false, this expression does not "store"

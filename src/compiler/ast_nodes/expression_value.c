@@ -14,8 +14,22 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
 
     switch(token.tag) {
         case INT_LITERAL: {
-            value.tag = IntLit;
-            value.value.intLiteral = token.value.intLiteral;
+                const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpIntLit", .len = 10});
+            
+                StackVariableInfo temporaryVariable = {
+                    .name = variableName,
+                    .isTemporary = true,
+                    .context = &CUBS_INT_CONTEXT,
+                    .taggedName = {0},
+                };
+
+                value.tag = IntLit;
+                value.value.intLiteral.literal = token.value.intLiteral;
+                // Variable order is preserved
+                value.value.intLiteral.variableIndex = variables->len;
+
+                // variables->len will be increased by 1
+                cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
         } break;
         case IDENTIFIER: {
             // TODO handle other kinds of identifiers such as structs function pointers
