@@ -73,9 +73,8 @@ ExprValue cubs_parse_expression(
     if(is_token_operator(tokenAfterFirst)) {
         assert(tokenAfterFirst == ADD_OPERATOR);
         assert(hasDestination);
-        
+
         const BinaryExprOp binaryExpressionOperator = Add;
-        (void)cubs_token_iter_next(iter); // skip to the next token
         const ExprValue secondValue = parse_expression_value(iter, variables);
 
         ExprValue outValue = {0};

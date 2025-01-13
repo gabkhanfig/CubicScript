@@ -132,6 +132,9 @@
         "return_node.h": "c",
         "ast.h": "c",
         "string_slice.h": "c",
-        "binary_expression.h": "c"
+        "binary_expression.h": "c",
+        "__bit_reference": "c",
+        "bitset": "c",
+        "__memory": "c"
     }
 }
