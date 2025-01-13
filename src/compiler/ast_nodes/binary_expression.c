@@ -24,25 +24,22 @@ static void binary_expr_node_build_function(
     // If lhs and rhs are literal values, they need to be loaded
     if(self->lhs.tag == IntLit) {
         const union ExprValueMetadata value = self->lhs.value;
-        lhsSrc = (uint16_t)value.intLiteral.variableIndex;
+        lhsSrc = stackAssignment->positions[value.intLiteral.variableIndex];
         Bytecode loadImmediateLong[2];
         operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, lhsSrc, (size_t)value.intLiteral.literal);
         cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
     } else if(self->lhs.tag == Variable) {
-        lhsSrc = self->lhs.value.variableIndex;
-    }
-    else if(self->lhs.tag == Variable) {
-        lhsSrc = self->lhs.value.variableIndex;
+        lhsSrc = stackAssignment->positions[self->lhs.value.variableIndex];
     }
     if(self->rhs.tag == IntLit) {
         const union ExprValueMetadata value = self->rhs.value;
-        rhsSrc = (uint16_t)value.intLiteral.variableIndex;
+        rhsSrc = stackAssignment->positions[value.intLiteral.variableIndex];
         Bytecode loadImmediateLong[2];
         operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, rhsSrc, (size_t)value.intLiteral.literal);
         cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);    
     }
     else if(self->rhs.tag == Variable) {
-        rhsSrc = self->rhs.value.variableIndex;
+        rhsSrc = stackAssignment->positions[self->rhs.value.variableIndex];
     }
 
     const Bytecode addBytecode = operands_make_add_dst(false, self->outputVariableIndex, lhsSrc, rhsSrc);
