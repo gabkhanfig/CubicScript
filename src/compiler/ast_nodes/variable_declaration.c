@@ -30,6 +30,9 @@ static void variable_declaration_node_build_function(
             );
             cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
         } break;
+        case Expression: {
+            ast_node_build_function(&self->initialValue.value.expression, builder, stackAssignment);
+        } break;
         default: {
             assert(false && "Can only handle variable assignment from int literals");
         }
