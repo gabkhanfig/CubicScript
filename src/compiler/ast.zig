@@ -323,7 +323,7 @@ test "function no arg no return 2 statements variable declaration" {
 
 test "function no args int 2 statement return stack variable" {
     const source =
-        \\fn testFunc() { 
+        \\fn testFunc() int { 
         \\  const testVar: int = 5;
         \\  return testVar;
         \\};
@@ -350,7 +350,7 @@ test "function no args int 2 statement return stack variable" {
 
 test "function no args one add binary expression" {
     const source =
-        \\fn testFunc() { 
+        \\fn testFunc() int { 
         \\  const testVar: int = 1 + 5;
         \\  return testVar;
         \\};
