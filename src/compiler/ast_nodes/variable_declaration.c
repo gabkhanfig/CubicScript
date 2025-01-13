@@ -26,7 +26,7 @@ static void variable_declaration_node_build_function(
                 loadImmediateLong,
                 cubsValueTagInt,
                 returnSrc,
-                *(const size_t*)&self->initialValue.value.intLiteral // bit cast
+                *(const size_t*)&self->initialValue.value.intLiteral.literal // bit cast
             );
             cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
         } break;
@@ -109,7 +109,9 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
                 case INT_KEYWORD: {
                     ExprValue value = {0};
                     value.tag = IntLit;
-                    value.value.intLiteral = 0;
+                    value.value.intLiteral.literal = 0;
+                    // We don't need to set the stack variable index for the literal value as
+                    // it's just used as an immediate value.
                     self->initialValue = value;
                 } break;
                 default: {
