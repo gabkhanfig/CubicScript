@@ -3,12 +3,13 @@
 #include "../../platform/mem.h"
 #include "../../interpreter/function_definition.h"
 #include "binary_expression.h"
+#include <stdio.h>
 
 /// Steps the iterator forward to after the value.
 static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* variables) {
     // TODO nested expressions
 
-    (void)cubs_token_iter_next(iter);
+    //(void)cubs_token_iter_next(iter);
     const Token token = iter->current;
 
     assert(token.tag != SEMICOLON_SYMBOL);
@@ -43,6 +44,7 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
             assert(didFind && "Did not find stack variable");     
         } break;
         default: {
+            fprintf(stderr, "%d hmm\n", token.tag);
             assert(false && "Cannot handle anything other than int literals and variables by identifiers");
         } break;
     }
@@ -73,6 +75,8 @@ ExprValue cubs_parse_expression(
     if(is_token_operator(tokenAfterFirst)) {
         assert(tokenAfterFirst == ADD_OPERATOR);
         assert(hasDestination);
+
+        (void)cubs_token_iter_next(iter); // step to next
 
         const BinaryExprOp binaryExpressionOperator = Add;
         const ExprValue secondValue = parse_expression_value(iter, variables);

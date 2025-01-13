@@ -129,6 +129,7 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
 
     // Parse the literal or expression
     if(isNonZeroedInitial) {
+        (void)cubs_token_iter_next(iter); // step over to next
         self->initialValue = cubs_parse_expression(
             iter, variables, true, self->variableNameIndex
         );
