@@ -74,8 +74,24 @@ ExprValue cubs_parse_expression(
 
     if(is_token_operator(tokenAfterFirst)) {
         assert(tokenAfterFirst == ADD_OPERATOR);
-        assert(hasDestination);
 
+        size_t outSrc;
+        if(hasDestination) {
+            outSrc = destinationVariableIndex;
+        } else {
+            const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpBinExprOut", .len = 14});
+            
+            StackVariableInfo temporaryVariable = {
+                .name = variableName,
+                .isTemporary = true,
+                .context = &CUBS_INT_CONTEXT,
+                .taggedName = {0},
+            };
+            // order is preserved
+            outSrc = variables->len;
+            // variables->len will be increased by 1
+            cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+        }
         (void)cubs_token_iter_next(iter); // step to next
 
         const BinaryExprOp binaryExpressionOperator = Add;
@@ -85,7 +101,7 @@ ExprValue cubs_parse_expression(
         outValue.tag = Expression;
         outValue.value.expression = cubs_binary_expr_node_init(
             variables, 
-            destinationVariableIndex, 
+            outSrc, 
             binaryExpressionOperator, 
             firstValue, 
             secondValue
