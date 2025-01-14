@@ -4,6 +4,7 @@
 #include "program_runtime_error.h"
 #include "../primitives/function/function.h"
 #include "../primitives/string/string.h"
+#include "../compiler/build_options.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,9 +41,7 @@ typedef struct CubsProgramInitParams {
     CubsProgramContext* context;
 } CubsProgramInitParams;
 
-/// If `params.context == NULL`, uses the default context. Otherwise, copies `params.context`, taking ownership of it, 
-/// and setting the original reference to `NULL`, ie. `params.context->ptr = NULL`.
-CubsProgram cubs_program_init(CubsProgramInitParams params);
+CubsProgram cubs_program_compile(CubsProgramInitParams params, const CubsBuildOptions* build);
 
 void cubs_program_deinit(CubsProgram* self);
 

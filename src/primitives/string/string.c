@@ -9,77 +9,13 @@
 #include "../../util/unreachable.h"
 #include "../../util/hash.h"
 #include "../../util/simd.h"
+#include "../../util/utf8.h"
 
 static const char HEAP_FLAG_BIT = (char)0b10000000;
 static const size_t MAX_SSO_LEN = 23;
 static const size_t HEAP_BUF_ALIGNMENT = 32;
 static const size_t HEAP_REP_FLAG_BITMASK = 1ULL << 63;
 static const CubsString EMPTY_STRING = {0};
-
-static bool is_valid_utf8(CubsStringSlice slice) {
-  const uint8_t asciiZeroBit = 0b10000000;
-  const uint8_t trailingBytesBitmask = 0b11000000;
-  const uint8_t trailingBytesCodePoint = 0b10000000;
-  const uint8_t twoByteCodePoint = 0b11000000;
-  const uint8_t twoByteBitmask = 0b11100000;
-  const uint8_t threeByteCodePoint = 0b11100000;
-  const uint8_t threeByteBitmask = 0b11110000;
-  const uint8_t fourByteCodePoint = 0b11110000;
-  const uint8_t fourByteBitmask = 0b11111000;
-
-  size_t i = 0;
-  while (i < slice.len) {
-    const char c = slice.str[i];
-    if (c == 0) {
-      return false;
-    }
-    else if ((c & asciiZeroBit) == 0) {
-      i += 1;
-    }
-    else if ((c & twoByteBitmask) == twoByteCodePoint) {
-      if ((slice.str[i + 1] & trailingBytesBitmask) != trailingBytesCodePoint) {
-        return false;
-      }
-      i += 2;
-    }
-    else if ((c & threeByteBitmask) == threeByteCodePoint) {
-      if ((slice.str[i + 1] & trailingBytesBitmask) != trailingBytesCodePoint) {
-        return false;
-      }
-      if ((slice.str[i + 2] & trailingBytesBitmask) != trailingBytesCodePoint) {
-        return false;
-      }
-      i += 3;
-    }
-    else if ((c & fourByteBitmask) == fourByteCodePoint) {
-      if ((slice.str[i + 1] & trailingBytesBitmask) != trailingBytesCodePoint) {
-        return false;
-      }
-      if ((slice.str[i + 2] & trailingBytesBitmask) != trailingBytesCodePoint) {
-        return false;
-      }
-      if ((slice.str[i + 3] & trailingBytesBitmask) != trailingBytesCodePoint) {
-        return false;
-      }
-      i += 4;
-    }
-    else {
-      return false;
-    }
-  }
-  return true;
-}
-
-#if _DEBUG
-#define VALIDATE_SLICE(stringSlice) do { \
-  assert(is_valid_utf8(stringSlice)); \
-  for (size_t _sliceIter = 0; _sliceIter < stringSlice.len; _sliceIter++) { \
-    assert((stringSlice.str[_sliceIter] != '\0') && "String null terminator found before provided len"); \
-  } \
-} while(false);
-#else
-#define VALIDATE_SLICE(stringSlice)
-#endif
 
 typedef struct {
     char sso[24];
@@ -217,7 +153,7 @@ CubsString cubs_string_init_unchecked(CubsStringSlice slice)
 
 CubsStringError cubs_string_init(CubsString *out, CubsStringSlice slice)
 {
-  if (is_valid_utf8(slice)) {
+  if (cubs_utf8_is_valid(&slice)) {
     (*out) = cubs_string_init_unchecked(slice);
     return cubsStringErrorNone;
   }
@@ -389,7 +325,7 @@ CubsString cubs_string_concat_slice_unchecked(const CubsString *self, CubsString
 
 CubsStringError cubs_string_concat_slice(CubsString *out, const CubsString *self, CubsStringSlice slice)
 {
-  if (is_valid_utf8(slice)) {
+  if (cubs_utf8_is_valid(&slice)) {
     (*out) = concat_valid_slices(cubs_string_as_slice(self), slice);
     return cubsStringErrorNone;
   }

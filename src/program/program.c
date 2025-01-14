@@ -1,5 +1,5 @@
 #include "program.h"
-#include "../sync/locks.h"
+#include "program_internal.h"
 #include <stdio.h>
 #include "../platform/mem.h"
 #include <string.h>
@@ -7,8 +7,6 @@
 #include "protected_arena.h"
 #include "../interpreter/function_definition.h"
 #include "../interpreter/bytecode.h"
-#include "protected_arena.h"
-#include "function_map.h"
 
 const char *cubs_program_runtime_error_as_string(CubsProgramRuntimeError err)
 {
@@ -29,29 +27,28 @@ static void defaut_context_print(void* self, const CubsProgram* program, const c
 
 static void default_context_deinit(void* self) {}
 
-const CubsProgramContextVTable DEFAULT_CONTEXT_V_TABLE = {.errorCallback = default_context_error_callback, .print = defaut_context_print, .deinit = default_context_deinit};
-const CubsProgramContext DEFAULT_CONTEXT = {.ptr = NULL, .vtable = &DEFAULT_CONTEXT_V_TABLE};
+static const CubsProgramContextVTable DEFAULT_CONTEXT_V_TABLE = {.errorCallback = default_context_error_callback, .print = defaut_context_print, .deinit = default_context_deinit};
+static const CubsProgramContext DEFAULT_PROGRAM_CONTEXT = {.ptr = NULL, .vtable = &DEFAULT_CONTEXT_V_TABLE};
 
 #pragma endregion
 
-typedef struct {
-    ProtectedArena arena;
-    CubsProgramContext context;
-    CubsMutex contextMutex;
-    FunctionMap functionMap;
-} Inner;
-
 /// Ceil to multiple of 64
-const size_t INNER_ALLOC_SIZE = sizeof(Inner) + (64 - (sizeof(Inner) % 64));
+static const size_t INNER_ALLOC_SIZE = sizeof(ProgramInner) + (64 - (sizeof(ProgramInner) % 64));
 /// 64 byte cache line alignment
-const size_t INNER_ALLOC_ALIGN = 64;
+static const size_t INNER_ALLOC_ALIGN = 64;
 
-static const Inner* as_inner(const CubsProgram* self) {
-    return (const Inner*)self->_inner;
+static const ProgramInner* as_inner(const CubsProgram* self) {
+    return (const ProgramInner*)self->_inner;
 }
 
-static Inner* as_inner_mut(CubsProgram* self) {
-    return (Inner*)self->_inner;
+static ProgramInner* as_inner_mut(CubsProgram* self) {
+    return (ProgramInner*)self->_inner;
+}
+
+CubsProgram cubs_program_compile(CubsProgramInitParams params, const CubsBuildOptions* build)
+{
+    CubsProgram self = cubs_program_init(params);
+    return self;
 }
 
 CubsProgram cubs_program_init(CubsProgramInitParams params)
@@ -61,13 +58,13 @@ CubsProgram cubs_program_init(CubsProgramInitParams params)
         context = *params.context;
         params.context->ptr = NULL;
     } else {
-        context = DEFAULT_CONTEXT;
+        context = DEFAULT_PROGRAM_CONTEXT;
     }
 
     ProtectedArena arena = cubs_protected_arena_init();
-    Inner* inner = (Inner*)cubs_protected_arena_malloc(&arena, INNER_ALLOC_SIZE, INNER_ALLOC_ALIGN);
+    ProgramInner* inner = (ProgramInner*)cubs_protected_arena_malloc(&arena, INNER_ALLOC_SIZE, INNER_ALLOC_ALIGN);
 
-    const Inner innerData = {
+    const ProgramInner innerData = {
         .arena = arena, 
         .context = context, 
         .contextMutex = CUBS_MUTEX_INITIALIZER,
@@ -81,7 +78,7 @@ CubsProgram cubs_program_init(CubsProgramInitParams params)
 
 void cubs_program_deinit(CubsProgram *self)
 {
-    Inner* inner = as_inner_mut(self);
+    ProgramInner* inner = as_inner_mut(self);
     if(!cubs_mutex_try_lock(&inner->contextMutex)) {
         cubs_panic("Unsafe to deinitialize Cubic Script program while other threads are using it");
     }
@@ -95,7 +92,7 @@ void cubs_program_deinit(CubsProgram *self)
 
 bool cubs_program_find_function(const CubsProgram *self, CubsFunction *outFunc, CubsStringSlice fullyQualifiedName)
 {
-    const Inner* inner = as_inner(self);
+    const ProgramInner* inner = as_inner(self);
     const CubsScriptFunctionPtr* header = cubs_function_map_find(&inner->functionMap, fullyQualifiedName);
     if(header == NULL) {
         return false;
@@ -107,7 +104,7 @@ bool cubs_program_find_function(const CubsProgram *self, CubsFunction *outFunc, 
 
 /// Not defined in `program.h`. Reserved for internal use only.
 void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength) {
-    const Inner* inner = as_inner(self);
+    const ProgramInner* inner = as_inner(self);
 
     // Explicitly cast away const
     CubsMutex* contextMutex = (CubsMutex*)&inner->contextMutex;
@@ -120,7 +117,7 @@ void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRu
 
 /// Not defined in `program.h`. Reserved for internal use only.
 void _cubs_internal_program_print(const CubsProgram* self, const char* message, size_t messageLength) {
-    const Inner* inner = as_inner(self);
+    const ProgramInner* inner = as_inner(self);
 
     // Explicitly cast away const
     CubsMutex* contextMutex = (CubsMutex*)&inner->contextMutex;
@@ -137,7 +134,7 @@ CubsScriptFunctionPtr* cubs_function_builder_build(FunctionBuilder* self, CubsPr
     assert(self->bytecode != NULL);
     assert(self->bytecodeLen > 0);
 
-    Inner* inner = as_inner_mut(program);
+    ProgramInner* inner = as_inner_mut(program);
 
     const CubsTypeContext** newArgsTypes = NULL;
     size_t newArgsLen = 0;

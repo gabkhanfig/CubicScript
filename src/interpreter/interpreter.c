@@ -21,9 +21,7 @@
 #include "../program/function_call_args.h"
 #include "../util/context_size_round.h"
 #include "../sync/sync_queue.h"
-
-extern const CubsTypeContext* cubs_primitive_context_for_tag(CubsValueTag tag);
-extern void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRuntimeError err, const char* message, size_t messageLength);
+#include "../program/program_internal.h"
 
 static void execute_load(int64_t* const ipIncrement, const Bytecode* bytecode) {
     const OperandsLoadUnknown unknownOperands = *(const OperandsLoadUnknown*)bytecode;

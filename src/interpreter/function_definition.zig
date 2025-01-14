@@ -14,6 +14,7 @@ const c = @cImport({
     @cInclude("primitives/context.h");
     @cInclude("primitives/string/string.h");
     @cInclude("program/program.h");
+    @cInclude("program/program_internal.h");
 });
 
 test "init deinit" {

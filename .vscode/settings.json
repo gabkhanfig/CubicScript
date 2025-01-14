@@ -122,6 +122,19 @@
         "context.h": "c",
         "operations.h": "c",
         "sync_queue.h": "c",
-        "result.h": "c"
+        "result.h": "c",
+        "build_options.h": "c",
+        "locks.h": "c",
+        "program_internal.h": "c",
+        "parser.h": "c",
+        "file_node.h": "c",
+        "stack_variables.h": "c",
+        "return_node.h": "c",
+        "ast.h": "c",
+        "string_slice.h": "c",
+        "binary_expression.h": "c",
+        "__bit_reference": "c",
+        "bitset": "c",
+        "__memory": "c"
     }
 }
