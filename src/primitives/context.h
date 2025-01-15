@@ -1,6 +1,16 @@
 #pragma once
 
+#include "../c_basic_types.h"
+#include "string/string_slice.h"
 #include "function/function.h"
+
+struct CubsTypeContext;
+
+typedef struct CubsTypeMemberContext {
+    size_t byteOffset;
+    CubsStringSlice name;
+    const struct CubsTypeContext* context;
+} CubsTypeMemberContext;
 
 typedef struct CubsTypeContext {
     /// In bytes.
@@ -17,6 +27,10 @@ typedef struct CubsTypeContext {
     const char* name;
     /// Is the length of `name`. Can be 0. Only used for debugging purposes
     size_t nameLength;
+    /// Can be NULL. Is an array of length `membersLen`.
+    const CubsTypeMemberContext* members;
+    /// The length of the `members` array. Can be 0.
+    size_t membersLen;
 } CubsTypeContext;
 
 #ifdef __cplusplus

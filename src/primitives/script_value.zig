@@ -81,7 +81,15 @@ pub const c = struct {
 //     mat4f = 36,
 // };
 
+/// Corresponds with CubsTypeContext in C
 pub const TypeContext = extern struct {
+    /// Corresponds with CubsTypeMemberContext in C
+    pub const Member = extern struct {
+        byteOffset: usize,
+        name: c.CubsString.CubsStringSlice,
+        context: *const TypeContext,
+    };
+
     sizeOfType: usize,
     onDeinit: c.CubsFunction = std.mem.zeroes(c.CubsFunction),
     clone: c.CubsFunction = std.mem.zeroes(c.CubsFunction),
@@ -89,6 +97,8 @@ pub const TypeContext = extern struct {
     hash: c.CubsFunction = std.mem.zeroes(c.CubsFunction),
     name: [*c]const u8,
     nameLength: usize,
+    members: [*c]const Member,
+    memberLen: usize,
 
     /// Automatically generate a struct context for script use
     pub fn auto(comptime T: type) *const TypeContext {
