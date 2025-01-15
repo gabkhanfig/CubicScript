@@ -5,6 +5,8 @@
 
 struct CubsTypeContext;
 
+// TODO get script stack trace
+// TODO also get stack trace for C code in DEBUG
 typedef struct CubsResult {
     /// Accessing this is unsafe.
     void* metadata[sizeof(CubsError) / sizeof(void*)];
