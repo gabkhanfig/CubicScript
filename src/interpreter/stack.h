@@ -48,7 +48,9 @@ InterpreterStackFrame cubs_interpreter_current_stack_frame();
 /// `offset` is an offset from the start of the current stack frame (excluding reserved slots) from as intervals of 8 bytes
 void* cubs_interpreter_stack_value_at(size_t offset);
 
-/// `offset` is an offset from the start of the current stack frame (excluding reserved slots) from as intervals of 8 bytes
+/// `offset` is an offset from the start of the current stack frame 
+/// (excluding reserved slots) from as intervals of 8 bytes. Masks away the 
+/// bit flag for if this is a non-owning context (reference).
 const struct CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset);
 
 /// Gets the pointer to the actual place in the interpreter stack where the context at `offset` should be.
