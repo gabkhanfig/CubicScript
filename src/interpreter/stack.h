@@ -58,6 +58,13 @@ const struct CubsTypeContext* cubs_interpreter_stack_context_at(size_t offset);
 /// `offset` is an offset from the start of the current stack frame (excluding reserved slots) from as intervals of 8 bytes
 const struct CubsTypeContext** cubs_interpreter_stack_context_ptr_at(size_t offset);
 
+/// Gets if the context at `offset` is an owned value, meaning not a 
+/// TEMPORARY reference. Value instances of `CubsConstRef` and related for
+/// example will return true, as they are owned. However, when performing the
+/// dereference bytecode, a non-owning value will be put onto the stack. For
+/// those values, this function returns false.
+bool cubs_is_owning_context_at(size_t offset);
+
 /// If `context->sizeOfType > sizeof(size_t)`, fills the following contexts to NULL.
 void cubs_interpreter_stack_set_context_at(size_t offset, const struct CubsTypeContext* context);
 
