@@ -432,6 +432,62 @@ static void execute_set_reference(const Bytecode bytecode) {
     memcpy(actualDst, cubs_interpreter_stack_value_at(operands.src), srcContext->sizeOfType);
 } 
 
+static void execute_get_member(const Bytecode bytecode) {
+    const OperandsGetMember operands = *(const OperandsGetMember*)&bytecode;
+
+    const void* srcValue = NULL;
+    const CubsTypeContext* srcContext = NULL;
+
+    { // automatically dereference if necessary
+        const CubsTypeContext* tempSrcContext = cubs_interpreter_stack_context_at(operands.src);
+        const void* tempSrcValue = cubs_interpreter_stack_value_at(operands.src);
+        if(!is_reference_type_context(tempSrcContext)) {
+            srcValue = tempSrcValue;
+            srcContext = tempSrcContext;
+        } else {
+            if(tempSrcContext == &CUBS_CONST_REF_CONTEXT) {
+                srcContext = ((const CubsConstRef*)tempSrcValue)->context;
+                srcValue = ((const CubsConstRef*)tempSrcValue)->ref;
+            }
+            else if(tempSrcContext == &CUBS_MUT_REF_CONTEXT) {
+                srcContext = ((const CubsMutRef*)tempSrcValue)->context;
+                srcValue = ((const CubsMutRef*)tempSrcValue)->ref;
+            }
+            else if(tempSrcContext == &CUBS_UNIQUE_CONTEXT) {
+                srcContext = ((const CubsUnique*)tempSrcValue)->context;
+                srcValue = cubs_unique_get((const CubsUnique*)tempSrcValue);
+            }
+            else if(tempSrcContext == &CUBS_SHARED_CONTEXT) {
+                srcContext = ((const CubsShared*)tempSrcValue)->context;
+                srcValue = cubs_shared_get((const CubsShared*)tempSrcValue);
+            }
+            else if(tempSrcContext == &CUBS_WEAK_CONTEXT) {
+                srcContext = ((const CubsWeak*)tempSrcValue)->context;
+                srcValue = cubs_weak_get((const CubsWeak*)tempSrcValue);
+            } else {
+                unreachable();
+            }
+        }
+    }
+
+
+    assert(srcContext->membersLen > operands.memberIndex);
+    const size_t memberByteOffset = srcContext->members[operands.memberIndex].byteOffset;
+    const CubsTypeContext* memberContext = srcContext->members[operands.memberIndex].context;
+    
+    const void* memberSrc = (const void*)&(((const uint8_t*)srcValue)[memberByteOffset]);
+
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+    cubs_interpreter_stack_set_reference_context_at(operands.dst, memberContext);
+    memcpy(dst, memberSrc, memberContext->sizeOfType);
+}
+
+static void execute_set_member(const Bytecode bytecode) {
+    const OperandsSetMember operands = *(const OperandsSetMember*)&bytecode;
+
+    
+}
+
 static void execute_equal(const Bytecode bytecode) {
     const OperandsEqual operands = *(const OperandsEqual*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src1);
@@ -612,6 +668,12 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         } break;
         case OpCodeSetReference: {
             execute_set_reference(*instructionPointer);
+        } break;
+        case OpCodeGetMember: {
+            execute_get_member(*instructionPointer);
+        } break;
+        case OpCodeSetMember: {
+            execute_set_member(*instructionPointer);
         } break;
         case OpCodeEqual: {
             execute_equal(*instructionPointer);

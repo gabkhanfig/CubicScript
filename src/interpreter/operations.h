@@ -280,6 +280,35 @@ Bytecode cubs_operands_make_set_reference(uint16_t dst, uint16_t src);
 
 #pragma endregion
 
+#pragma region Members
+
+/// Allows 2^16 (65536) total members in a struct
+#define BITS_PER_MEMBER_INDEX 16
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+    uint64_t memberIndex: BITS_PER_MEMBER_INDEX;
+} OperandsGetMember;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsGetMember);
+
+/// `index` is a literal value
+Bytecode cubs_operands_make_get_member(uint16_t dst, uint16_t src, uint16_t memberIndex);
+
+typedef struct {   
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+    uint64_t memberIndex: BITS_PER_MEMBER_INDEX;
+} OperandsSetMember;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsSetMember);
+
+/// `index` is a literal value
+Bytecode cubs_operands_make_set_member(uint16_t dst, uint16_t src, uint16_t memberIndex);
+
+#pragma endregion
+
 enum MathOperationType {
     MATH_TYPE_DST,
     MATH_TYPE_SRC_ASSIGN,

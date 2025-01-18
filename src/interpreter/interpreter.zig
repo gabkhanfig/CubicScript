@@ -1725,3 +1725,89 @@ test "set reference" {
         try expect(@as(*const i64, @alignCast(@ptrCast(c.cubs_weak_get(dst)))).* == 58);
     }
 }
+
+test "struct get member" {
+    const OneMemberStruct = extern struct { num: i64 };
+    const oneContext = c.CubsTypeContext{
+        .sizeOfType = @sizeOf(OneMemberStruct),
+        .name = "OneMemberStruct",
+        .members = &[_]c.CubsTypeMemberContext{c.CubsTypeMemberContext{
+            .byteOffset = 0,
+            .context = &c.CUBS_INT_CONTEXT,
+            .name = .{ .str = "num", .len = 3 },
+        }},
+        .membersLen = 1,
+    };
+
+    const TwoMemberStruct = extern struct { num1: i64, num2: i64 };
+    const twoContext = c.CubsTypeContext{
+        .sizeOfType = @sizeOf(TwoMemberStruct),
+        .members = &[_]c.CubsTypeMemberContext{
+            c.CubsTypeMemberContext{
+                .byteOffset = 0,
+                .context = &c.CUBS_INT_CONTEXT,
+                .name = .{ .str = "num1", .len = 4 },
+            },
+            c.CubsTypeMemberContext{
+                .byteOffset = 8,
+                .context = &c.CUBS_INT_CONTEXT,
+                .name = .{ .str = "num2", .len = 4 },
+            },
+        },
+        .membersLen = 2,
+    };
+
+    { // value
+        { // one member
+            const bytecode = c.cubs_operands_make_get_member(1, 0, 0);
+
+            c.cubs_interpreter_push_frame(2, null, null);
+            defer c.cubs_interpreter_pop_frame();
+
+            c.cubs_interpreter_stack_set_context_at(0, &oneContext);
+            const src = @as(*OneMemberStruct, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+            src.* = .{ .num = 99 };
+
+            c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+            try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+            const dst = @as(*const i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+            try expect(c.cubs_interpreter_stack_context_at(1) == &c.CUBS_INT_CONTEXT);
+            try expect(dst.* == 99);
+        }
+        { // two member, first member
+            const bytecode = c.cubs_operands_make_get_member(2, 0, 0);
+
+            c.cubs_interpreter_push_frame(3, null, null);
+            defer c.cubs_interpreter_pop_frame();
+
+            c.cubs_interpreter_stack_set_context_at(0, &twoContext);
+            const src = @as(*TwoMemberStruct, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+            src.* = .{ .num1 = 91, .num2 = 92 };
+
+            c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+            try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+            const dst = @as(*const i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+            try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_INT_CONTEXT);
+            try expect(dst.* == 91);
+        }
+        { // two member, second member
+            const bytecode = c.cubs_operands_make_get_member(2, 0, 1);
+
+            c.cubs_interpreter_push_frame(3, null, null);
+            defer c.cubs_interpreter_pop_frame();
+
+            c.cubs_interpreter_stack_set_context_at(0, &twoContext);
+            const src = @as(*TwoMemberStruct, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+            src.* = .{ .num1 = 91, .num2 = 92 };
+
+            c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+            try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+            const dst = @as(*const i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+            try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_INT_CONTEXT);
+            try expect(dst.* == 92);
+        }
+    }
+}
