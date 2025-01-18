@@ -260,6 +260,26 @@ Bytecode cubs_operands_make_compare(enum CompareOperationType compareType, uint1
 
 #pragma endregion
 
+#pragma region Reference
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+} OperandsDereference;
+
+Bytecode cubs_operands_make_dereference(uint16_t dst, uint16_t src);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src: BITS_PER_STACK_OPERAND;   
+} OperandsSetReference;
+
+Bytecode cubs_operands_make_set_reference(uint16_t dst, uint16_t src);
+
+#pragma endregion
+
 enum MathOperationType {
     MATH_TYPE_DST,
     MATH_TYPE_SRC_ASSIGN,

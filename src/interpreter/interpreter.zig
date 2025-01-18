@@ -14,6 +14,8 @@ const c = @cImport({
     @cInclude("primitives/array/array.h");
     @cInclude("primitives/set/set.h");
     @cInclude("primitives/map/map.h");
+    @cInclude("primitives/reference/reference.h");
+    @cInclude("primitives/sync_ptr/sync_ptr.h");
     @cInclude("program/program.h");
     @cInclude("program/program_internal.h");
 });
@@ -1498,5 +1500,228 @@ test "not equal" {
 
         c.cubs_string_deinit(src1);
         c.cubs_string_deinit(src2);
+    }
+}
+
+test "dereference" {
+    { // const ref
+        const bytecode = c.cubs_operands_make_dereference(2, 0);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_CONST_REF_CONTEXT);
+        const src = @as(*c.CubsConstRef, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        const value: i64 = 56;
+        const ref = c.CubsConstRef{ .ref = @ptrCast(&value), .context = &c.CUBS_INT_CONTEXT };
+        src.* = ref;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_INT_CONTEXT);
+        try expect(dst.* == value);
+    }
+    { // mut ref
+        const bytecode = c.cubs_operands_make_dereference(2, 0);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_MUT_REF_CONTEXT);
+        const src = @as(*c.CubsMutRef, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        var value: i64 = 56;
+        const ref = c.CubsMutRef{ .ref = @ptrCast(&value), .context = &c.CUBS_INT_CONTEXT };
+        src.* = ref;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_INT_CONTEXT);
+        try expect(dst.* == value);
+    }
+    { // unique sync ptr
+        const bytecode = c.cubs_operands_make_dereference(2, 0);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+        const src = @as(*c.CubsUnique, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        var value: i64 = 56;
+        src.* = c.cubs_unique_init(@ptrCast(&value), &c.CUBS_INT_CONTEXT);
+        defer c.cubs_unique_deinit(src);
+        c.cubs_unique_lock_exclusive(src);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        c.cubs_unique_unlock_exclusive(src);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_INT_CONTEXT);
+        try expect(dst.* == value);
+    }
+    { // shared sync ptr
+        const bytecode = c.cubs_operands_make_dereference(2, 0);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
+        const src = @as(*c.CubsShared, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        var value: i64 = 56;
+        src.* = c.cubs_shared_init(@ptrCast(&value), &c.CUBS_INT_CONTEXT);
+        defer c.cubs_shared_deinit(src);
+        c.cubs_shared_lock_exclusive(src);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        c.cubs_shared_unlock_exclusive(src);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_INT_CONTEXT);
+        try expect(dst.* == value);
+    }
+    { // weak sync ptr
+        const bytecode = c.cubs_operands_make_dereference(2, 0);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_WEAK_CONTEXT);
+        const src = @as(*c.CubsWeak, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        var value: i64 = 56;
+        var unique = c.cubs_unique_init(@ptrCast(&value), &c.CUBS_INT_CONTEXT);
+        defer c.cubs_unique_deinit(&unique);
+
+        src.* = c.cubs_unique_make_weak(&unique);
+        defer c.cubs_weak_deinit(src);
+
+        c.cubs_weak_lock_exclusive(src);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        c.cubs_weak_unlock_exclusive(src);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_INT_CONTEXT);
+        try expect(dst.* == value);
+    }
+}
+
+test "set reference" {
+    { // mut ref
+        const bytecode = c.cubs_operands_make_set_reference(0, 2);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_MUT_REF_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_INT_CONTEXT);
+        const dst = @as(*c.CubsMutRef, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        src.* = 58;
+        var value: i64 = 50;
+        dst.* = c.CubsMutRef{ .ref = @ptrCast(&value), .context = &c.CUBS_INT_CONTEXT };
+
+        try expect(@as(*const i64, @alignCast(@ptrCast(dst.ref))).* == 50);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(@as(*const i64, @alignCast(@ptrCast(dst.ref))).* == 58);
+    }
+    { // unique
+        const bytecode = c.cubs_operands_make_set_reference(0, 2);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_UNIQUE_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_INT_CONTEXT);
+        const dst = @as(*c.CubsUnique, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        src.* = 58;
+        var value: i64 = 50;
+        dst.* = c.cubs_unique_init(@ptrCast(&value), &c.CUBS_INT_CONTEXT);
+        defer c.cubs_unique_deinit(dst);
+
+        c.cubs_unique_lock_exclusive(dst);
+        defer c.cubs_unique_unlock_exclusive(dst);
+
+        try expect(@as(*const i64, @alignCast(@ptrCast(c.cubs_unique_get(dst)))).* == 50);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(@as(*const i64, @alignCast(@ptrCast(c.cubs_unique_get(dst)))).* == 58);
+    }
+    { // shared
+        const bytecode = c.cubs_operands_make_set_reference(0, 2);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_INT_CONTEXT);
+        const dst = @as(*c.CubsShared, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        src.* = 58;
+        var value: i64 = 50;
+        dst.* = c.cubs_shared_init(@ptrCast(&value), &c.CUBS_INT_CONTEXT);
+        defer c.cubs_shared_deinit(dst);
+
+        c.cubs_shared_lock_exclusive(dst);
+        defer c.cubs_shared_unlock_exclusive(dst);
+
+        try expect(@as(*const i64, @alignCast(@ptrCast(c.cubs_shared_get(dst)))).* == 50);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(@as(*const i64, @alignCast(@ptrCast(c.cubs_shared_get(dst)))).* == 58);
+    }
+    { // weak
+
+        const bytecode = c.cubs_operands_make_set_reference(0, 2);
+
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_SHARED_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_INT_CONTEXT);
+        const dst = @as(*c.CubsWeak, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        var value: i64 = 50;
+        var unique = c.cubs_unique_init(@ptrCast(&value), &c.CUBS_INT_CONTEXT);
+        defer c.cubs_unique_deinit(&unique);
+
+        src.* = 58;
+        dst.* = c.cubs_unique_make_weak(&unique);
+        defer c.cubs_weak_deinit(dst);
+
+        c.cubs_weak_lock_exclusive(dst);
+        defer c.cubs_weak_unlock_exclusive(dst);
+
+        try expect(@as(*const i64, @alignCast(@ptrCast(c.cubs_weak_get(dst)))).* == 50);
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(@as(*const i64, @alignCast(@ptrCast(c.cubs_weak_get(dst)))).* == 58);
     }
 }

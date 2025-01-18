@@ -135,6 +135,7 @@
         "binary_expression.h": "c",
         "__bit_reference": "c",
         "bitset": "c",
-        "__memory": "c"
+        "__memory": "c",
+        "reference.h": "c"
     }
 }
