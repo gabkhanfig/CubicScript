@@ -470,7 +470,6 @@ static void execute_get_member(const Bytecode bytecode) {
         }
     }
 
-
     assert(srcContext->membersLen > operands.memberIndex);
     const size_t memberByteOffset = srcContext->members[operands.memberIndex].byteOffset;
     const CubsTypeContext* memberContext = srcContext->members[operands.memberIndex].context;
@@ -485,7 +484,50 @@ static void execute_get_member(const Bytecode bytecode) {
 static void execute_set_member(const Bytecode bytecode) {
     const OperandsSetMember operands = *(const OperandsSetMember*)&bytecode;
 
+    const void* dstValue = NULL;
+    const CubsTypeContext* dstContext = NULL;
+
+    { // handle both reference and value types
+        const CubsTypeContext* tempDstContext = cubs_interpreter_stack_context_at(operands.dst);
+        const void* tempDstValue = cubs_interpreter_stack_value_at(operands.dst);
+        if(!is_reference_type_context(tempDstContext)) {
+            dstValue = tempDstValue;
+            dstContext = tempDstContext;
+        } else {
+            if(tempDstContext == &CUBS_CONST_REF_CONTEXT) {
+                dstContext = ((const CubsConstRef*)tempDstValue)->context;
+                dstValue = ((const CubsConstRef*)tempDstValue)->ref;
+            }
+            else if(tempDstContext == &CUBS_MUT_REF_CONTEXT) {
+                dstContext = ((const CubsMutRef*)tempDstValue)->context;
+                dstValue = ((const CubsMutRef*)tempDstValue)->ref;
+            }
+            else if(tempDstContext == &CUBS_UNIQUE_CONTEXT) {
+                dstContext = ((const CubsUnique*)tempDstValue)->context;
+                dstValue = cubs_unique_get((const CubsUnique*)tempDstValue);
+            }
+            else if(tempDstContext == &CUBS_SHARED_CONTEXT) {
+                dstContext = ((const CubsShared*)tempDstValue)->context;
+                dstValue = cubs_shared_get((const CubsShared*)tempDstValue);
+            }
+            else if(tempDstContext == &CUBS_WEAK_CONTEXT) {
+                dstContext = ((const CubsWeak*)tempDstValue)->context;
+                dstValue = cubs_weak_get((const CubsWeak*)tempDstValue);
+            } else {
+                unreachable();
+            }
+        }
+    }
+
+    assert(dstContext->membersLen > operands.memberIndex);
+    const size_t memberByteOffset = dstContext->members[operands.memberIndex].byteOffset;
+    const CubsTypeContext* memberContext = dstContext->members[operands.memberIndex].context;
     
+    const void* memberDst = (const void*)&(((const uint8_t*)dstValue)[memberByteOffset]);
+
+    const void* src = cubs_interpreter_stack_value_at(operands.src);
+    assert(memberContext == cubs_interpreter_stack_context_at(operands.src));
+    memcpy(memberDst, src, memberContext->sizeOfType);
 }
 
 static void execute_equal(const Bytecode bytecode) {
