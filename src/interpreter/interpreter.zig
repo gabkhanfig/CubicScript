@@ -1811,3 +1811,62 @@ test "struct get member" {
         }
     }
 }
+
+test "struct set member" {
+    const OneMemberStruct = extern struct { num: i64 };
+    const oneContext = c.CubsTypeContext{
+        .sizeOfType = @sizeOf(OneMemberStruct),
+        .name = "OneMemberStruct",
+        .members = &[_]c.CubsTypeMemberContext{c.CubsTypeMemberContext{
+            .byteOffset = 0,
+            .context = &c.CUBS_INT_CONTEXT,
+            .name = .{ .str = "num", .len = 3 },
+        }},
+        .membersLen = 1,
+    };
+
+    const TwoMemberStruct = extern struct { num1: i64, num2: i64 };
+    const twoContext = c.CubsTypeContext{
+        .sizeOfType = @sizeOf(TwoMemberStruct),
+        .members = &[_]c.CubsTypeMemberContext{
+            c.CubsTypeMemberContext{
+                .byteOffset = 0,
+                .context = &c.CUBS_INT_CONTEXT,
+                .name = .{ .str = "num1", .len = 4 },
+            },
+            c.CubsTypeMemberContext{
+                .byteOffset = 8,
+                .context = &c.CUBS_INT_CONTEXT,
+                .name = .{ .str = "num2", .len = 4 },
+            },
+        },
+        .membersLen = 2,
+    };
+
+    _ = twoContext;
+
+    { // value
+        { // one member
+            const bytecode = c.cubs_operands_make_set_member(0, 1, 0);
+
+            c.cubs_interpreter_push_frame(2, null, null);
+            defer c.cubs_interpreter_pop_frame();
+
+            c.cubs_interpreter_stack_set_context_at(0, &oneContext);
+            c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+            const dst = @as(*OneMemberStruct, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+            const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+
+            src.* = 58;
+            dst.* = .{ .num = 50 };
+
+            c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+            try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+            try expect(dst.num == 58);
+        }
+        { // two member, first member
+
+        }
+    }
+}
