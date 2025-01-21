@@ -16,6 +16,8 @@
 #include "../primitives/option/option.h"
 #include "../primitives/error/error.h"
 #include "../primitives/result/result.h"
+#include "../primitives/reference/reference.h"
+#include "../primitives/sync_ptr/sync_ptr.h"
 #include "../util/math.h"
 #include "function_definition.h"
 #include "../program/function_call_args.h"
@@ -347,6 +349,187 @@ static void execute_clone(const Bytecode bytecode) {
     cubs_interpreter_stack_set_context_at(operands.dst, context);
 }
 
+static bool is_reference_type_context(const CubsTypeContext* context) {
+    return context == &CUBS_CONST_REF_CONTEXT 
+    || context == &CUBS_MUT_REF_CONTEXT
+    || context == &CUBS_UNIQUE_CONTEXT
+    || context == &CUBS_SHARED_CONTEXT
+    || context == &CUBS_WEAK_CONTEXT;
+}
+
+static void execute_dereference(const Bytecode bytecode) {
+    const OperandsDereference operands = *(const OperandsDereference*)&bytecode;
+
+    const CubsTypeContext* refContext = cubs_interpreter_stack_context_at(operands.src);
+    assert(is_reference_type_context(refContext) && "Expected reference type for dereference operation");
+
+    const void* refSrc = cubs_interpreter_stack_value_at(operands.src);
+    const CubsTypeContext* actualTypeContext = NULL;
+    const void* actualSrc = NULL;
+    if(refContext == &CUBS_CONST_REF_CONTEXT) {
+        actualTypeContext = ((const CubsConstRef*)refSrc)->context;
+        actualSrc = ((const CubsConstRef*)refSrc)->ref;
+    }
+    else if(refContext == &CUBS_MUT_REF_CONTEXT) {
+        actualTypeContext = ((const CubsMutRef*)refSrc)->context;
+        actualSrc = ((const CubsMutRef*)refSrc)->ref;
+    }
+    else if(refContext == &CUBS_UNIQUE_CONTEXT) {
+        actualTypeContext = ((const CubsUnique*)refSrc)->context;
+        actualSrc = cubs_unique_get((const CubsUnique*)refSrc);
+    }
+    else if(refContext == &CUBS_SHARED_CONTEXT) {
+        actualTypeContext = ((const CubsShared*)refSrc)->context;
+        actualSrc = cubs_shared_get((const CubsShared*)refSrc);
+    }
+    else if(refContext == &CUBS_WEAK_CONTEXT) {
+        actualTypeContext = ((const CubsWeak*)refSrc)->context;
+        actualSrc = cubs_weak_get((const CubsWeak*)refSrc);
+    } else {
+        unreachable();
+    }
+
+    cubs_interpreter_stack_set_reference_context_at(operands.dst, actualTypeContext);
+    memcpy(cubs_interpreter_stack_value_at(operands.dst), actualSrc, actualTypeContext->sizeOfType);
+}
+
+static void execute_set_reference(const Bytecode bytecode) {
+    const OperandsSetReference operands = *(const OperandsSetReference*)&bytecode;
+
+    const CubsTypeContext* refContext = cubs_interpreter_stack_context_at(operands.dst);
+    const CubsTypeContext* srcContext = cubs_interpreter_stack_context_at(operands.src);
+    assert(is_reference_type_context(refContext) && "Expected reference type for dereference operation");
+
+    void* refDst = cubs_interpreter_stack_value_at(operands.dst);
+    void* actualDst = NULL;
+    if(refContext == &CUBS_CONST_REF_CONTEXT) {
+        assert(false && "Cannot set the value of a const reference");
+        // assert(refContext == ((const CubsConstRef*)refDst)->context);
+        // actualDst = ((const CubsConstRef*)refDst)->ref;
+    }
+    else if(refContext == &CUBS_MUT_REF_CONTEXT) {
+        if(srcContext !=  ((const CubsMutRef*)refDst)->context) {
+            fprintf(stderr, "%s, %s\n", refContext->name, ((const CubsMutRef*)refDst)->context->name);
+        }
+        assert(srcContext == ((const CubsMutRef*)refDst)->context);
+        actualDst = ((CubsMutRef*)refDst)->ref;
+    }
+    else if(refContext == &CUBS_UNIQUE_CONTEXT) {
+        assert(srcContext == ((const CubsUnique*)refDst)->context);
+        actualDst = cubs_unique_get_mut((CubsUnique*)refDst);
+    }
+    else if(refContext == &CUBS_SHARED_CONTEXT) {
+        assert(srcContext == ((const CubsShared*)refDst)->context);
+        actualDst = cubs_shared_get_mut((CubsShared*)refDst);
+    }
+    else if(refContext == &CUBS_WEAK_CONTEXT) {
+        assert(srcContext == ((const CubsWeak*)refDst)->context);
+        actualDst = cubs_weak_get_mut((CubsWeak*)refDst);
+    } else {
+        unreachable();
+    }
+
+    memcpy(actualDst, cubs_interpreter_stack_value_at(operands.src), srcContext->sizeOfType);
+} 
+
+static void execute_get_member(const Bytecode bytecode) {
+    const OperandsGetMember operands = *(const OperandsGetMember*)&bytecode;
+
+    const void* srcValue = NULL;
+    const CubsTypeContext* srcContext = NULL;
+
+    { // automatically dereference if necessary
+        const CubsTypeContext* tempSrcContext = cubs_interpreter_stack_context_at(operands.src);
+        const void* tempSrcValue = cubs_interpreter_stack_value_at(operands.src);
+        if(!is_reference_type_context(tempSrcContext)) {
+            srcValue = tempSrcValue;
+            srcContext = tempSrcContext;
+        } else {
+            if(tempSrcContext == &CUBS_CONST_REF_CONTEXT) {
+                srcContext = ((const CubsConstRef*)tempSrcValue)->context;
+                srcValue = ((const CubsConstRef*)tempSrcValue)->ref;
+            }
+            else if(tempSrcContext == &CUBS_MUT_REF_CONTEXT) {
+                srcContext = ((const CubsMutRef*)tempSrcValue)->context;
+                srcValue = ((const CubsMutRef*)tempSrcValue)->ref;
+            }
+            else if(tempSrcContext == &CUBS_UNIQUE_CONTEXT) {
+                srcContext = ((const CubsUnique*)tempSrcValue)->context;
+                srcValue = cubs_unique_get((const CubsUnique*)tempSrcValue);
+            }
+            else if(tempSrcContext == &CUBS_SHARED_CONTEXT) {
+                srcContext = ((const CubsShared*)tempSrcValue)->context;
+                srcValue = cubs_shared_get((const CubsShared*)tempSrcValue);
+            }
+            else if(tempSrcContext == &CUBS_WEAK_CONTEXT) {
+                srcContext = ((const CubsWeak*)tempSrcValue)->context;
+                srcValue = cubs_weak_get((const CubsWeak*)tempSrcValue);
+            } else {
+                unreachable();
+            }
+        }
+    }
+
+    assert(srcContext->membersLen > operands.memberIndex);
+    const size_t memberByteOffset = srcContext->members[operands.memberIndex].byteOffset;
+    const CubsTypeContext* memberContext = srcContext->members[operands.memberIndex].context;
+    
+    const void* memberSrc = (const void*)&(((const uint8_t*)srcValue)[memberByteOffset]);
+
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+    cubs_interpreter_stack_set_reference_context_at(operands.dst, memberContext);
+    memcpy(dst, memberSrc, memberContext->sizeOfType);
+}
+
+static void execute_set_member(const Bytecode bytecode) {
+    const OperandsSetMember operands = *(const OperandsSetMember*)&bytecode;
+
+    const void* dstValue = NULL;
+    const CubsTypeContext* dstContext = NULL;
+
+    { // handle both reference and value types
+        const CubsTypeContext* tempDstContext = cubs_interpreter_stack_context_at(operands.dst);
+        const void* tempDstValue = cubs_interpreter_stack_value_at(operands.dst);
+        if(!is_reference_type_context(tempDstContext)) {
+            dstValue = tempDstValue;
+            dstContext = tempDstContext;
+        } else {
+            if(tempDstContext == &CUBS_CONST_REF_CONTEXT) {
+                dstContext = ((const CubsConstRef*)tempDstValue)->context;
+                dstValue = ((const CubsConstRef*)tempDstValue)->ref;
+            }
+            else if(tempDstContext == &CUBS_MUT_REF_CONTEXT) {
+                dstContext = ((const CubsMutRef*)tempDstValue)->context;
+                dstValue = ((const CubsMutRef*)tempDstValue)->ref;
+            }
+            else if(tempDstContext == &CUBS_UNIQUE_CONTEXT) {
+                dstContext = ((const CubsUnique*)tempDstValue)->context;
+                dstValue = cubs_unique_get((const CubsUnique*)tempDstValue);
+            }
+            else if(tempDstContext == &CUBS_SHARED_CONTEXT) {
+                dstContext = ((const CubsShared*)tempDstValue)->context;
+                dstValue = cubs_shared_get((const CubsShared*)tempDstValue);
+            }
+            else if(tempDstContext == &CUBS_WEAK_CONTEXT) {
+                dstContext = ((const CubsWeak*)tempDstValue)->context;
+                dstValue = cubs_weak_get((const CubsWeak*)tempDstValue);
+            } else {
+                unreachable();
+            }
+        }
+    }
+
+    assert(dstContext->membersLen > operands.memberIndex);
+    const size_t memberByteOffset = dstContext->members[operands.memberIndex].byteOffset;
+    const CubsTypeContext* memberContext = dstContext->members[operands.memberIndex].context;
+    
+    const void* memberDst = (const void*)&(((const uint8_t*)dstValue)[memberByteOffset]);
+
+    const void* src = cubs_interpreter_stack_value_at(operands.src);
+    assert(memberContext == cubs_interpreter_stack_context_at(operands.src));
+    memcpy(memberDst, src, memberContext->sizeOfType);
+}
+
 static void execute_equal(const Bytecode bytecode) {
     const OperandsEqual operands = *(const OperandsEqual*)&bytecode;
     const CubsTypeContext* context = cubs_interpreter_stack_context_at(operands.src1);
@@ -521,6 +704,18 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         } break;
         case OpCodeClone: {
             execute_clone(*instructionPointer);
+        } break;
+        case OpCodeDereference: {
+            execute_dereference(*instructionPointer);
+        } break;
+        case OpCodeSetReference: {
+            execute_set_reference(*instructionPointer);
+        } break;
+        case OpCodeGetMember: {
+            execute_get_member(*instructionPointer);
+        } break;
+        case OpCodeSetMember: {
+            execute_set_member(*instructionPointer);
         } break;
         case OpCodeEqual: {
             execute_equal(*instructionPointer);

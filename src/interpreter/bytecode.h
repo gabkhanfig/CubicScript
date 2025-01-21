@@ -35,6 +35,28 @@ typedef enum OpCode {
     /// Makes a clone of `src`, storing it in `dst`. Both memory locations will be valid after the clone.
     /// Does not validate that the memory being moved to is not in use.
     OpCodeClone,
+    /// Dereferences the type at `dst`, storing the value in `src`.
+    /// This results in a non-owning value as a reference, in which 
+    /// `OpCodeDeinit` will not  deinit the value. Works with 
+    /// `CubsConstRef`, `CubsMutRef`, `CubsUnique`, `CubsShared`, and `CubsWeak`.
+    OpCodeDereference,
+    /// Sets the memory referenced by `dst` to the value in `src`, moving the value
+    /// and setting the `src` context to NULL. Works with `CubsConstRef`, 
+    /// `CubsMutRef`, `CubsUnique`, `CubsShared`, and `CubsWeak`.
+    OpCodeSetReference,
+    // TODO maybe more efficient for OpCodeGetMember to be split into 2, one for values and one for references
+    /// Gets a non-owning value as a reference to the member variable within a
+    /// struct value or reference at `src` using the immediate member index of 
+    /// `memberIndex`, storing the reference in `dst`.
+    /// Can auto-dereference when necessary. Works with struct values, as well as
+    /// `CubsConstRef`, `CubsMutRef`, `CubsUnique`, `CubsShared`, and `CubsWeak`. 
+    OpCodeGetMember,
+    // TODO maybe more efficient for OpCodeSetMember to be split into 2, one for values and one for references
+    /// Sets the member of a struct value or reference at `dst` using the immediate
+    /// member index of `memberIndex`, to the value at `src`, moving the value. Can
+    /// auto-dereference when necessary. Works with struct values, as well as
+    /// `CubsConstRef`, `CubsMutRef`, `CubsUnique`, `CubsShared`, and `CubsWeak`. 
+    OpCodeSetMember,
     // TODO this operation
     OpCodeCast,
     /// Performs `src1 == src2`, storing the bool result in dst.

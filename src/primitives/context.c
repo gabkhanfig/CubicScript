@@ -21,6 +21,8 @@ const CubsTypeContext CUBS__CONTEXT = {
     .hash = {0},
     .name = "",
     .nameLength = ,
+    .members = ,
+    .membersLen = ,
 };
 */
 
@@ -67,13 +69,15 @@ static int bool_hash(CubsCFunctionHandler handler) {
 }
 
 const CubsTypeContext CUBS_BOOL_CONTEXT = {
-.   sizeOfType = 1,
+    .sizeOfType = 1,
     .destructor = {0},
     .clone = {.func = {.externC = &bool_clone}, .funcType = cubsFunctionPtrTypeC},
     .eql = {.func = {.externC = &bool_eql}, .funcType = cubsFunctionPtrTypeC},
     .hash = {.func = {.externC = &bool_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "bool",
     .nameLength = 4,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -128,6 +132,8 @@ const CubsTypeContext CUBS_INT_CONTEXT = {
     .hash = {.func = {.externC = &int_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "int",
     .nameLength = 3,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -182,6 +188,8 @@ const CubsTypeContext CUBS_FLOAT_CONTEXT = {
     .hash = {.func = {.externC = &float_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "float",
     .nameLength = 5,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -236,6 +244,8 @@ const CubsTypeContext CUBS_CHAR_CONTEXT = {
     .hash = {.func = {.externC = &char_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "char",
     .nameLength = 4,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -300,6 +310,8 @@ const CubsTypeContext CUBS_STRING_CONTEXT = {
     .hash = {.func = {.externC = &string_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "string",
     .nameLength = 6,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -364,6 +376,8 @@ const CubsTypeContext CUBS_ARRAY_CONTEXT = {
     .hash = {.func = {.externC = &array_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "array",
     .nameLength = 5,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -428,6 +442,8 @@ const CubsTypeContext CUBS_SET_CONTEXT = {
     .hash = {.func = {.externC = &set_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "set",
     .nameLength = 3,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -492,6 +508,8 @@ const CubsTypeContext CUBS_MAP_CONTEXT = {
     .hash = {.func = {.externC = &map_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "map",
     .nameLength = 3,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -556,6 +574,8 @@ const CubsTypeContext CUBS_OPTION_CONTEXT = {
     .hash = {.func = {.externC = &option_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "option",
     .nameLength = 6,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -620,6 +640,8 @@ const CubsTypeContext CUBS_ERROR_CONTEXT = {
     .hash = {.func = {.externC = &error_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "error",
     .nameLength = 5,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -643,6 +665,8 @@ const CubsTypeContext CUBS_RESULT_CONTEXT = {
     .hash = {0},
     .name = "result",
     .nameLength = 6,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -666,6 +690,8 @@ const CubsTypeContext CUBS_UNIQUE_CONTEXT = {
     .hash = {0},
     .name = "unique",
     .nameLength = 6,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -719,6 +745,8 @@ const CubsTypeContext CUBS_SHARED_CONTEXT = {
     .hash = {0},
     .name = "shared",
     .nameLength = 6,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -772,6 +800,8 @@ const CubsTypeContext CUBS_WEAK_CONTEXT = {
     .hash = {0},
     .name = "weak",
     .nameLength = 4,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -827,6 +857,8 @@ const CubsTypeContext CUBS_FUNCTION_CONTEXT = {
     .hash = {.func = {.externC = &function_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "function",
     .nameLength = 8,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -884,6 +916,8 @@ const CubsTypeContext CUBS_CONST_REF_CONTEXT = {
     .hash = {.func = {.externC = &const_ref_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "const_ref",
     .nameLength = 9,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion
@@ -939,6 +973,8 @@ const CubsTypeContext CUBS_MUT_REF_CONTEXT = {
     .hash = {.func = {.externC = &mut_ref_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "mut_ref",
     .nameLength = 7,
+    .members = NULL,
+    .membersLen = 0,
 };
 
 #pragma endregion

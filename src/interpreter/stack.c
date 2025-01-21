@@ -106,7 +106,7 @@ const CubsTypeContext** cubs_interpreter_stack_context_ptr_at(size_t offset)
     return (const CubsTypeContext**)&threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
 }
 
-static bool is_owning_context_at(size_t offset) {
+bool cubs_is_owning_context_at(size_t offset) {
     assert(offset < threadLocalStack.frame.frameLength);
     uintptr_t contextPtr = threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + offset + RESERVED_SLOTS];
 
@@ -134,7 +134,7 @@ void cubs_interpreter_stack_unwind_frame() {
     uintptr_t* start = &threadLocalStack.contexts[threadLocalStack.frame.basePointerOffset + RESERVED_SLOTS];
     for(size_t i = 0; i < threadLocalStack.frame.frameLength; i++) {
         const CubsTypeContext* context = cubs_interpreter_stack_context_at(i);
-        const bool isOwningContext = is_owning_context_at(i);        
+        const bool isOwningContext = cubs_is_owning_context_at(i);        
         if(context == NULL || !isOwningContext) {
             continue;
         }
