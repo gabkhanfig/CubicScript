@@ -1843,8 +1843,6 @@ test "struct set member" {
         .membersLen = 2,
     };
 
-    _ = twoContext;
-
     { // value
         { // one member
             const bytecode = c.cubs_operands_make_set_member(0, 1, 0);
@@ -1866,7 +1864,44 @@ test "struct set member" {
             try expect(dst.num == 58);
         }
         { // two member, first member
+            const bytecode = c.cubs_operands_make_set_member(0, 2, 0);
 
+            c.cubs_interpreter_push_frame(3, null, null);
+            defer c.cubs_interpreter_pop_frame();
+
+            c.cubs_interpreter_stack_set_context_at(0, &twoContext);
+            c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_INT_CONTEXT);
+            const dst = @as(*TwoMemberStruct, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+            const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+            src.* = 58;
+            dst.* = .{ .num1 = 50, .num2 = 51 };
+
+            c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+            try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+            try expect(dst.num1 == 58);
+            try expect(dst.num2 == 51);
+        }
+        { // two member, second member
+            const bytecode = c.cubs_operands_make_set_member(0, 2, 1);
+
+            c.cubs_interpreter_push_frame(3, null, null);
+            defer c.cubs_interpreter_pop_frame();
+
+            c.cubs_interpreter_stack_set_context_at(0, &twoContext);
+            c.cubs_interpreter_stack_set_context_at(2, &c.CUBS_INT_CONTEXT);
+            const dst = @as(*TwoMemberStruct, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+            const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+            src.* = 58;
+            dst.* = .{ .num1 = 50, .num2 = 51 };
+
+            c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+            try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+            try expect(dst.num1 == 50);
+            try expect(dst.num2 == 58);
         }
     }
 }
