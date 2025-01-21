@@ -1755,8 +1755,6 @@ const twoContext = c.CubsTypeContext{
     .membersLen = 2,
 };
 
-// TODO remove setting context for get member
-
 test "struct get member from value" {
     { // one member
         const bytecode = c.cubs_operands_make_get_member(1, 0, 0);
