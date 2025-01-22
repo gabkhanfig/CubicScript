@@ -18,8 +18,6 @@ typedef struct FunctionMap {
     size_t available;
 } FunctionMap;
 
-static const FunctionMap FUNCTION_MAP_INITIALIZER = {0};
-
 /// Probably unnecessary, as deinitializing the entire arena itself should free all the functions and stuff.
 //void cubs_function_map_deinit(FunctionMap* self, struct ProtectedArena* arena);
 
