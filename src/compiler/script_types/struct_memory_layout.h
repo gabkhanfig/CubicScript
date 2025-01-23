@@ -20,8 +20,7 @@ typedef struct StructMemoryLayout {
 
 static inline size_t struct_memory_layout_next(StructMemoryLayout* self, const CubsTypeContext* context) {
     const size_t MAX_TYPE_ALIGN = 8;
-    fprintf(stderr, "=== TYPE: %s ===\n", context->name);
-
+    
     assert(context->sizeOfType > 0);
 
     // TODO handle user defined alignment
