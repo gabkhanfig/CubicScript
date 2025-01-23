@@ -68,7 +68,8 @@ CubsProgram cubs_program_init(CubsProgramInitParams params)
         .arena = arena, 
         .context = context, 
         .contextMutex = CUBS_MUTEX_INITIALIZER,
-        .functionMap = FUNCTION_MAP_INITIALIZER,
+        .functionMap = (FunctionMap){0},
+        .typeMap = (TypeMap){0},
     };
     *inner = innerData;
 
@@ -113,6 +114,27 @@ void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRu
     cubs_mutex_lock(contextMutex);
     context.vtable->errorCallback(context.ptr, self, NULL, err, message, messageLength);
     cubs_mutex_unlock(contextMutex);
+}
+
+const CubsTypeContext *cubs_program_find_type_context(const CubsProgram *self, CubsStringSlice fullyQualifiedName)
+{
+    const ProgramInner* inner = as_inner(self);
+    return cubs_type_map_find(&inner->typeMap, fullyQualifiedName);
+}
+
+CubsTypeContext *cubs_program_find_mut_script_type_context(CubsProgram *self, CubsStringSlice fullyQualifiedName)
+{
+    ProgramInner* inner = as_inner_mut(self);
+    return cubs_type_map_find_mut(&inner->typeMap, fullyQualifiedName);
+}
+
+void cubs_program_context_insert(CubsProgram *self, ProgramTypeContext context)
+{    
+    ProgramInner* inner = as_inner_mut(self);
+    ProgramTypeContext* contextMem = cubs_protected_arena_malloc(
+        &inner->arena, sizeof(ProgramTypeContext), _Alignof(ProgramTypeContext));
+    *contextMem = context;
+    cubs_type_map_insert(&inner->typeMap, &inner->arena, contextMem);
 }
 
 /// Not defined in `program.h`. Reserved for internal use only.
