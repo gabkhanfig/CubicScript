@@ -11,6 +11,7 @@ comptime {
     _ = @import("compiler/tokenizer.zig");
     _ = @import("compiler/ast.zig");
     _ = @import("compiler/stack_variables.zig");
+    _ = @import("compiler/script_types/struct_memory_layout.zig");
 
     // Many tests are within the structs themselves, so importing .ScriptThread for example is necessary.
     _ = @import("sync/thread.zig").ScriptThread;
