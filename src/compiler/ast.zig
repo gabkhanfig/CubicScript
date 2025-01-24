@@ -27,6 +27,12 @@ fn findFunction(program: *const c.CubsProgram, name: []const u8) ?c.CubsFunction
     return null;
 }
 
+fn findStructContext(program: *const c.CubsProgram, name: []const u8) ?*const c.CubsTypeContext {
+    const slice = c.CubsStringSlice{ .str = name.ptr, .len = name.len };
+    const found = c.cubs_program_find_type_context(program, slice);
+    return @ptrCast(found);
+}
+
 test "function no args no return no statement ast init" {
     const source = "fn testFunc() {}";
     const tokenIter = tokenIterInit(source, null);
@@ -398,6 +404,38 @@ test "function return binary expression" {
         var retContext: *const c.CubsTypeContext = undefined;
         try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
         try expect(retValue == 9);
+    } else {
+        try expect(false);
+    }
+}
+
+test "simple struct" {
+    const source =
+        \\ struct testStruct {
+        \\  someVar: int;
+        \\};
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findStructContext(&program, "testStruct")) |found| {
+        try expect(found.sizeOfType == 8);
+        try expect(found.nameLength == 10);
+        try expect(std.mem.eql(u8, found.name[0..found.nameLength], "testStruct"));
+        try expect(found.membersLen == 1);
+
+        const member = found.members[0];
+        try expect(member.byteOffset == 0);
+        try expect(member.context == &c.CUBS_INT_CONTEXT);
+        try expect(member.name.len == 7);
+        try expect(std.mem.eql(u8, member.name.str[0..member.name.len], "someVar"));
     } else {
         try expect(false);
     }

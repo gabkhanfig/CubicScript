@@ -2,7 +2,8 @@
 #include "ast_node_array.h"
 
 typedef struct FileNode {
-    AstNodeArray items;
+    AstNodeArray functions;
+    AstNodeArray structs;
 } FileNode;
 
 AstNode cubs_file_node_init(TokenIter* iter);

@@ -139,6 +139,7 @@
         "reference.h": "c",
         "struct_node.h": "c",
         "member_variable.h": "c",
-        "program_type_context.h": "c"
+        "program_type_context.h": "c",
+        "function_node.h": "c"
     }
 }

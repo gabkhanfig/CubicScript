@@ -3,10 +3,13 @@
 #include "../../program/program_internal.h"
 #include "../../platform/mem.h"
 #include "function_node.h"
+#include "struct_node.h"
 #include <stdio.h>
+#include "../../util/panic.h"
 
 static void file_node_deinit(FileNode* self) {
-    ast_node_array_deinit(&self->items);
+    ast_node_array_deinit(&self->functions);
+    ast_node_array_deinit(&self->structs);
     cubs_free(self, sizeof(FileNode), _Alignof(FileNode));
 }
 
@@ -16,8 +19,14 @@ static CubsStringSlice file_node_to_string(const FileNode* self) {
 }
 
 static void file_node_compile(const FileNode* self, struct CubsProgram* program) {
-    for(size_t i = 0; i < self->items.len; i++) {
-        const AstNode node = self->items.nodes[i];
+    for(uint32_t i = 0; i < self->structs.len; i++) {
+        const AstNode node = self->structs.nodes[i];
+        assert(node.vtable->defineType != NULL);
+        ast_node_define_type(&node, program);
+    }
+
+    for(uint32_t i = 0; i < self->functions.len; i++) {
+        const AstNode node = self->functions.nodes[i];
         assert(node.vtable->compile != NULL);
         ast_node_compile(&node, program);
     }
@@ -44,10 +53,20 @@ AstNode cubs_file_node_init(TokenIter *iter)
         if(next == TOKEN_NONE) { // end of file
 
         } else {
-            assert(next == FN_KEYWORD);
-
-            const AstNode functionNode = cubs_function_node_init(iter);
-            ast_node_array_push(&self->items, functionNode);
+            switch(next) {
+                case FN_KEYWORD: {
+                    const AstNode functionNode = cubs_function_node_init(iter);
+                    ast_node_array_push(&self->functions, functionNode);
+                } break;
+                case STRUCT_KEYWORD: {
+                    const AstNode structNode = cubs_struct_node_init(iter);
+                    ast_node_array_push(&self->structs, structNode);
+                } break;
+                default: {
+                    fprintf(stderr, "Unexpected token [%d]\n", next);
+                    cubs_panic("Found unexpected token when parsing file node");
+                } break;
+            }         
         }
     }
 
