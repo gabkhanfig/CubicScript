@@ -96,7 +96,6 @@ test "mixed types" {
         try expect(0 == struct_memory_layout_next(&layout, &c.CUBS_BOOL_CONTEXT));
         try expect(8 == struct_memory_layout_next(&layout, &c.CUBS_STRING_CONTEXT));
         try expect(40 == struct_memory_layout_next(&layout, &c.CUBS_INT_CONTEXT));
-        std.debug.print("{}\n", .{layout.structSize});
         try expect(48 == layout.structSize);
         try expect(8 == layout.structAlign);
     }
