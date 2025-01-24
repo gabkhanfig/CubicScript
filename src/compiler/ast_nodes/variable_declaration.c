@@ -45,6 +45,7 @@ static AstNodeVTable variable_declaration_node_vtable = {
     .compile = NULL,
     .toString = NULL,
     .buildFunction = (AstNodeBuildFunction)&variable_declaration_node_build_function,
+    .defineType = NULL,
 };
 
 AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray *variables)

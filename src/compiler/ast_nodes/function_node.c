@@ -86,6 +86,7 @@ static AstNodeVTable function_node_vtable = {
     .compile = (AstNodeCompile)&function_node_compile,
     .toString = (AstNodeToString)&function_node_to_string,
     .buildFunction = NULL,
+    .defineType = NULL,
 };
 
 /// Parses from `'('` to `')'`.

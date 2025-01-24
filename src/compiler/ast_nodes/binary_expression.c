@@ -52,6 +52,7 @@ static AstNodeVTable binary_expr_node_vtable = {
     .compile = NULL,
     .toString = NULL,
     .buildFunction = (AstNodeBuildFunction)&binary_expr_node_build_function,
+    .defineType = NULL,
 };
 
 AstNode cubs_binary_expr_node_init(

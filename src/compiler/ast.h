@@ -17,6 +17,8 @@ enum AstNodeType {
     astNodeTypeReturn,
     astNodeBinaryExpression,
     astNodeVariableDeclaration,
+    astNodeTypeStruct,
+    astNodeTypeMemberVariable,
 };
 
 typedef void (*AstNodeDeinit)(void* self);
@@ -27,6 +29,10 @@ typedef void(*AstNodeBuildFunction)(
     struct FunctionBuilder* builder,
     const struct StackVariablesAssignment* stackAssignment
 );
+typedef void(*AstNodeDefineType)(
+    const void* self,
+    struct CubsProgram* program
+);
 
 typedef struct AstNodeVTable {
     enum AstNodeType nodeType;
@@ -34,6 +40,7 @@ typedef struct AstNodeVTable {
     AstNodeCompile compile;
     AstNodeToString toString;
     AstNodeBuildFunction buildFunction;
+    AstNodeDefineType defineType;
 } AstNodeVTable;
 
 typedef struct AstNode {
@@ -55,6 +62,10 @@ inline static CubsStringSlice ast_node_to_string(const AstNode* self) {
 
 inline static void ast_node_build_function(const AstNode* self, struct FunctionBuilder* builder, const struct StackVariablesAssignment* stackAssignments) {
     self->vtable->buildFunction(self->ptr, builder, stackAssignments);
+}
+
+inline static void ast_node_define_type(const AstNode* self, struct CubsProgram* program) {
+    self->vtable->defineType(self->ptr, program);
 }
 
 typedef struct Ast {
