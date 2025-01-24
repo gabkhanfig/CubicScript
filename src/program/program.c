@@ -116,6 +116,32 @@ void _cubs_internal_program_runtime_error(const CubsProgram* self, CubsProgramRu
     cubs_mutex_unlock(contextMutex);
 }
 
+CubsTypeContext *cubs_program_malloc_script_context(CubsProgram *self)
+{
+    ProgramInner* inner = as_inner_mut(self);
+    CubsTypeContext* mem = (CubsTypeContext*)cubs_protected_arena_malloc(
+        &inner->arena, sizeof(CubsTypeContext), _Alignof(CubsTypeContext));
+    return mem;
+}
+
+CubsStringSlice cubs_program_malloc_copy_string_slice(CubsProgram *self, CubsStringSlice source)
+{
+    ProgramInner* inner = as_inner_mut(self);
+    char* mem = (char*)cubs_protected_arena_malloc(
+        &inner->arena, sizeof(char) * source.len, _Alignof(char));
+    memcpy(mem, source.str, source.len);
+    const CubsStringSlice slice = {.str = mem, .len = source.len};
+    return slice;
+}
+
+CubsTypeMemberContext *cubs_program_malloc_member_context_array(CubsProgram *self, size_t count)
+{
+    ProgramInner* inner = as_inner_mut(self);
+    CubsTypeMemberContext* mem = (CubsTypeMemberContext*)cubs_protected_arena_malloc(
+        &inner->arena, sizeof(CubsTypeMemberContext) * count, _Alignof(CubsTypeMemberContext));
+    return mem;
+}
+
 const CubsTypeContext *cubs_program_find_type_context(const CubsProgram *self, CubsStringSlice fullyQualifiedName)
 {
     const ProgramInner* inner = as_inner(self);

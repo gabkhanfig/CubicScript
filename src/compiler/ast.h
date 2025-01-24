@@ -32,7 +32,7 @@ typedef void(*AstNodeBuildFunction)(
 );
 typedef void(*AstNodeDefineType)(
     const void* self,
-    struct TypeMap* typeMap
+    struct CubsProgram* program
 );
 
 typedef struct AstNodeVTable {
@@ -65,8 +65,8 @@ inline static void ast_node_build_function(const AstNode* self, struct FunctionB
     self->vtable->buildFunction(self->ptr, builder, stackAssignments);
 }
 
-inline static void ast_node_define_type(const AstNode* self, struct TypeMap* typeMap) {
-    self->vtable->defineType(self->ptr, typeMap);
+inline static void ast_node_define_type(const AstNode* self, struct CubsProgram* program) {
+    self->vtable->defineType(self->ptr, program);
 }
 
 typedef struct Ast {

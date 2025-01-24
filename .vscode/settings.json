@@ -136,6 +136,9 @@
         "__bit_reference": "c",
         "bitset": "c",
         "__memory": "c",
-        "reference.h": "c"
+        "reference.h": "c",
+        "struct_node.h": "c",
+        "member_variable.h": "c",
+        "program_type_context.h": "c"
     }
 }
