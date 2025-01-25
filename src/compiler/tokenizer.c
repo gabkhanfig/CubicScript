@@ -389,7 +389,7 @@ TOKEN_CONSTANT(FALSE_KEYWORD_SLICE, "false");
 TOKEN_CONSTANT(BOOL_KEYWORD_SLICE, "bool");
 TOKEN_CONSTANT(INT_KEYWORD_SLICE, "int");
 TOKEN_CONSTANT(FLOAT_KEYWORD_SLICE, "float");
-TOKEN_CONSTANT(STR_KEYWORD_SLICE, "str");
+TOKEN_CONSTANT(STRING_KEYWORD_SLICE, "string");
 TOKEN_CONSTANT(CHAR_KEYWORD_SLICE, "char");
 TOKEN_CONSTANT(IMPORT_KEYWORD_SLICE, "import");
 TOKEN_CONSTANT(MOD_KEYWORD_SLICE, "mod");
@@ -545,9 +545,9 @@ static NextToken get_next_token(const TokenIter* self) {
         } else if(starts_with_keyword_substring(tokenStart, FLOAT_KEYWORD_SLICE)) {
             found = FLOAT_KEYWORD;
             foundSlice = FLOAT_KEYWORD_SLICE;
-        } else if(starts_with_keyword_substring(tokenStart, STR_KEYWORD_SLICE)) {
-            found = STR_KEYWORD;
-            foundSlice = STR_KEYWORD_SLICE;
+        } else if(starts_with_keyword_substring(tokenStart, STRING_KEYWORD_SLICE)) {
+            found = STRING_KEYWORD;
+            foundSlice = STRING_KEYWORD_SLICE;
         } else if(starts_with_keyword_substring(tokenStart, CHAR_KEYWORD_SLICE)) {
             found = CHAR_KEYWORD;
             foundSlice = CHAR_KEYWORD_SLICE;

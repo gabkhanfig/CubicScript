@@ -537,8 +537,8 @@ test "float" {
     validateParseKeyword("float", c.FLOAT_KEYWORD);
 }
 
-test "str" {
-    validateParseKeyword("str", c.STR_KEYWORD);
+test "string" {
+    validateParseKeyword("string", c.STRING_KEYWORD);
 }
 
 test "char" {
