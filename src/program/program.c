@@ -127,9 +127,12 @@ CubsTypeContext *cubs_program_malloc_script_context(CubsProgram *self)
 CubsStringSlice cubs_program_malloc_copy_string_slice(CubsProgram *self, CubsStringSlice source)
 {
     ProgramInner* inner = as_inner_mut(self);
+    // Add one for null terminator
+    // Technically unnecessary but convenient
     char* mem = (char*)cubs_protected_arena_malloc(
-        &inner->arena, sizeof(char) * source.len, _Alignof(char));
+        &inner->arena, sizeof(char) * source.len + 1, _Alignof(char)); 
     memcpy(mem, source.str, source.len);
+    mem[source.len] = '\0';
     const CubsStringSlice slice = {.str = mem, .len = source.len};
     return slice;
 }
