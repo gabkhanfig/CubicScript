@@ -33,6 +33,14 @@ fn findStructContext(program: *const c.CubsProgram, name: []const u8) ?*const c.
     return @ptrCast(found);
 }
 
+fn contextNameIs(context: *const c.CubsTypeContext, name: []const u8) bool {
+    return std.mem.eql(u8, context.name[0..context.nameLength], name);
+}
+
+fn memberContextNameIs(member: *const c.CubsTypeMemberContext, name: []const u8) bool {
+    return std.mem.eql(u8, member.name.str[0..member.name.len], name);
+}
+
 test "function no args no return no statement ast init" {
     const source = "fn testFunc() {}";
     const tokenIter = tokenIterInit(source, null);
@@ -428,14 +436,53 @@ test "simple struct" {
     if (findStructContext(&program, "testStruct")) |found| {
         try expect(found.sizeOfType == 8);
         try expect(found.nameLength == 10);
-        try expect(std.mem.eql(u8, found.name[0..found.nameLength], "testStruct"));
+        try expect(contextNameIs(found, "testStruct"));
         try expect(found.membersLen == 1);
 
         const member = found.members[0];
         try expect(member.byteOffset == 0);
         try expect(member.context == &c.CUBS_INT_CONTEXT);
         try expect(member.name.len == 7);
-        try expect(std.mem.eql(u8, member.name.str[0..member.name.len], "someVar"));
+        try expect(memberContextNameIs(&member, "someVar"));
+    } else {
+        try expect(false);
+    }
+}
+
+test "struct two member both int" {
+    const source =
+        \\ struct testStruct {
+        \\  num1: int;
+        \\  num2: int;
+        \\};
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findStructContext(&program, "testStruct")) |found| {
+        try expect(found.sizeOfType == 16);
+        try expect(found.nameLength == 10);
+        try expect(contextNameIs(found, "testStruct"));
+        try expect(found.membersLen == 2);
+
+        const member1 = found.members[0];
+        try expect(member1.byteOffset == 0);
+        try expect(member1.context == &c.CUBS_INT_CONTEXT);
+        try expect(member1.name.len == 4);
+        try expect(memberContextNameIs(&member1, "num1"));
+
+        const member2 = found.members[1];
+        try expect(member2.byteOffset == 8);
+        try expect(member2.context == &c.CUBS_INT_CONTEXT);
+        try expect(member2.name.len == 4);
+        try expect(memberContextNameIs(&member2, "num2"));
     } else {
         try expect(false);
     }
