@@ -42,7 +42,8 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
 
     // arguments
     for(size_t i = 0; i < self->argCount; i++) {
-        cubs_function_builder_add_arg(&builder, self->variables.variables[i].context);
+        assert(self->variables.variables[i].typeInfo.knownContext != NULL);
+        cubs_function_builder_add_arg(&builder, self->variables.variables[i].typeInfo.knownContext);
     }
 
     // Statements
@@ -98,23 +99,13 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
         const TokenType colonToken = cubs_token_iter_next(iter);
         assert(colonToken == COLON_SYMBOL && "Expected \':\' following function argument variable name");
 
-        const TokenType typeNameToken = cubs_token_iter_next(iter);
-        switch(typeNameToken) {
-            case INT_KEYWORD: {
-                info.context = &CUBS_INT_CONTEXT;
-            } break;
-            // case IDENTIFIER: { // TODO handle other types
-            //     info.taggedName = iter->currentMetadata.identifier;
-            // } break;
-            default: {
-                assert(false && "Unexpected token following variable name and ':'");
-            } break;
-        }
+        (void)cubs_token_iter_next(iter);
+        info.typeInfo = cubs_parse_type_resolution_info(iter);
 
         cubs_stack_variables_array_push(&variables, info);
 
         // move iterator forward. while loop will check this
-        token = cubs_token_iter_next(iter);
+        token = iter->current.tag;
         if(token != COMMA_SYMBOL && token != RIGHT_PARENTHESES_SYMBOL) {
             assert(false && "Expected comma or right parentheses to follow function argument");
         }

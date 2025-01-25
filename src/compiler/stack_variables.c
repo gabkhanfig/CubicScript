@@ -105,9 +105,9 @@ StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray *v
     StackVariablesAssignment self = {0};
     for(size_t i = 0; i < variables->len; i++) {
         const StackVariableInfo* info = &variables->variables[i];
-        assert(info->context != NULL);
+        assert(info->typeInfo.knownContext != NULL);
         const CubsStringSlice slice = cubs_string_as_slice(&info->name);
-        const bool success = cubs_stack_assignment_push(&self, slice, info->context->sizeOfType);
+        const bool success = cubs_stack_assignment_push(&self, slice, info->typeInfo.knownContext->sizeOfType);
         assert(success);
     }
     return self;

@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include "../primitives/string/string.h"
 #include "../primitives/context.h"
+#include "ast_nodes/type_resolution_info.h"
 
 typedef struct StackVariableInfo {
     /// NON-OWNING reference to the name of this variable.
@@ -15,13 +16,7 @@ typedef struct StackVariableInfo {
     CubsString name;
     /// If this is a temporary variable, `name` is allowed to be mutated freely
     bool isTemporary;
-    /// May be NULL, indicating that the type info for this variable
-    /// has not been fully resolved.
-    const CubsTypeContext* context;
-    /// The type name found within the source code. For example
-    /// `const a: int = ...`, which `taggedName` will hold the slice
-    /// `"int"`. If this string is empty, there is no tag.
-    CubsStringSlice taggedName;
+    TypeResolutionInfo typeInfo;
 } StackVariableInfo;
 
 void cubs_stack_variable_info_deinit(StackVariableInfo* self);

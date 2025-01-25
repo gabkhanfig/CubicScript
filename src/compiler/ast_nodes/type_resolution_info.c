@@ -49,3 +49,11 @@ TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
     (void)cubs_token_iter_next(iter);
     return self;
 }
+
+TypeResolutionInfo cubs_type_resolution_info_from_context(const struct CubsTypeContext* context) {
+    TypeResolutionInfo self = {0};
+    self.knownContext = context;
+    const CubsStringSlice typeName = {.str = context->name, .len = context->nameLength};
+    self.typeName = typeName;
+    return self;
+}

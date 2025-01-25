@@ -6,6 +6,7 @@
 #include "../../interpreter/function_definition.h"
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
+#include <stdio.h>
 
 static void variable_declaration_node_deinit(VariableDeclarationNode* self) {
     expr_value_deinit(&self->initialValue);
@@ -77,25 +78,10 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
         variableInfo.name = variableName;
     }
 
-    TokenType typenameToken = TOKEN_NONE;
-
-    { // currently implicit types are not permitted, forcing explicit types to be set for variables
-        const TokenType colonNext = cubs_token_iter_next(iter);
-        assert(colonNext == COLON_SYMBOL);
-
-        typenameToken = cubs_token_iter_next(iter);
-        switch(typenameToken) {
-            case INT_KEYWORD: {
-                variableInfo.context = &CUBS_INT_CONTEXT;
-            } break;
-            case IDENTIFIER: {
-                assert(false && "Cannot handle idenfitiers as typenames currently");
-            } break;
-            default: {
-                assert(false && "Expected type name");
-            } break;
-        }
-    }
+    const TokenType colonNext = cubs_token_iter_next(iter);
+    assert(colonNext == COLON_SYMBOL);
+    (void)cubs_token_iter_next(iter);
+    variableInfo.typeInfo = cubs_parse_type_resolution_info(iter);
 
     // Variable order is preserved
     self->variableNameIndex = variables->len;
@@ -105,22 +91,19 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
 
     bool isNonZeroedInitial = false;
     { // next will either be a semicolon or the assignment
-        const TokenType followingTypename = cubs_token_iter_next(iter);
+        const TokenType followingTypename = iter->current.tag;
         // If its just a semicolon and not an expression/literal,
         // we zero initialize the variable
         if(followingTypename == SEMICOLON_SYMBOL) {
-            switch(typenameToken) {
-                case INT_KEYWORD: {
-                    ExprValue value = {0};
-                    value.tag = IntLit;
-                    value.value.intLiteral.literal = 0;
-                    // We don't need to set the stack variable index for the literal value as
-                    // it's just used as an immediate value.
-                    self->initialValue = value;
-                } break;
-                default: {
-                    assert(false && "Cannot zero initialize other types");
-                }
+            if(variableInfo.typeInfo.knownContext == &CUBS_INT_CONTEXT) {
+                ExprValue value = {0};
+                value.tag = IntLit;
+                value.value.intLiteral.literal = 0;
+                // We don't need to set the stack variable index for the literal value as
+                // it's just used as an immediate value.
+                self->initialValue = value;
+            } else {
+                assert(false && "Cannot zero initialize other types");
             }
         } else {
             assert(followingTypename == ASSIGN_OPERATOR);

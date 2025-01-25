@@ -23,8 +23,7 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
                 StackVariableInfo temporaryVariable = {
                     .name = variableName,
                     .isTemporary = true,
-                    .context = &CUBS_INT_CONTEXT,
-                    .taggedName = {0},
+                    .typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
                 };
 
                 value.tag = IntLit;
@@ -84,8 +83,7 @@ ExprValue cubs_parse_expression(
             StackVariableInfo temporaryVariable = {
                 .name = variableName,
                 .isTemporary = true,
-                .context = &CUBS_INT_CONTEXT,
-                .taggedName = {0},
+                .typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
             };
             // order is preserved
             outSrc = variables->len;
