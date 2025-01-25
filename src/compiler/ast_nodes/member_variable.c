@@ -31,28 +31,11 @@ AstNode cubs_member_variable_init(TokenIter* iter) {
         assert(tokenType == COLON_SYMBOL);
     }
 
-    { // type
-        (void)cubs_token_iter_next(iter);
-        const Token token = iter->current;
-        switch(token.tag) {
-            case INT_KEYWORD: {
-                self->typeInfo.tag = VariableTypeInfoKnown;
-                self->typeInfo.info.knownContext = &CUBS_INT_CONTEXT;
-            } break;
-            case IDENTIFIER: {
-                self->typeInfo.tag = VariableTypeInfoTypeName;
-                self->typeInfo.info.typeName = token.value.identifier;
-            } break;
-            default: {
-                unreachable();
-            }
-        }
-    }
+    (void)cubs_token_iter_next(iter);
+    self->typeInfo = cubs_parse_type_resolution_info(iter);
 
-    { // ends with semicolon
-        const TokenType tokenType = cubs_token_iter_next(iter);
-        assert(tokenType == SEMICOLON_SYMBOL);
-    }
+    // ends with semicolon
+    assert(iter->current.tag == SEMICOLON_SYMBOL);
 
     const AstNode node = {.ptr = (void*)self, .vtable = &member_variable_node_vtable};
     return node;

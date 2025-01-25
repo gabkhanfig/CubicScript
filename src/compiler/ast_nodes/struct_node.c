@@ -25,14 +25,8 @@ static void struct_node_define_type(const StructNode* self, CubsProgram* program
 
         CubsTypeMemberContext memberContext = {0};
 
-        switch(memberNode->typeInfo.tag) {
-            case VariableTypeInfoKnown: {
-                memberContext.context = memberNode->typeInfo.info.knownContext;
-            } break;
-            case VariableTypeInfoTypeName: {
-                cubs_panic("Cannot yet handle non-primitive types for struct member types");
-            } break;
-        }
+        assert(memberNode->typeInfo.knownContext != NULL);
+        memberContext.context = memberNode->typeInfo.knownContext;
 
         memberContext.byteOffset = struct_memory_layout_next(&layout, memberContext.context);
         memberContext.name = cubs_program_malloc_copy_string_slice(program, memberNode->name);

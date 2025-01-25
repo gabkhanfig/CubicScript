@@ -41,6 +41,7 @@ add_library(CubicScript STATIC
     "src/compiler/ast_nodes/expression_value.c"
     "src/compiler/ast_nodes/struct_node.c"
     "src/compiler/ast_nodes/member_variable.c"
+    "src/compiler/ast_nodes/type_resolution_info.c"
 
     "src/sync/atomic.c"
     "src/sync/locks.c"
