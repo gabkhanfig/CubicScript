@@ -30,26 +30,11 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
         assert(cubs_string_init(&functionName, self->functionName) == cubsStringErrorNone);
         builder.fullyQualifiedName = functionName;
         builder.name = cubs_string_clone(&functionName);
-        //fprintf(stderr, "function node compiling [%s]\n", cubs_string_as_slice(&builder.name).str);
     }
 
-    { // return type
-        switch(self->retInfo.retTag) {
-            case functionReturnNone: break;
-
-            case functionReturnToken: {
-
-                switch(self->retInfo.retType.token) {
-                    case INT_LITERAL: {
-                        builder.optReturnType = &CUBS_INT_CONTEXT;
-                    } break;
-                }
-            } break;
-
-            case functionReturnIdentifier: {
-                assert(false && "Cannot handle return values other than none and int");
-            } break;
-        }
+    if(self->hasRetType) {
+        assert(self->retType.knownContext != NULL);
+        builder.optReturnType = self->retType.knownContext;
     }
 
     StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables);
@@ -142,35 +127,6 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
     return variables;
 }
 
-/// Parses from `')'` to `'{'`.
-/// After calling, assuming no parsing errors occur,
-/// `iter->current` will be `LEFT_BRACE_SYMBOL`
-static FunctionReturnType parse_function_return(TokenIter* iter) {
-    assert(iter->current.tag = RIGHT_PARENTHESES_SYMBOL);
-
-    // Zeroed means void return type
-    FunctionReturnType ret = {0};
-
-    TokenType token = cubs_token_iter_next(iter);
-    if(token != LEFT_BRACE_SYMBOL) { // has return type            
-        if(token == INT_KEYWORD) {
-            ret.retTag = functionReturnToken;
-            ret.retType.token = INT_KEYWORD;
-        }
-        if(token == IDENTIFIER) {
-            assert("Cannot handle identifier returns yet");
-        } else {
-            assert("Cannot handle other stuff for function return yet");
-        }
-
-        token = cubs_token_iter_next(iter); // left bracket should follow after token
-        assert(token == LEFT_BRACE_SYMBOL); 
-    }
-    // TODO more complex return types, for now just nothing or ints
-    return ret;
-}
-
-
 AstNode cubs_function_node_init(TokenIter *iter)
 {
     assert(iter->current.tag == FN_KEYWORD);
@@ -189,8 +145,16 @@ AstNode cubs_function_node_init(TokenIter *iter)
     self->argCount = self->variables.len;
     assert(iter->current.tag = RIGHT_PARENTHESES_SYMBOL);
 
-    self->retInfo = parse_function_return(iter);
-    assert(iter->current.tag == LEFT_BRACE_SYMBOL); 
+    { // return type
+        const TokenType optionalRetToken = cubs_token_iter_next(iter);
+        if(optionalRetToken == LEFT_BRACE_SYMBOL) {
+            self->hasRetType = false;
+        } else {
+            self->hasRetType = true;
+            self->retType = cubs_parse_type_resolution_info(iter);
+            assert(iter->current.tag == LEFT_BRACE_SYMBOL); 
+        }
+    }
 
     // TODO figure out how to handle temporary variables
 

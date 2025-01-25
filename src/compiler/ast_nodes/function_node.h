@@ -1,28 +1,14 @@
 #include "../ast.h"
 #include "ast_node_array.h"
 #include "../stack_variables.h"
-
-enum FunctionReturnEType {
-    functionReturnNone = 0,
-    functionReturnToken,
-    /// struct identifier for example
-    functionReturnIdentifier,
-};
-
-union FunctionReturnUType {
-    TokenType token;
-    CubsStringSlice identifier;
-};
-
-typedef struct FunctionReturnType {
-    enum FunctionReturnEType retTag;
-    union FunctionReturnUType retType;
-} FunctionReturnType;
+#include "type_resolution_info.h"
 
 typedef struct FunctionNode {
     CubsStringSlice functionName;
     AstNodeArray items;
-    FunctionReturnType retInfo;
+    bool hasRetType;
+    /// Should not be used if `hasRetType == false`.
+    TypeResolutionInfo retType;
     StackVariablesArray variables;
     /// indices `0` to `argCount` will be the function argument variables
     /// stored within `variables`.
