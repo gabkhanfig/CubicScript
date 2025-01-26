@@ -17,22 +17,54 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
     ExprValue value = {0};
 
     switch(token.tag) {
+        case TRUE_KEYWORD: 
+        case FALSE_KEYWORD: {
+            const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpBoolLit", .len = 11});
+
+            StackVariableInfo temporaryVariable = {
+                .name = variableName,
+                .isTemporary = true,
+                .typeInfo = cubs_type_resolution_info_from_context(&CUBS_BOOL_CONTEXT),
+            };
+
+            value.tag = BoolLit;
+            value.value.boolLiteral.literal = token.tag == TRUE_KEYWORD; // If "true", then true literal, otherwise false literal
+            value.value.intLiteral.variableIndex = variables->len;
+            cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+        } break;
         case INT_LITERAL: {
-                const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpIntLit", .len = 10});
+            const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpIntLit", .len = 10});
             
-                StackVariableInfo temporaryVariable = {
-                    .name = variableName,
-                    .isTemporary = true,
-                    .typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
-                };
+            StackVariableInfo temporaryVariable = {
+                .name = variableName,
+                .isTemporary = true,
+                .typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
+            };
 
-                value.tag = IntLit;
-                value.value.intLiteral.literal = token.value.intLiteral;
-                // Variable order is preserved
-                value.value.intLiteral.variableIndex = variables->len;
+            value.tag = IntLit;
+            value.value.intLiteral.literal = token.value.intLiteral;
+            // Variable order is preserved
+            value.value.intLiteral.variableIndex = variables->len;
 
-                // variables->len will be increased by 1
-                cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+            // variables->len will be increased by 1
+            cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+        } break;
+        case FLOAT_LITERAL: {
+            const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpFloatLit", .len = 12});
+            
+            StackVariableInfo temporaryVariable = {
+                .name = variableName,
+                .isTemporary = true,
+                .typeInfo = cubs_type_resolution_info_from_context(&CUBS_FLOAT_CONTEXT),
+            };
+
+            value.tag = FloatLit;
+            value.value.floatLiteral.literal = token.value.floatLiteral;
+            // Variable order is preserved
+            value.value.floatLiteral.variableIndex = variables->len;
+
+            // variables->len will be increased by 1
+            cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
         } break;
         case IDENTIFIER: {
             // TODO handle other kinds of identifiers such as structs function pointers

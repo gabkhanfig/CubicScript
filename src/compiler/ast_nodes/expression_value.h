@@ -5,15 +5,27 @@
 
 struct StackVariablesArray;
 
+struct ExprValueBoolLiteral {
+    bool literal;
+    size_t variableIndex;
+};
+
 struct ExprValueIntLiteral {
     int64_t literal;
+    size_t variableIndex;
+};
+
+struct ExprValueFloatLiteral {
+    double literal;
     size_t variableIndex;
 };
 
 union ExprValueMetadata {
     /// Index within the stack variables to find the name of the variable
     size_t variableIndex;
+    struct ExprValueBoolLiteral boolLiteral;
     struct ExprValueIntLiteral intLiteral;
+    struct ExprValueFloatLiteral floatLiteral;
     //double floatLiteral;
     AstNode expression;
     // TODO
@@ -23,6 +35,7 @@ union ExprValueMetadata {
 /// Corresponds with `MathValueMetadata`
 enum ExprValueType {
     Variable,
+    BoolLit,
     IntLit,
     FloatLit,
     Expression,
