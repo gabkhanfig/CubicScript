@@ -95,10 +95,25 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
         // If its just a semicolon and not an expression/literal,
         // we zero initialize the variable
         if(followingTypename == SEMICOLON_SYMBOL) {
-            if(variableInfo.typeInfo.knownContext == &CUBS_INT_CONTEXT) {
+            if(variableInfo.typeInfo.knownContext == &CUBS_BOOL_CONTEXT) {
+                ExprValue value = {0};
+                value.tag = BoolLit;
+                value.value.boolLiteral.literal = false;
+                // We don't need to set the stack variable index for the literal value as
+                // it's just used as an immediate value.
+                self->initialValue = value;
+            }  
+            else if(variableInfo.typeInfo.knownContext == &CUBS_INT_CONTEXT) {
                 ExprValue value = {0};
                 value.tag = IntLit;
                 value.value.intLiteral.literal = 0;
+                // We don't need to set the stack variable index for the literal value as
+                // it's just used as an immediate value.
+                self->initialValue = value;
+            } else if(variableInfo.typeInfo.knownContext == &CUBS_FLOAT_CONTEXT) {
+                ExprValue value = {0};
+                value.tag = FloatLit;
+                value.value.floatLiteral.literal = 0.0;
                 // We don't need to set the stack variable index for the literal value as
                 // it's just used as an immediate value.
                 self->initialValue = value;
