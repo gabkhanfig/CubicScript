@@ -10,6 +10,7 @@
 #include "../../interpreter/operations.h"
 #include "../../interpreter/function_definition.h"
 #include "../../primitives/string/string.h"
+#include "parse_statements.h"
 //#include <stdio.h>
 
 static void function_node_deinit(FunctionNode* self) {
@@ -152,31 +153,10 @@ AstNode cubs_function_node_init(TokenIter *iter)
     { // statements
         bool endsWithReturn = false;
 
-        TokenType token = cubs_token_iter_next(iter);
-        while(token != RIGHT_BRACE_SYMBOL) {
-            endsWithReturn = false;
-            if(token == TOKEN_NONE) {
-                break;
-            }
-            switch(token) {
-                case RETURN_KEYWORD: 
-                {
-                    AstNode returnNode = cubs_return_node_init(iter, &self->variables);
-                    ast_node_array_push(&self->items, returnNode);
-                    endsWithReturn = true;
-                } break;
-                case CONST_KEYWORD: // fallthrough
-                case MUT_KEYWORD: 
-                {
-                    AstNode variableDeclarationNode = cubs_variable_declaration_node_init(iter, &self->variables);
-                    ast_node_array_push(&self->items, variableDeclarationNode);
-                } break;
-                default: 
-                {
-                    assert(false && "Invalid token in function statements");
-                } break;
-            }
-            token = cubs_token_iter_next(iter);
+        AstNode temp = {0};
+        while(parse_next_statement(&temp, iter, &self->variables)) {
+            ast_node_array_push(&self->items, temp);
+            endsWithReturn = temp.vtable->nodeType == astNodeTypeReturn;
         }
 
         if(endsWithReturn == false) {
