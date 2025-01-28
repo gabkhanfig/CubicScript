@@ -249,3 +249,6 @@ TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source, Cub
 
 /// Returns `TOKEN_NONE` if there is no next. Moves the iterator forward.
 TokenType cubs_token_iter_next(TokenIter* self);
+
+/// Peek at the next token type, without actually advancing the iterator.
+TokenType cubs_token_iter_peek(const TokenIter* self);

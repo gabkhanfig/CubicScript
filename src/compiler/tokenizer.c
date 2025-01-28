@@ -762,3 +762,8 @@ TokenType cubs_token_iter_next(TokenIter *self)
     }
     return next.next.tag;
 }
+
+TokenType cubs_token_iter_peek(const TokenIter* self) {
+    const NextToken next = get_next_token(self);
+    return next.next.tag;
+}
