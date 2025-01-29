@@ -9,6 +9,13 @@
 #include <assert.h>
 #include "parse_statements.h"
 #include <string.h>
+#include "../../interpreter/bytecode_array.h"
+#include "../../interpreter/operations.h"
+#include "../../interpreter/bytecode.h"
+
+static bool conditional_node_has_final_else_branch(const ConditionalNode* self) {
+    return self->conditionsLen == (self->blocksLen - 1);
+}
 
 static void conditional_node_deinit(ConditionalNode* self) {
     for(size_t i = 0; i < self->conditionsLen; i++) {
@@ -23,20 +30,105 @@ static void conditional_node_deinit(ConditionalNode* self) {
     FREE_TYPE(ConditionalNode, self);
 }
 
-// static void conditional_node_build_function(
-//     const ConditionalNode* self,
-//     FunctionBuilder* builder,
-//     const StackVariablesAssignment* stackAssignment
-// ) {
+static void conditional_node_build_function(
+    const ConditionalNode* self,
+    FunctionBuilder* builder,
+    const StackVariablesAssignment* stackAssignment
+) {
+    // Contains the indices of every bytecode corresponding to a "jump" instruction
+    // that this conditional node occupies. Add 1 to also track the start of
+    // where instructions continue after the if statements.
+    size_t* ifEndJumps = MALLOC_TYPE_ARRAY(size_t, self->blocksLen);
+    size_t ifEndJumpsIter = 0;
 
-// }
+    const Bytecode emptyBytecode = {0};
+
+    assert(self->conditionsLen >= self->blocksLen);
+    for(size_t i = 0; i < self->conditionsLen; i++) {
+        const ExprValue conditionValue = self->conditions[i];
+
+        size_t conditionVariableSrc = -1;
+
+        switch(conditionValue.tag) {
+            case Variable: {
+                conditionVariableSrc = conditionValue.value.variableIndex;
+            } break;
+            case BoolLit: {
+                const Bytecode loadImmediateBool = operands_make_load_immediate(
+                    LOAD_IMMEDIATE_BOOL, 
+                    conditionValue.value.boolLiteral.variableIndex, 
+                    (int64_t)conditionValue.value.boolLiteral.literal
+                );
+                cubs_function_builder_push_bytecode(builder, loadImmediateBool);
+                conditionVariableSrc = conditionValue.value.boolLiteral.variableIndex;
+            } break;
+            case Expression: {
+                assert(false && "Cannot currently handle expressions for conditions");
+            } break;
+            default: {
+                assert(false && "Cannot handle condition expression value as condition");
+            } break;
+        }
+
+        const Bytecode tempJumpBytecode = cubs_operands_make_jump(
+            JUMP_TYPE_IF_FALSE, INT32_MAX, (uint16_t)conditionVariableSrc);
+        const size_t tempJumpIndex = builder->bytecodeLen;
+        cubs_function_builder_push_bytecode(builder, tempJumpBytecode);
+
+        const AstNodeArray* statements = &self->statementBlocks[i];
+        for(size_t statementIter = 0; statementIter < statements->len; statementIter++) {
+            const AstNode node = statements->nodes[statementIter];
+            // TODO allow nodes that don't just do code gen, such as nested structs maybe? or lambdas? to determine
+            assert(node.vtable->buildFunction != NULL);
+            ast_node_build_function(&node, &builder, &stackAssignment);
+        }
+
+        { // insert unconditional jump at the end to escape to the non-conditional instructions
+            ifEndJumps[ifEndJumpsIter] = builder->bytecodeLen;
+            ifEndJumpsIter += 1;
+            // Later on, the correct jump offset will be set
+            cubs_function_builder_push_bytecode(builder, emptyBytecode);
+        }
+        { // set the conditional jump destination. Will always work to go to either
+          // else if, else, or escape the conditionals entirely.
+
+            const size_t jumpOffset = builder->bytecodeLen - tempJumpIndex;
+            OperandsJump jumpOperands = *(const OperandsJump*)&builder->bytecode[tempJumpIndex];
+            jumpOperands.jumpAmount = (int32_t)jumpOffset;
+            builder->bytecode[tempJumpIndex] = *(const Bytecode*)&jumpOperands;
+        }
+    }
+
+    // Handle case with an `else` without a condition
+    if(conditional_node_has_final_else_branch(self)) {
+        const AstNodeArray* statements = &self->statementBlocks[self->blocksLen - 1];
+        for(size_t statementIter = 0; statementIter < statements->len; statementIter++) {
+            const AstNode node = statements->nodes[statementIter];
+            // TODO allow nodes that don't just do code gen, such as nested structs maybe? or lambdas? to determine
+            assert(node.vtable->buildFunction != NULL);
+            ast_node_build_function(&node, &builder, &stackAssignment);
+        }
+
+        // Don't need end jump, as the interpreter will implicitly go after the
+        // else provided there isn't a return
+    }
+
+    for(size_t i = 0; i < ifEndJumpsIter; i++) {
+        const size_t jumpOffset = builder->bytecodeLen - ifEndJumps[i];
+        const Bytecode jumpOperands = cubs_operands_make_jump(
+            JUMP_TYPE_DEFAULT, (int32_t)jumpOffset, -1);
+        builder->bytecode[ifEndJumps[i]] = jumpOperands;
+    }
+
+    FREE_TYPE_ARRAY(size_t, ifEndJumps, self->blocksLen);
+}
 
 static AstNodeVTable conditional_node_vtable = {
     .nodeType = astNodeTypeConditional,
     .deinit = (AstNodeDeinit)&conditional_node_deinit,
     .compile = NULL,
     .toString = NULL,
-    .buildFunction = NULL, //(AstNodeBuildFunction)&conditional_node_build_function,
+    .buildFunction = (AstNodeBuildFunction)&conditional_node_build_function,
     .defineType = NULL,
 };
 
