@@ -605,3 +605,48 @@ test "if false no else with return" {
         try expect(false);
     }
 }
+
+test "if no else with user argument" {
+    const source =
+        \\fn testFunc(arg: bool) int { 
+        \\  if(arg) {
+        \\      return 10;
+        \\  }
+        \\  return 50;
+        \\};
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        {
+            var call = c.cubs_function_start_call(&func);
+            var arg: bool = true;
+            c.cubs_function_push_arg(&call, &arg, &c.CUBS_BOOL_CONTEXT);
+
+            var retValue: i64 = undefined;
+            var retContext: *const c.CubsTypeContext = undefined;
+            try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+            try expect(retValue == 10);
+        }
+        {
+            var call = c.cubs_function_start_call(&func);
+            var arg: bool = false;
+            c.cubs_function_push_arg(&call, &arg, &c.CUBS_BOOL_CONTEXT);
+
+            var retValue: i64 = undefined;
+            var retContext: *const c.CubsTypeContext = undefined;
+            try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+            try expect(retValue == 50);
+        }
+    } else {
+        try expect(false);
+    }
+}
