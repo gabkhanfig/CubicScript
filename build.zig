@@ -115,6 +115,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/interpreter/function_definition.c",
     "src/interpreter/operations.c",
     "src/interpreter/stack.c",
+    "src/interpreter/bytecode_array.c",
 
     "src/compiler/build_options.c",
     "src/compiler/compiler.c",
