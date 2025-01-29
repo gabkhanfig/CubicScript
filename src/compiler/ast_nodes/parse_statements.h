@@ -6,6 +6,8 @@
 #include "../ast.h"
 #include "return_node.h"
 #include "variable_declaration.h"
+#include "conditional_node.h"
+#include <stdio.h>
 
 /// Parses the next statement in the iterator.
 /// @return true if a statement was parsed, false if the end of the statements
@@ -27,7 +29,13 @@ inline static bool parse_next_statement(AstNode* outNode, TokenIter* iter, Stack
                 *outNode = variableDeclarationNode;
             } break;
 
+            case IF_KEYWORD: {
+                AstNode conditionalNode = cubs_conditional_node_init(iter, variables);
+                *outNode = conditionalNode;
+            } break;
+
             default: {
+                fprintf(stderr, "Invalid token: %d\n", token);
                 assert(false && "Invalid token in statements");
             } break;
         }

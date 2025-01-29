@@ -80,7 +80,7 @@ static void conditional_node_build_function(
             const AstNode node = statements->nodes[statementIter];
             // TODO allow nodes that don't just do code gen, such as nested structs maybe? or lambdas? to determine
             assert(node.vtable->buildFunction != NULL);
-            ast_node_build_function(&node, &builder, &stackAssignment);
+            ast_node_build_function(&node, builder, stackAssignment);
         }
 
         { // insert unconditional jump at the end to escape to the non-conditional instructions
@@ -116,7 +116,7 @@ static void conditional_node_build_function(
     for(size_t i = 0; i < ifEndJumpsIter; i++) {
         const size_t jumpOffset = builder->bytecodeLen - ifEndJumps[i];
         const Bytecode jumpOperands = cubs_operands_make_jump(
-            JUMP_TYPE_DEFAULT, (int32_t)jumpOffset, -1);
+            JUMP_TYPE_DEFAULT, (int32_t)jumpOffset, 0);
         builder->bytecode[ifEndJumps[i]] = jumpOperands;
     }
 
@@ -138,6 +138,7 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
 
     (void)cubs_token_iter_next(iter);
     assert(iter->current.tag == LEFT_PARENTHESES_SYMBOL);
+    (void)cubs_token_iter_next(iter);
 
     const ExprValue firstIfCondition = cubs_parse_expression(iter, variables, false, -1);
     assert(iter->current.tag == RIGHT_PARENTHESES_SYMBOL);

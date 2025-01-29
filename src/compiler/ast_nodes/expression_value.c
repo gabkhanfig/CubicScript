@@ -99,6 +99,10 @@ ExprValue cubs_parse_expression(
         return firstValue;
     }
 
+    if(tokenAfterFirst == RIGHT_PARENTHESES_SYMBOL) {
+        return firstValue;
+    }
+
     if(tokenAfterFirst == LEFT_PARENTHESES_SYMBOL) {
         assert(false && "Cannot currently handle function calls");
     }
