@@ -21,6 +21,14 @@ static void variable_declaration_node_build_function(
     const uint16_t returnSrc = stackAssignment->positions[self->variableNameIndex];
 
     switch(self->initialValue.tag) {
+        case BoolLit: {
+            const Bytecode loadImmediateBool = operands_make_load_immediate(
+                LOAD_IMMEDIATE_BOOL,
+                returnSrc,
+                (int64_t)self->initialValue.value.boolLiteral.literal
+            );
+            cubs_function_builder_push_bytecode(builder, loadImmediateBool);
+        } break;
         case IntLit: {
             Bytecode loadImmediateLong[2];
             operands_make_load_immediate_long(
@@ -35,7 +43,7 @@ static void variable_declaration_node_build_function(
             ast_node_build_function(&self->initialValue.value.expression, builder, stackAssignment);
         } break;
         default: {
-            assert(false && "Can only handle variable assignment from int literals");
+            assert(false && "Can only handle variable assignment from int literals, bool literals, and expressions");
         }
     }
 }

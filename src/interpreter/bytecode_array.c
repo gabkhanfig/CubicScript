@@ -2,6 +2,7 @@
 #include "bytecode.h"
 #include "../platform/mem.h"
 #include <assert.h>
+#include <string.h>
 
 void cubs_bytecode_array_deinit(BytecodeArray* self) {
     if(self->bytecode == NULL) return;

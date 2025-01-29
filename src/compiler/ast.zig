@@ -487,3 +487,32 @@ test "struct two member both int" {
         try expect(false);
     }
 }
+
+test "bool false" {
+    const source =
+        \\fn testFunc() bool { 
+        \\  const testVar: bool = false;
+        \\  return testVar;
+        \\};
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        var retValue: bool = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retContext == &c.CUBS_BOOL_CONTEXT);
+        try expect(retValue == false);
+    } else {
+        try expect(false);
+    }
+}
