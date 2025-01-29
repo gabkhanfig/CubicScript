@@ -25,6 +25,6 @@ typedef struct ConditionalNode {
     size_t capacity;
 } ConditionalNode;
 
-AstNode cubs_conditional_node_init(struct TokenIter* iter, struct StackVariablesArray* variables);
+struct AstNode cubs_conditional_node_init(struct TokenIter* iter, struct StackVariablesArray* variables);
 
 #endif
