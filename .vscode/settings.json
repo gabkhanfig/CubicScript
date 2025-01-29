@@ -140,6 +140,9 @@
         "struct_node.h": "c",
         "member_variable.h": "c",
         "program_type_context.h": "c",
-        "function_node.h": "c"
+        "function_node.h": "c",
+        "variable_declaration.h": "c",
+        "ast_node_array.h": "c",
+        "expression_value.h": "c"
     }
 }
