@@ -21,6 +21,7 @@ enum AstNodeType {
     astNodeTypeStruct,
     astNodeTypeMemberVariable,
     astNodeTypeConditional,
+    astNodeTypeFunctionArg,
 };
 
 typedef void (*AstNodeDeinit)(void* self);
@@ -35,6 +36,9 @@ typedef void(*AstNodeDefineType)(
     const void* self,
     struct CubsProgram* program
 );
+typedef void(*AstNodeResolveTypes)(
+    void* self, struct CubsProgram* program, const struct FunctionBuilder* builder
+);
 
 typedef struct AstNodeVTable {
     enum AstNodeType nodeType;
@@ -43,6 +47,10 @@ typedef struct AstNodeVTable {
     AstNodeToString toString;
     AstNodeBuildFunction buildFunction;
     AstNodeDefineType defineType;
+    /// Determines all types used by this node, if they have not yet been 
+    /// resolved. Takes place after types are defined, but before function
+    /// building occurs.
+    AstNodeResolveTypes resolveTypes;
 } AstNodeVTable;
 
 typedef struct AstNode {
@@ -68,6 +76,10 @@ inline static void ast_node_build_function(const AstNode* self, struct FunctionB
 
 inline static void ast_node_define_type(const AstNode* self, struct CubsProgram* program) {
     self->vtable->defineType(self->ptr, program);
+}
+
+inline static void ast_node_resolve_types(AstNode* self, struct CubsProgram* program, const struct FunctionBuilder* builder) {
+    self->vtable->resolveTypes(self->ptr, program, builder);
 }
 
 typedef struct Ast {

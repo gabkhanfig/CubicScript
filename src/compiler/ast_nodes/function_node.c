@@ -74,6 +74,7 @@ static AstNodeVTable function_node_vtable = {
     .toString = (AstNodeToString)&function_node_to_string,
     .buildFunction = NULL,
     .defineType = NULL,
+    .resolveTypes = NULL,
 };
 
 /// Parses from `'('` to `')'`.

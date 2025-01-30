@@ -130,6 +130,7 @@ static AstNodeVTable conditional_node_vtable = {
     .toString = NULL,
     .buildFunction = (AstNodeBuildFunction)&conditional_node_build_function,
     .defineType = NULL,
+    .resolveTypes = NULL,
 };
 
 AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variables)
