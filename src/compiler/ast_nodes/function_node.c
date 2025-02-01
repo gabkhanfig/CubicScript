@@ -23,7 +23,7 @@ static CubsStringSlice function_node_to_string(const FunctionNode* self) {
     return (CubsStringSlice){0};
 }
 
-static void function_node_compile(const FunctionNode* self, CubsProgram* program) {
+static void function_node_compile(FunctionNode* self, CubsProgram* program) {
     FunctionBuilder builder = {0};
 
     { // function name
@@ -34,17 +34,44 @@ static void function_node_compile(const FunctionNode* self, CubsProgram* program
     }
 
     if(self->hasRetType) {
-        assert(self->retType.knownContext != NULL);
-        builder.optReturnType = self->retType.knownContext;
+        const CubsTypeContext* retContext = NULL;
+        if(self->retType.knownContext != NULL) {
+            retContext = self->retType.knownContext;
+        } else {
+            const CubsStringSlice typeName = self->retType.typeName;
+            retContext = cubs_program_find_type_context(program, typeName);
+            assert(retContext != NULL);
+        }
+        builder.optReturnType = retContext;
     }
 
     StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables);
     builder.stackSpaceRequired = stackAssignment.requiredFrameSize;
 
+    // resolve types of arguments
+    // NOTE the first variables in `self->variables` are the function
+    // arguments, up to inclusively `self->argCount - 1`
+    for(size_t i = 0; i < self->argCount; i++) {
+        if(self->variables.variables[i].typeInfo.knownContext != NULL) continue;
+
+        const CubsStringSlice typeName = self->variables.variables[i].typeInfo.typeName;
+        const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
+        assert(argContext != NULL);
+        self->variables.variables[i].typeInfo.knownContext = argContext;
+    }
+    
     // arguments
     for(size_t i = 0; i < self->argCount; i++) {
         assert(self->variables.variables[i].typeInfo.knownContext != NULL);
         cubs_function_builder_add_arg(&builder, self->variables.variables[i].typeInfo.knownContext);
+    }
+
+    // resolve all types for all statements
+    for(uint32_t i = 0; i < self->items.len; i++) {
+        AstNode* node = &self->items.nodes[i];
+        if(node->vtable->resolveTypes == NULL) continue;
+
+        ast_node_resolve_types(node, program, &builder, &self->variables);
     }
 
     // Statements

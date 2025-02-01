@@ -4,6 +4,9 @@
 #include "../ast.h"
 
 struct StackVariablesArray;
+struct CubsTypeContext;
+struct CubsProgram;
+struct FunctionBuilder;
 
 struct ExprValueBoolLiteral {
     bool literal;
@@ -68,3 +71,9 @@ inline static void expr_value_deinit(ExprValue* self) {
         default: break;
     }
 }
+
+/// Resolves the type of the actual expression value, and returns the type
+/// context.
+const struct CubsTypeContext* cubs_expr_node_resolve_type(
+    ExprValue* self, struct CubsProgram* program, const struct FunctionBuilder* builder, struct StackVariablesArray* variables
+);

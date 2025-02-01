@@ -4,6 +4,7 @@
 #include "../../interpreter/function_definition.h"
 #include "binary_expression.h"
 #include <stdio.h>
+#include "../../program/program_internal.h"
 
 /// Steps the iterator forward to after the value.
 static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* variables) {
@@ -147,4 +148,48 @@ ExprValue cubs_parse_expression(
     // TODO handle other expressions such as binary expression
     assert(false && "TODO handle other expressions");
     return firstValue;
+}
+
+const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram *program, const FunctionBuilder* builder, StackVariablesArray *variables)
+{
+    switch(self->tag) {
+        case BoolLit: {
+            TypeResolutionInfo* typeInfo = &variables->variables[self->value.boolLiteral.variableIndex].typeInfo;
+            assert(typeInfo->knownContext == &CUBS_BOOL_CONTEXT);
+            return &CUBS_BOOL_CONTEXT;
+        } break;
+        case IntLit: {
+            TypeResolutionInfo* typeInfo = &variables->variables[self->value.intLiteral.variableIndex].typeInfo;
+            assert(typeInfo->knownContext == &CUBS_INT_CONTEXT);
+            return &CUBS_INT_CONTEXT;
+        } break;
+        case FloatLit: {
+            TypeResolutionInfo* typeInfo = &variables->variables[self->value.floatLiteral.variableIndex].typeInfo;
+            assert(typeInfo->knownContext == &CUBS_FLOAT_CONTEXT);
+            return &CUBS_FLOAT_CONTEXT;
+        } break;
+        case Variable: {
+            TypeResolutionInfo* typeInfo = &variables->variables[self->value.variableIndex].typeInfo;
+            if(typeInfo->knownContext == NULL) {
+                const CubsStringSlice typeName = typeInfo->typeName;
+                const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
+                assert(argContext != NULL);
+                typeInfo->knownContext = argContext;
+            }
+            return typeInfo->knownContext;
+        } break;
+        case Expression: {
+            AstNode* exprNode = &self->value.expression;
+            ast_node_resolve_types(exprNode, program, builder, variables);
+            
+            assert(exprNode->vtable->nodeType == astNodeBinaryExpression);
+            const size_t index = ((const BinaryExprNode*)exprNode->ptr)->outputVariableIndex;            
+            const TypeResolutionInfo* typeInfo = &variables->variables[index].typeInfo;
+            assert(typeInfo->knownContext != NULL);
+            return typeInfo->knownContext;
+        } break;
+        case FunctionCall: {
+            cubs_panic("Cannot yet handle function call expression type resolution");
+        } break;
+    }
 }

@@ -123,6 +123,29 @@ static void conditional_node_build_function(
     FREE_TYPE_ARRAY(size_t, ifEndJumps, self->blocksLen);
 }
 
+static void conditional_node_resolve_types(
+    ConditionalNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables
+) {
+    // conditions first
+    for(size_t i = 0; i < self->conditionsLen; i++) {
+        ExprValue* conditionExpr = &self->conditions[i];
+        const CubsTypeContext* conditionContext = 
+            cubs_expr_node_resolve_type(conditionExpr, program, builder, variables);
+        assert(conditionContext == &CUBS_BOOL_CONTEXT);
+    }
+
+    // statements
+    for(size_t i = 0; i < self->blocksLen; i++) {
+        AstNodeArray* statements = &self->statementBlocks[i];
+        for(uint32_t statementIter = 0; statementIter < statements->len; statementIter++) {
+            AstNode* node = &statements->nodes[statementIter];
+            if(node->vtable->resolveTypes == NULL) continue;
+
+            ast_node_resolve_types(node, program, builder, variables);
+        }
+    }
+}
+
 static AstNodeVTable conditional_node_vtable = {
     .nodeType = astNodeTypeConditional,
     .deinit = (AstNodeDeinit)&conditional_node_deinit,
@@ -130,7 +153,7 @@ static AstNodeVTable conditional_node_vtable = {
     .toString = NULL,
     .buildFunction = (AstNodeBuildFunction)&conditional_node_build_function,
     .defineType = NULL,
-    .resolveTypes = NULL,
+    .resolveTypes = (AstNodeResolveTypes)&conditional_node_resolve_types,
 };
 
 AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variables)

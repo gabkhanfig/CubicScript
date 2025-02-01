@@ -9,6 +9,7 @@
 struct CubsProgram;
 struct Ast;
 struct FunctionBuilder;
+struct StackVariablesArray;
 struct StackVariablesAssignment;
 struct TypeMap;
 
@@ -25,7 +26,7 @@ enum AstNodeType {
 };
 
 typedef void (*AstNodeDeinit)(void* self);
-typedef void(*AstNodeCompile)(const void* self, struct CubsProgram* program);
+typedef void(*AstNodeCompile)(void* self, struct CubsProgram* program);
 typedef CubsStringSlice(*AstNodeToString)(const void* self);
 typedef void(*AstNodeBuildFunction)(
     const void* self,
@@ -37,7 +38,7 @@ typedef void(*AstNodeDefineType)(
     struct CubsProgram* program
 );
 typedef void(*AstNodeResolveTypes)(
-    void* self, struct CubsProgram* program, const struct FunctionBuilder* builder
+    void* self, struct CubsProgram* program, const struct FunctionBuilder* builder, struct StackVariablesArray* variables
 );
 
 typedef struct AstNodeVTable {
@@ -62,7 +63,7 @@ inline static void ast_node_deinit(AstNode* self) {
     self->vtable->deinit(self->ptr);
 }
 
-inline static void ast_node_compile(const AstNode* self, struct CubsProgram* program) {
+inline static void ast_node_compile(AstNode* self, struct CubsProgram* program) {
     self->vtable->compile(self->ptr, program);
 }
 
@@ -78,8 +79,13 @@ inline static void ast_node_define_type(const AstNode* self, struct CubsProgram*
     self->vtable->defineType(self->ptr, program);
 }
 
-inline static void ast_node_resolve_types(AstNode* self, struct CubsProgram* program, const struct FunctionBuilder* builder) {
-    self->vtable->resolveTypes(self->ptr, program, builder);
+inline static void ast_node_resolve_types(
+    AstNode* self, 
+    struct CubsProgram* program, 
+    const struct FunctionBuilder* builder, 
+    struct StackVariablesArray* variables
+) {
+    self->vtable->resolveTypes(self->ptr, program, builder, variables);
 }
 
 typedef struct Ast {

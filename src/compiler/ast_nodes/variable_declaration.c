@@ -6,6 +6,7 @@
 #include "../../interpreter/function_definition.h"
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
+#include "../../program/program_internal.h"
 #include <stdio.h>
 
 static void variable_declaration_node_deinit(VariableDeclarationNode* self) {
@@ -48,6 +49,18 @@ static void variable_declaration_node_build_function(
     }
 }
 
+static void variable_declaration_resolve_types(
+    VariableDeclarationNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables
+) {
+    TypeResolutionInfo* typeInfo = &variables->variables[self->variableNameIndex].typeInfo;
+    if(typeInfo->knownContext != NULL) return;
+
+    const CubsStringSlice typeName = typeInfo->typeName;
+    const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
+    assert(argContext != NULL);
+    typeInfo->knownContext = argContext;
+}
+
 static AstNodeVTable variable_declaration_node_vtable = {
     .nodeType = astNodeBinaryExpression,
     .deinit = (AstNodeDeinit)&variable_declaration_node_deinit,
@@ -55,7 +68,7 @@ static AstNodeVTable variable_declaration_node_vtable = {
     .toString = NULL,
     .buildFunction = (AstNodeBuildFunction)&variable_declaration_node_build_function,
     .defineType = NULL,
-    .resolveTypes = NULL,
+    .resolveTypes = (AstNodeResolveTypes)&variable_declaration_resolve_types,
 };
 
 AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray *variables)

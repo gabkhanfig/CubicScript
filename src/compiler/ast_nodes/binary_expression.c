@@ -4,6 +4,7 @@
 #include "../../interpreter/function_definition.h"
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
+#include "../../program/program_internal.h"
 
 static void binary_expr_node_deinit(BinaryExprNode* self) {
     expr_value_deinit(&self->lhs);
@@ -46,6 +47,30 @@ static void binary_expr_node_build_function(
     cubs_function_builder_push_bytecode(builder, addBytecode);
 }
 
+static void binary_expr_node_resolve_types(
+    BinaryExprNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables
+) {
+    const CubsTypeContext* lhsContext = cubs_expr_node_resolve_type(&self->lhs, program, builder, variables);
+    const CubsTypeContext* rhsContext = cubs_expr_node_resolve_type(&self->rhs, program, builder, variables);
+
+    assert(lhsContext == rhsContext);
+
+    TypeResolutionInfo* typeInfo = &variables->variables[self->outputVariableIndex].typeInfo;
+    if(typeInfo->knownContext != NULL) {
+        assert(typeInfo->knownContext == lhsContext);
+    } else if(typeInfo->typeName.len > 0) {
+        const CubsStringSlice typeName = typeInfo->typeName;
+        const CubsTypeContext* resultingContext = cubs_program_find_type_context(program, typeName);
+        assert(resultingContext != NULL);
+        typeInfo->knownContext = resultingContext;
+    } else { // empty string
+        // the type is the resulting type from the operation. For instance,
+        // with an add operation, the resulting type is the same as the 
+        // lhs and rhs types.
+        typeInfo->knownContext = lhsContext;
+    }
+}
+
 static AstNodeVTable binary_expr_node_vtable = {
     .nodeType = astNodeBinaryExpression,
     .deinit = (AstNodeDeinit)&binary_expr_node_deinit,
@@ -53,7 +78,7 @@ static AstNodeVTable binary_expr_node_vtable = {
     .toString = NULL,
     .buildFunction = (AstNodeBuildFunction)&binary_expr_node_build_function,
     .defineType = NULL,
-    .resolveTypes = NULL,
+    .resolveTypes = (AstNodeResolveTypes)&binary_expr_node_resolve_types,
 };
 
 AstNode cubs_binary_expr_node_init(
@@ -65,32 +90,6 @@ AstNode cubs_binary_expr_node_init(
 ) {
     BinaryExprNode* self = MALLOC_TYPE(BinaryExprNode);
     *self = (BinaryExprNode){0};
-
-    // if(optionalOutputName.len == 0) { // empty string
-    //     const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tempBinaryExpr", .len = 15});
-            
-    //     StackVariableInfo temporaryVariable = {
-    //         .name = variableName,
-    //         .isTemporary = true,
-    //         .context = &CUBS_INT_CONTEXT,
-    //         .taggedName = {0},
-    //     };
-        
-    //     // Variable order is preserved
-    //     self->outputVariableIndex = variables->len;
-    //     // variables->len will be increased by 1
-    //     cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
-    // } else {
-    //     bool foundVariableNameIndex = false;
-    //     for(size_t i = 0; i < variables->len; i++) {
-    //         if(cubs_string_eql_slice(&variables->variables[i].name, optionalOutputName)) {
-    //             foundVariableNameIndex = true;
-    //             self->outputVariableIndex = i;
-    //             break;
-    //         }
-    //     }
-    //     assert(foundVariableNameIndex);
-    // }
 
     self->outputVariableIndex = outputVariableIndex;
     self->operation = operation;

@@ -18,7 +18,7 @@ static CubsStringSlice file_node_to_string(const FileNode* self) {
     return emptyString;
 }
 
-static void file_node_compile(const FileNode* self, struct CubsProgram* program) {
+static void file_node_compile(FileNode* self, struct CubsProgram* program) {
     for(uint32_t i = 0; i < self->structs.len; i++) {
         const AstNode node = self->structs.nodes[i];
         assert(node.vtable->defineType != NULL);

@@ -143,6 +143,7 @@
         "function_node.h": "c",
         "variable_declaration.h": "c",
         "ast_node_array.h": "c",
-        "expression_value.h": "c"
+        "expression_value.h": "c",
+        "type_resolution_info.h": "c"
     }
 }
