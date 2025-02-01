@@ -650,3 +650,59 @@ test "if no else with user argument" {
         try expect(false);
     }
 }
+
+test "equality operator true simple" {
+    const source =
+        \\fn testFunc() bool { 
+        \\  return 1 == 1;
+        \\};
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        var retValue: bool = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retContext == &c.CUBS_BOOL_CONTEXT);
+        try expect(retValue == true);
+    } else {
+        try expect(false);
+    }
+}
+
+test "equality operator false simple" {
+    const source =
+        \\fn testFunc() bool { 
+        \\  return 1 == 2;
+        \\};
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        var retValue: bool = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retContext == &c.CUBS_BOOL_CONTEXT);
+        try expect(retValue == false);
+    } else {
+        try expect(false);
+    }
+}
