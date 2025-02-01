@@ -70,6 +70,7 @@ static void conditional_node_build_function(
                 ast_node_build_function(&node, builder, stackAssignment);
 
                 const BinaryExprNode* binExpr = (const BinaryExprNode*)node.ptr;
+                assert(binExpr->operation == Equal);
                 conditionVariableSrc = binExpr->outputVariableIndex;
             } break;
             default: {
