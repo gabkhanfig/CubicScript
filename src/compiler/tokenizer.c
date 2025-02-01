@@ -173,7 +173,7 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const TokenIter* self, con
         } else if(c == '.') {
             isDecimal = true;
             break;
-        } else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
+        } else if(is_space(c) || c == '\0' || c == ';' || c == ',' || c == ')' || c == '}') {
             break;
         } else {
             const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
