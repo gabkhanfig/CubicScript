@@ -16,9 +16,7 @@ static void binary_expr_node_build_function(
     const BinaryExprNode* self,
     FunctionBuilder* builder,
     const StackVariablesAssignment* stackAssignment
-) {  
-    assert(self->operation == Add);
-
+) {
     uint16_t lhsSrc;
     uint16_t rhsSrc;
 
@@ -43,8 +41,16 @@ static void binary_expr_node_build_function(
         rhsSrc = stackAssignment->positions[self->rhs.value.variableIndex];
     }
 
-    const Bytecode addBytecode = operands_make_add_dst(false, self->outputVariableIndex, lhsSrc, rhsSrc);
-    cubs_function_builder_push_bytecode(builder, addBytecode);
+    switch(self->operation) {
+        case Equal: {
+            const Bytecode equalBytecode = cubs_operands_make_compare(COMPARE_OP_EQUAL, self->outputVariableIndex, lhsSrc, rhsSrc);
+            cubs_function_builder_push_bytecode(builder, equalBytecode);
+        } break;
+        case Add: {
+            const Bytecode addBytecode = operands_make_add_dst(false, self->outputVariableIndex, lhsSrc, rhsSrc);
+            cubs_function_builder_push_bytecode(builder, addBytecode);
+        } break;
+    }
 }
 
 static void binary_expr_node_resolve_types(
@@ -56,18 +62,30 @@ static void binary_expr_node_resolve_types(
     assert(lhsContext == rhsContext);
 
     TypeResolutionInfo* typeInfo = &variables->variables[self->outputVariableIndex].typeInfo;
-    if(typeInfo->knownContext != NULL) {
-        assert(typeInfo->knownContext == lhsContext);
-    } else if(typeInfo->typeName.len > 0) {
-        const CubsStringSlice typeName = typeInfo->typeName;
-        const CubsTypeContext* resultingContext = cubs_program_find_type_context(program, typeName);
-        assert(resultingContext != NULL);
-        typeInfo->knownContext = resultingContext;
-    } else { // empty string
-        // the type is the resulting type from the operation. For instance,
-        // with an add operation, the resulting type is the same as the 
-        // lhs and rhs types.
-        typeInfo->knownContext = lhsContext;
+
+    switch(self->operation) {
+        case Equal: {
+            if(typeInfo->knownContext != NULL) {
+                assert(typeInfo->knownContext == &CUBS_BOOL_CONTEXT);
+            } else {
+                typeInfo->knownContext = &CUBS_BOOL_CONTEXT;
+            }
+        } break;
+        case Add: {
+            if(typeInfo->knownContext != NULL) {
+                assert(typeInfo->knownContext == lhsContext);
+            } else if(typeInfo->typeName.len > 0) {
+                const CubsStringSlice typeName = typeInfo->typeName;
+                const CubsTypeContext* resultingContext = cubs_program_find_type_context(program, typeName);
+                assert(resultingContext != NULL);
+                typeInfo->knownContext = resultingContext;
+            } else { // empty string
+                // the type is the resulting type from the operation. For instance,
+                // with an add operation, the resulting type is the same as the 
+                // lhs and rhs types.
+                typeInfo->knownContext = lhsContext;
+            }
+        } break;
     }
 }
 

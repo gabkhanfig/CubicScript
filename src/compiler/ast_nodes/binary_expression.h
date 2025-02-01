@@ -8,6 +8,7 @@ struct StackVariablesArray;
 
 typedef enum BinaryExprOp {
     Add,
+    Equal,
 } BinaryExprOp;
 
 /// Can have nested binary expression nodes, 

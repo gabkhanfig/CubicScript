@@ -109,40 +109,56 @@ ExprValue cubs_parse_expression(
     }
 
     if(is_token_operator(tokenAfterFirst)) {
-        assert(tokenAfterFirst == ADD_OPERATOR);
+        switch(tokenAfterFirst) {
+            case EQUAL_OPERATOR:
+            case ADD_OPERATOR: {
+                size_t outSrc;
+                if(hasDestination) {
+                    outSrc = destinationVariableIndex;
+                } else {
+                    const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpBinExprOut", .len = 14});
+                    
+                    StackVariableInfo temporaryVariable = {
+                        .name = variableName,
+                        .isTemporary = true,
+                        .typeInfo = {0},
+                    };
+                    if(tokenAfterFirst == EQUAL_OPERATOR) {
+                        temporaryVariable.typeInfo = cubs_type_resolution_info_from_context(&CUBS_BOOL_CONTEXT);
+                    } else if(tokenAfterFirst == ADD_OPERATOR) {
+                        temporaryVariable.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT);
+                    }
+                    // order is preserved
+                    outSrc = variables->len;
+                    // variables->len will be increased by 1
+                    cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+                }
+                (void)cubs_token_iter_next(iter); // step to next
 
-        size_t outSrc;
-        if(hasDestination) {
-            outSrc = destinationVariableIndex;
-        } else {
-            const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpBinExprOut", .len = 14});
-            
-            StackVariableInfo temporaryVariable = {
-                .name = variableName,
-                .isTemporary = true,
-                .typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
-            };
-            // order is preserved
-            outSrc = variables->len;
-            // variables->len will be increased by 1
-            cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+                BinaryExprOp binaryExpressionOperator;
+                if(tokenAfterFirst == EQUAL_OPERATOR) {
+                    binaryExpressionOperator = Equal;
+                } else if(tokenAfterFirst == ADD_OPERATOR) {
+                    binaryExpressionOperator = Add;
+                }
+                const ExprValue secondValue = parse_expression_value(iter, variables);
+
+                ExprValue outValue = {0};
+                outValue.tag = Expression;
+                outValue.value.expression = cubs_binary_expr_node_init(
+                    variables, 
+                    outSrc, 
+                    binaryExpressionOperator, 
+                    firstValue, 
+                    secondValue
+                );
+
+                return outValue;
+            } break;
+            default: {
+                cubs_panic("Unexpected token in expresson");
+            }
         }
-        (void)cubs_token_iter_next(iter); // step to next
-
-        const BinaryExprOp binaryExpressionOperator = Add;
-        const ExprValue secondValue = parse_expression_value(iter, variables);
-
-        ExprValue outValue = {0};
-        outValue.tag = Expression;
-        outValue.value.expression = cubs_binary_expr_node_init(
-            variables, 
-            outSrc, 
-            binaryExpressionOperator, 
-            firstValue, 
-            secondValue
-        );
-
-        return outValue;
     }
 
     // TODO handle other expressions such as binary expression
