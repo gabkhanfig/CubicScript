@@ -19,7 +19,7 @@ TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
         case BOOL_KEYWORD: {
             self.typeName = boolTypeName;
             self.knownContext = &CUBS_BOOL_CONTEXT;
-        }
+        } break;
         case INT_KEYWORD: {
             self.typeName = intTypeName;
             self.knownContext = &CUBS_INT_CONTEXT;
