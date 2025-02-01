@@ -12,6 +12,7 @@
 #include "../../interpreter/bytecode_array.h"
 #include "../../interpreter/operations.h"
 #include "../../interpreter/bytecode.h"
+#include "binary_expression.h"
 
 static bool conditional_node_has_final_else_branch(const ConditionalNode* self) {
     return self->conditionsLen == (self->blocksLen - 1);
@@ -63,7 +64,13 @@ static void conditional_node_build_function(
                 conditionVariableSrc = conditionValue.value.boolLiteral.variableIndex;
             } break;
             case Expression: {
-                assert(false && "Cannot currently handle expressions for conditions");
+                const AstNode node = conditionValue.value.expression;
+                assert(node.vtable->nodeType == astNodeBinaryExpression);
+
+                ast_node_build_function(&node, builder, stackAssignment);
+
+                const BinaryExprNode* binExpr = (const BinaryExprNode*)node.ptr;
+                conditionVariableSrc = binExpr->outputVariableIndex;
             } break;
             default: {
                 assert(false && "Cannot handle condition expression value as condition");
