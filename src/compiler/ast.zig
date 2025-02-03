@@ -722,8 +722,6 @@ test "equality operator in if statement" {
         var program = c.cubs_program_init(.{});
         defer c.cubs_program_deinit(&program);
 
-        std.debug.print("=== hmm ===\n", .{});
-
         var ast = c.cubs_ast_init(tokenIter, &program);
         defer c.cubs_ast_deinit(&ast);
 
@@ -738,32 +736,32 @@ test "equality operator in if statement" {
             try expect(false);
         }
     }
-    // {
-    //     const source =
-    //         \\fn testFunc() int {
-    //         \\  if(1 == 2) {
-    //         \\      return 10;
-    //         \\  }
-    //         \\  return 50;
-    //         \\};
-    //     ;
+    {
+        const source =
+            \\fn testFunc() int {
+            \\  if(1 == 2) {
+            \\      return 10;
+            \\  }
+            \\  return 50;
+            \\};
+        ;
 
-    //     const tokenIter = tokenIterInit(source, null);
-    //     var program = c.cubs_program_init(.{});
-    //     defer c.cubs_program_deinit(&program);
+        const tokenIter = tokenIterInit(source, null);
+        var program = c.cubs_program_init(.{});
+        defer c.cubs_program_deinit(&program);
 
-    //     var ast = c.cubs_ast_init(tokenIter, &program);
-    //     defer c.cubs_ast_deinit(&ast);
+        var ast = c.cubs_ast_init(tokenIter, &program);
+        defer c.cubs_ast_deinit(&ast);
 
-    //     c.cubs_ast_codegen(&ast);
-    //     if (findFunction(&program, "testFunc")) |func| {
-    //         const call = c.cubs_function_start_call(&func);
-    //         var retValue: i64 = undefined;
-    //         var retContext: *const c.CubsTypeContext = undefined;
-    //         try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
-    //         try expect(retValue == 50);
-    //     } else {
-    //         try expect(false);
-    //     }
-    // }
+        c.cubs_ast_codegen(&ast);
+        if (findFunction(&program, "testFunc")) |func| {
+            const call = c.cubs_function_start_call(&func);
+            var retValue: i64 = undefined;
+            var retContext: *const c.CubsTypeContext = undefined;
+            try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+            try expect(retValue == 50);
+        } else {
+            try expect(false);
+        }
+    }
 }
