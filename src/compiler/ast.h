@@ -40,6 +40,7 @@ typedef void(*AstNodeDefineType)(
 typedef void(*AstNodeResolveTypes)(
     void* self, struct CubsProgram* program, const struct FunctionBuilder* builder, struct StackVariablesArray* variables
 );
+typedef bool(*AstNodeStatementsEndWithReturn)(const void* self);
 
 typedef struct AstNodeVTable {
     enum AstNodeType nodeType;
@@ -52,6 +53,10 @@ typedef struct AstNodeVTable {
     /// resolved. Takes place after types are defined, but before function
     /// building occurs.
     AstNodeResolveTypes resolveTypes;
+    /// Checks if the collection of statements terminate with a return.
+    /// This is useful to ensure functions that return values have all
+    /// statements terminate with a return statement.
+    AstNodeStatementsEndWithReturn endsWithReturn;
 } AstNodeVTable;
 
 typedef struct AstNode {
@@ -86,6 +91,10 @@ inline static void ast_node_resolve_types(
     struct StackVariablesArray* variables
 ) {
     self->vtable->resolveTypes(self->ptr, program, builder, variables);
+}
+
+inline static bool ast_node_statements_end_with_return(const AstNode* self) {
+    self->vtable->endsWithReturn(self->ptr);
 }
 
 typedef struct Ast {

@@ -40,6 +40,7 @@ static AstNodeVTable file_node_vtable = {
     .buildFunction = NULL,
     .defineType = NULL,
     .resolveTypes = NULL,
+    .endsWithReturn = NULL,
 };
 
 AstNode cubs_file_node_init(TokenIter *iter)

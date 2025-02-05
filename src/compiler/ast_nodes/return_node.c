@@ -97,6 +97,7 @@ static AstNodeVTable return_node_vtable = {
     .buildFunction = (AstNodeBuildFunction)&return_node_build_function,
     .defineType = NULL,
     .resolveTypes = (AstNodeResolveTypes)&return_node_resolve_types,
+    .endsWithReturn = NULL,
 };
 
 AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)

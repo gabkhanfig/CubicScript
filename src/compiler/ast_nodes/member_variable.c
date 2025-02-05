@@ -16,6 +16,7 @@ static AstNodeVTable member_variable_node_vtable = {
     .buildFunction = NULL,
     .defineType = NULL,
     .resolveTypes = NULL,
+    .endsWithReturn = NULL,
 };
 
 AstNode cubs_member_variable_init(TokenIter* iter) {

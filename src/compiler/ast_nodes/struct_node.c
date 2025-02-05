@@ -53,6 +53,7 @@ static AstNodeVTable struct_node_vtable = {
     .buildFunction = NULL,
     .defineType = (AstNodeDefineType)&struct_node_define_type,
     .resolveTypes = NULL,
+    .endsWithReturn = NULL,
 };
 
 AstNode cubs_struct_node_init(TokenIter* iter) {
