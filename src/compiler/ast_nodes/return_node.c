@@ -89,6 +89,10 @@ static void return_node_resolve_types(
     assert(builder->optReturnType == retValueContext);
 }
 
+static bool return_node_ends_with_return(const ReturnNode* _) {
+    return true;
+}
+
 static AstNodeVTable return_node_vtable = {
     .nodeType = astNodeTypeReturn,
     .deinit = (AstNodeDeinit)&return_node_deinit,
@@ -97,7 +101,7 @@ static AstNodeVTable return_node_vtable = {
     .buildFunction = (AstNodeBuildFunction)&return_node_build_function,
     .defineType = NULL,
     .resolveTypes = (AstNodeResolveTypes)&return_node_resolve_types,
-    .endsWithReturn = NULL,
+    .endsWithReturn = (AstNodeStatementsEndWithReturn)&return_node_ends_with_return,
 };
 
 AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)

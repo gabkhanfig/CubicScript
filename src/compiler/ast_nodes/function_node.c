@@ -73,6 +73,13 @@ static void function_node_compile(FunctionNode* self, CubsProgram* program) {
 
         ast_node_resolve_types(node, program, &builder, &self->variables);
     }
+ 
+    { // Validate that the function ends with returns
+        const AstNode* lastNode = &self->items.nodes[self->items.len - 1];
+        assert(lastNode->vtable->endsWithReturn != NULL && 
+            "The last node in a function must be a return, or a collection of statements that result in a return");
+        assert(ast_node_statements_end_with_return(lastNode));
+    }
 
     // Statements
     // If there are no statements, a single return bytecode is required.
@@ -188,7 +195,10 @@ AstNode cubs_function_node_init(TokenIter *iter)
             endsWithReturn = temp.vtable->nodeType == astNodeTypeReturn;
         }
 
-        if(endsWithReturn == false) {
+        // If there is no return type, we can automatically insert a return 
+        // statement otherwise, the source code must have a return statement at
+        // the end of all control flow.
+        if(endsWithReturn == false && self->hasRetType == false) {
             AstNode emptyReturnNode = cubs_return_node_init_empty();
             ast_node_array_push(&self->items, emptyReturnNode);
         }

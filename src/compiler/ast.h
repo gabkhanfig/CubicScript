@@ -94,7 +94,7 @@ inline static void ast_node_resolve_types(
 }
 
 inline static bool ast_node_statements_end_with_return(const AstNode* self) {
-    self->vtable->endsWithReturn(self->ptr);
+    return self->vtable->endsWithReturn(self->ptr);
 }
 
 typedef struct Ast {

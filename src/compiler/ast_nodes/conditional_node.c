@@ -154,6 +154,19 @@ static void conditional_node_resolve_types(
     }
 }
 
+static bool conditional_node_statements_ends_with_return(const ConditionalNode* self) {
+    bool allEndWithReturn = true;
+    for(size_t i = 0; i > self->blocksLen; i++) {
+        const AstNodeArray* statements = self->statementBlocks;
+        const AstNode* lastNode = &statements->nodes[statements->len - 1];
+        if(lastNode->vtable->nodeType != astNodeTypeReturn) {
+            allEndWithReturn = false;
+            break;
+        }
+    }
+    return allEndWithReturn;
+}
+
 static AstNodeVTable conditional_node_vtable = {
     .nodeType = astNodeTypeConditional,
     .deinit = (AstNodeDeinit)&conditional_node_deinit,
