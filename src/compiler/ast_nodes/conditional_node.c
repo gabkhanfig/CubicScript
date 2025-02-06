@@ -44,7 +44,7 @@ static void conditional_node_build_function(
 
     const Bytecode emptyBytecode = {0};
 
-    assert(self->conditionsLen >= self->blocksLen);
+    assert(self->blocksLen >= self->conditionsLen);
     for(size_t i = 0; i < self->conditionsLen; i++) {
         const ExprValue conditionValue = self->conditions[i];
 
@@ -114,7 +114,7 @@ static void conditional_node_build_function(
             const AstNode node = statements->nodes[statementIter];
             // TODO allow nodes that don't just do code gen, such as nested structs maybe? or lambdas? to determine
             assert(node.vtable->buildFunction != NULL);
-            ast_node_build_function(&node, &builder, &stackAssignment);
+            ast_node_build_function(&node, builder, stackAssignment);
         }
 
         // Don't need end jump, as the interpreter will implicitly go after the
@@ -178,7 +178,7 @@ static AstNodeVTable conditional_node_vtable = {
     .buildFunction = (AstNodeBuildFunction)&conditional_node_build_function,
     .defineType = NULL,
     .resolveTypes = (AstNodeResolveTypes)&conditional_node_resolve_types,
-    .endsWithReturn = NULL,
+    .endsWithReturn = (AstNodeStatementsEndWithReturn)&conditional_node_statements_ends_with_return,
 };
 
 AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variables)
@@ -254,13 +254,13 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
 
                 elseIfCondition = cubs_parse_expression(iter, variables, false, -1);
                 assert(iter->current.tag == RIGHT_PARENTHESES_SYMBOL);
+
+                (void)cubs_token_iter_next(iter);
+                assert(iter->current.tag == LEFT_BRACE_SYMBOL);
             } else {
                 assert(false && "Expected \'{\' or \'if\' after \'else\'");
             }
          
-            (void)cubs_token_iter_next(iter);
-            assert(iter->current.tag == LEFT_BRACE_SYMBOL);
-
             AstNodeArray elseStatements = {0};
             {
                 AstNode temp = {0};
