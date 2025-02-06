@@ -258,7 +258,7 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
                 (void)cubs_token_iter_next(iter);
                 assert(iter->current.tag == LEFT_BRACE_SYMBOL);
             } else {
-                assert(false && "Expected \'{\' or \'if\' after \'else\'");
+                assert(false && "Expected '{' or 'if' after 'else'");
             }
          
             AstNodeArray elseStatements = {0};
@@ -281,14 +281,15 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
                 ExprValue* newConditions = MALLOC_TYPE_ARRAY(ExprValue, newCapacity);
                 AstNodeArray* newStatements = MALLOC_TYPE_ARRAY(AstNodeArray, newCapacity);
 
-                memcpy(newConditions, self->conditions, self->conditionsLen);
-                memcpy(newStatements, self->statementBlocks, self->blocksLen);
+                memcpy(newConditions, self->conditions, sizeof(ExprValue) * self->conditionsLen);
+                memcpy(newStatements, self->statementBlocks, sizeof(AstNodeArray) * self->blocksLen);
 
                 FREE_TYPE_ARRAY(ExprValue, self->conditions, self->capacity);
                 FREE_TYPE_ARRAY(AstNodeArray, self->statementBlocks, self->capacity);
 
                 self->conditions = newConditions;
                 self->statementBlocks = newStatements;
+                self->capacity = newCapacity;
             }
 
             if(elseWithoutCondition == false) { // no condition for final else
@@ -300,6 +301,10 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
             self->blocksLen += 1;
 
             peekNext = cubs_token_iter_peek(iter);
+            if(peekNext == ELSE_KEYWORD) {
+                // step over
+                (void)cubs_token_iter_next(iter);
+            }
         }
 
         const AstNode node = {.ptr = (void*)self, .vtable = &conditional_node_vtable};
