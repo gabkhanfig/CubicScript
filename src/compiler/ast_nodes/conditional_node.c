@@ -139,6 +139,9 @@ static void conditional_node_resolve_types(
         ExprValue* conditionExpr = &self->conditions[i];
         const CubsTypeContext* conditionContext = 
             cubs_expr_node_resolve_type(conditionExpr, program, builder, variables);
+        if(conditionContext != &CUBS_BOOL_CONTEXT) {
+            fprintf(stderr, "condition context %s\n", conditionContext->name);
+        }
         assert(conditionContext == &CUBS_BOOL_CONTEXT);
     }
 
@@ -246,7 +249,10 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
                 (void)cubs_token_iter_next(iter);
                 assert(iter->current.tag == LEFT_PARENTHESES_SYMBOL);
 
-                const ExprValue firstIfCondition = cubs_parse_expression(iter, variables, false, -1);
+                // step over to actual expression
+                (void)cubs_token_iter_next(iter);
+
+                elseIfCondition = cubs_parse_expression(iter, variables, false, -1);
                 assert(iter->current.tag == RIGHT_PARENTHESES_SYMBOL);
             } else {
                 assert(false && "Expected \'{\' or \'if\' after \'else\'");
