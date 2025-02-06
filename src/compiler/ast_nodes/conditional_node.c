@@ -139,9 +139,6 @@ static void conditional_node_resolve_types(
         ExprValue* conditionExpr = &self->conditions[i];
         const CubsTypeContext* conditionContext = 
             cubs_expr_node_resolve_type(conditionExpr, program, builder, variables);
-        if(conditionContext != &CUBS_BOOL_CONTEXT) {
-            fprintf(stderr, "condition context %s\n", conditionContext->name);
-        }
         assert(conditionContext == &CUBS_BOOL_CONTEXT);
     }
 
