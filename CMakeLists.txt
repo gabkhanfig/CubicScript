@@ -39,6 +39,7 @@ add_library(CubicScript STATIC
     "src/compiler/ast_nodes/return_node.c"
     "src/compiler/ast_nodes/binary_expression.c"
     "src/compiler/ast_nodes/variable_declaration.c"
+    "src/compiler/ast_nodes/variable_assignment.c"
     "src/compiler/ast_nodes/expression_value.c"
     "src/compiler/ast_nodes/struct_node.c"
     "src/compiler/ast_nodes/member_variable.c"

@@ -19,6 +19,7 @@ enum AstNodeType {
     astNodeTypeReturn,
     astNodeBinaryExpression,
     astNodeVariableDeclaration,
+    astNodeVariableAssignment,
     astNodeTypeStruct,
     astNodeTypeMemberVariable,
     astNodeTypeConditional,

@@ -971,3 +971,30 @@ test "if/else if/else" {
         try expect(false);
     }
 }
+
+test "assign variable simple" {
+    const source =
+        \\fn testFunc() int { 
+        \\  mut testVar: int = 1;
+        \\  testVar = 2;
+        \\  return testVar;
+        \\};
+    ;
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+    if (findFunction(&program, "testFunc")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retValue == 2);
+    } else {
+        try expect(false);
+    }
+}

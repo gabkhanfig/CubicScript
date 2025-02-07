@@ -6,6 +6,7 @@
 #include "../ast.h"
 #include "return_node.h"
 #include "variable_declaration.h"
+#include "variable_assignment.h"
 #include "conditional_node.h"
 #include <stdio.h>
 
@@ -32,6 +33,18 @@ inline static bool parse_next_statement(AstNode* outNode, TokenIter* iter, Stack
             case IF_KEYWORD: {
                 AstNode conditionalNode = cubs_conditional_node_init(iter, variables);
                 *outNode = conditionalNode;
+            } break;
+
+            case IDENTIFIER: {
+                const TokenType afterIdentifier = cubs_token_iter_peek(iter);
+                if(afterIdentifier == LEFT_PARENTHESES_SYMBOL) {
+                    assert(false && "Cannot do function calls yet");
+                } else if(afterIdentifier == ASSIGN_OPERATOR) {
+                    AstNode variableAssign = cubs_variable_assignment_node_init(iter, variables);
+                    *outNode = variableAssign;
+                } else {
+                    assert(false && "Unknown token after identifier at start of statement");
+                }
             } break;
 
             default: {
