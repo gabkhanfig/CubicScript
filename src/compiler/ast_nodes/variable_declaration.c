@@ -62,7 +62,7 @@ static void variable_declaration_resolve_types(
 }
 
 static AstNodeVTable variable_declaration_node_vtable = {
-    .nodeType = astNodeBinaryExpression,
+    .nodeType = astNodeVariableDeclaration,
     .deinit = (AstNodeDeinit)&variable_declaration_node_deinit,
     .compile = NULL,
     .toString = NULL,
