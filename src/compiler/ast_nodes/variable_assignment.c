@@ -69,6 +69,11 @@ struct AstNode cubs_variable_assignment_node_init(struct TokenIter* iter, struct
         assert(false && "Cannot assign to variable that hasn't been declared");
     }
 
+    { // Cannot assign to variable that is not mutable
+        const StackVariableInfo* variableInfo = &variables->variables[foundVariableIndex];
+        assert(variableInfo->isMutable);
+    }
+
     { // after variable name, expect '='
         const TokenType equalSymbolNext = cubs_token_iter_next(iter);
         assert(equalSymbolNext == ASSIGN_OPERATOR);
@@ -76,6 +81,8 @@ struct AstNode cubs_variable_assignment_node_init(struct TokenIter* iter, struct
 
     (void)cubs_token_iter_next(iter); // step over to next
     const ExprValue expression = cubs_parse_expression(iter, variables, true, foundVariableIndex);
+
+    
 
     VariableAssignmentNode* self = MALLOC_TYPE(VariableAssignmentNode);
     *self = (VariableAssignmentNode){.variableIndex = foundVariableIndex, .newValue = expression};

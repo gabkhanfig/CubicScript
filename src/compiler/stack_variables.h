@@ -8,14 +8,14 @@
 #include "ast_nodes/type_resolution_info.h"
 
 typedef struct StackVariableInfo {
-    /// NON-OWNING reference to the name of this variable.
-    /// Useful because it allows mutating the name in certain circumstances
-    /// such as temporary variables.
     /// Use string instead of slice because this variable name
     /// may need to be generated, such as with a temporary value.
+    /// The name may also change with temporary values, depending on
+    /// `isTemporary`.
     CubsString name;
     /// If this is a temporary variable, `name` is allowed to be mutated freely
     bool isTemporary;
+    bool isMutable;
     TypeResolutionInfo typeInfo;
 } StackVariableInfo;
 

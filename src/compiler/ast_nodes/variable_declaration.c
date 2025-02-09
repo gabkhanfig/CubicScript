@@ -92,6 +92,7 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
 
     StackVariableInfo variableInfo = {0};
     variableInfo.isTemporary = false;
+    variableInfo.isMutable = self->isMutable;
 
     { // after `const` or `mut` is the variable name
         const TokenType nextType = cubs_token_iter_next(iter);

@@ -127,6 +127,7 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
 
     while(token != RIGHT_PARENTHESES_SYMBOL) {
         StackVariableInfo info = {0};
+        info.isMutable = true; // TODO should function arguments be immutable?
 
         const TokenType variableNameToken = token;
         assert(variableNameToken == IDENTIFIER && "Expected identifier for function argument variable name");

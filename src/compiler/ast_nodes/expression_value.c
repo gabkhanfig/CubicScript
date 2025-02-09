@@ -25,6 +25,7 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
             StackVariableInfo temporaryVariable = {
                 .name = variableName,
                 .isTemporary = true,
+                .isMutable = false,
                 .typeInfo = cubs_type_resolution_info_from_context(&CUBS_BOOL_CONTEXT),
             };
 
@@ -39,6 +40,7 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
             StackVariableInfo temporaryVariable = {
                 .name = variableName,
                 .isTemporary = true,
+                .isMutable = false,
                 .typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
             };
 
@@ -56,6 +58,7 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
             StackVariableInfo temporaryVariable = {
                 .name = variableName,
                 .isTemporary = true,
+                .isMutable = false,
                 .typeInfo = cubs_type_resolution_info_from_context(&CUBS_FLOAT_CONTEXT),
             };
 
@@ -121,6 +124,7 @@ ExprValue cubs_parse_expression(
                     StackVariableInfo temporaryVariable = {
                         .name = variableName,
                         .isTemporary = true,
+                        .isMutable = false,
                         .typeInfo = {0},
                     };
                     if(tokenAfterFirst == EQUAL_OPERATOR) {
