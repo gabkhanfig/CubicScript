@@ -1,7 +1,7 @@
 #pragma once
 
-#include "compiler_callbacks.h"
-#include "../primitives/string/string.h"
+#include "../compiler_callbacks.h"
+#include "../../primitives/string/string.h"
 
 /* ==== TOKENS ====
 https://www.geeksforgeeks.org/tokens-in-c/

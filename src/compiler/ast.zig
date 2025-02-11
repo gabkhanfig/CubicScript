@@ -3,7 +3,7 @@ const expect = std.testing.expect;
 const c = @cImport({
     @cInclude("program/program.h");
     @cInclude("program/program_internal.h");
-    @cInclude("compiler/tokenizer.h");
+    @cInclude("compiler/parse/tokenizer.h");
     @cInclude("compiler/ast.h");
     @cInclude("compiler/ast_nodes/file_node.h");
     @cInclude("compiler/ast_nodes/function_node.h");

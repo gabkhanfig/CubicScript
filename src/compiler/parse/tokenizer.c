@@ -1,9 +1,9 @@
 #include "tokenizer.h"
 #include <assert.h>
 #include <stdio.h>
-#include "../util/math.h"
-#include "../platform/mem.h"
-#include "../util/unreachable.h"
+#include "../../util/math.h"
+#include "../../platform/mem.h"
+#include "../../util/unreachable.h"
 
 // TODO figure out fast way to get the token.
 // Could look at SIMD, or hashing, or even 8 byte compare if all tokens (not identifiers)

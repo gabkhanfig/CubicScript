@@ -2,12 +2,12 @@
 #include "../../platform/mem.h"
 #include "../ast.h"
 #include "../stack_variables.h"
-#include "../tokenizer.h"
+#include "../parse/tokenizer.h"
 #include "ast_node_array.h"
 #include "expression_value.h"
 #include "../../interpreter/function_definition.h"
 #include <assert.h>
-#include "parse_statements.h"
+#include "../parse/parse_statements.h"
 #include <string.h>
 #include "../../interpreter/bytecode_array.h"
 #include "../../interpreter/operations.h"

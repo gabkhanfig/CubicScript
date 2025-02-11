@@ -1,5 +1,5 @@
 #include "type_resolution_info.h"
-#include "../tokenizer.h"
+#include "../parse/tokenizer.h"
 #include "../../primitives/context.h"
 #include "../../util/panic.h"
 #include <stdio.h>

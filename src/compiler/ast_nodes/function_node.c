@@ -10,7 +10,7 @@
 #include "../../interpreter/operations.h"
 #include "../../interpreter/function_definition.h"
 #include "../../primitives/string/string.h"
-#include "parse_statements.h"
+#include "../parse/parse_statements.h"
 //#include <stdio.h>
 
 static void function_node_deinit(FunctionNode* self) {

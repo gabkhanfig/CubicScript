@@ -8,7 +8,7 @@ comptime {
     _ = @import("interpreter/function_definition.zig");
     _ = @import("program/protected_arena.zig");
 
-    _ = @import("compiler/tokenizer.zig");
+    _ = @import("compiler/parse/tokenizer.zig");
     _ = @import("compiler/ast.zig");
     _ = @import("compiler/stack_variables.zig");
     _ = @import("compiler/script_types/struct_memory_layout.zig");

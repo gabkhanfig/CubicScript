@@ -1,7 +1,7 @@
 const std = @import("std");
 const expect = std.testing.expect;
 const c = @cImport({
-    @cInclude("compiler/tokenizer.h");
+    @cInclude("compiler/parse/tokenizer.h");
 });
 
 const TokenIter = c.TokenIter;

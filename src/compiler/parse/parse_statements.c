@@ -1,19 +1,16 @@
-#ifndef PARSE_STATEMENTS_H
-#define PARSE_STATEMENTS_H
-
-#include "../tokenizer.h"
+#include "parse_statements.h"
+#include "tokenizer.h"
 #include <assert.h>
 #include "../ast.h"
-#include "return_node.h"
-#include "variable_declaration.h"
-#include "variable_assignment.h"
-#include "conditional_node.h"
+#include "../ast_nodes/return_node.h"
+#include "../ast_nodes/variable_declaration.h"
+#include "../ast_nodes/variable_assignment.h"
+#include "../ast_nodes/conditional_node.h"
+#include "../stack_variables.h"
 #include <stdio.h>
 
-/// Parses the next statement in the iterator.
-/// @return true if a statement was parsed, false if the end of the statements
-/// was reached, at the `}` character.
-inline static bool parse_next_statement(AstNode* outNode, TokenIter* iter, StackVariablesArray* variables) {
+bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray *variables)
+{
     TokenType token = cubs_token_iter_next(iter);
     if(token != RIGHT_BRACE_SYMBOL) {
         assert(token != TOKEN_NONE);
@@ -57,5 +54,3 @@ inline static bool parse_next_statement(AstNode* outNode, TokenIter* iter, Stack
         return false;
     }
 }
-
-#endif

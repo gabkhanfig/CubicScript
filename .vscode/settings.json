@@ -144,6 +144,9 @@
         "variable_declaration.h": "c",
         "ast_node_array.h": "c",
         "expression_value.h": "c",
-        "type_resolution_info.h": "c"
+        "type_resolution_info.h": "c",
+        "parse_statements.h": "c",
+        "variable_assignment.h": "c",
+        "conditional_node.h": "c"
     }
 }
