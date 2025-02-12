@@ -134,6 +134,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/compiler/ast_nodes/member_variable.c",
     "src/compiler/ast_nodes/type_resolution_info.c",
     "src/compiler/ast_nodes/conditional_node.c",
+    "src/compiler/ast_nodes/function_call.c",
 
     "src/sync/atomic.c",
     "src/sync/locks.c",
