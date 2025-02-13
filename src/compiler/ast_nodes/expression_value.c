@@ -13,7 +13,7 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
     //(void)cubs_token_iter_next(iter);
     const Token token = iter->current;
 
-    assert(token.tag != SEMICOLON_SYMBOL);
+    assert(token.tag != SEMICOLON_SYMBOL || token.tag != COMMA_SYMBOL);
 
     ExprValue value = {0};
 
@@ -99,7 +99,7 @@ ExprValue cubs_parse_expression(
     
     const TokenType tokenAfterFirst = iter->current.tag;
     // Means first token is the only one in the expression
-    if(tokenAfterFirst == SEMICOLON_SYMBOL) {
+    if(tokenAfterFirst == SEMICOLON_SYMBOL || tokenAfterFirst == COMMA_SYMBOL) {
         return firstValue;
     }
 

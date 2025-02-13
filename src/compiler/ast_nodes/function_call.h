@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "../../primitives/string/string_slice.h"
+//#include "../../primitives/function/function.h"
 
 struct ExprValue;
 struct TokenIter;
@@ -18,10 +19,12 @@ typedef struct FunctionCallNode {
     struct ExprValue* args;
     size_t argsLen;
     size_t argsCapacity;
+    // Unknown until type resolution
+    //CubsFunction function;
 } FunctionCallNode;
 
 struct AstNode cubs_function_call_node_init(
-    const CubsStringSlice functionName, 
+    CubsStringSlice functionName, 
     bool hasReturnVariable,
     size_t returnVariable,
     struct TokenIter* iter,
