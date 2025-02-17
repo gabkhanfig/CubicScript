@@ -177,7 +177,11 @@ void function_dependency_graph_builder_deinit(FunctionDependencyGraphBuilder *se
     if(self->entries == NULL) return;
 
     for(size_t i = 0; i < self->len; i++) {
-        FREE_TYPE(FunctionEntry*,  self->entries[i]);
+        FunctionEntry* entry = self->entries[i];
+        if(entry->dependencies != NULL) {
+            FREE_TYPE_ARRAY(FunctionEntry*, entry->dependencies, entry->dependenciesLen);
+        }    
+        FREE_TYPE(FunctionEntry,  entry);
     }
     FREE_TYPE_ARRAY(FunctionEntry*, self->entries, self->capacity);
 
@@ -211,9 +215,11 @@ void function_dependency_graph_builder_push(FunctionDependencyGraphBuilder *self
         assert(entry->dependencies == NULL);
     }
 
-    entry->dependenciesLen = function.dependenciesLen;
-    // Array of non-owning pointers
-    entry->dependencies = MALLOC_TYPE_ARRAY(FunctionEntry*, function.dependenciesLen);
+    if(function.dependenciesLen > 0) {
+        entry->dependenciesLen = function.dependenciesLen;
+        // Array of non-owning pointers
+        entry->dependencies = MALLOC_TYPE_ARRAY(FunctionEntry*, function.dependenciesLen);
+    }
 
     for(size_t i = 0; i < function.dependenciesLen; i++) {
         const CubsStringSlice dependencyName = function.dependencies[i];
