@@ -12,6 +12,7 @@ comptime {
     _ = @import("compiler/ast.zig");
     _ = @import("compiler/stack_variables.zig");
     _ = @import("compiler/script_types/struct_memory_layout.zig");
+    _ = @import("compiler/graph/function_dependency_graph.zig");
 
     // Many tests are within the structs themselves, so importing .ScriptThread for example is necessary.
     _ = @import("sync/thread.zig").ScriptThread;
