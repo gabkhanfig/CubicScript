@@ -25,6 +25,6 @@ extern void _cubs_os_free_pages(void* pagesStart, size_t len);
 
 #define FREE_TYPE(T, ptr) (cubs_free((void*)ptr, sizeof(T), _Alignof(T)))
 
-#define MALLOC_TYPE_ARRAY(T, count) ((T*)cubs_malloc(sizeof(T) * count, _Alignof(T)))
+#define MALLOC_TYPE_ARRAY(T, count) ((T*)cubs_malloc(sizeof(T) * (count), _Alignof(T)))
 
-#define FREE_TYPE_ARRAY(T, ptr, count) (cubs_free((void*)ptr, sizeof(T) * count, _Alignof(T)))
+#define FREE_TYPE_ARRAY(T, ptr, count) (cubs_free((void*)ptr, sizeof(T) * (count), _Alignof(T)))
