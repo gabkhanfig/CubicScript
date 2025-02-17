@@ -238,6 +238,8 @@ void function_dependency_graph_builder_push(FunctionDependencyGraphBuilder *self
 
         entry->dependencies[i] = dependencyEntry;
     }
+
+    function_dependencies_deinit(&function);
 }
 
 /// Check if the graph contains all the resolved dependencies of `entry`, up to layer `layersToCheck - 1`.
