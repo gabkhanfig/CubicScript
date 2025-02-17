@@ -278,6 +278,8 @@ static bool all_dependencies_resolved(const FunctionDependencyGraph* self, const
 // A function is resolved when all of it's dependencies are resolved
 // The first functions to get resolved are the functions with no dependencies
 
+// TODO find circular dependenciess
+
 FunctionDependencyGraph function_dependency_graph_builder_build(FunctionDependencyGraphBuilder *self)
 {
     FunctionDependencyGraph graph = {0};
