@@ -156,7 +156,7 @@ FunctionDependencyGraphIter function_dependency_graph_iter_init(const FunctionDe
 
 const FunctionEntry *function_dependency_graph_iter_next(FunctionDependencyGraphIter *self)
 {
-    if(self->currentLayer > self->graph->layerCount) {
+    if(self->currentLayer >= self->graph->layerCount) {
         return NULL;
     }
 
