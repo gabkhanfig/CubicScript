@@ -123,7 +123,7 @@ static void graph_builder_ensure_capacity(FunctionDependencyGraphBuilder* self, 
     self->capacity = requiredCapacity;
 }
 
-static function_entry_deinit(FunctionEntry* self) {
+static void function_entry_deinit(FunctionEntry* self) {
     if(self->dependencies == NULL) return;
 
     FREE_TYPE_ARRAY(FunctionEntry*, self->dependencies, self->dependenciesLen);

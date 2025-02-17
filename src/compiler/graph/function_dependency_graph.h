@@ -31,7 +31,7 @@ typedef struct FunctionEntry {
     size_t hash;
     CubsStringSlice name;
     /// Array of non-owning reference. Range is `0 - dependenciesLen - 1`
-    FunctionEntry** dependencies;
+    struct FunctionEntry** dependencies;
     size_t dependenciesLen;
 } FunctionEntry;
 
