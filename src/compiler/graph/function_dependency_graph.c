@@ -124,11 +124,11 @@ static void graph_builder_ensure_capacity(FunctionDependencyGraphBuilder* self, 
 }
 
 static void function_entry_deinit(FunctionEntry* self) {
-    if(self->dependencies == NULL) return;
+    if(self->dependencies != NULL) {
+        FREE_TYPE_ARRAY(FunctionEntry*, self->dependencies, self->dependenciesLen);
+    }
 
-    FREE_TYPE_ARRAY(FunctionEntry*, self->dependencies, self->dependenciesLen);
-    self->dependencies = NULL;
-    self->dependenciesLen = 0;
+    FREE_TYPE(FunctionEntry, self);
 }
 
 void function_dependency_graph_deinit(FunctionDependencyGraph *self)
@@ -137,9 +137,11 @@ void function_dependency_graph_deinit(FunctionDependencyGraph *self)
 
     for(size_t layerIter = 0; layerIter < self->layerCount; layerIter++) {
         FunctionDepGraphLayer* layer = &self->layers[layerIter];
-        for(size_t i = 0; i < layer->len; i++) {
+        assert(layer->entries != NULL);
+        for(size_t i = 0; i < layer->len; i++) {      
             function_entry_deinit(layer->entries[i]);
         }
+        FREE_TYPE_ARRAY(FunctionEntry*, layer->entries, layer->capacity);
     }
 
     FREE_TYPE_ARRAY(FunctionDepGraphLayer, self->layers, self->layerCount);
@@ -309,10 +311,10 @@ FunctionDependencyGraph function_dependency_graph_builder_build(FunctionDependen
             }
 
             function_dep_graph_layer_push(layer, entry);
+            len -= 1;
             // shift down all remaining entries for subsequent loops
-            for(size_t shiftIter = i; shiftIter < (len - 1); shiftIter++) {
+            for(size_t shiftIter = i; shiftIter < len; shiftIter++) {
                 entries[shiftIter] = entries[shiftIter + 1];
-                len -= 1;
             }
         }
         if(layer->len == 0) {
