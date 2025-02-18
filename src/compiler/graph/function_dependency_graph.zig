@@ -135,3 +135,44 @@ test "two functions one depend on the other" {
         try OrderIndependent.validate(&builder);
     }
 }
+
+test "long dependency chain" {
+    const names = [3][]const u8{ "primary", "secondary", "tertiary" };
+
+    var builder = FunctionDependencyGraphBuilder{};
+    var f1 = function_dependencies_init(names[1]);
+    function_dependencies_push(&f1, names[0]);
+    function_dependency_graph_builder_push(&builder, f1);
+
+    var f2 = function_dependencies_init(names[2]);
+    function_dependencies_push(&f2, names[1]);
+    function_dependency_graph_builder_push(&builder, f2);
+
+    const f3 = function_dependencies_init(names[0]);
+    function_dependency_graph_builder_push(&builder, f3);
+
+    var graph = function_dependency_graph_builder_build(&builder);
+    defer function_dependency_graph_deinit(&graph);
+
+    var iter = function_dependency_graph_iter_init(&graph);
+
+    { // first function should have no dependencies
+        const entry = function_dependency_graph_iter_next(&iter).?;
+        try expect(entry.dependenciesLen == 0);
+        try expect(entryNameIs(entry, names[0]));
+    }
+    { // second function should depend on the first
+        const entry = function_dependency_graph_iter_next(&iter).?;
+        try expect(entry.dependenciesLen == 1);
+        try expect(entryNameIs(entry, names[1]));
+        try expect(entryNameIs(entry.dependencies[0], names[0]));
+    }
+    { // third function should depend on the second
+        const entry = function_dependency_graph_iter_next(&iter).?;
+        try expect(entry.dependenciesLen == 1);
+        try expect(entryNameIs(entry, names[2]));
+        try expect(entryNameIs(entry.dependencies[0], names[1]));
+    }
+
+    try expect(function_dependency_graph_iter_next(&iter) == null);
+}
