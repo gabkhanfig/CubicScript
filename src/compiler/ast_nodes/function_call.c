@@ -40,7 +40,10 @@ static void function_call_node_build_function(
     }
 
     const uint16_t argCount = (uint16_t)self->argsLen;
-    uint16_t* args = MALLOC_TYPE_ARRAY(uint16_t, argCount);
+    uint16_t* args = NULL;
+    if(argCount > 0) {
+        args = MALLOC_TYPE_ARRAY(uint16_t, argCount);
+    }
 
     for(uint16_t i = 0; i < argCount; i++) { // handle each argument
         const ExprValue argExpression = self->args[i];
@@ -70,7 +73,9 @@ static void function_call_node_build_function(
     cubs_function_builder_push_bytecode_many(builder, callBytecode, usedBytecode);
 
     FREE_TYPE_ARRAY(Bytecode, callBytecode, availableBytecode);
-    FREE_TYPE_ARRAY(uint16_t, args, argCount);
+    if(args != NULL) {
+        FREE_TYPE_ARRAY(uint16_t, args, argCount);
+    }
 }
 
 static void function_call_node_resolve_types(
@@ -143,6 +148,11 @@ AstNode cubs_function_call_node_init(
                 assert(iter->current.tag != RIGHT_PARENTHESES_SYMBOL); // expects another argument after a comma
             }
         }
+    }
+
+    { // semicolon after
+        (void)cubs_token_iter_next(iter);
+        assert(iter->current.tag == SEMICOLON_SYMBOL);
     }
 
     FunctionCallNode* self = MALLOC_TYPE(FunctionCallNode);

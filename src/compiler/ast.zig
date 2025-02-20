@@ -1008,7 +1008,37 @@ test "two functions" {
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
-    std.debug.print("hmjj\n", .{});
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc1")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+
+    if (findFunction(&program, "testFunc2")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+}
+
+test "two functions one calls the other" {
+    const source =
+        \\fn testFunc1() {
+        \\  testFunc2();
+        \\}
+        \\fn testFunc2() {}
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
 
     var ast = c.cubs_ast_init(tokenIter, &program);
     defer c.cubs_ast_deinit(&ast);

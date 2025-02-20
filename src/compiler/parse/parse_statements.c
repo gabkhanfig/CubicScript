@@ -6,6 +6,7 @@
 #include "../ast_nodes/variable_declaration.h"
 #include "../ast_nodes/variable_assignment.h"
 #include "../ast_nodes/conditional_node.h"
+#include "../ast_nodes/function_call.h"
 #include "../stack_variables.h"
 #include "../graph/function_dependency_graph.h"
 #include <stdio.h>
@@ -36,7 +37,10 @@ bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray
             case IDENTIFIER: {
                 const TokenType afterIdentifier = cubs_token_iter_peek(iter);
                 if(afterIdentifier == LEFT_PARENTHESES_SYMBOL) {
-                    assert(false && "Cannot do function calls yet");
+                    const CubsStringSlice functionName = iter->current.value.identifier;
+                    (void)cubs_token_iter_next(iter);
+                    AstNode callNode = cubs_function_call_node_init(functionName, false, 0, iter, variables, dependencies);
+                    *outNode = callNode;
                 } else if(afterIdentifier == ASSIGN_OPERATOR) {
                     AstNode variableAssign = cubs_variable_assignment_node_init(iter, variables);
                     *outNode = variableAssign;
