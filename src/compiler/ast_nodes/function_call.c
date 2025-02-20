@@ -10,6 +10,7 @@
 #include "../../interpreter/operations.h"
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
+#include "../graph/function_dependency_graph.h"
 
 static void function_call_node_deinit(FunctionCallNode* self) {
     if(self->argsCapacity > 0) {
@@ -49,9 +50,12 @@ AstNode cubs_function_call_node_init(
     bool hasReturnVariable, 
     size_t returnVariable, 
     TokenIter *iter, 
-    StackVariablesArray *variables
+    StackVariablesArray *variables,
+    FunctionDependencies* dependencies
 ) {
     assert(iter->current.tag == LEFT_PARENTHESES_SYMBOL);
+
+    function_dependencies_push(dependencies, functionName);
 
     ExprValue* args = NULL;
     size_t len = 0;

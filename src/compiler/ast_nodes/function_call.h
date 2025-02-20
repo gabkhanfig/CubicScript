@@ -10,6 +10,7 @@ struct ExprValue;
 struct TokenIter;
 struct StackVariablesArray;
 struct AstNode;
+struct FunctionDependencies;
 
 typedef struct FunctionCallNode {
     CubsStringSlice functionName;
@@ -28,7 +29,8 @@ struct AstNode cubs_function_call_node_init(
     bool hasReturnVariable,
     size_t returnVariable,
     struct TokenIter* iter,
-    struct StackVariablesArray* variables
+    struct StackVariablesArray* variables,
+    struct FunctionDependencies* dependencies
 );
 
 #endif
