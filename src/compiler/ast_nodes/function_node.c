@@ -190,6 +190,7 @@ AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphB
 
     { // statements
         FunctionDependencies dependencies = {0};
+        dependencies.name = self->functionName;
 
         bool endsWithReturn = false;
 

@@ -7,6 +7,20 @@
 #include <stdio.h>
 #include "../../util/panic.h"
 
+static bool string_slice_eql(CubsStringSlice lhs, CubsStringSlice rhs) {
+    if(lhs.len != rhs.len) {
+        return false;
+    }
+
+    for(size_t i = 0; i < lhs.len; i++) {
+        if(lhs.str[i] != rhs.str[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 static void file_node_deinit(FileNode* self) {
     ast_node_array_deinit(&self->functions);
     ast_node_array_deinit(&self->structs);
@@ -26,10 +40,26 @@ static void file_node_compile(FileNode* self, struct CubsProgram* program) {
         ast_node_define_type(&node, program);
     }
 
-    for(uint32_t i = 0; i < self->functions.len; i++) {
-        AstNode node = self->functions.nodes[i];
-        assert(node.vtable->compile != NULL);
-        ast_node_compile(&node, program);
+    { // compile functions in dependency order
+        FunctionDependencyGraphIter iter = function_dependency_graph_iter_init(&self->functionDependencyGraph);
+
+        const FunctionEntry* entry = function_dependency_graph_iter_next(&iter);
+        while(entry != NULL) {
+            const CubsStringSlice functionName = entry->name;
+            // TODO maybe this can be optimized
+            for(uint32_t i = 0; i < self->functions.len; i++) {
+                AstNode node = self->functions.nodes[i];
+                assert(node.vtable->nodeType == astNodeTypeFunction);
+
+                const FunctionNode* functionNode = (const FunctionNode*)node.ptr;
+                if(string_slice_eql(functionNode->functionName, functionName)) {
+                    assert(node.vtable->compile != NULL);
+                    ast_node_compile(&node, program);
+                    break;
+                }
+            }
+            entry = function_dependency_graph_iter_next(&iter);
+        }
     }
 }
 
