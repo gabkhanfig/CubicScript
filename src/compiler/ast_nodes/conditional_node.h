@@ -8,6 +8,7 @@ struct AstNodeArray;
 struct AstNode;
 struct TokenIter;
 struct StackVariablesArray;
+struct FunctionDependencies;
 
 // TODO switch statement
 /// If/else for now.
@@ -25,6 +26,6 @@ typedef struct ConditionalNode {
     size_t capacity;
 } ConditionalNode;
 
-struct AstNode cubs_conditional_node_init(struct TokenIter* iter, struct StackVariablesArray* variables);
+struct AstNode cubs_conditional_node_init(struct TokenIter* iter, struct StackVariablesArray* variables, struct FunctionDependencies* dependencies);
 
 #endif

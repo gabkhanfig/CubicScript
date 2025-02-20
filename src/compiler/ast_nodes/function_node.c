@@ -11,6 +11,7 @@
 #include "../../interpreter/function_definition.h"
 #include "../../primitives/string/string.h"
 #include "../parse/parse_statements.h"
+#include "../graph/function_dependency_graph.h"
 //#include <stdio.h>
 
 static void function_node_deinit(FunctionNode* self) {
@@ -156,7 +157,7 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
     return variables;
 }
 
-AstNode cubs_function_node_init(TokenIter *iter)
+AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphBuilder* dependencyBuilder)
 {
     assert(iter->current.tag == FN_KEYWORD);
     FunctionNode* self = (FunctionNode*)cubs_malloc(sizeof(FunctionNode), _Alignof(FunctionNode));
@@ -188,10 +189,12 @@ AstNode cubs_function_node_init(TokenIter *iter)
     // TODO figure out how to handle temporary variables
 
     { // statements
+        FunctionDependencies dependencies = {0};
+
         bool endsWithReturn = false;
 
         AstNode temp = {0};
-        while(parse_next_statement(&temp, iter, &self->variables)) {
+        while(parse_next_statement(&temp, iter, &self->variables, &dependencies)) {
             ast_node_array_push(&self->items, temp);
             endsWithReturn = temp.vtable->nodeType == astNodeTypeReturn;
         }
@@ -203,6 +206,8 @@ AstNode cubs_function_node_init(TokenIter *iter)
             AstNode emptyReturnNode = cubs_return_node_init_empty();
             ast_node_array_push(&self->items, emptyReturnNode);
         }
+
+        function_dependency_graph_builder_push(dependencyBuilder, dependencies);
     }
 
     const AstNode node = {.ptr = (void*)self, .vtable = &function_node_vtable};

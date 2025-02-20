@@ -3,6 +3,8 @@
 #include "../stack_variables.h"
 #include "type_resolution_info.h"
 
+struct FunctionDependencyGraphBuilder;
+
 typedef struct FunctionNode {
     CubsStringSlice functionName;
     AstNodeArray items;
@@ -15,4 +17,4 @@ typedef struct FunctionNode {
     size_t argCount;
 } FunctionNode;
 
-AstNode cubs_function_node_init(TokenIter* iter);
+AstNode cubs_function_node_init(TokenIter* iter, struct FunctionDependencyGraphBuilder* dependencyBuilder);

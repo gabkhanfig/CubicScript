@@ -7,9 +7,10 @@
 #include "../ast_nodes/variable_assignment.h"
 #include "../ast_nodes/conditional_node.h"
 #include "../stack_variables.h"
+#include "../graph/function_dependency_graph.h"
 #include <stdio.h>
 
-bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray *variables)
+bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray *variables, FunctionDependencies* dependencies)
 {
     TokenType token = cubs_token_iter_next(iter);
     if(token != RIGHT_BRACE_SYMBOL) {
@@ -28,7 +29,7 @@ bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray
             } break;
 
             case IF_KEYWORD: {
-                AstNode conditionalNode = cubs_conditional_node_init(iter, variables);
+                AstNode conditionalNode = cubs_conditional_node_init(iter, variables, dependencies);
                 *outNode = conditionalNode;
             } break;
 

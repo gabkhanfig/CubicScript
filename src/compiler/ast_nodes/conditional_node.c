@@ -13,6 +13,7 @@
 #include "../../interpreter/operations.h"
 #include "../../interpreter/bytecode.h"
 #include "binary_expression.h"
+#include "../graph/function_dependency_graph.h"
 
 static bool conditional_node_has_final_else_branch(const ConditionalNode* self) {
     return self->conditionsLen == (self->blocksLen - 1);
@@ -178,7 +179,7 @@ static AstNodeVTable conditional_node_vtable = {
     .endsWithReturn = (AstNodeStatementsEndWithReturn)&conditional_node_statements_ends_with_return,
 };
 
-AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variables)
+AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variables, FunctionDependencies* dependencies)
 {
     assert(iter->current.tag == IF_KEYWORD);
 
@@ -196,7 +197,7 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
     {
         AstNode temp = {0};
         // parses until right brace
-        while(parse_next_statement(&temp, iter, variables)) {
+        while(parse_next_statement(&temp, iter, variables, dependencies)) {
             ast_node_array_push(&firstIfStatements, temp);
         }
     }
@@ -262,7 +263,7 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
             {
                 AstNode temp = {0};
                 // parses until right brace
-                while(parse_next_statement(&temp, iter, variables)) {
+                while(parse_next_statement(&temp, iter, variables, dependencies)) {
                     ast_node_array_push(&elseStatements, temp);
                 }
             }

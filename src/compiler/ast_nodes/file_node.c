@@ -10,6 +10,7 @@
 static void file_node_deinit(FileNode* self) {
     ast_node_array_deinit(&self->functions);
     ast_node_array_deinit(&self->structs);
+    function_dependency_graph_deinit(&self->functionDependencyGraph);
     cubs_free(self, sizeof(FileNode), _Alignof(FileNode));
 }
 
@@ -26,7 +27,7 @@ static void file_node_compile(FileNode* self, struct CubsProgram* program) {
     }
 
     for(uint32_t i = 0; i < self->functions.len; i++) {
-        const AstNode node = self->functions.nodes[i];
+        AstNode node = self->functions.nodes[i];
         assert(node.vtable->compile != NULL);
         ast_node_compile(&node, program);
     }
@@ -50,14 +51,16 @@ AstNode cubs_file_node_init(TokenIter *iter)
 
     assert(iter->current.tag == TOKEN_NONE && "File node should begin at the start of the iterator");
 
-    { // function node
+    FunctionDependencyGraphBuilder functionDependencyBuilder = {0};
+
+    {
         const TokenType next = cubs_token_iter_next(iter);
         if(next == TOKEN_NONE) { // end of file
 
         } else {
             switch(next) {
                 case FN_KEYWORD: {
-                    const AstNode functionNode = cubs_function_node_init(iter);
+                    const AstNode functionNode = cubs_function_node_init(iter, &functionDependencyBuilder);
                     ast_node_array_push(&self->functions, functionNode);
                 } break;
                 case STRUCT_KEYWORD: {
@@ -71,6 +74,8 @@ AstNode cubs_file_node_init(TokenIter *iter)
             }         
         }
     }
+
+    self->functionDependencyGraph = function_dependency_graph_builder_build(&functionDependencyBuilder);
 
     const AstNode node = {.ptr = (void*)self, .vtable = &file_node_vtable};
     return node;
