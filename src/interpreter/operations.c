@@ -49,8 +49,10 @@ Bytecode operands_make_return(bool hasReturn, uint16_t returnSrc)
 
 #include <stdio.h>
 
-void cubs_operands_make_call_immediate(Bytecode *bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t *args, bool hasReturn, uint16_t returnSrc, CubsFunction func)
+size_t cubs_operands_make_call_immediate(Bytecode *bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t *args, bool hasReturn, uint16_t returnSrc, CubsFunction func)
 {
+    /// Initial bytecode + immediate function
+    size_t requiredBytecode = 1 + 1;
     { // validation
         if(hasReturn) {
             assert(returnSrc <= MAX_FRAME_LENGTH);
@@ -59,8 +61,7 @@ void cubs_operands_make_call_immediate(Bytecode *bytecodeArr, size_t availableBy
             assert(args[i] <= MAX_FRAME_LENGTH);
         }
 
-        /// Initial bytecode + immediate function
-        size_t requiredBytecode = 1 + 1;
+        
         if((argCount % 4) == 0) {
             requiredBytecode += (argCount / 4);
         } else {
@@ -84,10 +85,14 @@ void cubs_operands_make_call_immediate(Bytecode *bytecodeArr, size_t availableBy
     for(uint16_t i = 0; i < argCount; i++) {
         bytecodeArgs[i] = args[i];
     }
+
+    return requiredBytecode;
 }
 
-void cubs_operands_make_call_src(Bytecode *bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t *args, bool hasReturn, uint16_t returnSrc, uint16_t funcSrc)
-{
+size_t cubs_operands_make_call_src(Bytecode *bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t *args, bool hasReturn, uint16_t returnSrc, uint16_t funcSrc)
+{  
+    /// Initial bytecode
+    size_t requiredBytecode = 1;
     { // validation
         assert(funcSrc <= MAX_FRAME_LENGTH);
         if(hasReturn) {
@@ -97,8 +102,6 @@ void cubs_operands_make_call_src(Bytecode *bytecodeArr, size_t availableBytecode
             assert(args[i] <= MAX_FRAME_LENGTH);
         }
 
-        /// Initial bytecode
-        size_t requiredBytecode = 1;
         if((argCount % 4) == 0) {
             requiredBytecode += (argCount / 4);
         } else {
@@ -121,6 +124,8 @@ void cubs_operands_make_call_src(Bytecode *bytecodeArr, size_t availableBytecode
     for(uint16_t i = 0; i < argCount; i++) {
         bytecodeArgs[i] = args[i];
     }
+
+    return requiredBytecode;
 }
 
 Bytecode cubs_operands_make_jump(enum JumpType jumpType, int32_t jumpAmount, uint16_t jumpSrc)

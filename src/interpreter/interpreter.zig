@@ -469,7 +469,7 @@ test "call immediate C no args no return" {
     };
 
     var bytecode: [2]c.Bytecode = undefined;
-    c.cubs_operands_make_call_immediate(
+    _ = c.cubs_operands_make_call_immediate(
         &bytecode,
         2,
         0,
@@ -510,7 +510,7 @@ test "call immediate C one arg no return" {
     c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
 
     var bytecode: [3]c.Bytecode = undefined;
-    c.cubs_operands_make_call_immediate(
+    _ = c.cubs_operands_make_call_immediate(
         &bytecode,
         3,
         1,
@@ -555,7 +555,7 @@ test "call immediate C four args no return" {
     }
 
     var bytecode: [3]c.Bytecode = undefined;
-    c.cubs_operands_make_call_immediate(
+    _ = c.cubs_operands_make_call_immediate(
         &bytecode,
         3,
         4,
@@ -600,7 +600,7 @@ test "call immediate C many args no return" {
     }
 
     var bytecode: [4]c.Bytecode = undefined;
-    c.cubs_operands_make_call_immediate(
+    _ = c.cubs_operands_make_call_immediate(
         &bytecode,
         4,
         7,
@@ -637,7 +637,7 @@ test "call immediate C no args with return" {
     defer c.cubs_interpreter_pop_frame();
 
     var bytecode: [2]c.Bytecode = undefined;
-    c.cubs_operands_make_call_immediate(
+    _ = c.cubs_operands_make_call_immediate(
         &bytecode,
         4,
         0,

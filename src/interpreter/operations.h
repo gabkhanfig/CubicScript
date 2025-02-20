@@ -108,7 +108,9 @@ typedef struct {
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsCallImmediate);
 
 /// If hasReturn == false, returnSrc is ignored.
-void cubs_operands_make_call_immediate(Bytecode* bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t* args, bool hasReturn, uint16_t returnSrc, CubsFunction func);
+/// `bytecodeArr` should be an array that is sized `2 + (4 * argCount)` generally.
+/// @return How many bytecodes were used.
+size_t cubs_operands_make_call_immediate(Bytecode* bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t* args, bool hasReturn, uint16_t returnSrc, CubsFunction func);
 
 typedef struct {
     uint64_t reserveOpcode: OPCODE_USED_BITS;
@@ -122,7 +124,9 @@ typedef struct {
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsCallSrc);
 
 /// If hasReturn == false, returnSrc is ignored.
-void cubs_operands_make_call_src(Bytecode* bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t* args, bool hasReturn, uint16_t returnSrc, uint16_t funcSrc);
+/// `bytecodeArr` should be an array that is sized `1 + (4 * argCount)` generally.
+/// @return How many bytecodes were used.
+size_t cubs_operands_make_call_src(Bytecode* bytecodeArr, size_t availableBytecode, uint16_t argCount, const uint16_t* args, bool hasReturn, uint16_t returnSrc, uint16_t funcSrc);
 
 #pragma endregion
 
