@@ -29,10 +29,63 @@ static void function_call_node_build_function(
     FunctionBuilder* builder,
     const StackVariablesAssignment* stackAssignment
 ) {
-    
+    switch(self->function.funcType) { // same memory location but for the sake of clarity
+        case cubsFunctionPtrTypeC: {
+            assert(self->function.func.externC != NULL);
+        } break;
+        case cubsFunctionPtrTypeScript: {
+            assert(self->function.func.script != NULL);
+        } break;
+        default: unreachable();
+    }
+
+    const uint16_t argCount = (uint16_t)self->argsLen;
+    uint16_t* args = MALLOC_TYPE_ARRAY(uint16_t, argCount);
+
+    for(uint16_t i = 0; i < argCount; i++) { // handle each argument
+        const ExprValue argExpression = self->args[i];
+        if(argExpression.tag == IntLit) {
+            const union ExprValueMetadata value = argExpression.value;
+            args[i] = stackAssignment->positions[value.intLiteral.variableIndex];
+            Bytecode loadImmediateLong[2];
+            operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, args[i], (size_t)value.intLiteral.literal);
+            cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
+        } else if(argExpression.tag == Variable) {
+            args[i] = stackAssignment->positions[argExpression.value.variableIndex];
+        }
+    }
+
+    const size_t availableBytecode = 2 + (4 * argCount);
+    Bytecode* callBytecode = MALLOC_TYPE_ARRAY(Bytecode, availableBytecode);
+    const size_t usedBytecode = cubs_operands_make_call_immediate(
+        callBytecode,
+        availableBytecode,
+        argCount,
+        args,
+        self->hasReturnVariable,
+        (uint16_t)self->returnVariable, 
+        self->function
+    );
+
+    cubs_function_builder_push_bytecode_many(builder, callBytecode, usedBytecode);
+
+    FREE_TYPE_ARRAY(Bytecode, callBytecode, availableBytecode);
+    FREE_TYPE_ARRAY(uint16_t, args, argCount);
 }
 
-// TODO resolve types
+static void function_call_node_resolve_types(
+    FunctionCallNode* self,
+    CubsProgram* program,
+    const FunctionBuilder* builder,
+    StackVariablesArray* variables
+) {
+    CubsFunction actualFunction = {0};
+    const bool found = cubs_program_find_function(program, &actualFunction, self->functionName);
+    assert(found);
+
+    // TODO do actual type validation
+    self->function = actualFunction;
+}
 
 static AstNodeVTable function_call_vtable = {
     .nodeType = astNodeTypeFunctionCall,
@@ -41,7 +94,7 @@ static AstNodeVTable function_call_vtable = {
     .toString = NULL,
     .buildFunction = (AstNodeBuildFunction)&function_call_node_build_function,
     .defineType = NULL,
-    .resolveTypes = NULL,
+    .resolveTypes = (AstNodeResolveTypes)&function_call_node_resolve_types,
     .endsWithReturn = NULL,
 };
 
@@ -54,6 +107,8 @@ AstNode cubs_function_call_node_init(
     FunctionDependencies* dependencies
 ) {
     assert(iter->current.tag == LEFT_PARENTHESES_SYMBOL);
+
+    // TODO handle function pointers
 
     function_dependencies_push(dependencies, functionName);
 
