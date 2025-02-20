@@ -316,7 +316,7 @@ test "function no arg no return 2 statements variable declaration" {
         \\fn testFunc() { 
         \\  const testVar1: int;
         \\  mut testVar2: int;
-        \\};
+        \\}
     ;
     const tokenIter = tokenIterInit(source, null);
     var program = c.cubs_program_init(.{});
@@ -340,7 +340,7 @@ test "function no args int 2 statement return stack variable" {
         \\fn testFunc() int { 
         \\  const testVar: int = 5;
         \\  return testVar;
-        \\};
+        \\}
     ;
     const tokenIter = tokenIterInit(source, null);
     var program = c.cubs_program_init(.{});
@@ -367,7 +367,7 @@ test "function no args one add binary expression" {
         \\fn testFunc() int { 
         \\  const testVar: int = 1 + 5;
         \\  return testVar;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -394,7 +394,7 @@ test "function return binary expression" {
     const source =
         \\fn testFunc() int { 
         \\  return 4 + 5;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -493,7 +493,7 @@ test "bool false" {
         \\fn testFunc() bool { 
         \\  const testVar: bool = false;
         \\  return testVar;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -522,7 +522,7 @@ test "bool true" {
         \\fn testFunc() bool { 
         \\  const testVar: bool = true;
         \\  return testVar;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -553,7 +553,7 @@ test "if true no else with return" {
         \\      return 10;
         \\  }
         \\  return 50;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -583,7 +583,7 @@ test "if false no else with return" {
         \\      return 10;
         \\  }
         \\  return 50;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -613,7 +613,7 @@ test "if no else with user argument" {
         \\      return 10;
         \\  }
         \\  return 50;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -655,7 +655,7 @@ test "equality operator true simple" {
     const source =
         \\fn testFunc() bool { 
         \\  return 1 == 1;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -683,7 +683,7 @@ test "equality operator false simple" {
     const source =
         \\fn testFunc() bool { 
         \\  return 1 == 2;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -715,7 +715,7 @@ test "equality operator in if statement" {
             \\      return 10;
             \\  }
             \\  return 50;
-            \\};
+            \\}
         ;
 
         const tokenIter = tokenIterInit(source, null);
@@ -743,7 +743,7 @@ test "equality operator in if statement" {
             \\      return 10;
             \\  }
             \\  return 50;
-            \\};
+            \\}
         ;
 
         const tokenIter = tokenIterInit(source, null);
@@ -773,7 +773,7 @@ test "equality operator int in if statement" {
         \\      return 10;
         \\  }
         \\  return 50;
-        \\};
+        \\}
     ;
 
     const tokenIter = tokenIterInit(source, null);
@@ -978,7 +978,7 @@ test "assign variable simple" {
         \\  mut testVar: int = 1;
         \\  testVar = 2;
         \\  return testVar;
-        \\};
+        \\}
     ;
     const tokenIter = tokenIterInit(source, null);
     var program = c.cubs_program_init(.{});
@@ -994,6 +994,37 @@ test "assign variable simple" {
         var retContext: *const c.CubsTypeContext = undefined;
         try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
         try expect(retValue == 2);
+    } else {
+        try expect(false);
+    }
+}
+
+test "two functions" {
+    const source =
+        \\fn testFunc1() {}
+        \\fn testFunc2() {}
+    ;
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    std.debug.print("hmjj\n", .{});
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc1")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+
+    if (findFunction(&program, "testFunc2")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        try expect(c.cubs_function_call(call, .{}) == 0);
     } else {
         try expect(false);
     }

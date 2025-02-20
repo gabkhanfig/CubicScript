@@ -84,10 +84,8 @@ AstNode cubs_file_node_init(TokenIter *iter)
     FunctionDependencyGraphBuilder functionDependencyBuilder = {0};
 
     {
-        const TokenType next = cubs_token_iter_next(iter);
-        if(next == TOKEN_NONE) { // end of file
-
-        } else {
+        TokenType next = cubs_token_iter_next(iter);
+        while(next != TOKEN_NONE) {
             switch(next) {
                 case FN_KEYWORD: {
                     const AstNode functionNode = cubs_function_node_init(iter, &functionDependencyBuilder);
@@ -101,7 +99,8 @@ AstNode cubs_file_node_init(TokenIter *iter)
                     fprintf(stderr, "Unexpected token [%d]\n", next);
                     cubs_panic("Found unexpected token when parsing file node");
                 } break;
-            }         
+            }
+            next = cubs_token_iter_next(iter);
         }
     }
 
