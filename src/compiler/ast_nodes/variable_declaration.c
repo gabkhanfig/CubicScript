@@ -7,6 +7,7 @@
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
 #include "../../program/program_internal.h"
+#include "../graph/function_dependency_graph.h"
 #include <stdio.h>
 
 static void variable_declaration_node_deinit(VariableDeclarationNode* self) {
@@ -72,8 +73,11 @@ static AstNodeVTable variable_declaration_node_vtable = {
     .endsWithReturn = NULL,
 };
 
-AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray *variables)
-{
+AstNode cubs_variable_declaration_node_init(
+    TokenIter *iter,
+    StackVariablesArray* variables,
+    FunctionDependencies* dependencies
+) {
     VariableDeclarationNode* self = MALLOC_TYPE(VariableDeclarationNode);
     *self = (VariableDeclarationNode){0};
 
@@ -154,7 +158,7 @@ AstNode cubs_variable_declaration_node_init(TokenIter *iter, StackVariablesArray
     if(isNonZeroedInitial) {
         (void)cubs_token_iter_next(iter); // step over to next
         self->initialValue = cubs_parse_expression(
-            iter, variables, true, self->variableNameIndex
+            iter, variables, dependencies, true, self->variableNameIndex
         );
     }
 

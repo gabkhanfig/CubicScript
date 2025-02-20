@@ -7,6 +7,7 @@ struct StackVariablesArray;
 struct CubsTypeContext;
 struct CubsProgram;
 struct FunctionBuilder;
+struct FunctionDependencies;
 
 struct ExprValueBoolLiteral {
     bool literal;
@@ -59,6 +60,7 @@ typedef struct ExprValue {
 ExprValue cubs_parse_expression(
     TokenIter* iter, 
     struct StackVariablesArray* variables, 
+    struct FunctionDependencies* dependencies,
     bool hasDestination, 
     size_t destinationVariableIndex
 );

@@ -7,6 +7,7 @@
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
 #include "../../program/program_internal.h"
+#include "../graph/function_dependency_graph.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -61,7 +62,11 @@ static AstNodeVTable variable_assignment_node_vtable = {
     .endsWithReturn = NULL,
 };
 
-struct AstNode cubs_variable_assignment_node_init(struct TokenIter* iter, struct StackVariablesArray* variables) {
+struct AstNode cubs_variable_assignment_node_init(
+    TokenIter* iter, 
+    StackVariablesArray* variables, 
+    FunctionDependencies* dependencies
+) {
     assert(iter->current.tag == IDENTIFIER);
 
     size_t foundVariableIndex;
@@ -80,7 +85,7 @@ struct AstNode cubs_variable_assignment_node_init(struct TokenIter* iter, struct
     }
 
     (void)cubs_token_iter_next(iter); // step over to next
-    const ExprValue expression = cubs_parse_expression(iter, variables, true, foundVariableIndex);
+    const ExprValue expression = cubs_parse_expression(iter, variables, dependencies, true, foundVariableIndex);
 
     
 

@@ -10,6 +10,7 @@
 #include "../../util/unreachable.h"
 #include "binary_expression.h"
 #include "../../program/program_internal.h"
+#include "../graph/function_dependency_graph.h"
 
 static void return_node_deinit(ReturnNode* self) {
     //cubs_string_deinit(&self->variableName);
@@ -104,7 +105,7 @@ static AstNodeVTable return_node_vtable = {
     .endsWithReturn = (AstNodeStatementsEndWithReturn)&return_node_ends_with_return,
 };
 
-AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
+AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables, FunctionDependencies* dependencies)
 {
     assert(iter->current.tag == RETURN_KEYWORD);
     ReturnNode* self = (ReturnNode*)cubs_malloc(sizeof(ReturnNode), _Alignof(ReturnNode));
@@ -118,7 +119,7 @@ AstNode cubs_return_node_init(TokenIter *iter, StackVariablesArray* variables)
         else if(next == IDENTIFIER || next == INT_LITERAL) {
             // TODO handle binary expressions as return
             self->retValue = cubs_parse_expression(
-                iter, variables, false, -1
+                iter, variables, dependencies, false, -1
             );
             self->hasReturn = true;
         }

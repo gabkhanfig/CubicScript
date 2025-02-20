@@ -5,6 +5,7 @@
 #include "binary_expression.h"
 #include <stdio.h>
 #include "../../program/program_internal.h"
+#include "../graph/function_dependency_graph.h"
 
 /// Steps the iterator forward to after the value.
 static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* variables) {
@@ -71,12 +72,18 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
             cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
         } break;
         case IDENTIFIER: {
-            // TODO handle other kinds of identifiers such as structs function pointers
             const CubsStringSlice identifier = iter->current.value.identifier;
-            value.tag = Variable;
-            const bool didFind = cubs_stack_variables_array_find(
-                variables, &value.value.variableIndex, identifier);
-            assert(didFind && "Did not find stack variable");     
+            const TokenType afterIdentifier = cubs_token_iter_peek(iter);
+            // TODO function pointers
+            if(afterIdentifier == LEFT_PARENTHESES_SYMBOL) {
+                assert(false);
+            } else {
+                // TODO handle other kinds of identifiers such as structs?
+                value.tag = Variable;
+                const bool didFind = cubs_stack_variables_array_find(
+                    variables, &value.value.variableIndex, identifier);
+                assert(didFind && "Did not find stack variable"); 
+            }        
         } break;
         default: {
             fprintf(stderr, "%d hmm\n", token.tag);
@@ -91,7 +98,8 @@ static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* va
 
 ExprValue cubs_parse_expression(
     TokenIter* iter, 
-    StackVariablesArray* variables, 
+    StackVariablesArray* variables,
+    FunctionDependencies* dependencies,
     bool hasDestination, 
     size_t destinationVariableIndex
 ) {
@@ -104,11 +112,13 @@ ExprValue cubs_parse_expression(
     }
 
     if(tokenAfterFirst == RIGHT_PARENTHESES_SYMBOL) {
+        // Used for syntax such as:
+        // if (value)
         return firstValue;
     }
 
     if(tokenAfterFirst == LEFT_PARENTHESES_SYMBOL) {
-        assert(false && "Cannot currently handle function calls");
+        assert(firstValue.tag == FunctionCall);
     }
 
     if(is_token_operator(tokenAfterFirst)) {

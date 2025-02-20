@@ -138,7 +138,7 @@ AstNode cubs_function_call_node_init(
                 capacity = newCapacity;
             }
 
-            const ExprValue argExpression = cubs_parse_expression(iter, variables, false, 0);
+            const ExprValue argExpression = cubs_parse_expression(iter, variables, dependencies, false, 0);
             args[len] = argExpression;
             len += 1;
 

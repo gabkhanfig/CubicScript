@@ -7,6 +7,7 @@
 struct AstNode;
 struct TokenIter;
 struct StackVariablesArray;
+struct FunctionDependencies;
 
 typedef struct VariableAssignmentNode {
     /// Index within the stack variables to find the name of the return value.
@@ -14,6 +15,10 @@ typedef struct VariableAssignmentNode {
     ExprValue newValue;
 } VariableAssignmentNode;
 
-struct AstNode cubs_variable_assignment_node_init(struct TokenIter* iter, struct StackVariablesArray* variables);
+struct AstNode cubs_variable_assignment_node_init(
+    struct TokenIter* iter,
+    struct StackVariablesArray* variables,
+    struct FunctionDependencies* dependencies
+);
 
 #endif

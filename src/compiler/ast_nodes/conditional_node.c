@@ -187,7 +187,7 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
     assert(iter->current.tag == LEFT_PARENTHESES_SYMBOL);
     (void)cubs_token_iter_next(iter);
 
-    const ExprValue firstIfCondition = cubs_parse_expression(iter, variables, false, -1);
+    const ExprValue firstIfCondition = cubs_parse_expression(iter, variables, dependencies, false, -1);
     assert(iter->current.tag == RIGHT_PARENTHESES_SYMBOL);
 
     (void)cubs_token_iter_next(iter);
@@ -250,7 +250,7 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
                 // step over to actual expression
                 (void)cubs_token_iter_next(iter);
 
-                elseIfCondition = cubs_parse_expression(iter, variables, false, -1);
+                elseIfCondition = cubs_parse_expression(iter, variables, dependencies, false, -1);
                 assert(iter->current.tag == RIGHT_PARENTHESES_SYMBOL);
 
                 (void)cubs_token_iter_next(iter);

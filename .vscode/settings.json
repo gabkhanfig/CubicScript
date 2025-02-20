@@ -147,6 +147,7 @@
         "type_resolution_info.h": "c",
         "parse_statements.h": "c",
         "variable_assignment.h": "c",
-        "conditional_node.h": "c"
+        "conditional_node.h": "c",
+        "function_dependency_graph.h": "c"
     }
 }

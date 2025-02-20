@@ -19,13 +19,13 @@ bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray
 
         switch(token) {
             case RETURN_KEYWORD: {
-                AstNode returnNode = cubs_return_node_init(iter, variables);
+                AstNode returnNode = cubs_return_node_init(iter, variables, dependencies);
                 *outNode = returnNode;
             } break;
 
             case CONST_KEYWORD: // fallthrough
             case MUT_KEYWORD: {
-                AstNode variableDeclarationNode = cubs_variable_declaration_node_init(iter, variables);
+                AstNode variableDeclarationNode = cubs_variable_declaration_node_init(iter, variables, dependencies);
                 *outNode = variableDeclarationNode;
             } break;
 
@@ -42,7 +42,7 @@ bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray
                     AstNode callNode = cubs_function_call_node_init(functionName, false, 0, iter, variables, dependencies);
                     *outNode = callNode;
                 } else if(afterIdentifier == ASSIGN_OPERATOR) {
-                    AstNode variableAssign = cubs_variable_assignment_node_init(iter, variables);
+                    AstNode variableAssign = cubs_variable_assignment_node_init(iter, variables, dependencies);
                     *outNode = variableAssign;
                 } else {
                     assert(false && "Unknown token after identifier at start of statement");

@@ -5,6 +5,7 @@
 #include "expression_value.h"
 
 struct StackVariablesArray;
+struct FunctionDependencies;
 
 typedef struct ReturnNode {
     bool hasReturn;
@@ -14,6 +15,6 @@ typedef struct ReturnNode {
     //size_t variableNameIndex;
 } ReturnNode;
 
-AstNode cubs_return_node_init(TokenIter* iter, struct StackVariablesArray* variables);
+AstNode cubs_return_node_init(TokenIter* iter, struct StackVariablesArray* variables, struct FunctionDependencies* dependencies);
 
 AstNode cubs_return_node_init_empty();
