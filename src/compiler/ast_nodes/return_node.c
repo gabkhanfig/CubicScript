@@ -33,37 +33,9 @@ static void return_node_build_function(
         const Bytecode bytecode = operands_make_return(false, 0);
         cubs_function_builder_push_bytecode(builder, bytecode);
     } else {
-        uint16_t returnSrc;
-        switch(self->retValue.tag) {
-            case Variable: {
-                returnSrc = stackAssignment->positions[self->retValue.value.variableIndex];
-            } break;
-            case IntLit: {
-                returnSrc = stackAssignment->positions[self->retValue.value.intLiteral.variableIndex];
-                Bytecode loadImmediateLong[2];
-                operands_make_load_immediate_long(
-                    loadImmediateLong, cubsValueTagInt, returnSrc, self->retValue.value.intLiteral.literal);
-                cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
-            } break;
-            case Expression: {
-                const AstNode* exprNode = &self->retValue.value.expression;
-                switch(exprNode->vtable->nodeType) {
-                    case astNodeBinaryExpression: {
-                        // TODO should come up with a better way to do this
-                        const size_t index = 
-                            ((const BinaryExprNode*)exprNode->ptr)->outputVariableIndex;
-                        returnSrc = stackAssignment->positions[index];
-                    }
-
-                    ast_node_build_function(&self->retValue.value.expression, builder, stackAssignment);
-                }
-            } break;
-            default: {
-                cubs_panic("Cannot handle non identifier, int literal, or expression returns yet");
-            } break;
-        }
-
-        const Bytecode returnBytecode = operands_make_return(true, returnSrc);     
+        const ExprValueDst dst = cubs_expr_value_build_function(&self->retValue, builder, stackAssignment);
+        assert(dst.hasDst);
+        const Bytecode returnBytecode = operands_make_return(true, dst.dst);     
         cubs_function_builder_push_bytecode(builder, returnBytecode);
     }
 }

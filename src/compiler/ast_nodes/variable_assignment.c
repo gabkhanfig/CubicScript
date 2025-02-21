@@ -21,34 +21,7 @@ static void variable_assignment_node_build_function(
     FunctionBuilder* builder,
     const StackVariablesAssignment* stackAssignment
 ) {
-    const uint16_t returnSrc = stackAssignment->positions[self->variableIndex];
-
-    switch(self->newValue.tag) {
-        case BoolLit: {
-            const Bytecode loadImmediateBool = operands_make_load_immediate(
-                LOAD_IMMEDIATE_BOOL,
-                returnSrc,
-                (int64_t)self->newValue.value.boolLiteral.literal
-            );
-            cubs_function_builder_push_bytecode(builder, loadImmediateBool);
-        } break;
-        case IntLit: {
-            Bytecode loadImmediateLong[2];
-            operands_make_load_immediate_long(
-                loadImmediateLong,
-                cubsValueTagInt,
-                returnSrc,
-                *(const size_t*)&self->newValue.value.intLiteral.literal // bit cast
-            );
-            cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
-        } break;
-        case Expression: {
-            ast_node_build_function(&self->newValue.value.expression, builder, stackAssignment);
-        } break;
-        default: {
-            assert(false && "Can only handle variable assignment from int literals, bool literals, and expressions");
-        }
-    }
+    cubs_expr_value_build_function(&self->newValue, builder, stackAssignment);
 }
 
 static AstNodeVTable variable_assignment_node_vtable = {
@@ -85,9 +58,8 @@ struct AstNode cubs_variable_assignment_node_init(
     }
 
     (void)cubs_token_iter_next(iter); // step over to next
-    const ExprValue expression = cubs_parse_expression(iter, variables, dependencies, true, foundVariableIndex);
-
-    
+    ExprValue expression = cubs_parse_expression(iter, variables, dependencies, true, foundVariableIndex);
+    cubs_expr_value_update_destination(&expression, foundVariableIndex);
 
     VariableAssignmentNode* self = MALLOC_TYPE(VariableAssignmentNode);
     *self = (VariableAssignmentNode){.variableIndex = foundVariableIndex, .newValue = expression};

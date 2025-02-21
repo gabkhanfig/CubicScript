@@ -19,35 +19,8 @@ static void variable_declaration_node_build_function(
     const VariableDeclarationNode* self,
     FunctionBuilder* builder,
     const StackVariablesAssignment* stackAssignment
-) {  
-    const uint16_t returnSrc = stackAssignment->positions[self->variableNameIndex];
-
-    switch(self->initialValue.tag) {
-        case BoolLit: {
-            const Bytecode loadImmediateBool = operands_make_load_immediate(
-                LOAD_IMMEDIATE_BOOL,
-                returnSrc,
-                (int64_t)self->initialValue.value.boolLiteral.literal
-            );
-            cubs_function_builder_push_bytecode(builder, loadImmediateBool);
-        } break;
-        case IntLit: {
-            Bytecode loadImmediateLong[2];
-            operands_make_load_immediate_long(
-                loadImmediateLong,
-                cubsValueTagInt,
-                returnSrc,
-                *(const size_t*)&self->initialValue.value.intLiteral.literal // bit cast
-            );
-            cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
-        } break;
-        case Expression: {
-            ast_node_build_function(&self->initialValue.value.expression, builder, stackAssignment);
-        } break;
-        default: {
-            assert(false && "Can only handle variable assignment from int literals, bool literals, and expressions");
-        }
-    }
+) {
+    cubs_expr_value_build_function(&self->initialValue, builder, stackAssignment);
 }
 
 static void variable_declaration_resolve_types(
@@ -127,23 +100,20 @@ AstNode cubs_variable_declaration_node_init(
                 ExprValue value = {0};
                 value.tag = BoolLit;
                 value.value.boolLiteral.literal = false;
-                // We don't need to set the stack variable index for the literal value as
-                // it's just used as an immediate value.
+                value.value.boolLiteral.variableIndex = self->variableNameIndex;
                 self->initialValue = value;
             }  
             else if(variableInfo.typeInfo.knownContext == &CUBS_INT_CONTEXT) {
                 ExprValue value = {0};
                 value.tag = IntLit;
                 value.value.intLiteral.literal = 0;
-                // We don't need to set the stack variable index for the literal value as
-                // it's just used as an immediate value.
+                value.value.intLiteral.variableIndex = self->variableNameIndex;
                 self->initialValue = value;
             } else if(variableInfo.typeInfo.knownContext == &CUBS_FLOAT_CONTEXT) {
                 ExprValue value = {0};
                 value.tag = FloatLit;
                 value.value.floatLiteral.literal = 0.0;
-                // We don't need to set the stack variable index for the literal value as
-                // it's just used as an immediate value.
+                value.value.floatLiteral.variableIndex = self->variableNameIndex;
                 self->initialValue = value;
             } else {
                 assert(false && "Cannot zero initialize other types");
@@ -160,6 +130,7 @@ AstNode cubs_variable_declaration_node_init(
         self->initialValue = cubs_parse_expression(
             iter, variables, dependencies, true, self->variableNameIndex
         );
+        cubs_expr_value_update_destination(&self->initialValue, self->variableNameIndex);
     }
 
     const AstNode node = {.ptr = (void*)self, .vtable = &variable_declaration_node_vtable};

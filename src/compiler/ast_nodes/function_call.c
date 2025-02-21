@@ -47,15 +47,9 @@ static void function_call_node_build_function(
 
     for(uint16_t i = 0; i < argCount; i++) { // handle each argument
         const ExprValue argExpression = self->args[i];
-        if(argExpression.tag == IntLit) {
-            const union ExprValueMetadata value = argExpression.value;
-            args[i] = stackAssignment->positions[value.intLiteral.variableIndex];
-            Bytecode loadImmediateLong[2];
-            operands_make_load_immediate_long(loadImmediateLong, cubsValueTagInt, args[i], (size_t)value.intLiteral.literal);
-            cubs_function_builder_push_bytecode_many(builder, loadImmediateLong, 2);
-        } else if(argExpression.tag == Variable) {
-            args[i] = stackAssignment->positions[argExpression.value.variableIndex];
-        }
+        const ExprValueDst dst = cubs_expr_value_build_function(&argExpression, builder, stackAssignment);
+        assert(dst.hasDst);
+        args[i] = dst.dst;
     }
 
     const size_t availableBytecode = 2 + (4 * argCount);

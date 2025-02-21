@@ -13,6 +13,7 @@
 #include "../../interpreter/operations.h"
 #include "../../interpreter/bytecode.h"
 #include "binary_expression.h"
+#include "function_call.h"
 #include "../graph/function_dependency_graph.h"
 
 static bool conditional_node_has_final_else_branch(const ConditionalNode* self) {
@@ -49,38 +50,11 @@ static void conditional_node_build_function(
     for(size_t i = 0; i < self->conditionsLen; i++) {
         const ExprValue conditionValue = self->conditions[i];
 
-        size_t conditionVariableSrc = -1;
-
-        switch(conditionValue.tag) {
-            case Variable: {
-                conditionVariableSrc = conditionValue.value.variableIndex;
-            } break;
-            case BoolLit: {
-                const Bytecode loadImmediateBool = operands_make_load_immediate(
-                    LOAD_IMMEDIATE_BOOL, 
-                    conditionValue.value.boolLiteral.variableIndex, 
-                    (int64_t)conditionValue.value.boolLiteral.literal
-                );
-                cubs_function_builder_push_bytecode(builder, loadImmediateBool);
-                conditionVariableSrc = conditionValue.value.boolLiteral.variableIndex;
-            } break;
-            case Expression: {
-                const AstNode node = conditionValue.value.expression;
-                assert(node.vtable->nodeType == astNodeBinaryExpression);
-
-                ast_node_build_function(&node, builder, stackAssignment);
-
-                const BinaryExprNode* binExpr = (const BinaryExprNode*)node.ptr;
-                assert(binExpr->operation == Equal);
-                conditionVariableSrc = binExpr->outputVariableIndex;
-            } break;
-            default: {
-                assert(false && "Cannot handle condition expression value as condition");
-            } break;
-        }
+        const ExprValueDst dst = cubs_expr_value_build_function(&conditionValue, builder, stackAssignment);
+        assert(dst.hasDst);
 
         const Bytecode tempJumpBytecode = cubs_operands_make_jump(
-            JUMP_TYPE_IF_FALSE, INT32_MAX, (uint16_t)conditionVariableSrc);
+            JUMP_TYPE_IF_FALSE, INT32_MAX, dst.dst);
         const size_t tempJumpIndex = builder->bytecodeLen;
         cubs_function_builder_push_bytecode(builder, tempJumpBytecode);
 
