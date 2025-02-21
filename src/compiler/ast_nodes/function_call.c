@@ -90,6 +90,20 @@ static void function_call_node_resolve_types(
 
     // TODO do actual type validation
     self->function = actualFunction;
+
+    if(self->hasReturnVariable) {
+        if(actualFunction.funcType == cubsFunctionPtrTypeScript) {
+            const CubsScriptFunctionPtr* scriptFuncPtr = actualFunction.func.script;
+            assert(scriptFuncPtr->returnType != NULL);
+
+            TypeResolutionInfo* typeInfo = &variables->variables[self->returnVariable].typeInfo;
+            assert(typeInfo->knownContext == NULL);
+
+            typeInfo->knownContext = scriptFuncPtr->returnType;
+        } else {
+            cubs_panic("Cannot resolve types for C function pointers");
+        }
+    }
 }
 
 static AstNodeVTable function_call_vtable = {

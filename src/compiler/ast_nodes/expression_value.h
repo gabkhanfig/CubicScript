@@ -8,6 +8,7 @@ struct CubsTypeContext;
 struct CubsProgram;
 struct FunctionBuilder;
 struct FunctionDependencies;
+struct StackVariablesAssignment;
 
 struct ExprValueBoolLiteral {
     bool literal;
@@ -33,7 +34,7 @@ union ExprValueMetadata {
     //double floatLiteral;
     AstNode expression;
     // TODO
-    void* functionCall;
+    AstNode functionCall;
 };
 
 /// Corresponds with `MathValueMetadata`
@@ -78,4 +79,15 @@ inline static void expr_value_deinit(ExprValue* self) {
 /// context.
 const struct CubsTypeContext* cubs_expr_node_resolve_type(
     ExprValue* self, struct CubsProgram* program, const struct FunctionBuilder* builder, struct StackVariablesArray* variables
+);
+
+typedef struct ExprValueDst {
+    bool hasDst;
+    uint16_t dst;
+} ExprValueDst;
+
+ExprValueDst cubs_expr_value_build_function(
+    const ExprValue* self,
+    struct FunctionBuilder* builder,
+    const struct StackVariablesAssignment* stackAssignment
 );
