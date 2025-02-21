@@ -91,3 +91,5 @@ ExprValueDst cubs_expr_value_build_function(
     struct FunctionBuilder* builder,
     const struct StackVariablesAssignment* stackAssignment
 );
+
+void cubs_expr_value_update_destination(ExprValue* self, size_t destinationVariableIndex);

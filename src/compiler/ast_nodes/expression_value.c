@@ -378,3 +378,37 @@ ExprValueDst cubs_expr_value_build_function(
         }
     }
 }
+
+void cubs_expr_value_update_destination(ExprValue *self, size_t destinationVariableIndex)
+{
+    switch(self->tag) {
+        case Variable: break;
+        case BoolLit: {
+            self->value.boolLiteral.variableIndex = destinationVariableIndex;
+        } break;
+        case IntLit: {
+            self->value.intLiteral.variableIndex = destinationVariableIndex;
+        } break;
+        case FloatLit: {
+            self->value.floatLiteral.variableIndex = destinationVariableIndex;
+        } break;
+        case Expression: {
+            AstNode node = self->value.expression;
+            assert(node.vtable->nodeType == astNodeBinaryExpression);
+
+            BinaryExprNode* obj = (BinaryExprNode*)node.ptr;
+            obj->outputVariableIndex = destinationVariableIndex;
+        } break;
+        case FunctionCall: {
+            AstNode functionCallNode = self->value.functionCall;
+            assert(functionCallNode.vtable->nodeType == astNodeTypeFunctionCall);
+    
+            FunctionCallNode* obj = (FunctionCallNode*)functionCallNode.ptr;
+            assert(obj->hasReturnVariable);
+            obj->returnVariable = destinationVariableIndex;
+        } break;
+        default: {
+            unreachable();
+        }
+    }
+}
