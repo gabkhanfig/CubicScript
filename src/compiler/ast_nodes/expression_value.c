@@ -8,7 +8,13 @@
 #include "../graph/function_dependency_graph.h"
 
 /// Steps the iterator forward to after the value.
-static ExprValue parse_expression_value(TokenIter* iter, StackVariablesArray* variables) {
+static ExprValue parse_expression_value(
+    TokenIter* iter,
+    StackVariablesArray* variables//,
+    // FunctionDependencies* dependencies,
+    // bool hasDestination,
+    // size_t destinationVariableIndex
+) {
     // TODO nested expressions
 
     //(void)cubs_token_iter_next(iter);
@@ -100,10 +106,11 @@ ExprValue cubs_parse_expression(
     TokenIter* iter, 
     StackVariablesArray* variables,
     FunctionDependencies* dependencies,
-    bool hasDestination, 
+    bool hasDestination,
     size_t destinationVariableIndex
 ) {
-    const ExprValue firstValue = parse_expression_value(iter, variables);
+    const ExprValue firstValue = parse_expression_value(
+        iter, variables);
     
     const TokenType tokenAfterFirst = iter->current.tag;
     // Means first token is the only one in the expression
@@ -155,7 +162,8 @@ ExprValue cubs_parse_expression(
                 } else if(tokenAfterFirst == ADD_OPERATOR) {
                     binaryExpressionOperator = Add;
                 }
-                const ExprValue secondValue = parse_expression_value(iter, variables);
+                const ExprValue secondValue = parse_expression_value(
+                    iter, variables);
 
                 ExprValue outValue = {0};
                 outValue.tag = Expression;

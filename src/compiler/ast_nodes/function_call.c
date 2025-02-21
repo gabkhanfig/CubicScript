@@ -150,11 +150,6 @@ AstNode cubs_function_call_node_init(
         }
     }
 
-    { // semicolon after
-        (void)cubs_token_iter_next(iter);
-        assert(iter->current.tag == SEMICOLON_SYMBOL);
-    }
-
     FunctionCallNode* self = MALLOC_TYPE(FunctionCallNode);
     *self = (FunctionCallNode){0};
 

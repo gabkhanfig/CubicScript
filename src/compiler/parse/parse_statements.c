@@ -41,6 +41,8 @@ bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray
                     (void)cubs_token_iter_next(iter);
                     AstNode callNode = cubs_function_call_node_init(functionName, false, 0, iter, variables, dependencies);
                     *outNode = callNode;
+                    (void)cubs_token_iter_next(iter);
+                    assert(iter->current.tag == SEMICOLON_SYMBOL); // TODO handle chaining function calls
                 } else if(afterIdentifier == ASSIGN_OPERATOR) {
                     AstNode variableAssign = cubs_variable_assignment_node_init(iter, variables, dependencies);
                     *outNode = variableAssign;
