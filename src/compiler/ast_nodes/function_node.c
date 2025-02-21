@@ -44,10 +44,7 @@ static void function_node_compile(FunctionNode* self, CubsProgram* program) {
             assert(retContext != NULL);
         }
         builder.optReturnType = retContext;
-    }
-
-    StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables);
-    builder.stackSpaceRequired = stackAssignment.requiredFrameSize;
+    } 
 
     // resolve types of arguments
     // NOTE the first variables in `self->variables` are the function
@@ -74,6 +71,9 @@ static void function_node_compile(FunctionNode* self, CubsProgram* program) {
 
         ast_node_resolve_types(node, program, &builder, &self->variables);
     }
+
+    StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables);
+    builder.stackSpaceRequired = stackAssignment.requiredFrameSize;
  
     { // Validate that the function ends with returns
         const AstNode* lastNode = &self->items.nodes[self->items.len - 1];

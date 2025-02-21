@@ -71,6 +71,9 @@ inline static void expr_value_deinit(ExprValue* self) {
         case Expression: {
             ast_node_deinit(&self->value.expression);
         } break;
+        case FunctionCall: {
+            ast_node_deinit(&self->value.functionCall);
+        } break;
         default: break;
     }
 }
