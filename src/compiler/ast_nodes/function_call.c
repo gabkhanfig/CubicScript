@@ -52,6 +52,11 @@ static void function_call_node_build_function(
         args[i] = dst.dst;
     }
 
+    uint16_t retDst = 0;
+    if(self->hasReturnVariable) {
+        retDst = stackAssignment->positions[self->returnVariable];
+    }
+
     const size_t availableBytecode = 2 + (4 * argCount);
     Bytecode* callBytecode = MALLOC_TYPE_ARRAY(Bytecode, availableBytecode);
     const size_t usedBytecode = cubs_operands_make_call_immediate(
@@ -60,7 +65,7 @@ static void function_call_node_build_function(
         argCount,
         args,
         self->hasReturnVariable,
-        (uint16_t)self->returnVariable, 
+        retDst, 
         self->function
     );
 
