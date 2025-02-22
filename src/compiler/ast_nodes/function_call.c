@@ -155,8 +155,8 @@ AstNode cubs_function_call_node_init(
             args[len] = argExpression;
             len += 1;
 
-            next = cubs_token_iter_next(iter);
-            if(next == COMMA_SYMBOL) {
+            next = iter->current.tag;
+            if(iter->current.tag == COMMA_SYMBOL) {
                 (void)cubs_token_iter_next(iter);
                 assert(iter->current.tag != RIGHT_PARENTHESES_SYMBOL); // expects another argument after a comma
             }

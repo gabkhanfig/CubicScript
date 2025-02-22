@@ -1096,3 +1096,43 @@ test "two functions returning a returned value" {
         try expect(false);
     }
 }
+
+test "function calling another with args" {
+    const source =
+        \\fn testFunc1() int {
+        \\  return testFunc2(5);
+        \\}
+        \\fn testFunc2(arg: int) int { return arg + 5; }
+    ;
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc1")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retValue == 10);
+    } else {
+        try expect(false);
+    }
+
+    if (findFunction(&program, "testFunc2")) |func| {
+        var call = c.cubs_function_start_call(&func);
+        var arg: i64 = 2;
+        c.cubs_function_push_arg(&call, @ptrCast(&arg), &c.CUBS_INT_CONTEXT);
+
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retValue == 7);
+    } else {
+        try expect(false);
+    }
+}
