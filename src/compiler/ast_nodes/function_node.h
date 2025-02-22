@@ -1,7 +1,7 @@
 #include "../ast.h"
 #include "ast_node_array.h"
 #include "../stack_variables.h"
-#include "type_resolution_info.h"
+#include "../parse/type_resolution_info.h"
 
 struct FunctionDependencyGraphBuilder;
 

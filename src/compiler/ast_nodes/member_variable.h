@@ -1,7 +1,7 @@
 #ifndef MEMBER_VARIABLE_NODE_H
 #define MEMBER_VARIABLE_NODE_H
 
-#include "type_resolution_info.h"
+#include "../parse/type_resolution_info.h"
 #include "../ast.h"
 
 typedef struct MemberVariableNode {

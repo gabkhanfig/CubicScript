@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include "../primitives/string/string.h"
 #include "../primitives/context.h"
-#include "ast_nodes/type_resolution_info.h"
+#include "parse/type_resolution_info.h"
 
 typedef struct StackVariableInfo {
     /// Use string instead of slice because this variable name
