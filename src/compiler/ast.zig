@@ -1097,10 +1097,10 @@ test "two functions returning a returned value" {
     }
 }
 
-test "function calling another with args" {
+test "function calling another with one arg" {
     const source =
         \\fn testFunc1() int {
-        \\  return testFunc2(5);
+        \\  return testFunc2(6);
         \\}
         \\fn testFunc2(arg: int) int { return arg + 5; }
     ;
@@ -1118,7 +1118,7 @@ test "function calling another with args" {
         var retValue: i64 = undefined;
         var retContext: *const c.CubsTypeContext = undefined;
         try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
-        try expect(retValue == 10);
+        try expect(retValue == 11);
     } else {
         try expect(false);
     }
@@ -1132,6 +1132,52 @@ test "function calling another with args" {
         var retContext: *const c.CubsTypeContext = undefined;
         try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
         try expect(retValue == 7);
+    } else {
+        try expect(false);
+    }
+}
+
+test "function calling another with two args" {
+    const source =
+        \\fn testFunc1() int {
+        \\  const testVar: int = 10;
+        \\  return testFunc2(testVar, 6);
+        \\}
+        \\fn testFunc2(arg1: int, arg2: int) int { 
+        \\  const testVar: int = arg1 + 5;
+        \\  return testVar + arg2; 
+        \\}
+    ;
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc1")) |func| {
+        const call = c.cubs_function_start_call(&func);
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retValue == 21);
+    } else {
+        try expect(false);
+    }
+
+    if (findFunction(&program, "testFunc2")) |func| {
+        var call = c.cubs_function_start_call(&func);
+        var arg1: i64 = 2;
+        var arg2: i64 = 4;
+        c.cubs_function_push_arg(&call, @ptrCast(&arg1), &c.CUBS_INT_CONTEXT);
+        c.cubs_function_push_arg(&call, @ptrCast(&arg2), &c.CUBS_INT_CONTEXT);
+
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retValue == 11);
     } else {
         try expect(false);
     }
