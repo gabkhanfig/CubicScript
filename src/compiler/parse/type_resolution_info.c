@@ -10,6 +10,10 @@ const CubsStringSlice floatTypeName = {.str = "float", .len = 5};
 const CubsStringSlice stringTypeName = {.str = "string", .len = 6};
 const CubsStringSlice charTypeName = {.str = "char", .len = 4};
 
+void cubs_type_resolution_info_deinit(TypeResolutionInfo *self)
+{
+}
+
 TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
 {
     TypeResolutionInfo self = {0};

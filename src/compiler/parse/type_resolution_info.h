@@ -5,6 +5,9 @@
 
 struct CubsTypeContext;
 struct TokenIter;
+struct TypeResolutionInfo;
+
+
 
 typedef struct TypeResolutionInfo {
     /// Will always be a valid string slice
@@ -13,6 +16,8 @@ typedef struct TypeResolutionInfo {
     /// deduce the context of the type.
     const struct CubsTypeContext* knownContext;
 } TypeResolutionInfo;
+
+void cubs_type_resolution_info_deinit(TypeResolutionInfo* self);
 
 /// Parses a type such as `int`, `string`, or a struct.
 /// Expects the parser to be at where the type info should be parsed from.

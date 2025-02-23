@@ -5,6 +5,7 @@
 #include "../../util/unreachable.h"
 
 static void member_variable_node_deinit(MemberVariableNode* self) {
+    cubs_type_resolution_info_deinit(&self->typeInfo);
     FREE_TYPE(MemberVariableNode, self);
 }
 

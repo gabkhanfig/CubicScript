@@ -16,6 +16,7 @@
 
 static void function_node_deinit(FunctionNode* self) {
     ast_node_array_deinit(&self->items);
+    cubs_type_resolution_info_deinit(&self->retType);
     cubs_stack_variables_array_deinit(&self->variables);
     cubs_free(self, sizeof(FunctionNode), _Alignof(FunctionNode));
 }

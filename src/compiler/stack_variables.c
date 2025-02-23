@@ -6,6 +6,7 @@
 void cubs_stack_variable_info_deinit(StackVariableInfo *self)
 {
     cubs_string_deinit(&self->name);
+    cubs_type_resolution_info_deinit(&self->typeInfo);
     *self = (StackVariableInfo){0};
 }
 
