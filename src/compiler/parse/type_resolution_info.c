@@ -5,6 +5,7 @@
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include "../../util/unreachable.h"
+#include "../../platform/mem.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -16,37 +17,86 @@ const CubsStringSlice charTypeName = {.str = "char", .len = 4};
 
 void cubs_type_resolution_info_deinit(TypeResolutionInfo *self)
 {
+    switch(self->tag) {
+        case TypeInfoReference: {
+            TypeResolutionInfo* childType = self->value.reference.child;
+            cubs_type_resolution_info_deinit(childType);
+            FREE_TYPE(TypeResolutionInfo, childType);
+        } break;
+        default: {}
+    }
+}
+
+/// Attempts to parse a type without any extra modifiers.
+/// For example:
+/// - `int`
+/// - `float`
+/// - `string`
+/// - Struct names
+///
+/// Ignores any modifiers on the type such as `&`, `[]`, etc.
+/// @return True if was successfully parsed, otherwise false
+static bool try_parse_normal_type(TypeResolutionInfo* out, const TokenIter* iter) {
+    TypeResolutionInfo retVal = {0};
+
+    const Token startToken = iter->current;
+    switch(startToken.tag) {
+        case BOOL_KEYWORD: {
+            retVal.tag = TypeInfoBool;
+        } break;
+        case INT_KEYWORD: {
+            retVal.tag = TypeInfoInt;
+        } break;
+        case FLOAT_KEYWORD: {
+            retVal.tag = TypeInfoFloat;
+        } break;
+        case STRING_KEYWORD: {
+            retVal.tag = TypeInfoString;
+        } break;
+        case CHAR_KEYWORD: {
+            retVal.tag = TypeInfoChar;
+        } break;
+        case IDENTIFIER: {
+            retVal.tag = TypeInfoStruct;
+            retVal.value.structType = (struct TypeInfoStructData){.typeName = iter->current.value.identifier};
+        } break;
+        default: {
+            return false;
+        }
+    }
+
+    *out = retVal;
+    return true;
 }
 
 TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
 {
     TypeResolutionInfo self = {0};
+    if(try_parse_normal_type(&self, iter)) {
+        (void)cubs_token_iter_next(iter);
+        return self;
+    }
 
     const Token startToken = iter->current;
-    switch(startToken.tag) {
-        case BOOL_KEYWORD: {
-            self.tag = TypeInfoBool;
-        } break;
-        case INT_KEYWORD: {
-            self.tag = TypeInfoInt;
-        } break;
-        case FLOAT_KEYWORD: {
-            self.tag = TypeInfoFloat;
-        } break;
-        case STRING_KEYWORD: {
-            self.tag = TypeInfoString;
-        } break;
-        case CHAR_KEYWORD: {
-            self.tag = TypeInfoChar;
-        } break;
-        case IDENTIFIER: {
-            self.tag = TypeInfoStruct;
-            self.value.structType = (struct TypeInfoStructData){.typeName = iter->current.value.identifier};
-        } break;
-        default: {
-            fprintf(stderr, "Expected type. Found %d\n", startToken.tag);
-            cubs_panic("Unexpected token encountered");
+    if(startToken.tag == REFERENCE_SYMBOL) {
+        struct TypeInfoReferenceData referenceData = {.isMutable = false, .child = NULL};
+
+        (void)cubs_token_iter_next(iter);
+        if(iter->current.tag == MUT_KEYWORD) {
+            referenceData.isMutable = true;
+            (void)cubs_token_iter_next(iter);
         }
+        TypeResolutionInfo childType = {0};
+        const bool success = try_parse_normal_type(&childType, iter);
+        assert(success);
+        referenceData.child = MALLOC_TYPE(TypeResolutionInfo);
+        *referenceData.child = childType;
+
+        self.tag = TypeInfoReference;
+        self.value.reference = referenceData;
+    } else {
+        fprintf(stderr, "Expected type. Found %d\n", startToken.tag);
+        cubs_panic("Unexpected token encountered");
     }
 
     (void)cubs_token_iter_next(iter);
