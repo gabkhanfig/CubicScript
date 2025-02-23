@@ -1,5 +1,7 @@
 #include "stack_variables.h"
 #include "../platform/mem.h"
+#include "../program/program.h"
+#include "../program/program_internal.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -101,15 +103,20 @@ bool cubs_stack_variables_array_find(const StackVariablesArray* self, size_t* ou
     return foundVariableNameIndex;
 }
 
-StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray *variables)
+StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray *variables, const CubsProgram* program)
 {
     StackVariablesAssignment self = {0};
     for(size_t i = 0; i < variables->len; i++) {
         const StackVariableInfo* info = &variables->variables[i];
-        assert(info->typeInfo.knownContext != NULL);
         const CubsStringSlice slice = cubs_string_as_slice(&info->name);
-        const bool success = cubs_stack_assignment_push(&self, slice, info->typeInfo.knownContext->sizeOfType);
-        assert(success);
+        // assert(info->typeInfo.knownContext != NULL);
+        // const CubsStringSlice slice = cubs_string_as_slice(&info->name);
+        // const bool success = cubs_stack_assignment_push(&self, slice, info->typeInfo.knownContext->sizeOfType);
+        // assert(success);
+        assert(info->typeInfo.tag != TypeInfoUnknown);
+        const bool success = cubs_stack_assignment_push(
+            &self, slice, cubs_type_resolution_info_get_context(&info->typeInfo, program)->sizeOfType);
+
     }
     return self;
 }

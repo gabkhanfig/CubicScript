@@ -36,33 +36,36 @@ static void function_node_compile(FunctionNode* self, CubsProgram* program) {
     }
 
     if(self->hasRetType) {
-        const CubsTypeContext* retContext = NULL;
-        if(self->retType.knownContext != NULL) {
-            retContext = self->retType.knownContext;
-        } else {
-            const CubsStringSlice typeName = self->retType.typeName;
-            retContext = cubs_program_find_type_context(program, typeName);
-            assert(retContext != NULL);
-        }
-        builder.optReturnType = retContext;
+        // const CubsTypeContext* retContext = NULL;
+        // if(self->retType.knownContext != NULL) {
+        //     retContext = self->retType.knownContext;
+        // } else {
+        //     const CubsStringSlice typeName = self->retType.typeName;
+        //     retContext = cubs_program_find_type_context(program, typeName);
+        //     assert(retContext != NULL);
+        // }
+        //builder.optReturnType = retContext;
+        builder.optReturnType = cubs_type_resolution_info_get_context(&self->retType, program);
     } 
 
     // resolve types of arguments
     // NOTE the first variables in `self->variables` are the function
     // arguments, up to inclusively `self->argCount - 1`
-    for(size_t i = 0; i < self->argCount; i++) {
-        if(self->variables.variables[i].typeInfo.knownContext != NULL) continue;
+    // for(size_t i = 0; i < self->argCount; i++) {
+    //     if(self->variables.variables[i].typeInfo.knownContext != NULL) continue;
 
-        const CubsStringSlice typeName = self->variables.variables[i].typeInfo.typeName;
-        const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
-        assert(argContext != NULL);
-        self->variables.variables[i].typeInfo.knownContext = argContext;
-    }
+    //     const CubsStringSlice typeName = self->variables.variables[i].typeInfo.typeName;
+    //     const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
+    //     assert(argContext != NULL);
+    //     self->variables.variables[i].typeInfo.knownContext = argContext;
+    // }
     
     // arguments
     for(size_t i = 0; i < self->argCount; i++) {
-        assert(self->variables.variables[i].typeInfo.knownContext != NULL);
-        cubs_function_builder_add_arg(&builder, self->variables.variables[i].typeInfo.knownContext);
+        // assert(self->variables.variables[i].typeInfo.knownContext != NULL);
+        // cubs_function_builder_add_arg(&builder, self->variables.variables[i].typeInfo.knownContext);
+        cubs_function_builder_add_arg(
+            &builder, cubs_type_resolution_info_get_context(&self->variables.variables[i].typeInfo, program));
     }
 
     // resolve all types for all statements
@@ -73,7 +76,7 @@ static void function_node_compile(FunctionNode* self, CubsProgram* program) {
         ast_node_resolve_types(node, program, &builder, &self->variables);
     }
 
-    StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables);
+    StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables, program);
     builder.stackSpaceRequired = stackAssignment.requiredFrameSize;
  
     { // Validate that the function ends with returns

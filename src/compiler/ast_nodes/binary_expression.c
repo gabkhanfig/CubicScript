@@ -46,25 +46,29 @@ static void binary_expr_node_resolve_types(
 
     switch(self->operation) {
         case Equal: {
-            if(typeInfo->knownContext != NULL) {
-                assert(typeInfo->knownContext == &CUBS_BOOL_CONTEXT);
+            // if(typeInfo->knownContext != NULL) {
+            //     assert(typeInfo->knownContext == &CUBS_BOOL_CONTEXT);
+            if(typeInfo->tag != TypeInfoUnknown) {
+                typeInfo->tag = TypeInfoBool;
+                //assert(typeInfo->knownContext == &CUBS_BOOL_CONTEXT);
             } else {
-                typeInfo->knownContext = &CUBS_BOOL_CONTEXT;
+                assert(typeInfo->tag == TypeInfoBool);
+                //typeInfo->knownContext = &CUBS_BOOL_CONTEXT;
             }
         } break;
         case Add: {
-            if(typeInfo->knownContext != NULL) {
-                assert(typeInfo->knownContext == lhsContext);
-            } else if(typeInfo->typeName.len > 0) {
-                const CubsStringSlice typeName = typeInfo->typeName;
-                const CubsTypeContext* resultingContext = cubs_program_find_type_context(program, typeName);
-                assert(resultingContext != NULL);
-                typeInfo->knownContext = resultingContext;
-            } else { // empty string
-                // the type is the resulting type from the operation. For instance,
-                // with an add operation, the resulting type is the same as the 
-                // lhs and rhs types.
-                typeInfo->knownContext = lhsContext;
+            //if(typeInfo->knownContext != NULL) {
+            //    assert(typeInfo->knownContext == lhsContext);
+            if(typeInfo->tag != TypeInfoUnknown) {
+                assert(cubs_type_resolution_info_get_context(typeInfo, program) == lhsContext);
+            // } else if(typeInfo->typeName.len > 0) {
+            //     const CubsStringSlice typeName = typeInfo->typeName;
+            //     const CubsTypeContext* resultingContext = cubs_program_find_type_context(program, typeName);
+            //     assert(resultingContext != NULL);
+            //     typeInfo->knownContext = resultingContext;
+            } else {
+                // TODO actual type inference
+                typeInfo->tag = TypeInfoInt;
             }
         } break;
     }

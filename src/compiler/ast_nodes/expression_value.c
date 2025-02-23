@@ -65,7 +65,8 @@ static ExprValue parse_expression_value(
                 .name = variableName,
                 .isTemporary = true,
                 .isMutable = false,
-                .typeInfo = cubs_type_resolution_info_from_context(&CUBS_BOOL_CONTEXT),
+                //.typeInfo = cubs_type_resolution_info_from_context(&CUBS_BOOL_CONTEXT),
+                .typeInfo = (TypeResolutionInfo){.tag = TypeInfoBool, .value._bool = NULL},
             };
 
             value.tag = BoolLit;
@@ -80,7 +81,8 @@ static ExprValue parse_expression_value(
                 .name = variableName,
                 .isTemporary = true,
                 .isMutable = false,
-                .typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
+                //.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
+                .typeInfo = (TypeResolutionInfo){.tag = TypeInfoInt, .value._int = NULL},
             };
 
             value.tag = IntLit;
@@ -98,7 +100,8 @@ static ExprValue parse_expression_value(
                 .name = variableName,
                 .isTemporary = true,
                 .isMutable = false,
-                .typeInfo = cubs_type_resolution_info_from_context(&CUBS_FLOAT_CONTEXT),
+                //.typeInfo = cubs_type_resolution_info_from_context(&CUBS_FLOAT_CONTEXT),   
+                .typeInfo = (TypeResolutionInfo){.tag = TypeInfoFloat, .value._float = NULL},
             };
 
             value.tag = FloatLit;
@@ -122,7 +125,8 @@ static ExprValue parse_expression_value(
                     .name = variableName,
                     .isTemporary = true,
                     .isMutable = false,
-                    .typeInfo = NULL,
+                    //.typeInfo = NULL,          
+                    .typeInfo = (TypeResolutionInfo){.tag = TypeInfoUnknown, .value._unknown = NULL},
                 };
 
                 const size_t retVariableIndex = variables->len;
@@ -209,9 +213,11 @@ ExprValue cubs_parse_expression(
                         .typeInfo = {0},
                     };
                     if(tokenAfterFirst == EQUAL_OPERATOR) {
-                        temporaryVariable.typeInfo = cubs_type_resolution_info_from_context(&CUBS_BOOL_CONTEXT);
+                        //temporaryVariable.typeInfo = cubs_type_resolution_info_from_context(&CUBS_BOOL_CONTEXT);
+                        temporaryVariable.typeInfo = (TypeResolutionInfo){.tag = TypeInfoBool, .value._bool = NULL};
                     } else if(tokenAfterFirst == ADD_OPERATOR) {
-                        temporaryVariable.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT);
+                        //temporaryVariable.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT);
+                        temporaryVariable.typeInfo = (TypeResolutionInfo){.tag = TypeInfoInt, .value._int = NULL};
                     }
                     // order is preserved
                     outSrc = variables->len;
@@ -256,29 +262,33 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
 {
     switch(self->tag) {
         case BoolLit: {
-            TypeResolutionInfo* typeInfo = &variables->variables[self->value.boolLiteral.variableIndex].typeInfo;
-            assert(typeInfo->knownContext == &CUBS_BOOL_CONTEXT);
+            const TypeResolutionInfo* typeInfo = &variables->variables[self->value.boolLiteral.variableIndex].typeInfo;
+            //assert(typeInfo->knownContext == &CUBS_BOOL_CONTEXT);
+            assert(typeInfo->tag == TypeInfoBool);
             return &CUBS_BOOL_CONTEXT;
         } break;
         case IntLit: {
-            TypeResolutionInfo* typeInfo = &variables->variables[self->value.intLiteral.variableIndex].typeInfo;
-            assert(typeInfo->knownContext == &CUBS_INT_CONTEXT);
+            const TypeResolutionInfo* typeInfo = &variables->variables[self->value.intLiteral.variableIndex].typeInfo;
+            //assert(typeInfo->knownContext == &CUBS_INT_CONTEXT);
+            assert(typeInfo->tag == TypeInfoInt);
             return &CUBS_INT_CONTEXT;
         } break;
         case FloatLit: {
-            TypeResolutionInfo* typeInfo = &variables->variables[self->value.floatLiteral.variableIndex].typeInfo;
-            assert(typeInfo->knownContext == &CUBS_FLOAT_CONTEXT);
+            const TypeResolutionInfo* typeInfo = &variables->variables[self->value.floatLiteral.variableIndex].typeInfo;
+            //assert(typeInfo->knownContext == &CUBS_FLOAT_CONTEXT);
+            assert(typeInfo->tag == TypeInfoFloat);
             return &CUBS_FLOAT_CONTEXT;
         } break;
         case Variable: {
-            TypeResolutionInfo* typeInfo = &variables->variables[self->value.variableIndex].typeInfo;
-            if(typeInfo->knownContext == NULL) {
-                const CubsStringSlice typeName = typeInfo->typeName;
-                const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
-                assert(argContext != NULL);
-                typeInfo->knownContext = argContext;
-            }
-            return typeInfo->knownContext;
+            const TypeResolutionInfo* typeInfo = &variables->variables[self->value.variableIndex].typeInfo;
+            // if(typeInfo->knownContext == NULL) {
+            //     const CubsStringSlice typeName = typeInfo->typeName;
+            //     const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
+            //     assert(argContext != NULL);
+            //     typeInfo->knownContext = argContext;
+            // }
+            // return typeInfo->knownContext;
+            return cubs_type_resolution_info_get_context(typeInfo, program);
         } break;
         case Expression: {
             AstNode* exprNode = &self->value.expression;
@@ -287,8 +297,9 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
             assert(exprNode->vtable->nodeType == astNodeBinaryExpression);
             const size_t index = ((const BinaryExprNode*)exprNode->ptr)->outputVariableIndex;            
             const TypeResolutionInfo* typeInfo = &variables->variables[index].typeInfo;
-            assert(typeInfo->knownContext != NULL);
-            return typeInfo->knownContext;
+            // assert(typeInfo->knownContext != NULL);
+            // return typeInfo->knownContext;
+            return cubs_type_resolution_info_get_context(typeInfo, program);
         } break;
         case FunctionCall: { 
             AstNode* exprNode = &self->value.functionCall;
@@ -301,8 +312,9 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
 
             const size_t index = callNode->returnVariable;            
             const TypeResolutionInfo* typeInfo = &variables->variables[index].typeInfo;
-            assert(typeInfo->knownContext != NULL);
-            return typeInfo->knownContext;
+            // assert(typeInfo->knownContext != NULL);
+            // return typeInfo->knownContext;
+            return cubs_type_resolution_info_get_context(typeInfo, program);
         } break;
     }
 }

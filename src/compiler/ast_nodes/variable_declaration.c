@@ -26,13 +26,13 @@ static void variable_declaration_node_build_function(
 static void variable_declaration_resolve_types(
     VariableDeclarationNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables
 ) {
-    TypeResolutionInfo* typeInfo = &variables->variables[self->variableNameIndex].typeInfo;
-    if(typeInfo->knownContext != NULL) return;
+    // TypeResolutionInfo* typeInfo = &variables->variables[self->variableNameIndex].typeInfo;
+    // if(typeInfo->knownContext != NULL) return;
 
-    const CubsStringSlice typeName = typeInfo->typeName;
-    const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
-    assert(argContext != NULL);
-    typeInfo->knownContext = argContext;
+    // const CubsStringSlice typeName = typeInfo->typeName;
+    // const CubsTypeContext* argContext = cubs_program_find_type_context(program, typeName);
+    // assert(argContext != NULL);
+    // typeInfo->knownContext = argContext;
 }
 
 static AstNodeVTable variable_declaration_node_vtable = {
@@ -96,20 +96,40 @@ AstNode cubs_variable_declaration_node_init(
         // If its just a semicolon and not an expression/literal,
         // we zero initialize the variable
         if(followingTypename == SEMICOLON_SYMBOL) {
-            if(variableInfo.typeInfo.knownContext == &CUBS_BOOL_CONTEXT) {
+            // if(variableInfo.typeInfo.knownContext == &CUBS_BOOL_CONTEXT) {
+            //     ExprValue value = {0};
+            //     value.tag = BoolLit;
+            //     value.value.boolLiteral.literal = false;
+            //     value.value.boolLiteral.variableIndex = self->variableNameIndex;
+            //     self->initialValue = value;
+            // }  
+            // else if(variableInfo.typeInfo.knownContext == &CUBS_INT_CONTEXT) {
+            //     ExprValue value = {0};
+            //     value.tag = IntLit;
+            //     value.value.intLiteral.literal = 0;
+            //     value.value.intLiteral.variableIndex = self->variableNameIndex;
+            //     self->initialValue = value;
+            // } else if(variableInfo.typeInfo.knownContext == &CUBS_FLOAT_CONTEXT) {
+            //     ExprValue value = {0};
+            //     value.tag = FloatLit;
+            //     value.value.floatLiteral.literal = 0.0;
+            //     value.value.floatLiteral.variableIndex = self->variableNameIndex;
+            //     self->initialValue = value;            
+                
+            if(variableInfo.typeInfo.tag == TypeInfoBool) {
                 ExprValue value = {0};
                 value.tag = BoolLit;
                 value.value.boolLiteral.literal = false;
                 value.value.boolLiteral.variableIndex = self->variableNameIndex;
                 self->initialValue = value;
             }  
-            else if(variableInfo.typeInfo.knownContext == &CUBS_INT_CONTEXT) {
+            else if(variableInfo.typeInfo.tag == TypeInfoInt) {
                 ExprValue value = {0};
                 value.tag = IntLit;
                 value.value.intLiteral.literal = 0;
                 value.value.intLiteral.variableIndex = self->variableNameIndex;
                 self->initialValue = value;
-            } else if(variableInfo.typeInfo.knownContext == &CUBS_FLOAT_CONTEXT) {
+            } else if(variableInfo.typeInfo.tag == TypeInfoFloat) {
                 ExprValue value = {0};
                 value.tag = FloatLit;
                 value.value.floatLiteral.literal = 0.0;

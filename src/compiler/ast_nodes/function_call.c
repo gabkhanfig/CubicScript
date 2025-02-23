@@ -96,9 +96,11 @@ static void function_call_node_resolve_types(
             assert(scriptFuncPtr->returnType != NULL);
 
             TypeResolutionInfo* typeInfo = &variables->variables[self->returnVariable].typeInfo;
-            assert(typeInfo->knownContext == NULL);
-
-            typeInfo->knownContext = scriptFuncPtr->returnType;
+            // assert(typeInfo->knownContext == NULL);
+            // typeInfo->knownContext = scriptFuncPtr->returnType;
+            assert(typeInfo->tag == TypeInfoUnknown);
+            // TODO actual type
+            typeInfo->tag = TypeInfoInt;
         } else {
             cubs_panic("Cannot resolve types for C function pointers");
         }

@@ -7,6 +7,8 @@
 #include "../primitives/context.h"
 #include "parse/type_resolution_info.h"
 
+struct CubsProgram;
+
 typedef struct StackVariableInfo {
     /// Use string instead of slice because this variable name
     /// may need to be generated, such as with a temporary value.
@@ -62,7 +64,7 @@ typedef struct StackVariablesAssignment {
     size_t capacity;
 } StackVariablesAssignment;
 
-StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray* variables);
+StackVariablesAssignment cubs_stack_assignment_init(const StackVariablesArray* variables, const struct CubsProgram* program);
 
 void cubs_stack_assignment_deinit(StackVariablesAssignment* self);
 

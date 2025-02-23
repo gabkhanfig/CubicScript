@@ -2,7 +2,11 @@
 #include "../parse/tokenizer.h"
 #include "../../primitives/context.h"
 #include "../../util/panic.h"
+#include "../../program/program.h"
+#include "../../program/program_internal.h"
+#include "../../util/unreachable.h"
 #include <stdio.h>
+#include <assert.h>
 
 const CubsStringSlice boolTypeName = {.str = "bool", .len = 4};
 const CubsStringSlice intTypeName = {.str = "int", .len = 3};
@@ -21,28 +25,23 @@ TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
     const Token startToken = iter->current;
     switch(startToken.tag) {
         case BOOL_KEYWORD: {
-            self.typeName = boolTypeName;
-            self.knownContext = &CUBS_BOOL_CONTEXT;
+            self.tag = TypeInfoBool;
         } break;
         case INT_KEYWORD: {
-            self.typeName = intTypeName;
-            self.knownContext = &CUBS_INT_CONTEXT;
+            self.tag = TypeInfoInt;
         } break;
         case FLOAT_KEYWORD: {
-            self.typeName = floatTypeName;
-            self.knownContext = &CUBS_FLOAT_CONTEXT;
+            self.tag = TypeInfoFloat;
         } break;
         case STRING_KEYWORD: {
-            self.typeName = stringTypeName;
-            self.knownContext = &CUBS_STRING_CONTEXT;
+            self.tag = TypeInfoString;
         } break;
         case CHAR_KEYWORD: {
-            self.typeName = charTypeName;
-            self.knownContext = &CUBS_CHAR_CONTEXT;
+            self.tag = TypeInfoChar;
         } break;
         case IDENTIFIER: {
-            self.typeName = startToken.value.identifier;
-            self.knownContext = NULL;
+            self.tag = TypeInfoStruct;
+            self.value.structType = (struct TypeInfoStructData){.typeName = iter->current.value.identifier};
         } break;
         default: {
             fprintf(stderr, "Expected type. Found %d\n", startToken.tag);
@@ -54,10 +53,38 @@ TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
     return self;
 }
 
-TypeResolutionInfo cubs_type_resolution_info_from_context(const struct CubsTypeContext* context) {
-    TypeResolutionInfo self = {0};
-    self.knownContext = context;
-    const CubsStringSlice typeName = {.str = context->name, .len = context->nameLength};
-    self.typeName = typeName;
-    return self;
+const CubsTypeContext *cubs_type_resolution_info_get_context(const TypeResolutionInfo *self, const CubsProgram *program)
+{
+    assert(self->tag != TypeInfoUnknown);
+
+    switch(self->tag) {
+        case TypeInfoBool: return &CUBS_BOOL_CONTEXT;
+        case TypeInfoInt: return &CUBS_INT_CONTEXT;
+        case TypeInfoFloat: return &CUBS_FLOAT_CONTEXT;
+        case TypeInfoChar: return &CUBS_CHAR_CONTEXT;
+        case TypeInfoString: return &CUBS_STRING_CONTEXT;
+        case TypeInfoReference: {
+            if(self->value.reference.isMutable) {
+                return &CUBS_MUT_REF_CONTEXT;
+            } else {
+                return &CUBS_CONST_REF_CONTEXT;
+            }
+        } 
+        case TypeInfoStruct: {
+            const CubsTypeContext* foundContext = cubs_program_find_type_context(program, self->value.structType.typeName);
+            assert(foundContext != NULL);
+            return foundContext;
+        }
+        default: {
+            unreachable();
+        }
+    }
 }
+
+// TypeResolutionInfo cubs_type_resolution_info_from_context(const struct CubsTypeContext* context) {
+//     TypeResolutionInfo self = {0};
+//     self.knownContext = context;
+//     const CubsStringSlice typeName = {.str = context->name, .len = context->nameLength};
+//     self.typeName = typeName;
+//     return self;
+// }

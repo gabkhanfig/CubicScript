@@ -25,8 +25,9 @@ static void struct_node_define_type(const StructNode* self, CubsProgram* program
 
         CubsTypeMemberContext memberContext = {0};
 
-        assert(memberNode->typeInfo.knownContext != NULL);
-        memberContext.context = memberNode->typeInfo.knownContext;
+        // assert(memberNode->typeInfo.knownContext != NULL);
+        // memberContext.context = memberNode->typeInfo.knownContext;
+        memberContext.context = cubs_type_resolution_info_get_context(&memberNode->typeInfo, program);
 
         memberContext.byteOffset = struct_memory_layout_next(&layout, memberContext.context);
         memberContext.name = cubs_program_malloc_copy_string_slice(program, memberNode->name);
