@@ -115,6 +115,8 @@ static ExprValue parse_expression_value(
         case IDENTIFIER: {
             const CubsStringSlice identifier = iter->current.value.identifier;
             const TokenType afterIdentifier = cubs_token_iter_peek(iter);
+            size_t foundVariableIndex = -1;
+            const bool didFindVariable = cubs_stack_variables_array_find(variables, &foundVariableIndex, identifier);
             // TODO function pointers
             if(afterIdentifier == LEFT_PARENTHESES_SYMBOL) {
                 (void)cubs_token_iter_next(iter);
@@ -139,12 +141,35 @@ static ExprValue parse_expression_value(
 
                 value.tag = FunctionCall;
                 value.value.functionCall = callNode;
+            }  else if(didFindVariable && (variables->variables[foundVariableIndex].typeInfo.tag == TypeInfoReference)) {
+                const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpDeref", .len = 9});
+            
+                StackVariableInfo temporaryVariable = {
+                    .name = variableName,
+                    .isTemporary = true,
+                    .isMutable = false,
+                    //.typeInfo = NULL,          
+                    .typeInfo = cubs_type_resolution_info_clone(variables->variables[foundVariableIndex].typeInfo.value.reference.child),
+                };
+
+                const size_t tempIndex = variables->len;
+
+                // variables->len will be increased by 1
+                cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+
+                value.tag = Reference;
+                value.value.reference = (struct ExprValueReference){
+                    .sourceVariableIndex = foundVariableIndex, 
+                    .tempIndex = tempIndex
+                };
             } else {
                 // TODO handle other kinds of identifiers such as structs?
+                assert(didFindVariable);
                 value.tag = Variable;
-                const bool didFind = cubs_stack_variables_array_find(
-                    variables, &value.value.variableIndex, identifier);
-                assert(didFind && "Did not find stack variable"); 
+                value.value.variableIndex = foundVariableIndex;
+                // const bool didFind = cubs_stack_variables_array_find(
+                //     variables, &value.value.variableIndex, identifier);
+                // assert(didFind && "Did not find stack variable"); 
             }        
         } break;
         default: {
@@ -290,6 +315,11 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
             // return typeInfo->knownContext;
             return cubs_type_resolution_info_get_context(typeInfo, program);
         } break;
+        case Reference: {
+            // TODO should this actually return the child type?
+            const TypeResolutionInfo* typeInfo = &variables->variables[self->value.reference.sourceVariableIndex].typeInfo;
+            return cubs_type_resolution_info_get_context(typeInfo, program);
+        } break;
         case Expression: {
             AstNode* exprNode = &self->value.expression;
             ast_node_resolve_types(exprNode, program, builder, variables);
@@ -370,6 +400,15 @@ ExprValueDst cubs_expr_value_build_function(
             const ExprValueDst dst = {.hasDst = true, .dst = stackAssignment->positions[binExpr->outputVariableIndex]};
             return dst;
         } break;
+        case Reference: {
+            const struct ExprValueReference value = self->value.reference;
+            const ExprValueDst dst = {.hasDst = true, .dst = stackAssignment->positions[value.tempIndex]};
+
+            const Bytecode bytecode = cubs_operands_make_dereference(dst.dst, stackAssignment->positions[value.sourceVariableIndex]);
+            cubs_function_builder_push_bytecode(builder, bytecode);
+
+            return dst;
+        } break;
         case FunctionCall: {
             const AstNode node = self->value.functionCall;
             assert(node.vtable->nodeType == astNodeTypeFunctionCall);
@@ -403,6 +442,9 @@ void cubs_expr_value_update_destination(ExprValue *self, size_t destinationVaria
         } break;
         case FloatLit: {
             self->value.floatLiteral.variableIndex = destinationVariableIndex;
+        } break;
+        case Reference: {
+            self->value.reference.tempIndex = destinationVariableIndex;
         } break;
         case Expression: {
             AstNode node = self->value.expression;

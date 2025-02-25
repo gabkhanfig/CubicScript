@@ -8,6 +8,7 @@ const c = @cImport({
     @cInclude("compiler/ast_nodes/file_node.h");
     @cInclude("compiler/ast_nodes/function_node.h");
     @cInclude("compiler/ast_nodes/return_node.h");
+    @cInclude("primitives/reference/reference.h");
 });
 
 const TokenIter = c.TokenIter;
@@ -1178,6 +1179,37 @@ test "function calling another with two args" {
         var retContext: *const c.CubsTypeContext = undefined;
         try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
         try expect(retValue == 11);
+    } else {
+        try expect(false);
+    }
+}
+
+test "function take immutable reference" {
+    const source =
+        \\fn testFunc(arg: &int) int {
+        \\  return arg + 5;
+        \\}
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        var call = c.cubs_function_start_call(&func);
+        const argValue: i64 = 2;
+        var arg: c.CubsConstRef = .{ .ref = @ptrCast(&argValue), .context = &c.CUBS_INT_CONTEXT };
+        c.cubs_function_push_arg(&call, @ptrCast(&arg), &c.CUBS_CONST_REF_CONTEXT);
+
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retValue == 7);
     } else {
         try expect(false);
     }

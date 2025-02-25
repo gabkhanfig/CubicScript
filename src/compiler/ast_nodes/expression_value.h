@@ -25,9 +25,17 @@ struct ExprValueFloatLiteral {
     size_t variableIndex;
 };
 
+struct ExprValueReference {
+    /// The index of the source variable, being a reference type.
+    size_t sourceVariableIndex;
+    /// The index of the temporary, non-owned, dereferenced value.
+    size_t tempIndex;
+};
+
 union ExprValueMetadata {
     /// Index within the stack variables to find the name of the variable
     size_t variableIndex;
+    struct ExprValueReference reference;
     struct ExprValueBoolLiteral boolLiteral;
     struct ExprValueIntLiteral intLiteral;
     struct ExprValueFloatLiteral floatLiteral;
@@ -40,6 +48,7 @@ union ExprValueMetadata {
 /// Corresponds with `MathValueMetadata`
 enum ExprValueType {
     Variable,
+    Reference,
     BoolLit,
     IntLit,
     FloatLit,

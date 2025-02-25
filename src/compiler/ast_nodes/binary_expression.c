@@ -40,8 +40,18 @@ static void binary_expr_node_resolve_types(
 ) {
     const CubsTypeContext* lhsContext = cubs_expr_node_resolve_type(&self->lhs, program, builder, variables);
     const CubsTypeContext* rhsContext = cubs_expr_node_resolve_type(&self->rhs, program, builder, variables);
+    
+    { // validate types
+        if(self->lhs.tag == Reference) {
+            lhsContext = cubs_type_resolution_info_get_context(&variables->variables[self->lhs.value.reference.tempIndex].typeInfo, program);
+        }
+        if(self->rhs.tag == Reference) {
+            rhsContext = cubs_type_resolution_info_get_context(&variables->variables[self->rhs.value.reference.tempIndex].typeInfo, program);
+        }
+    }
 
     assert(lhsContext == rhsContext);
+    const CubsTypeContext* resultContext = lhsContext;
 
     TypeResolutionInfo* typeInfo = &variables->variables[self->outputVariableIndex].typeInfo;
 
@@ -61,7 +71,7 @@ static void binary_expr_node_resolve_types(
             //if(typeInfo->knownContext != NULL) {
             //    assert(typeInfo->knownContext == lhsContext);
             if(typeInfo->tag != TypeInfoUnknown) {
-                assert(cubs_type_resolution_info_get_context(typeInfo, program) == lhsContext);
+                assert(cubs_type_resolution_info_get_context(typeInfo, program) == resultContext);
             // } else if(typeInfo->typeName.len > 0) {
             //     const CubsStringSlice typeName = typeInfo->typeName;
             //     const CubsTypeContext* resultingContext = cubs_program_find_type_context(program, typeName);
