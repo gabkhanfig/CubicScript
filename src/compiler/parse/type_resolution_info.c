@@ -27,6 +27,37 @@ void cubs_type_resolution_info_deinit(TypeResolutionInfo *self)
     }
 }
 
+TypeResolutionInfo cubs_type_resolution_info_clone(const TypeResolutionInfo *self)
+{
+    switch(self->tag) {
+        case TypeInfoUnknown:
+        case TypeInfoBool:
+        case TypeInfoInt:
+        case TypeInfoFloat:
+        case TypeInfoChar:
+        case TypeInfoString:
+        case TypeInfoStruct: {
+            return *self;
+        } break;
+        case TypeInfoReference: {
+            TypeResolutionInfo* child = MALLOC_TYPE(TypeResolutionInfo);
+            *child = cubs_type_resolution_info_clone(self->value.reference.child);
+
+            const TypeResolutionInfo clone = {
+                .tag = TypeInfoReference,
+                .value.reference = (struct TypeInfoReferenceData){
+                    .isMutable = self->value.reference.isMutable,
+                    .child = child,    
+                }
+            };
+            return clone;
+        } break;
+        default: {
+            unreachable();
+        }
+    }
+}
+
 /// Attempts to parse a type without any extra modifiers.
 /// For example:
 /// - `int`

@@ -56,6 +56,8 @@ typedef struct TypeResolutionInfo {
 
 void cubs_type_resolution_info_deinit(TypeResolutionInfo* self);
 
+TypeResolutionInfo cubs_type_resolution_info_clone(const TypeResolutionInfo* self);
+
 /// Parses a type such as `int`, `string`, or a struct.
 /// Expects the parser to be at where the type info should be parsed from.
 /// After calling, the parser will point to after the type info.
