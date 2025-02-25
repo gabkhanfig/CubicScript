@@ -21,14 +21,15 @@ static void binary_expr_node_build_function(
     assert(lhsSrc.hasDst);
     const ExprValueDst rhsSrc = cubs_expr_value_build_function(&self->rhs, builder, stackAssignment);
     assert(rhsSrc.hasDst);
+    const uint16_t dst = stackAssignment->positions[self->outputVariableIndex];
 
     switch(self->operation) {
         case Equal: {
-            const Bytecode equalBytecode = cubs_operands_make_compare(COMPARE_OP_EQUAL, self->outputVariableIndex, lhsSrc.dst, rhsSrc.dst);
+            const Bytecode equalBytecode = cubs_operands_make_compare(COMPARE_OP_EQUAL, dst, lhsSrc.dst, rhsSrc.dst);
             cubs_function_builder_push_bytecode(builder, equalBytecode);
         } break;
         case Add: {
-            const Bytecode addBytecode = operands_make_add_dst(false, self->outputVariableIndex, lhsSrc.dst, rhsSrc.dst);
+            const Bytecode addBytecode = operands_make_add_dst(false, dst, lhsSrc.dst, rhsSrc.dst);
             cubs_function_builder_push_bytecode(builder, addBytecode);
         } break;
     }
