@@ -1214,3 +1214,32 @@ test "function take immutable reference" {
         try expect(false);
     }
 }
+
+test "function modify mutable reference" {
+    const source =
+        \\fn testFunc(arg: &mut int) {
+        \\  arg = 5;
+        \\}
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        var call = c.cubs_function_start_call(&func);
+        var argValue: i64 = 2;
+        var arg: c.CubsMutRef = .{ .ref = @ptrCast(&argValue), .context = &c.CUBS_INT_CONTEXT };
+        c.cubs_function_push_arg(&call, @ptrCast(&arg), &c.CUBS_MUT_REF_CONTEXT);
+
+        try expect(c.cubs_function_call(call, .{}) == 0);
+        try expect(argValue == 5);
+    } else {
+        try expect(false);
+    }
+}

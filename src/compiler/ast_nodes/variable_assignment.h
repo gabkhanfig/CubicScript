@@ -12,6 +12,7 @@ struct FunctionDependencies;
 typedef struct VariableAssignmentNode {
     /// Index within the stack variables to find the name of the return value.
     size_t variableIndex;
+    bool updatingReference;
     ExprValue newValue;
 } VariableAssignmentNode;
 

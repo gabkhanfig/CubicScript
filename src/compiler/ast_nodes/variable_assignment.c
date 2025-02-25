@@ -21,7 +21,13 @@ static void variable_assignment_node_build_function(
     FunctionBuilder* builder,
     const StackVariablesAssignment* stackAssignment
 ) {
-    cubs_expr_value_build_function(&self->newValue, builder, stackAssignment);
+    const ExprValueDst expressionSrc = cubs_expr_value_build_function(&self->newValue, builder, stackAssignment);
+    assert(expressionSrc.hasDst);
+    if(self->updatingReference) {
+        const size_t actualRefDst = stackAssignment->positions[self->variableIndex];
+        const Bytecode setRef = cubs_operands_make_set_reference(actualRefDst, expressionSrc.dst);
+        cubs_function_builder_push_bytecode(builder, setRef);
+    }
 }
 
 static AstNodeVTable variable_assignment_node_vtable = {
@@ -47,9 +53,15 @@ struct AstNode cubs_variable_assignment_node_init(
         assert(false && "Cannot assign to variable that hasn't been declared");
     }
 
-    { // Cannot assign to variable that is not mutable
+    bool updatingReference = false;
+    { // validate mutable
         const StackVariableInfo* variableInfo = &variables->variables[foundVariableIndex];
-        assert(variableInfo->isMutable);
+        if(variableInfo->typeInfo.tag == TypeInfoReference) {
+            assert(variableInfo->typeInfo.value.reference.isMutable);
+            updatingReference = true;
+        } else {
+            assert(variableInfo->isMutable);
+        }
     }
 
     { // after variable name, expect '='
@@ -59,10 +71,33 @@ struct AstNode cubs_variable_assignment_node_init(
 
     (void)cubs_token_iter_next(iter); // step over to next
     ExprValue expression = cubs_parse_expression(iter, variables, dependencies, true, foundVariableIndex);
-    cubs_expr_value_update_destination(&expression, foundVariableIndex);
+    if(updatingReference) {
+        const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpDeref", .len = 9});
+            
+        StackVariableInfo temporaryVariable = {
+            .name = variableName,
+            .isTemporary = true,
+            .isMutable = false,
+            //.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
+            .typeInfo = cubs_type_resolution_info_clone(variables->variables[foundVariableIndex].typeInfo.value.reference.child),
+        };
+
+        // Variable order is preserved
+        const size_t newDestinationIndex = variables->len;
+
+        // variables->len will be increased by 1
+        cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+        cubs_expr_value_update_destination(&expression, newDestinationIndex);
+    } else {
+        cubs_expr_value_update_destination(&expression, foundVariableIndex);
+    }
 
     VariableAssignmentNode* self = MALLOC_TYPE(VariableAssignmentNode);
-    *self = (VariableAssignmentNode){.variableIndex = foundVariableIndex, .newValue = expression};
+    *self = (VariableAssignmentNode){
+        .variableIndex = foundVariableIndex,
+        .newValue = expression,
+        .updatingReference = updatingReference
+    };
 
     const AstNode node = {.ptr = (void*)self, .vtable = &variable_assignment_node_vtable};
     return node;
