@@ -32,10 +32,19 @@ struct ExprValueReference {
     size_t tempIndex;
 };
 
+struct ExprValueMakeReference {
+    /// The index of the source variable, being a non-reference type.
+    size_t sourceVariableIndex;
+    /// The index of the new, reference typed value.
+    size_t destinationIndex;
+    bool mutable;
+};
+
 union ExprValueMetadata {
     /// Index within the stack variables to find the name of the variable
     size_t variableIndex;
     struct ExprValueReference reference;
+    struct ExprValueMakeReference makeReference;
     struct ExprValueBoolLiteral boolLiteral;
     struct ExprValueIntLiteral intLiteral;
     struct ExprValueFloatLiteral floatLiteral;
@@ -49,6 +58,7 @@ union ExprValueMetadata {
 enum ExprValueType {
     Variable,
     Reference,
+    MakeReference,
     BoolLit,
     IntLit,
     FloatLit,

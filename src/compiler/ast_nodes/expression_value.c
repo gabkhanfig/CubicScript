@@ -172,6 +172,49 @@ static ExprValue parse_expression_value(
                 // assert(didFind && "Did not find stack variable"); 
             }        
         } break;
+        case REFERENCE_SYMBOL: {
+            (void)cubs_token_iter_next(iter);
+            bool mutable = false;
+            if(iter->current.tag == MUT_KEYWORD) {
+                mutable = true;   
+                (void)cubs_token_iter_next(iter);
+            }
+            assert(iter->current.tag == IDENTIFIER);
+
+            const CubsStringSlice identifier = iter->current.value.identifier;
+            size_t foundVariableIndex = -1;
+            const bool didFindVariable = cubs_stack_variables_array_find(variables, &foundVariableIndex, identifier);
+            assert(didFindVariable);
+
+            const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpRef", .len = 7});
+
+            TypeResolutionInfo* childType = MALLOC_TYPE(TypeResolutionInfo);
+            *childType = cubs_type_resolution_info_clone(&variables->variables[foundVariableIndex].typeInfo);
+
+            TypeResolutionInfo typeInfo = {
+                .tag = TypeInfoReference,
+                .value.reference = (struct TypeInfoReferenceData){.child = childType, .isMutable = mutable}
+            };
+            
+            StackVariableInfo temporaryVariable = {
+                .name = variableName,
+                .isTemporary = true,
+                .isMutable = false,
+                .typeInfo = typeInfo,
+            };
+
+            const size_t dstIndex = variables->len;
+
+            // variables->len will be increased by 1
+            cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
+
+            value.tag = MakeReference;
+            value.value.makeReference = (struct ExprValueMakeReference){
+                .sourceVariableIndex = foundVariableIndex,
+                .destinationIndex = dstIndex,
+                .mutable = mutable
+            };
+        } break;
         default: {
             fprintf(stderr, "%d hmm\n", token.tag);
             assert(false && "Cannot handle anything other than int literals and variables by identifiers");
@@ -320,6 +363,14 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
             const TypeResolutionInfo* typeInfo = &variables->variables[self->value.reference.sourceVariableIndex].typeInfo;
             return cubs_type_resolution_info_get_context(typeInfo, program);
         } break;
+        case MakeReference: {
+            // TODO should this actually return the reference type?
+            if(self->value.makeReference.mutable) {
+                return &CUBS_MUT_REF_CONTEXT;
+            } else {
+                return &CUBS_CONST_REF_CONTEXT;
+            }
+        } break;
         case Expression: {
             AstNode* exprNode = &self->value.expression;
             ast_node_resolve_types(exprNode, program, builder, variables);
@@ -409,6 +460,15 @@ ExprValueDst cubs_expr_value_build_function(
 
             return dst;
         } break;
+        case MakeReference: {
+            const struct ExprValueMakeReference value = self->value.makeReference;
+            const ExprValueDst dst = {.hasDst = true, .dst = stackAssignment->positions[value.destinationIndex]};
+
+            const Bytecode bytecode = cubs_operands_make_reference(dst.dst, stackAssignment->positions[value.sourceVariableIndex], value.mutable);
+            cubs_function_builder_push_bytecode(builder, bytecode);
+
+            return dst;
+        } break;
         case FunctionCall: {
             const AstNode node = self->value.functionCall;
             assert(node.vtable->nodeType == astNodeTypeFunctionCall);
@@ -445,6 +505,9 @@ void cubs_expr_value_update_destination(ExprValue *self, size_t destinationVaria
         } break;
         case Reference: {
             self->value.reference.tempIndex = destinationVariableIndex;
+        } break;
+        case MakeReference: {
+            self->value.makeReference.destinationIndex = destinationVariableIndex;
         } break;
         case Expression: {
             AstNode node = self->value.expression;
