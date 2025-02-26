@@ -430,7 +430,26 @@ static void execute_set_reference(const Bytecode bytecode) {
     }
 
     memcpy(actualDst, cubs_interpreter_stack_value_at(operands.src), srcContext->sizeOfType);
-} 
+}
+
+static void execute_make_reference(const Bytecode bytecode) {
+    const OperandsMakeReference operands = *(const OperandsMakeReference*)&bytecode;
+
+    const CubsTypeContext* refContext = cubs_interpreter_stack_context_at(operands.src);
+
+    void* src = cubs_interpreter_stack_value_at(operands.src);
+    void* dst = cubs_interpreter_stack_value_at(operands.dst);
+
+    if(operands.mutable) {
+        CubsMutRef ref = {.ref = src, .context = refContext};
+        *(CubsMutRef*)dst = ref;
+        cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_MUT_REF_CONTEXT);
+    } else {
+        CubsConstRef ref = {.ref = src, .context = refContext};
+        *(CubsConstRef*)dst = ref;
+        cubs_interpreter_stack_set_context_at(operands.dst, &CUBS_CONST_REF_CONTEXT);    
+    }
+}
 
 static void execute_get_member(const Bytecode bytecode) {
     const OperandsGetMember operands = *(const OperandsGetMember*)&bytecode;
@@ -710,6 +729,9 @@ CubsProgramRuntimeError cubs_interpreter_execute_operation(const CubsProgram *pr
         } break;
         case OpCodeSetReference: {
             execute_set_reference(*instructionPointer);
+        } break;
+        case OpCodeMakeReference: {
+            execute_make_reference(*instructionPointer);
         } break;
         case OpCodeGetMember: {
             execute_get_member(*instructionPointer);

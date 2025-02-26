@@ -44,6 +44,10 @@ typedef enum OpCode {
     /// and setting the `src` context to NULL. Works with `CubsConstRef`, 
     /// `CubsMutRef`, `CubsUnique`, `CubsShared`, and `CubsWeak`.
     OpCodeSetReference,
+    /// Creates a mutable or immutable reference to the stack value at `src`,
+    /// storing the reference value in `dst`. Works for creating
+    /// `CubsConstRef` and `CubsMutRef` instances.
+    OpCodeMakeReference,
     // TODO maybe more efficient for OpCodeGetMember to be split into 2, one for values and one for references
     /// Gets a non-owning value as a reference to the member variable within a
     /// struct value or reference at `src` using the immediate member index of 
