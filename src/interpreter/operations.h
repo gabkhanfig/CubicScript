@@ -271,6 +271,7 @@ typedef struct {
     uint64_t dst: BITS_PER_STACK_OPERAND;
     uint64_t src: BITS_PER_STACK_OPERAND;
 } OperandsDereference;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsDereference);
 
 Bytecode cubs_operands_make_dereference(uint16_t dst, uint16_t src);
 
@@ -279,8 +280,19 @@ typedef struct {
     uint64_t dst: BITS_PER_STACK_OPERAND;
     uint64_t src: BITS_PER_STACK_OPERAND;   
 } OperandsSetReference;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsSetReference);
 
 Bytecode cubs_operands_make_set_reference(uint16_t dst, uint16_t src);
+
+typedef struct {
+    uint64_t reserveOpcode: OPCODE_USED_BITS;
+    uint64_t dst: BITS_PER_STACK_OPERAND;
+    uint64_t src: BITS_PER_STACK_OPERAND;
+    uint64_t mutable: 1;
+} OperandsMakeReference;
+VALIDATE_SIZE_ALIGN_OPERANDS(OperandsMakeReference);
+
+Bytecode cubs_operands_make_reference(uint16_t dst, uint16_t src, bool mutable);
 
 #pragma endregion
 

@@ -2468,3 +2468,44 @@ test "struct set member from reference" {
         }
     }
 }
+
+test "make reference" {
+    { // immutable
+        const bytecode = c.cubs_operands_make_reference(1, 0, false);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+
+        const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*c.CubsConstRef, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        src.* = 66;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(1) == &c.CUBS_CONST_REF_CONTEXT);
+        try expect(dst.context == &c.CUBS_INT_CONTEXT);
+        try expect(@as(*const i64, @ptrCast(@alignCast(dst.ref))) == src); // same pointer
+        try expect(@as(*const i64, @ptrCast(@alignCast(dst.ref))).* == 66); // same value
+    }
+    { // mutable
+        const bytecode = c.cubs_operands_make_reference(1, 0, true);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+
+        const src = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const dst = @as(*c.CubsMutRef, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        src.* = 66;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(1) == &c.CUBS_MUT_REF_CONTEXT);
+        try expect(dst.context == &c.CUBS_INT_CONTEXT);
+        try expect(@as(*const i64, @ptrCast(@alignCast(dst.ref))) == src); // same pointer
+        try expect(@as(*const i64, @ptrCast(@alignCast(dst.ref))).* == 66); // same value
+    }
+}

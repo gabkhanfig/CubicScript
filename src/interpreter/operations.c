@@ -273,6 +273,18 @@ Bytecode cubs_operands_make_set_reference(uint16_t dst, uint16_t src)
     return b;
 }
 
+Bytecode cubs_operands_make_reference(uint16_t dst, uint16_t src, bool mutable)
+{
+    assert(dst <= MAX_FRAME_LENGTH);
+    assert(src <= MAX_FRAME_LENGTH);
+
+    BYTECODE_ALIGN const OperandsMakeReference operands = {
+        .reserveOpcode = OpCodeMakeReference, .dst = dst, .src = src, .mutable = mutable
+    };
+    const Bytecode b = *(const Bytecode*)&operands;
+    return b;
+}
+
 Bytecode cubs_operands_make_get_member(uint16_t dst, uint16_t src, uint16_t memberIndex)
 {
     assert(dst <= MAX_FRAME_LENGTH);
