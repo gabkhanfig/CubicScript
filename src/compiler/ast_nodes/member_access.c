@@ -42,7 +42,7 @@ AstNode cubs_member_access_node_init(TokenIter *iter, StackVariablesArray *varia
     size_t* destinations = MALLOC_TYPE_ARRAY(size_t, capacity);
     size_t len = 0;
 
-    while(iter->current.tag == IDENTIFIER) {
+    while(true) {
         if(len == capacity) {
             const size_t newCapacity = capacity * 2;
             CubsStringSlice* newMembers = MALLOC_TYPE_ARRAY(CubsStringSlice, newCapacity);
@@ -87,6 +87,8 @@ AstNode cubs_member_access_node_init(TokenIter *iter, StackVariablesArray *varia
             (void)cubs_token_iter_next(iter); // step to period
             (void)cubs_token_iter_next(iter); // step past period
             assert(iter->current.tag == IDENTIFIER);
+        } else {
+            break;
         }
     }
 
