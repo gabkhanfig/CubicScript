@@ -25,6 +25,18 @@ struct ExprValueFloatLiteral {
     size_t variableIndex;
 };
 
+struct ExprValueStructMemberAccess {
+    size_t sourceVariableIndex;
+    /// Array of nested member names. Is length `len`.
+    /// `variable.member1.member2.member3` for example, where the array
+    /// contains the names of those members.
+    CubsStringSlice* members;
+    /// Array of struct member access destination variables.
+    /// The final one is the resulting destination for the entire expression.
+    size_t* destinations;
+    size_t len;
+};
+
 struct ExprValueReference {
     /// The index of the source variable, being a reference type.
     size_t sourceVariableIndex;
@@ -50,8 +62,8 @@ union ExprValueMetadata {
     struct ExprValueFloatLiteral floatLiteral;
     //double floatLiteral;
     AstNode expression;
-    // TODO
     AstNode functionCall;
+    AstNode structMember;
 };
 
 /// Corresponds with `MathValueMetadata`
@@ -65,6 +77,7 @@ enum ExprValueType {
     Expression,
     // TODO
     FunctionCall,
+    StructMember,
 };
 
 /// Tagged union

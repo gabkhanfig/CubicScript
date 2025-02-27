@@ -4,6 +4,7 @@
 #include "../../interpreter/function_definition.h"
 #include "binary_expression.h"
 #include "function_call.h"
+#include "member_access.h"
 #include <stdio.h>
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
@@ -141,7 +142,12 @@ static ExprValue parse_expression_value(
 
                 value.tag = FunctionCall;
                 value.value.functionCall = callNode;
-            }  else if(didFindVariable && (variables->variables[foundVariableIndex].typeInfo.tag == TypeInfoReference)) {
+            } else if(afterIdentifier == PERIOD_SYMBOL) {
+                assert(didFindVariable);
+                const AstNode memberAccess = cubs_member_access_node_init(iter, variables);
+                value.tag = StructMember;
+                value.value.structMember = memberAccess;
+            } else if(didFindVariable && (variables->variables[foundVariableIndex].typeInfo.tag == TypeInfoReference)) {
                 const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpDeref", .len = 9});
             
                 StackVariableInfo temporaryVariable = {
@@ -397,6 +403,16 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
             // return typeInfo->knownContext;
             return cubs_type_resolution_info_get_context(typeInfo, program);
         } break;
+        case StructMember: {
+            AstNode* accessNode = &self->value.structMember;
+            ast_node_resolve_types(accessNode, program, builder, variables);
+            
+            assert(accessNode->vtable->nodeType == astNodeTypeMemberAccess);
+            const MemberAccessNode* obj = (const MemberAccessNode*)accessNode->ptr;
+            const size_t index = obj->destinations[obj->len - 1];            
+            const TypeResolutionInfo* typeInfo = &variables->variables[index].typeInfo;
+            return cubs_type_resolution_info_get_context(typeInfo, program);
+        } break;
     }
 }
 
@@ -411,6 +427,32 @@ ExprValueDst cubs_expr_value_build_function(
                 .hasDst = true, 
                 .dst = stackAssignment->positions[self->value.variableIndex]};
             return dst;
+        } break;
+        case StructMember: {
+            const AstNode node = self->value.expression;
+            assert(node.vtable->nodeType == astNodeTypeMemberAccess);
+
+            ast_node_build_function(&node, builder, stackAssignment);
+
+            const MemberAccessNode* accessNode = (const MemberAccessNode*)node.ptr;
+            const ExprValueDst dst = {
+                .hasDst = true,
+                .dst = stackAssignment->positions[accessNode->destinations[accessNode->len - 1]]
+            };
+            return dst;
+
+
+            // const struct ExprValueStructMemberAccess value = self->value.structMember;
+            // const ExprValueDst dst = {.hasDst = true, .dst = stackAssignment->positions[value.destinations[value.len - 1]]};
+
+            // for(size_t i = 0; i < value.len; i++) {
+            //     const uint16_t memberDst = stackAssignment->positions[value.destinations[i]];
+            //     const uint16_t memberSrc = i == 0 ? 
+            //         value.sourceVariableIndex : 
+            //         stackAssignment->positions[value.destinations[i - 1]]; // previous variable
+            //     //const Bytecode accessMember = cubs_operands_make_get_member()
+            // }
+
         } break;
         case BoolLit: {
             const struct ExprValueBoolLiteral value = self->value.boolLiteral;
@@ -494,6 +536,13 @@ void cubs_expr_value_update_destination(ExprValue *self, size_t destinationVaria
 {
     switch(self->tag) {
         case Variable: break;
+        case StructMember: {
+            AstNode node = self->value.structMember;
+            assert(node.vtable->nodeType == astNodeTypeMemberAccess);
+
+            MemberAccessNode* memberAccess = (MemberAccessNode*)node.ptr;
+            memberAccess->destinations[memberAccess->len - 1] = destinationVariableIndex;
+        } break;
         case BoolLit: {
             self->value.boolLiteral.variableIndex = destinationVariableIndex;
         } break;

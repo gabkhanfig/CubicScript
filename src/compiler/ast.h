@@ -25,6 +25,7 @@ enum AstNodeType {
     astNodeTypeConditional,
     astNodeTypeFunctionArg,
     astNodeTypeFunctionCall,
+    astNodeTypeMemberAccess,
 };
 
 typedef void (*AstNodeDeinit)(void* self);
