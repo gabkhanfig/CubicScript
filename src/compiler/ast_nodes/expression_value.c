@@ -440,19 +440,6 @@ ExprValueDst cubs_expr_value_build_function(
                 .dst = stackAssignment->positions[accessNode->destinations[accessNode->len - 1]]
             };
             return dst;
-
-
-            // const struct ExprValueStructMemberAccess value = self->value.structMember;
-            // const ExprValueDst dst = {.hasDst = true, .dst = stackAssignment->positions[value.destinations[value.len - 1]]};
-
-            // for(size_t i = 0; i < value.len; i++) {
-            //     const uint16_t memberDst = stackAssignment->positions[value.destinations[i]];
-            //     const uint16_t memberSrc = i == 0 ? 
-            //         value.sourceVariableIndex : 
-            //         stackAssignment->positions[value.destinations[i - 1]]; // previous variable
-            //     //const Bytecode accessMember = cubs_operands_make_get_member()
-            // }
-
         } break;
         case BoolLit: {
             const struct ExprValueBoolLiteral value = self->value.boolLiteral;

@@ -6,6 +6,7 @@
 
 struct TokenIter;
 struct StackVariablesArray;
+struct CubsTypeContext;
 
 typedef struct MemberAccessNode {
     size_t sourceVariableIndex;
@@ -16,6 +17,7 @@ typedef struct MemberAccessNode {
     /// Array of struct member access destination variables.
     /// The final one is the resulting destination for the entire expression.
     size_t* destinations;
+    uint16_t* memberIndices;
     size_t len;
 } MemberAccessNode;
 

@@ -2,23 +2,96 @@
 #include "../ast.h"
 #include "../parse/tokenizer.h"
 #include "../stack_variables.h"
+#include "../../primitives/context.h"
 #include "../../platform/mem.h"
+#include "../../interpreter/function_definition.h"
+#include "../../interpreter/operations.h"
+#include "../../interpreter/bytecode.h"
+#include "../../program/program.h"
+#include "../../program/program_internal.h"
 #include <assert.h>
 
 static void member_access_node_deinit(MemberAccessNode* self) {
     FREE_TYPE_ARRAY(CubsStringSlice, self->members, self->len);
     FREE_TYPE_ARRAY(size_t, self->destinations, self->len);
+    FREE_TYPE_ARRAY(uint16_t, self->memberIndices, self->len);
     FREE_TYPE(MemberAccessNode, self);
 }
 
+static void member_access_node_build_function(
+    const MemberAccessNode* self,
+    FunctionBuilder* builder,
+    const StackVariablesAssignment* stackAssignment
+) {
+    for(size_t i = 0; i < self->len; i++) {
+        const uint16_t memberDst = stackAssignment->positions[self->destinations[i]];
+        const uint16_t memberSrc = i == 0 ? 
+            self->sourceVariableIndex : 
+            stackAssignment->positions[self->destinations[i - 1]]; // previous variable
+        const Bytecode accessMember = cubs_operands_make_get_member(memberDst, memberSrc, self->memberIndices[i]);
+        cubs_function_builder_push_bytecode(builder, accessMember);
+    }
+}
+
+static bool string_slice_eql(CubsStringSlice lhs, CubsStringSlice rhs) {
+    if(lhs.len != rhs.len) {
+        return false;
+    }
+
+    for(size_t i = 0; i < lhs.len; i++) {
+        if(lhs.str[i] != rhs.str[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/// Returns -1 if not found
+static size_t context_get_member_index(const CubsTypeContext* context, CubsStringSlice name) {
+    for(size_t i = 0; i < context->membersLen; i++) {
+        if(string_slice_eql(context->members[i].name, name)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void member_access_node_resolve_types(
+    MemberAccessNode* self,
+    CubsProgram* program,
+    const FunctionBuilder* builder,
+    StackVariablesArray* variables
+) {
+    const CubsTypeContext* sourceContext = 
+        cubs_type_resolution_info_get_context(&variables->variables[self->sourceVariableIndex].typeInfo, program);
+
+    uint16_t* indices = MALLOC_TYPE_ARRAY(uint16_t, self->len);
+    
+    for(size_t i = 0; i < self->len; i++) {
+        assert(sourceContext != NULL);
+        assert(sourceContext->membersLen > 0);
+
+        const size_t foundMember = context_get_member_index(sourceContext, self->members[i]);
+        assert(foundMember != -1);
+        assert(foundMember <= UINT16_MAX);
+
+        const uint16_t index = (uint16_t)foundMember;
+        indices[i] = index;
+        sourceContext = sourceContext->members[index].context; // nested types
+    }
+
+    self->memberIndices = indices;
+}
+
 static AstNodeVTable member_access_node_vtable = {
-    .nodeType = astNodeTypeConditional,
+    .nodeType = astNodeTypeMemberAccess,
     .deinit = (AstNodeDeinit)&member_access_node_deinit,
     .compile = NULL,
     .toString = NULL,
-    .buildFunction = NULL,
+    .buildFunction = (AstNodeBuildFunction)&member_access_node_build_function,
     .defineType = NULL,
-    .resolveTypes = NULL,
+    .resolveTypes = (AstNodeResolveTypes)&member_access_node_resolve_types,
     .endsWithReturn = NULL,
 };
 
@@ -80,7 +153,6 @@ AstNode cubs_member_access_node_init(TokenIter *iter, StackVariablesArray *varia
 
         // variables->len will be increased by 1
         cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
-
         
         const TokenType peekToken = cubs_token_iter_peek(iter);
         if(peekToken == PERIOD_SYMBOL) {
