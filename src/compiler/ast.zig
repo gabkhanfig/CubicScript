@@ -1304,3 +1304,96 @@ test "function create mutable reference within script" {
         try expect(false);
     }
 }
+
+test "function take struct" {
+    const source =
+        \\struct TestStruct {
+        \\  num: int;
+        \\};
+        \\
+        \\fn testFunc(arg: TestStruct) {
+        \\  return;
+        \\}
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    const TestStruct = extern struct { num: i64 };
+    const testStructContext = &c.CubsTypeContext{
+        .name = "TestStruct".ptr,
+        .nameLength = "TestStruct".len,
+        .members = &[1]c.CubsTypeMemberContext{c.CubsTypeMemberContext{
+            .name = c.CubsStringSlice{ .str = "num".ptr, .len = 3 },
+            .byteOffset = 0,
+            .context = &c.CUBS_INT_CONTEXT,
+        }},
+        .membersLen = 1,
+        .sizeOfType = @sizeOf(TestStruct),
+    };
+
+    if (findFunction(&program, "testFunc")) |func| {
+        var call = c.cubs_function_start_call(&func);
+
+        var arg = TestStruct{ .num = 85 };
+        c.cubs_function_push_arg(&call, @ptrCast(&arg), testStructContext);
+        try expect(c.cubs_function_call(call, .{}) == 0);
+    } else {
+        try expect(false);
+    }
+}
+
+test "function access struct member" {
+    const source =
+        \\struct TestStruct {
+        \\  num: int;
+        \\};
+        \\
+        \\fn testFunc(arg: TestStruct) int {
+        \\  return arg.num;
+        \\}
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    const TestStruct = extern struct { num: i64 };
+    const testStructContext = &c.CubsTypeContext{
+        .name = "TestStruct".ptr,
+        .nameLength = "TestStruct".len,
+        .members = &[1]c.CubsTypeMemberContext{c.CubsTypeMemberContext{
+            .name = c.CubsStringSlice{ .str = "num".ptr, .len = 3 },
+            .byteOffset = 0,
+            .context = &c.CUBS_INT_CONTEXT,
+        }},
+        .membersLen = 1,
+        .sizeOfType = @sizeOf(TestStruct),
+    };
+
+    if (findFunction(&program, "testFunc")) |func| {
+        var call = c.cubs_function_start_call(&func);
+
+        var arg = TestStruct{ .num = 85 };
+        c.cubs_function_push_arg(&call, @ptrCast(&arg), testStructContext);
+
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retContext == &c.CUBS_INT_CONTEXT);
+        try expect(retValue == 85);
+    } else {
+        try expect(false);
+    }
+}
