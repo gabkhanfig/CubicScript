@@ -106,6 +106,9 @@ inline static void expr_value_deinit(ExprValue* self) {
         case FunctionCall: {
             ast_node_deinit(&self->value.functionCall);
         } break;
+        case StructMember: {
+            ast_node_deinit(&self->value.structMember);
+        } break;
         default: break;
     }
 }
