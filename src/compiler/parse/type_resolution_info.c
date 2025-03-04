@@ -156,6 +156,9 @@ const CubsTypeContext *cubs_type_resolution_info_get_context(const TypeResolutio
             assert(foundContext != NULL);
             return foundContext;
         }
+        case TypeInfoKnownContext: {
+            return self->value.knownContext;
+        }
         default: {
             unreachable();
         }

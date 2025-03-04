@@ -10,6 +10,7 @@
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include <assert.h>
+#include <stdio.h>
 
 static void member_access_node_deinit(MemberAccessNode* self) {
     FREE_TYPE_ARRAY(CubsStringSlice, self->members, self->len);
@@ -63,8 +64,10 @@ static void member_access_node_resolve_types(
     const FunctionBuilder* builder,
     StackVariablesArray* variables
 ) {
+    TypeResolutionInfo* typeInfo = &variables->variables[self->sourceVariableIndex].typeInfo;
+    assert(typeInfo->tag != TypeInfoUnknown);
     const CubsTypeContext* sourceContext = 
-        cubs_type_resolution_info_get_context(&variables->variables[self->sourceVariableIndex].typeInfo, program);
+        cubs_type_resolution_info_get_context(typeInfo, program);
 
     uint16_t* indices = MALLOC_TYPE_ARRAY(uint16_t, self->len);
     
@@ -79,6 +82,16 @@ static void member_access_node_resolve_types(
         const uint16_t index = (uint16_t)foundMember;
         indices[i] = index;
         sourceContext = sourceContext->members[index].context; // nested types
+
+        // also resolve types for temporary variables
+        TypeResolutionInfo* temporaryTypeInfo = 
+            &variables->variables[self->destinations[i]].typeInfo;
+        if(temporaryTypeInfo->tag != TypeInfoUnknown) {
+            continue;
+        }
+
+        temporaryTypeInfo->tag = TypeInfoKnownContext;
+        temporaryTypeInfo->value.knownContext = sourceContext;
     }
 
     self->memberIndices = indices;

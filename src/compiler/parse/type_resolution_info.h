@@ -21,6 +21,7 @@ enum TypeResolutionInfoTag {
     TypeInfoString,
     TypeInfoStruct,
     TypeInfoReference,
+    TypeInfoKnownContext,
 };
 
 struct TypeInfoStructData {
@@ -41,6 +42,7 @@ union TypeResolutionInfoData {
     _type_resolution_info_unused_t  _string;
     struct TypeInfoReferenceData    reference;
     struct TypeInfoStructData       structType;
+    const struct CubsTypeContext*   knownContext;
 };
 
 typedef struct TypeResolutionInfo {
