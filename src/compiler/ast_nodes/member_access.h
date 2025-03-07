@@ -3,6 +3,7 @@
 
 #include "../../primitives/string/string_slice.h"
 #include <stddef.h>
+#include <stdint.h>
 
 struct TokenIter;
 struct StackVariablesArray;
