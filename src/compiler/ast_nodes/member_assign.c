@@ -19,7 +19,7 @@ static void member_assign_node_deinit(MemberAssignNode* self) {
     FREE_TYPE(MemberAssignNode, self);
 }
 
-static void member_asasign_node_build_function(
+static void member_assign_node_build_function(
     const MemberAssignNode* self,
     FunctionBuilder* builder,
     const StackVariablesAssignment* stackAssignment
