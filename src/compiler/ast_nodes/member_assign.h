@@ -12,6 +12,9 @@ struct FunctionDependencies;
 
 typedef struct MemberAssignNode {
     size_t variableIndex;
+    bool updatingReference;
+    /// Only used if `updatingReference` is true.
+    size_t refVariableIndex;
     ExprValue newValue;
     /// Array of nested member names. Is length `len`.
     /// `variable.member1.member2.member3` for example, where the array

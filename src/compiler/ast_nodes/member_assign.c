@@ -24,7 +24,30 @@ static void member_assign_node_build_function(
     FunctionBuilder* builder,
     const StackVariablesAssignment* stackAssignment
 ) {
+    // Get the correct member
+    for(size_t i = 0; i < self->len; i++) {    
+        const uint16_t memberDst = stackAssignment->positions[self->destinations[i]];
+        const uint16_t memberSrc = i == 0 ? 
+            self->variableIndex : 
+            stackAssignment->positions[self->destinations[i - 1]]; // previous variable
+        const Bytecode accessMember = cubs_operands_make_get_member(memberDst, memberSrc, self->memberIndices[i]);
+        cubs_function_builder_push_bytecode(builder, accessMember);
+    }
 
+    const ExprValueDst expressionSrc = cubs_expr_value_build_function(&self->newValue, builder, stackAssignment);
+    assert(expressionSrc.hasDst);
+
+    // Set the members propegating back
+    for(size_t i = self->len; i-- > 0;) {
+        const uint16_t valueSrc = i == self->len ? 
+            expressionSrc.dst : 
+            stackAssignment->positions[self->destinations[i + 1]];
+        const uint16_t memberDst = i == 0 ? 
+            self->variableIndex : 
+            stackAssignment->positions[self->destinations[i]];
+        const Bytecode setMember = cubs_operands_make_set_member(memberDst, valueSrc, self->memberIndices[i]);
+        cubs_function_builder_push_bytecode(builder, setMember);
+    }
 }
 
 static void member_assign_node_resolve_types(
@@ -33,7 +56,43 @@ static void member_assign_node_resolve_types(
     const FunctionBuilder* builder,
     StackVariablesArray* variables
 ) {
+    TypeResolutionInfo* typeInfo = &variables->variables[self->variableIndex].typeInfo;
 
+    assert(typeInfo->tag != TypeInfoUnknown);
+    const CubsTypeContext* sourceContext = NULL;
+    if(self->updatingReference) {
+        assert(typeInfo->tag == TypeInfoReference);
+        sourceContext = cubs_type_resolution_info_get_context(typeInfo->value.reference.child, program);
+    } else {
+        sourceContext = cubs_type_resolution_info_get_context(typeInfo, program);
+    }
+
+    uint16_t* indices = MALLOC_TYPE_ARRAY(uint16_t, self->len);
+    
+    for(size_t i = 0; i < self->len; i++) {
+        assert(sourceContext != NULL);
+        assert(sourceContext->membersLen > 0);
+
+        const size_t foundMember = context_get_member_index(sourceContext, self->members[i]);
+        assert(foundMember != -1);
+        assert(foundMember <= UINT16_MAX);
+
+        const uint16_t index = (uint16_t)foundMember;
+        indices[i] = index;
+        sourceContext = sourceContext->members[index].context; // nested types
+
+        // also resolve types for temporary variables
+        TypeResolutionInfo* temporaryTypeInfo = 
+            &variables->variables[self->destinations[i]].typeInfo;
+        if(temporaryTypeInfo->tag != TypeInfoUnknown) {
+            continue;
+        }
+
+        temporaryTypeInfo->tag = TypeInfoKnownContext;
+        temporaryTypeInfo->value.knownContext = sourceContext;
+    }
+
+    self->memberIndices = indices;
 }
 
 static AstNodeVTable member_assign_node_vtable = {
@@ -65,6 +124,25 @@ AstNode cubs_member_assign_node_init(TokenIter *iter, StackVariablesArray *varia
         } else {
             assert(variableInfo->isMutable);
         }
+    }
+
+    size_t refVariableIndex = -1;
+    if(updatingReference) {
+        const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpDeref", .len = 9});
+            
+        StackVariableInfo temporaryVariable = {
+            .name = variableName,
+            .isTemporary = true,
+            .isMutable = false,
+            //.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
+            .typeInfo = cubs_type_resolution_info_clone(variables->variables[foundVariableIndex].typeInfo.value.reference.child),
+        };
+
+        // Variable order is preserved
+        refVariableIndex = variables->len;
+
+        // variables->len will be increased by 1
+        cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
     }
 
     (void)cubs_token_iter_next(iter);
@@ -152,32 +230,16 @@ AstNode cubs_member_assign_node_init(TokenIter *iter, StackVariablesArray *varia
     
     (void)cubs_token_iter_next(iter);
     ExprValue newValue = cubs_parse_expression(iter, variables, dependencies, false, 0);
-    if(updatingReference) {
-        const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpDeref", .len = 9});
-            
-        StackVariableInfo temporaryVariable = {
-            .name = variableName,
-            .isTemporary = true,
-            .isMutable = false,
-            //.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
-            .typeInfo = cubs_type_resolution_info_clone(variables->variables[foundVariableIndex].typeInfo.value.reference.child),
-        };
-
-        // Variable order is preserved
-        const size_t newDestinationIndex = variables->len;
-
-        // variables->len will be increased by 1
-        cubs_stack_variables_array_push_temporary(variables, temporaryVariable);
-        cubs_expr_value_update_destination(&newValue, newDestinationIndex);
-    } else {
-        // the last temporary variable is the actual one to update
+    { // the last temporary variable is the actual one to update
         const size_t updatingIndex = shrunkDestinations[len - 1];
         cubs_expr_value_update_destination(&newValue, updatingIndex);
     }
-
+    
     MemberAssignNode* self = MALLOC_TYPE(MemberAssignNode);
     *self = (MemberAssignNode){
         .variableIndex = foundVariableIndex,
+        .updatingReference = updatingReference,
+        .refVariableIndex = refVariableIndex,
         .newValue = newValue,
         .members = shrunkMembers,
         .destinations = shrunkDestinations,

@@ -151,6 +151,7 @@
         "function_dependency_graph.h": "c",
         "function_call.h": "c",
         "bytecode_array.h": "c",
-        "member_assign.h": "c"
+        "member_assign.h": "c",
+        "sync_ptr.h": "c"
     }
 }
