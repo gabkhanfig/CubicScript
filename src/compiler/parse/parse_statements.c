@@ -7,6 +7,7 @@
 #include "../ast_nodes/variable_assignment.h"
 #include "../ast_nodes/conditional_node.h"
 #include "../ast_nodes/function_call.h"
+#include "../ast_nodes/member_assign.h"
 #include "../stack_variables.h"
 #include "../graph/function_dependency_graph.h"
 #include <stdio.h>
@@ -46,6 +47,10 @@ bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray
                 } else if(afterIdentifier == ASSIGN_OPERATOR) {
                     AstNode variableAssign = cubs_variable_assignment_node_init(iter, variables, dependencies);
                     *outNode = variableAssign;
+                } else if(afterIdentifier == PERIOD_SYMBOL) {
+                    // TODO member function calls
+                    AstNode memberAssign = cubs_member_assign_node_init(iter, variables, dependencies);
+                    *outNode = memberAssign;
                 } else {
                     assert(false && "Unknown token after identifier at start of statement");
                 }

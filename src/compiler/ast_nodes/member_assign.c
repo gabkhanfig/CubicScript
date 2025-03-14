@@ -10,6 +10,7 @@
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include "../graph/function_dependency_graph.h"
+#include <stdio.h>
 
 static void member_assign_node_deinit(MemberAssignNode* self) {
     FREE_TYPE_ARRAY(CubsStringSlice, self->members, self->len);
@@ -39,7 +40,7 @@ static void member_assign_node_build_function(
 
     // Set the members propegating back
     for(size_t i = self->len; i-- > 0;) {
-        const uint16_t valueSrc = i == self->len ? 
+        const uint16_t valueSrc = i == (self->len - 1) ? 
             expressionSrc.dst : 
             stackAssignment->positions[self->destinations[i + 1]];
         const uint16_t memberDst = i == 0 ? 
