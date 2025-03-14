@@ -14,9 +14,11 @@ static void struct_node_deinit(StructNode* self) {
 
 static void struct_node_define_type(const StructNode* self, CubsProgram* program) {
     CubsTypeContext* context = cubs_program_malloc_script_context(program);
+    *context = (CubsTypeContext){0};
 
     CubsTypeMemberContext* memberContexts = 
         cubs_program_malloc_member_context_array(program, self->memberVariables.len);
+    
     
     StructMemoryLayout layout = {0};
     for(uint32_t i = 0; i < self->memberVariables.len; i++) {
