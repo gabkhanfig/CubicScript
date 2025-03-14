@@ -50,6 +50,30 @@ static void member_assign_node_build_function(
     }
 }
 
+static bool string_slice_eql(CubsStringSlice lhs, CubsStringSlice rhs) {
+    if(lhs.len != rhs.len) {
+        return false;
+    }
+
+    for(size_t i = 0; i < lhs.len; i++) {
+        if(lhs.str[i] != rhs.str[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/// Returns -1 if not found
+static size_t context_get_member_index(const CubsTypeContext* context, CubsStringSlice name) {
+    for(size_t i = 0; i < context->membersLen; i++) {
+        if(string_slice_eql(context->members[i].name, name)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 static void member_assign_node_resolve_types(
     MemberAssignNode* self,
     CubsProgram* program,
