@@ -42,10 +42,10 @@ static void member_assign_node_build_function(
     for(size_t i = self->len; i-- > 0;) {
         const uint16_t valueSrc = i == (self->len - 1) ? 
             expressionSrc.dst : 
-            stackAssignment->positions[self->destinations[i + 1]];
+            stackAssignment->positions[self->destinations[i]];
         const uint16_t memberDst = i == 0 ? 
             self->variableIndex : 
-            stackAssignment->positions[self->destinations[i]];
+            stackAssignment->positions[self->destinations[i - 1]];
         const Bytecode setMember = cubs_operands_make_set_member(memberDst, valueSrc, self->memberIndices[i]);
         cubs_function_builder_push_bytecode(builder, setMember);
     }
