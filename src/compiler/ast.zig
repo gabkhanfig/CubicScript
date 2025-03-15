@@ -1370,17 +1370,50 @@ test "function access struct member" {
     c.cubs_ast_codegen(&ast);
 
     const TestStruct = extern struct { num: i64 };
-    const testStructContext = &c.CubsTypeContext{
-        .name = "TestStruct".ptr,
-        .nameLength = "TestStruct".len,
-        .members = &[1]c.CubsTypeMemberContext{c.CubsTypeMemberContext{
-            .name = c.CubsStringSlice{ .str = "num".ptr, .len = 3 },
-            .byteOffset = 0,
-            .context = &c.CUBS_INT_CONTEXT,
-        }},
-        .membersLen = 1,
-        .sizeOfType = @sizeOf(TestStruct),
-    };
+    const testStructContext: *const c.CubsTypeContext = c.cubs_program_find_type_context(&program, .{ .str = "TestStruct".ptr, .len = "TestStruct".len }).?;
+
+    if (findFunction(&program, "testFunc")) |func| {
+        var call = c.cubs_function_start_call(&func);
+
+        var arg = TestStruct{ .num = 85 };
+        c.cubs_function_push_arg(&call, @ptrCast(&arg), testStructContext);
+
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retContext == &c.CUBS_INT_CONTEXT);
+        try expect(retValue == 85);
+    } else {
+        try expect(false);
+    }
+}
+
+test "function access nested struct member" {
+    const source =
+        \\struct TestStruct1 {
+        \\  num: int;
+        \\};
+        \\
+        \\struct TestStruct2 {
+        \\  a: TestStruct1;
+        \\};
+        \\
+        \\fn testFunc(arg: TestStruct2) int {
+        \\  return arg.a.num;
+        \\}
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    const TestStruct = extern struct { num: i64 };
+    const testStructContext: *const c.CubsTypeContext = c.cubs_program_find_type_context(&program, .{ .str = "TestStruct2".ptr, .len = "TestStruct2".len }).?;
 
     if (findFunction(&program, "testFunc")) |func| {
         var call = c.cubs_function_start_call(&func);
@@ -1421,22 +1454,55 @@ test "function assign to struct member" {
 
     const TestStruct = extern struct { num: i64 };
     const testStructContext: *const c.CubsTypeContext = c.cubs_program_find_type_context(&program, .{ .str = "TestStruct".ptr, .len = "TestStruct".len }).?;
-    // const testStructContext = &c.CubsTypeContext{
-    //     .name = "TestStruct".ptr,
-    //     .nameLength = "TestStruct".len,
-    //     .members = &[1]c.CubsTypeMemberContext{c.CubsTypeMemberContext{
-    //         .name = c.CubsStringSlice{ .str = "num".ptr, .len = 3 },
-    //         .byteOffset = 0,
-    //         .context = &c.CUBS_INT_CONTEXT,
-    //     }},
-    //     .membersLen = 1,
-    //     .sizeOfType = @sizeOf(TestStruct),
-    // };
 
     if (findFunction(&program, "testFunc")) |func| {
         var call = c.cubs_function_start_call(&func);
 
         var arg = TestStruct{ .num = 85 };
+        c.cubs_function_push_arg(&call, @ptrCast(&arg), testStructContext);
+
+        var retValue: i64 = undefined;
+        var retContext: *const c.CubsTypeContext = undefined;
+        try expect(c.cubs_function_call(call, .{ .value = &retValue, .context = @ptrCast(&retContext) }) == 0);
+        try expect(retContext == &c.CUBS_INT_CONTEXT);
+        try expect(retValue == 98);
+    } else {
+        try expect(false);
+    }
+}
+
+test "function assign to nested struct member" {
+    const source =
+        \\struct TestStruct1 {
+        \\  num: int;
+        \\};
+        \\
+        \\struct TestStruct2 {
+        \\  a: TestStruct1;
+        \\};
+        \\
+        \\fn testFunc(arg: TestStruct2) int {
+        \\  arg.a.num = 98;
+        \\  return arg.a.num;
+        \\}
+    ;
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    const TestStruct2 = extern struct { a: extern struct { num: i64 } };
+    const testStructContext: *const c.CubsTypeContext = c.cubs_program_find_type_context(&program, .{ .str = "TestStruct2".ptr, .len = "TestStruct2".len }).?;
+
+    if (findFunction(&program, "testFunc")) |func| {
+        var call = c.cubs_function_start_call(&func);
+
+        var arg = TestStruct2{ .a = .{ .num = 85 } };
         c.cubs_function_push_arg(&call, @ptrCast(&arg), testStructContext);
 
         var retValue: i64 = undefined;
