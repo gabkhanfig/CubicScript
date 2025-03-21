@@ -14,7 +14,8 @@ typedef enum ScopeSymbolType {
     scopeSymbolTypeVariable = 0,
 } ScopeSymbolType;
 
-/// A symbol found within a given scope.
+/// A symbol found within a given scope. Only for named symbols. Unnamed ones
+/// such as temporary variables, will not be tracked here.
 typedef struct ScopeSymbol {
     ScopeSymbolType symbolType;
     ScopeSymbolData data;
