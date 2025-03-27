@@ -106,3 +106,14 @@ FoundScopeSymbol cubs_scope_find_symbol(const Scope *self, CubsStringSlice symbo
     }
     return (FoundScopeSymbol){.didFind = false, .symbol = NULL, .owningScope = NULL};
 }
+
+bool cubs_scope_symbol_defined_in(const Scope *scope, size_t *outIndex, CubsStringSlice symbolName)
+{
+    const size_t hash = bytes_hash(symbolName.str, symbolName.len);
+    const size_t foundIndex = find_in_scope_no_parent(scope, symbolName, hash);
+    if(foundIndex == -1) {
+        return false;
+    }
+    *outIndex = foundIndex;
+    return true;
+}

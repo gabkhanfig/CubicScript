@@ -58,4 +58,10 @@ typedef struct FoundScopeSymbol {
 ///  `self`, or the parent scopes of `self`.
 FoundScopeSymbol cubs_scope_find_symbol(const Scope* self, CubsStringSlice symbolName);
 
+/// Returns true if the symbol named `symbolName` was defined in this scope,
+/// not any of its parent scopes', otherwise returns false.
+/// If the symbol is found, `outIndex` will be set to the index where the
+/// symbol is within `scope->symbols`. Otherwise, the value will be unmodified.
+bool cubs_scope_symbol_defined_in(const Scope* scope, size_t* outIndex, CubsStringSlice symbolName);
+
 #endif
