@@ -44,6 +44,8 @@ typedef struct Scope {
     struct Scope* optionalParent;
 } Scope;
 
+void cubs_scope_deinit(Scope* self);
+
 void cubs_scope_add_symbol(Scope* self, ScopeSymbol symbol);
 
 typedef struct FoundScopeSymbol {

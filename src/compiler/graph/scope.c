@@ -64,6 +64,13 @@ static void add_one_capacity_to_scope(Scope *self) {
     self->capacity = newCapacity;
 }
 
+void cubs_scope_deinit(Scope *self)
+{
+    FREE_TYPE_ARRAY(ScopeSymbol, self->symbols, self->capacity);
+    FREE_TYPE_ARRAY(size_t, self->hashCodes, self->capacity);
+    *self = (Scope){0};
+}
+
 void cubs_scope_add_symbol(Scope *self, ScopeSymbol symbol)
 {
     size_t hash = 0;
