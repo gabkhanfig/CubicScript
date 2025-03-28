@@ -1,22 +1,7 @@
 #include "scope.h"
 #include "../../util/unreachable.h"
-#include "../../util/hash.h"
 #include "../../platform/mem.h"
 #include <assert.h>
-
-static bool string_slice_eql(CubsStringSlice lhs, CubsStringSlice rhs) {
-    if(lhs.len != rhs.len) {
-        return false;
-    }
-
-    for(size_t i = 0; i < lhs.len; i++) {
-        if(lhs.str[i] != rhs.str[i]) {
-            return false;
-        }
-    }
-
-    return true;
-}
 
 /// Does not check if the symbol is present in the scope's parent scopes.
 /// Returns `-1` if cannot find
@@ -29,7 +14,7 @@ static size_t find_in_scope_no_parent(const Scope* self, CubsStringSlice symbolN
         const ScopeSymbol* symbol = &self->symbols[i];
         switch(symbol->symbolType) {
             case scopeSymbolTypeVariable: {
-                const bool equalName = string_slice_eql(symbol->data.variable, symbolName);
+                const bool equalName = cubs_string_slice_eql(symbol->data.variable, symbolName);
                 if(equalName) {
                     return i;
                 }
@@ -66,6 +51,10 @@ static void add_one_capacity_to_scope(Scope *self) {
 
 void cubs_scope_deinit(Scope *self)
 {
+    if(self->symbols == NULL) {
+        assert(self->hashCodes == NULL);
+        return;
+    }
     FREE_TYPE_ARRAY(ScopeSymbol, self->symbols, self->capacity);
     FREE_TYPE_ARRAY(size_t, self->hashCodes, self->capacity);
     *self = (Scope){0};
@@ -78,7 +67,7 @@ void cubs_scope_add_symbol(Scope *self, ScopeSymbol symbol)
         case scopeSymbolTypeVariable: {       
             assert(symbol.data.variable.str != NULL);
             assert(symbol.data.variable.len > 0);
-            hash = bytes_hash(symbol.data.variable.str, symbol.data.variable.len);
+            hash = cubs_string_slice_hash(symbol.data.variable);
         } break;
         default: {
             unreachable();
@@ -97,7 +86,7 @@ FoundScopeSymbol cubs_scope_find_symbol(const Scope *self, CubsStringSlice symbo
     assert(symbolName.str != NULL);
 
     const Scope* checking = self;
-    const size_t hash = bytes_hash(symbolName.str, symbolName.len);
+    const size_t hash = cubs_string_slice_hash(symbolName);
     while(checking != NULL) {
         const size_t foundIndex = find_in_scope_no_parent(self, symbolName, hash);
         if(foundIndex != -1) {
@@ -116,7 +105,7 @@ FoundScopeSymbol cubs_scope_find_symbol(const Scope *self, CubsStringSlice symbo
 
 bool cubs_scope_symbol_defined_in(const Scope *scope, size_t *outIndex, CubsStringSlice symbolName)
 {
-    const size_t hash = bytes_hash(symbolName.str, symbolName.len);
+    const size_t hash = cubs_string_slice_hash(symbolName);
     const size_t foundIndex = find_in_scope_no_parent(scope, symbolName, hash);
     if(foundIndex == -1) {
         return false;
