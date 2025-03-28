@@ -79,12 +79,12 @@ bool cubs_scope_add_symbol(Scope *self, ScopeSymbol symbol)
     { // validate symbol isn't in this scope or any parent scopes
         const Scope* checking = self;
         while(checking != NULL) {
-            const size_t foundIndex = find_in_scope_no_parent(self, symbolName, hash);
+            const size_t foundIndex = find_in_scope_no_parent(checking, symbolName, hash);
             if(foundIndex != -1) {
                 return false;
             }
             // May set to NULL, stopping the loop
-            checking = self->optionalParent;
+            checking = checking->optionalParent;
         }
     }
 
