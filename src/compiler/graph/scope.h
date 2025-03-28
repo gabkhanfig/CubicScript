@@ -46,7 +46,10 @@ typedef struct Scope {
 
 void cubs_scope_deinit(Scope* self);
 
-void cubs_scope_add_symbol(Scope* self, ScopeSymbol symbol);
+/// Attempts to add `symbol` to the `self` scope. 
+/// @return `false` if the symbol is declared in the `self` scope, or any of
+/// its' parent scopes, otherwise `true`.
+bool cubs_scope_add_symbol(Scope* self, ScopeSymbol symbol);
 
 typedef struct FoundScopeSymbol {
     bool didFind;

@@ -60,24 +60,39 @@ void cubs_scope_deinit(Scope *self)
     *self = (Scope){0};
 }
 
-void cubs_scope_add_symbol(Scope *self, ScopeSymbol symbol)
+bool cubs_scope_add_symbol(Scope *self, ScopeSymbol symbol)
 {
     size_t hash = 0;
+    CubsStringSlice symbolName = {0};
     switch(symbol.symbolType) {
         case scopeSymbolTypeVariable: {       
             assert(symbol.data.variable.str != NULL);
             assert(symbol.data.variable.len > 0);
-            hash = cubs_string_slice_hash(symbol.data.variable);
+            symbolName = symbol.data.variable;
+            hash = cubs_string_slice_hash(symbolName);
         } break;
         default: {
             unreachable();
         } 
     }
 
+    { // validate symbol isn't in this scope or any parent scopes
+        const Scope* checking = self;
+        while(checking != NULL) {
+            const size_t foundIndex = find_in_scope_no_parent(self, symbolName, hash);
+            if(foundIndex != -1) {
+                return false;
+            }
+            // May set to NULL, stopping the loop
+            checking = self->optionalParent;
+        }
+    }
+
     add_one_capacity_to_scope(self);
     self->symbols[self->len] = symbol;
     self->hashCodes[self->len] = hash;
     self->len += 1;
+    return true;
 }
 
 FoundScopeSymbol cubs_scope_find_symbol(const Scope *self, CubsStringSlice symbolName)
