@@ -152,6 +152,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/util/utf8.c",
 
     "src/primitives/context.c",
+    "src/primitives/string/string_slice.c",
     "src/primitives/string/string.c",
     "src/primitives/array/array.c",
     "src/primitives/map/map.c",
