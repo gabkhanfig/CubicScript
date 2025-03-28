@@ -103,17 +103,17 @@ FoundScopeSymbol cubs_scope_find_symbol(const Scope *self, CubsStringSlice symbo
     const Scope* checking = self;
     const size_t hash = cubs_string_slice_hash(symbolName);
     while(checking != NULL) {
-        const size_t foundIndex = find_in_scope_no_parent(self, symbolName, hash);
+        const size_t foundIndex = find_in_scope_no_parent(checking, symbolName, hash);
         if(foundIndex != -1) {
             const FoundScopeSymbol found = {
                 .didFind = true,
-                .symbol = &self->symbols[foundIndex],
+                .symbol = &checking->symbols[foundIndex],
                 .owningScope = checking
             };
             return found;
         }
         // May set to NULL, stopping the loop
-        checking = self->optionalParent;
+        checking = checking->optionalParent;
     }
     return (FoundScopeSymbol){.didFind = false, .symbol = NULL, .owningScope = NULL};
 }
