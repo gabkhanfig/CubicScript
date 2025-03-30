@@ -4,6 +4,7 @@
 #include "../parse/type_resolution_info.h"
 
 struct FunctionDependencyGraphBuilder;
+struct Scope;
 
 typedef struct FunctionNode {
     CubsStringSlice functionName;
@@ -15,6 +16,11 @@ typedef struct FunctionNode {
     /// indices `0` to `argCount` will be the function argument variables
     /// stored within `variables`.
     size_t argCount;
+    struct Scope* scope;
 } FunctionNode;
 
-AstNode cubs_function_node_init(TokenIter* iter, struct FunctionDependencyGraphBuilder* dependencyBuilder);
+AstNode cubs_function_node_init(
+    TokenIter* iter,
+    struct FunctionDependencyGraphBuilder* dependencyBuilder,
+    struct Scope* outerScope
+);

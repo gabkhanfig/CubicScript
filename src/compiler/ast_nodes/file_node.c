@@ -6,6 +6,7 @@
 #include "struct_node.h"
 #include <stdio.h>
 #include "../../util/panic.h"
+#include "../graph/scope.h"
 
 static bool string_slice_eql(CubsStringSlice lhs, CubsStringSlice rhs) {
     if(lhs.len != rhs.len) {
@@ -25,7 +26,11 @@ static void file_node_deinit(FileNode* self) {
     ast_node_array_deinit(&self->functions);
     ast_node_array_deinit(&self->structs);
     function_dependency_graph_deinit(&self->functionDependencyGraph);
-    cubs_free(self, sizeof(FileNode), _Alignof(FileNode));
+    cubs_scope_deinit(self->scope);
+    FREE_TYPE(Scope, self->scope);
+    *self = (FileNode){0};
+
+    FREE_TYPE(FileNode, self);
 }
 
 static CubsStringSlice file_node_to_string(const FileNode* self) {
@@ -83,12 +88,15 @@ AstNode cubs_file_node_init(TokenIter *iter)
 
     FunctionDependencyGraphBuilder functionDependencyBuilder = {0};
 
+    self->scope = MALLOC_TYPE(Scope);
+    *self->scope = (Scope){0};
+
     {
         TokenType next = cubs_token_iter_next(iter);
         while(next != TOKEN_NONE) {
             switch(next) {
                 case FN_KEYWORD: {
-                    const AstNode functionNode = cubs_function_node_init(iter, &functionDependencyBuilder);
+                    const AstNode functionNode = cubs_function_node_init(iter, &functionDependencyBuilder, self->scope);
                     ast_node_array_push(&self->functions, functionNode);
                 } break;
                 case STRUCT_KEYWORD: {

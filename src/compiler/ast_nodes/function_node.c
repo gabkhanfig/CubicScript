@@ -12,13 +12,18 @@
 #include "../../primitives/string/string.h"
 #include "../parse/parse_statements.h"
 #include "../graph/function_dependency_graph.h"
+#include "../graph/scope.h"
 //#include <stdio.h>
 
 static void function_node_deinit(FunctionNode* self) {
     ast_node_array_deinit(&self->items);
     cubs_type_resolution_info_deinit(&self->retType);
     cubs_stack_variables_array_deinit(&self->variables);
-    cubs_free(self, sizeof(FunctionNode), _Alignof(FunctionNode));
+    cubs_scope_deinit(self->scope);
+    FREE_TYPE(Scope, self->scope);
+    *self = (FunctionNode){0};
+
+    FREE_TYPE(FunctionNode, self);
 }
 
 static CubsStringSlice function_node_to_string(const FunctionNode* self) {
@@ -161,7 +166,7 @@ static StackVariablesArray parse_function_args(TokenIter *iter) {
     return variables;
 }
 
-AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphBuilder* dependencyBuilder)
+AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphBuilder* dependencyBuilder, Scope* outerScope)
 {
     assert(iter->current.tag == FN_KEYWORD);
     FunctionNode* self = (FunctionNode*)cubs_malloc(sizeof(FunctionNode), _Alignof(FunctionNode));
@@ -173,11 +178,36 @@ AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphB
         self->functionName = iter->current.value.identifier;
     }
 
+    { // add symbol to outer scope, and make this scope
+        const ScopeSymbol symbol = {
+            .symbolType = scopeSymbolTypeFunction,
+            .data = (ScopeSymbolData){.functionSymbol = self->functionName}
+        };
+        cubs_scope_add_symbol(outerScope, symbol);
+
+        self->scope = MALLOC_TYPE(Scope);
+        *self->scope = (Scope){
+            .isInFunction = true,
+            .optionalParent = outerScope,
+        };
+    }
+
     assert(cubs_token_iter_next(iter) == LEFT_PARENTHESES_SYMBOL);
 
-    self->variables = parse_function_args(iter);
-    self->argCount = self->variables.len;
-    assert(iter->current.tag = RIGHT_PARENTHESES_SYMBOL);
+    { // do args and add to symbols
+        self->variables = parse_function_args(iter);
+        self->argCount = self->variables.len;
+        assert(iter->current.tag = RIGHT_PARENTHESES_SYMBOL);
+
+        for(size_t i = 0; i < self->argCount; i++) {
+            const CubsStringSlice variableName = cubs_string_as_slice(&self->variables.variables[i].name);
+            const ScopeSymbol symbol = {
+                .symbolType = scopeSymbolTypeVariable,
+                .data = (ScopeSymbolData){.variableSymbol = variableName}
+            };
+            cubs_scope_add_symbol(outerScope, symbol);
+        }
+    }
 
     { // return type
         const TokenType optionalRetToken = cubs_token_iter_next(iter);
