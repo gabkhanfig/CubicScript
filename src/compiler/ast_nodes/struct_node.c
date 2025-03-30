@@ -6,6 +6,7 @@
 #include "../../program/program_internal.h"
 #include "../script_types/struct_memory_layout.h"
 #include "../../util/panic.h"
+#include "../graph/scope.h"
 
 static void struct_node_deinit(StructNode* self) {
     ast_node_array_deinit(&self->memberVariables);
@@ -59,7 +60,7 @@ static AstNodeVTable struct_node_vtable = {
     .endsWithReturn = NULL,
 };
 
-AstNode cubs_struct_node_init(TokenIter* iter) {
+AstNode cubs_struct_node_init(TokenIter* iter, Scope* outerScope) {
     // TODO extern?
     assert(iter->current.tag == STRUCT_KEYWORD);
 
@@ -71,6 +72,14 @@ AstNode cubs_struct_node_init(TokenIter* iter) {
         assert(tokenType == IDENTIFIER);
 
         self->name = iter->current.value.identifier;
+    }
+
+    { // add symbol to outer scope
+        const ScopeSymbol symbol = {
+            .symbolType = scopeSymbolTypeStruct,
+            .data = (ScopeSymbolData){.structSymbol = self->name}
+        };
+        cubs_scope_add_symbol(outerScope, symbol);
     }
 
     { // opening bracket

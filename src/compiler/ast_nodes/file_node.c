@@ -100,7 +100,7 @@ AstNode cubs_file_node_init(TokenIter *iter)
                     ast_node_array_push(&self->functions, functionNode);
                 } break;
                 case STRUCT_KEYWORD: {
-                    const AstNode structNode = cubs_struct_node_init(iter);
+                    const AstNode structNode = cubs_struct_node_init(iter, self->scope);
                     ast_node_array_push(&self->structs, structNode);
                 } break;
                 default: {
