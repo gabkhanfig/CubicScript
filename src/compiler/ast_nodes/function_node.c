@@ -229,7 +229,7 @@ AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphB
         bool endsWithReturn = false;
 
         AstNode temp = {0};
-        while(parse_next_statement(&temp, iter, &self->variables, &dependencies)) {
+        while(parse_next_statement(&temp, iter, &self->variables, &dependencies, outerScope)) {
             ast_node_array_push(&self->items, temp);
             endsWithReturn = temp.vtable->nodeType == astNodeTypeReturn;
         }

@@ -9,6 +9,7 @@ struct AstNode;
 struct TokenIter;
 struct StackVariablesArray;
 struct FunctionDependencies;
+struct Scope;
 
 // TODO switch statement
 /// If/else for now.
@@ -24,12 +25,14 @@ typedef struct ConditionalNode {
     size_t blocksLen;
     /// The max capacity of BOTH `conditions` and `statementBlocks`.
     size_t capacity;
+    struct Scope* scope;
 } ConditionalNode;
 
 struct AstNode cubs_conditional_node_init(
     struct TokenIter* iter,
     struct StackVariablesArray* variables,
-    struct FunctionDependencies* dependencies
+    struct FunctionDependencies* dependencies,
+    struct Scope* outerScope
 );
 
 #endif

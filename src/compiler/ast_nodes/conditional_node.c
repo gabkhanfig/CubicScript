@@ -15,6 +15,7 @@
 #include "binary_expression.h"
 #include "function_call.h"
 #include "../graph/function_dependency_graph.h"
+#include "../graph/scope.h"
 
 static bool conditional_node_has_final_else_branch(const ConditionalNode* self) {
     return self->conditionsLen == (self->blocksLen - 1);
@@ -30,6 +31,10 @@ static void conditional_node_deinit(ConditionalNode* self) {
 
     FREE_TYPE_ARRAY(ExprValue, self->conditions, self->capacity);
     FREE_TYPE_ARRAY(AstNodeArray, self->statementBlocks, self->capacity);
+    cubs_scope_deinit(self->scope);
+    FREE_TYPE(Scope, self->scope);
+    *self = (ConditionalNode){0};
+
     FREE_TYPE(ConditionalNode, self);
 }
 
@@ -153,7 +158,7 @@ static AstNodeVTable conditional_node_vtable = {
     .endsWithReturn = (AstNodeStatementsEndWithReturn)&conditional_node_statements_ends_with_return,
 };
 
-AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variables, FunctionDependencies* dependencies)
+AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variables, FunctionDependencies* dependencies, Scope* outerScope)
 {
     assert(iter->current.tag == IF_KEYWORD);
 
@@ -167,17 +172,23 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
     (void)cubs_token_iter_next(iter);
     assert(iter->current.tag == LEFT_BRACE_SYMBOL);
 
+    ConditionalNode* self = MALLOC_TYPE(ConditionalNode);
+    *self = (ConditionalNode){0};
+    self->scope = MALLOC_TYPE(Scope);
+    *self->scope = (Scope){
+        .isInFunction = outerScope->isInFunction,
+        .isSync = outerScope->isSync,
+        .optionalParent = outerScope
+    };
+
     AstNodeArray firstIfStatements = {0};
     {
         AstNode temp = {0};
         // parses until right brace
-        while(parse_next_statement(&temp, iter, variables, dependencies)) {
+        while(parse_next_statement(&temp, iter, variables, dependencies, self->scope)) {
             ast_node_array_push(&firstIfStatements, temp);
         }
     }
-
-    ConditionalNode* self = MALLOC_TYPE(ConditionalNode);
-    *self = (ConditionalNode){0};
 
     // check for else
     TokenType peekNext = cubs_token_iter_peek(iter);
@@ -237,7 +248,7 @@ AstNode cubs_conditional_node_init(TokenIter *iter, StackVariablesArray *variabl
             {
                 AstNode temp = {0};
                 // parses until right brace
-                while(parse_next_statement(&temp, iter, variables, dependencies)) {
+                while(parse_next_statement(&temp, iter, variables, dependencies, self->scope)) {
                     ast_node_array_push(&elseStatements, temp);
                 }
             }
