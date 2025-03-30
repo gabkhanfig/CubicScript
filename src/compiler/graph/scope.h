@@ -7,11 +7,15 @@
 #include "../../primitives/string/string_slice.h"
 
 typedef union ScopeSymbolData {
-    CubsStringSlice variable;
+    CubsStringSlice variableSymbol;
+    CubsStringSlice functionSymbol;
+    CubsStringSlice structSymbol;
 } ScopeSymbolData;
 
 typedef enum ScopeSymbolType {
     scopeSymbolTypeVariable = 0,
+    scopeSymbolTypeFunction = 1,
+    scopeSymbolTypeStruct = 2,
 } ScopeSymbolType;
 
 /// A symbol found within a given scope. Only for named symbols. Unnamed ones

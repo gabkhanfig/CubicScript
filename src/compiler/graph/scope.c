@@ -14,7 +14,19 @@ static size_t find_in_scope_no_parent(const Scope* self, CubsStringSlice symbolN
         const ScopeSymbol* symbol = &self->symbols[i];
         switch(symbol->symbolType) {
             case scopeSymbolTypeVariable: {
-                const bool equalName = cubs_string_slice_eql(symbol->data.variable, symbolName);
+                const bool equalName = cubs_string_slice_eql(symbol->data.variableSymbol, symbolName);
+                if(equalName) {
+                    return i;
+                }
+            } break;
+            case scopeSymbolTypeFunction: {
+                const bool equalName = cubs_string_slice_eql(symbol->data.functionSymbol, symbolName);
+                if(equalName) {
+                    return i;
+                }
+            } break;
+            case scopeSymbolTypeStruct: {
+                const bool equalName = cubs_string_slice_eql(symbol->data.structSymbol, symbolName);
                 if(equalName) {
                     return i;
                 }
@@ -66,9 +78,21 @@ bool cubs_scope_add_symbol(Scope *self, ScopeSymbol symbol)
     CubsStringSlice symbolName = {0};
     switch(symbol.symbolType) {
         case scopeSymbolTypeVariable: {       
-            assert(symbol.data.variable.str != NULL);
-            assert(symbol.data.variable.len > 0);
-            symbolName = symbol.data.variable;
+            assert(symbol.data.variableSymbol.str != NULL);
+            assert(symbol.data.variableSymbol.len > 0);
+            symbolName = symbol.data.variableSymbol;
+            hash = cubs_string_slice_hash(symbolName);
+        } break;
+        case scopeSymbolTypeFunction: {
+            assert(symbol.data.functionSymbol.str != NULL);
+            assert(symbol.data.functionSymbol.len > 0);
+            symbolName = symbol.data.functionSymbol;
+            hash = cubs_string_slice_hash(symbolName);
+        } break;
+        case scopeSymbolTypeStruct: {
+            assert(symbol.data.structSymbol.str != NULL);
+            assert(symbol.data.structSymbol.len > 0);
+            symbolName = symbol.data.structSymbol;
             hash = cubs_string_slice_hash(symbolName);
         } break;
         default: {
