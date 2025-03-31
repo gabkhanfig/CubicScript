@@ -179,11 +179,13 @@ AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphB
     }
 
     { // add symbol to outer scope, and make this scope
+        const CubsString functionName = cubs_string_init_unchecked(self->functionName);
         const ScopeSymbol symbol = {
             .symbolType = scopeSymbolTypeFunction,
-            .data = (ScopeSymbolData){.functionSymbol = self->functionName}
+            .data = (ScopeSymbolData){.functionSymbol = functionName}
         };
-        cubs_scope_add_symbol(outerScope, symbol);
+        const bool doesntExist = cubs_scope_add_symbol(outerScope, symbol);
+        assert(doesntExist && "Cannot have duplicate symbol names in the same scope or in parent scopes");
 
         self->scope = MALLOC_TYPE(Scope);
         *self->scope = (Scope){
@@ -200,12 +202,12 @@ AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphB
         assert(iter->current.tag = RIGHT_PARENTHESES_SYMBOL);
 
         for(size_t i = 0; i < self->argCount; i++) {
-            const CubsStringSlice variableName = cubs_string_as_slice(&self->variables.variables[i].name);
             const ScopeSymbol symbol = {
                 .symbolType = scopeSymbolTypeVariable,
-                .data = (ScopeSymbolData){.variableSymbol = variableName}
+                .data = (ScopeSymbolData){.variableSymbol = cubs_string_clone(&self->variables.variables[i].name)}
             };
-            cubs_scope_add_symbol(outerScope, symbol);
+            const bool doesntExist = cubs_scope_add_symbol(self->scope, symbol);
+            assert(doesntExist && "Cannot have duplicate symbol names in the same scope or in parent scopes");   
         }
     }
 
@@ -229,7 +231,7 @@ AstNode cubs_function_node_init(TokenIter *iter, struct FunctionDependencyGraphB
         bool endsWithReturn = false;
 
         AstNode temp = {0};
-        while(parse_next_statement(&temp, iter, &self->variables, &dependencies, outerScope)) {
+        while(parse_next_statement(&temp, iter, &self->variables, &dependencies, self->scope)) {
             ast_node_array_push(&self->items, temp);
             endsWithReturn = temp.vtable->nodeType == astNodeTypeReturn;
         }

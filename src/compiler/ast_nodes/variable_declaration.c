@@ -82,12 +82,12 @@ AstNode cubs_variable_declaration_node_init(
     }
 
     { // add variable to symbols
-        const CubsStringSlice variableName = cubs_string_as_slice(&variableInfo.name);
         const ScopeSymbol symbol = {
             .symbolType = scopeSymbolTypeVariable,
-            .data = (ScopeSymbolData){.variableSymbol = variableName}
+            .data = (ScopeSymbolData){.variableSymbol = cubs_string_clone(&variableInfo.name)}
         };
-        cubs_scope_add_symbol(outerScope, symbol);
+        const bool doesntExist = cubs_scope_add_symbol(outerScope, symbol);
+        assert(doesntExist && "Cannot have duplicate symbol names in the same scope or in parent scopes");
     }
 
     const TokenType colonNext = cubs_token_iter_next(iter);

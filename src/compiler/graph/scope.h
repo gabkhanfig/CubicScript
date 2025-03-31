@@ -5,11 +5,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "../../primitives/string/string_slice.h"
+#include "../../primitives/string/string.h"
 
 typedef union ScopeSymbolData {
-    CubsStringSlice variableSymbol;
-    CubsStringSlice functionSymbol;
-    CubsStringSlice structSymbol;
+    CubsString variableSymbol;
+    CubsString functionSymbol;
+    CubsString structSymbol;
 } ScopeSymbolData;
 
 typedef enum ScopeSymbolType {

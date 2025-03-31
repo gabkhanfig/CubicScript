@@ -75,11 +75,13 @@ AstNode cubs_struct_node_init(TokenIter* iter, Scope* outerScope) {
     }
 
     { // add symbol to outer scope
+        const CubsString structName = cubs_string_init_unchecked(self->name);
         const ScopeSymbol symbol = {
             .symbolType = scopeSymbolTypeStruct,
-            .data = (ScopeSymbolData){.structSymbol = self->name}
+            .data = (ScopeSymbolData){.structSymbol = structName }
         };
-        cubs_scope_add_symbol(outerScope, symbol);
+        const bool doesntExist = cubs_scope_add_symbol(outerScope, symbol);
+        assert(doesntExist && "Cannot have duplicate symbol names in the same scope or in parent scopes");
     }
 
     { // opening bracket
