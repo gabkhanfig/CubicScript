@@ -27,7 +27,7 @@ bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray
 
             case CONST_KEYWORD: // fallthrough
             case MUT_KEYWORD: {
-                AstNode variableDeclarationNode = cubs_variable_declaration_node_init(iter, variables, dependencies);
+                AstNode variableDeclarationNode = cubs_variable_declaration_node_init(iter, variables, dependencies, outerScope);
                 *outNode = variableDeclarationNode;
             } break;
 

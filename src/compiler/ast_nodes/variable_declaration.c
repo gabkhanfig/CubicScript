@@ -8,6 +8,7 @@
 #include "../../interpreter/operations.h"
 #include "../../program/program_internal.h"
 #include "../graph/function_dependency_graph.h"
+#include "../graph/scope.h"
 #include <stdio.h>
 
 static void variable_declaration_node_deinit(VariableDeclarationNode* self) {
@@ -49,7 +50,8 @@ static AstNodeVTable variable_declaration_node_vtable = {
 AstNode cubs_variable_declaration_node_init(
     TokenIter *iter,
     StackVariablesArray* variables,
-    FunctionDependencies* dependencies
+    FunctionDependencies* dependencies,
+    Scope* outerScope
 ) {
     VariableDeclarationNode* self = MALLOC_TYPE(VariableDeclarationNode);
     *self = (VariableDeclarationNode){0};
@@ -79,6 +81,15 @@ AstNode cubs_variable_declaration_node_init(
         variableInfo.name = variableName;
     }
 
+    { // add variable to symbols
+        const CubsStringSlice variableName = cubs_string_as_slice(&variableInfo.name);
+        const ScopeSymbol symbol = {
+            .symbolType = scopeSymbolTypeVariable,
+            .data = (ScopeSymbolData){.variableSymbol = variableName}
+        };
+        cubs_scope_add_symbol(outerScope, symbol);
+    }
+
     const TokenType colonNext = cubs_token_iter_next(iter);
     assert(colonNext == COLON_SYMBOL);
     (void)cubs_token_iter_next(iter);
@@ -95,27 +106,7 @@ AstNode cubs_variable_declaration_node_init(
         const TokenType followingTypename = iter->current.tag;
         // If its just a semicolon and not an expression/literal,
         // we zero initialize the variable
-        if(followingTypename == SEMICOLON_SYMBOL) {
-            // if(variableInfo.typeInfo.knownContext == &CUBS_BOOL_CONTEXT) {
-            //     ExprValue value = {0};
-            //     value.tag = BoolLit;
-            //     value.value.boolLiteral.literal = false;
-            //     value.value.boolLiteral.variableIndex = self->variableNameIndex;
-            //     self->initialValue = value;
-            // }  
-            // else if(variableInfo.typeInfo.knownContext == &CUBS_INT_CONTEXT) {
-            //     ExprValue value = {0};
-            //     value.tag = IntLit;
-            //     value.value.intLiteral.literal = 0;
-            //     value.value.intLiteral.variableIndex = self->variableNameIndex;
-            //     self->initialValue = value;
-            // } else if(variableInfo.typeInfo.knownContext == &CUBS_FLOAT_CONTEXT) {
-            //     ExprValue value = {0};
-            //     value.tag = FloatLit;
-            //     value.value.floatLiteral.literal = 0.0;
-            //     value.value.floatLiteral.variableIndex = self->variableNameIndex;
-            //     self->initialValue = value;            
-                
+        if(followingTypename == SEMICOLON_SYMBOL) {                    
             if(variableInfo.typeInfo.tag == TypeInfoBool) {
                 ExprValue value = {0};
                 value.tag = BoolLit;
