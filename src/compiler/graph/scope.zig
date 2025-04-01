@@ -52,242 +52,242 @@ test "add 1 symbol" {
     try expect(index == 0);
 }
 
-// test "can't find symbol that wasn't added" {
-//     const symbolName = makeSlice("someVar");
+test "can't find symbol that wasn't added" {
+    const symbol = ScopeSymbol{
+        .symbolType = c.scopeSymbolTypeVariable,
+        .data = ScopeSymbolData{ .variableSymbol = @bitCast(String.initUnchecked("someVar")) },
+    };
 
-//     const symbol = ScopeSymbol{
-//         .symbolType = c.scopeSymbolTypeVariable,
-//         .data = ScopeSymbolData{ .variableSymbol = symbolName },
-//     };
+    var scope = Scope{};
+    defer cubs_scope_deinit(&scope);
 
-//     var scope = Scope{};
-//     defer cubs_scope_deinit(&scope);
+    try expect(cubs_scope_add_symbol(&scope, symbol));
 
-//     try expect(cubs_scope_add_symbol(&scope, symbol));
+    const found = cubs_scope_find_symbol(&scope, makeSlice("otherVar"));
+    try expect(found.didFind == false);
+    var index: usize = undefined;
+    try expect(!cubs_scope_symbol_defined_in(&scope, &index, makeSlice("otherVar")));
+}
 
-//     const found = cubs_scope_find_symbol(&scope, makeSlice("otherVar"));
-//     try expect(found.didFind == false);
-//     var index: usize = undefined;
-//     try expect(!cubs_scope_symbol_defined_in(&scope, &index, makeSlice("otherVar")));
-// }
+test "many symbols" {
+    var scope = Scope{};
+    defer cubs_scope_deinit(&scope);
 
-// test "many symbols" {
-//     var names: [8][4]u8 = undefined;
-//     var symbolNames: [8]c.CubsStringSlice = undefined;
-//     for (0..8) |i| {
-//         _ = try std.fmt.bufPrint(&names[i], "var{}", .{i});
-//         symbolNames[i] = .{ .str = &names[i], .len = names[i].len };
-//     }
+    var names: [8][4]u8 = undefined;
+    {
+        var symbolNames: [8]String = undefined;
+        for (0..8) |i| {
+            _ = try std.fmt.bufPrint(&names[i], "var{}", .{i});
+            symbolNames[i] = String.initUnchecked(names[i][0..names[i].len]);
+        }
 
-//     var scope = Scope{};
-//     defer cubs_scope_deinit(&scope);
+        for (0..8) |i| {
+            const symbol = ScopeSymbol{
+                .symbolType = c.scopeSymbolTypeVariable,
+                .data = ScopeSymbolData{ .variableSymbol = @bitCast(symbolNames[i]) },
+            };
+            try expect(cubs_scope_add_symbol(&scope, symbol));
+        }
+    }
 
-//     for (0..8) |i| {
-//         const symbol = ScopeSymbol{
-//             .symbolType = c.scopeSymbolTypeVariable,
-//             .data = ScopeSymbolData{ .variableSymbol = symbolNames[i] },
-//         };
-//         try expect(cubs_scope_add_symbol(&scope, symbol));
-//     }
+    try expect(scope.len == 8);
+    try expect(scope.symbols != null);
+    try expect(scope.hashCodes != null);
 
-//     try expect(scope.len == 8);
-//     try expect(scope.symbols != null);
-//     try expect(scope.hashCodes != null);
+    for (0..8) |i| {
+        const found = cubs_scope_find_symbol(&scope, makeSlice(&names[i]));
+        try expect(found.didFind);
+        try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
+        try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice(&names[i]));
+        try expect(found.owningScope == &scope);
+        var index: usize = undefined;
+        try expect(cubs_scope_symbol_defined_in(&scope, &index, makeSlice(&names[i])));
+        try expect(index == i);
+        try expect(found.symbol == &scope.symbols[i]);
+    }
+    { // can't find some other name
+        const found = cubs_scope_find_symbol(&scope, makeSlice("var8"));
+        try expect(found.didFind == false);
+        var index: usize = undefined;
+        try expect(!cubs_scope_symbol_defined_in(&scope, &index, makeSlice("var8")));
+    }
+}
 
-//     for (0..8) |i| {
-//         const found = cubs_scope_find_symbol(&scope, symbolNames[i]);
-//         try expect(found.didFind);
-//         try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
-//         try expect(cubs_string_slice_eql(found.symbol.*.data.variableSymbol, symbolNames[i]));
-//         try expect(found.owningScope == &scope);
-//         var index: usize = undefined;
-//         try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolNames[i]));
-//         try expect(index == i);
-//         try expect(found.symbol == &scope.symbols[i]);
-//     }
-//     { // can't find some other name
-//         const found = cubs_scope_find_symbol(&scope, makeSlice("var8"));
-//         try expect(found.didFind == false);
-//         var index: usize = undefined;
-//         try expect(!cubs_scope_symbol_defined_in(&scope, &index, makeSlice("var8")));
-//     }
-// }
+test "duplicate symbols" {
+    const symbolName = makeSlice("someVar");
 
-// test "duplicate symbols" {
-//     const symbolName = makeSlice("someVar");
+    const symbol1 = ScopeSymbol{
+        .symbolType = c.scopeSymbolTypeVariable,
+        .data = ScopeSymbolData{ .variableSymbol = @bitCast(String.initUnchecked("someVar")) },
+    };
+    const symbol2 = ScopeSymbol{
+        .symbolType = c.scopeSymbolTypeVariable,
+        .data = ScopeSymbolData{ .variableSymbol = @bitCast(String.initUnchecked("someVar")) },
+    };
 
-//     const symbol = ScopeSymbol{
-//         .symbolType = c.scopeSymbolTypeVariable,
-//         .data = ScopeSymbolData{ .variableSymbol = symbolName },
-//     };
+    var scope = Scope{};
+    defer cubs_scope_deinit(&scope);
 
-//     var scope = Scope{};
-//     defer cubs_scope_deinit(&scope);
+    try expect(cubs_scope_add_symbol(&scope, symbol1));
+    try expect(!cubs_scope_add_symbol(&scope, symbol2));
 
-//     try expect(cubs_scope_add_symbol(&scope, symbol));
-//     try expect(!cubs_scope_add_symbol(&scope, symbol));
+    try expect(scope.len == 1);
+    try expect(scope.symbols != null);
+    try expect(scope.hashCodes != null);
 
-//     try expect(scope.len == 1);
-//     try expect(scope.symbols != null);
-//     try expect(scope.hashCodes != null);
+    const found = cubs_scope_find_symbol(&scope, symbolName);
+    try expect(found.didFind);
+    try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
+    try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice("someVar"));
+    try expect(found.owningScope == &scope);
 
-//     const found = cubs_scope_find_symbol(&scope, symbolName);
-//     try expect(found.didFind);
-//     try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
-//     try expect(cubs_string_slice_eql(found.symbol.*.data.variableSymbol, symbolName));
-//     try expect(found.owningScope == &scope);
+    var index: usize = undefined;
+    try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
+    try expect(index == 0);
+}
 
-//     var index: usize = undefined;
-//     try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
-//     try expect(index == 0);
-// }
+test "1 symbol in parent scope" {
+    var parent = Scope{};
+    defer cubs_scope_deinit(&parent);
 
-// test "1 symbol in parent scope" {
-//     var parent = Scope{};
-//     defer cubs_scope_deinit(&parent);
+    const symbolName = makeSlice("someVar");
 
-//     const symbolName = makeSlice("someVar");
+    const symbol = ScopeSymbol{
+        .symbolType = c.scopeSymbolTypeVariable,
+        .data = ScopeSymbolData{ .variableSymbol = @bitCast(String.initUnchecked("someVar")) },
+    };
+    try expect(cubs_scope_add_symbol(&parent, symbol));
 
-//     const symbol = ScopeSymbol{
-//         .symbolType = c.scopeSymbolTypeVariable,
-//         .data = ScopeSymbolData{ .variableSymbol = symbolName },
-//     };
-//     try expect(cubs_scope_add_symbol(&parent, symbol));
+    var scope = Scope{};
+    defer cubs_scope_deinit(&scope);
+    scope.optionalParent = &parent;
 
-//     var scope = Scope{};
-//     defer cubs_scope_deinit(&scope);
-//     scope.optionalParent = &parent;
+    const found = cubs_scope_find_symbol(&scope, symbolName);
+    try expect(found.didFind);
+    try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
+    try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice("someVar"));
+    try expect(found.owningScope == &parent);
 
-//     const found = cubs_scope_find_symbol(&scope, symbolName);
-//     try expect(found.didFind);
-//     try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
-//     try expect(cubs_string_slice_eql(found.symbol.*.data.variableSymbol, symbolName));
-//     try expect(found.owningScope == &parent);
+    var index: usize = undefined;
+    try expect(!cubs_scope_symbol_defined_in(&scope, &index, symbolName));
+}
 
-//     var index: usize = undefined;
-//     try expect(!cubs_scope_symbol_defined_in(&scope, &index, symbolName));
-// }
+test "1 symbol in each scope" {
+    var parent = Scope{};
+    defer cubs_scope_deinit(&parent);
 
-// test "1 symbol in each scope" {
-//     var parent = Scope{};
-//     defer cubs_scope_deinit(&parent);
+    var scope = Scope{};
+    defer cubs_scope_deinit(&scope);
+    scope.optionalParent = &parent;
 
-//     var scope = Scope{};
-//     defer cubs_scope_deinit(&scope);
-//     scope.optionalParent = &parent;
+    { // parent
+        const symbol = ScopeSymbol{
+            .symbolType = c.scopeSymbolTypeVariable,
+            .data = ScopeSymbolData{ .variableSymbol = @bitCast(String.initUnchecked("parentVar")) },
+        };
+        try expect(cubs_scope_add_symbol(&parent, symbol));
+    }
+    { // child
+        const symbol = ScopeSymbol{
+            .symbolType = c.scopeSymbolTypeVariable,
+            .data = ScopeSymbolData{ .variableSymbol = @bitCast(String.initUnchecked("childVar")) },
+        };
+        try expect(cubs_scope_add_symbol(&scope, symbol));
+    }
 
-//     { // parent
-//         const symbolName = makeSlice("parentVar");
+    { // find parent stuff
+        {
+            const found = cubs_scope_find_symbol(&parent, makeSlice("parentVar"));
+            try expect(found.didFind);
+            try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
+            try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice("parentVar"));
+            try expect(found.owningScope == &parent);
+            var index: usize = undefined;
+            try expect(cubs_scope_symbol_defined_in(&parent, &index, makeSlice("parentVar")));
+            try expect(index == 0);
+        }
+        {
+            const found = cubs_scope_find_symbol(&parent, makeSlice("childVar"));
+            try expect(!found.didFind);
+            var index: usize = undefined;
+            try expect(!cubs_scope_symbol_defined_in(&parent, &index, makeSlice("childVar")));
+        }
+    }
+    { // find child stuff
+        {
+            const found = cubs_scope_find_symbol(&scope, makeSlice("parentVar"));
+            try expect(found.didFind);
+            try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
+            try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice("parentVar"));
+            try expect(found.owningScope == &parent);
+            var index: usize = undefined;
+            try expect(!cubs_scope_symbol_defined_in(&scope, &index, makeSlice("parentVar")));
+        }
+        {
+            const found = cubs_scope_find_symbol(&scope, makeSlice("childVar"));
+            try expect(found.didFind);
+            try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
+            try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice("childVar"));
+            try expect(found.owningScope == &scope);
+            var index: usize = undefined;
+            try expect(cubs_scope_symbol_defined_in(&scope, &index, makeSlice("childVar")));
+            try expect(index == 0);
+        }
+    }
+}
 
-//         const symbol = ScopeSymbol{
-//             .symbolType = c.scopeSymbolTypeVariable,
-//             .data = ScopeSymbolData{ .variableSymbol = symbolName },
-//         };
-//         try expect(cubs_scope_add_symbol(&parent, symbol));
-//     }
-//     { // child
-//         const symbolName = makeSlice("childVar");
+test "function symbol" {
+    const symbolName = makeSlice("someFunc");
 
-//         const symbol = ScopeSymbol{
-//             .symbolType = c.scopeSymbolTypeVariable,
-//             .data = ScopeSymbolData{ .variableSymbol = symbolName },
-//         };
-//         try expect(cubs_scope_add_symbol(&scope, symbol));
-//     }
+    const symbol = ScopeSymbol{
+        .symbolType = c.scopeSymbolTypeFunction,
+        .data = ScopeSymbolData{ .functionSymbol = @bitCast(String.initUnchecked("someFunc")) },
+    };
 
-//     { // find parent stuff
-//         {
-//             const found = cubs_scope_find_symbol(&parent, makeSlice("parentVar"));
-//             try expect(found.didFind);
-//             try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
-//             try expect(cubs_string_slice_eql(found.symbol.*.data.variableSymbol, makeSlice("parentVar")));
-//             try expect(found.owningScope == &parent);
-//             var index: usize = undefined;
-//             try expect(cubs_scope_symbol_defined_in(&parent, &index, makeSlice("parentVar")));
-//             try expect(index == 0);
-//         }
-//         {
-//             const found = cubs_scope_find_symbol(&parent, makeSlice("childVar"));
-//             try expect(!found.didFind);
-//             var index: usize = undefined;
-//             try expect(!cubs_scope_symbol_defined_in(&parent, &index, makeSlice("childVar")));
-//         }
-//     }
-//     { // find child stuff
-//         {
-//             const found = cubs_scope_find_symbol(&scope, makeSlice("parentVar"));
-//             try expect(found.didFind);
-//             try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
-//             try expect(cubs_string_slice_eql(found.symbol.*.data.variableSymbol, makeSlice("parentVar")));
-//             try expect(found.owningScope == &parent);
-//             var index: usize = undefined;
-//             try expect(!cubs_scope_symbol_defined_in(&scope, &index, makeSlice("parentVar")));
-//         }
-//         {
-//             const found = cubs_scope_find_symbol(&scope, makeSlice("childVar"));
-//             try expect(found.didFind);
-//             try expect(found.symbol.*.symbolType == c.scopeSymbolTypeVariable);
-//             try expect(cubs_string_slice_eql(found.symbol.*.data.variableSymbol, makeSlice("childVar")));
-//             try expect(found.owningScope == &scope);
-//             var index: usize = undefined;
-//             try expect(cubs_scope_symbol_defined_in(&scope, &index, makeSlice("childVar")));
-//             try expect(index == 0);
-//         }
-//     }
-// }
+    var scope = Scope{};
+    defer cubs_scope_deinit(&scope);
 
-// test "function symbol" {
-//     const symbolName = makeSlice("someFunc");
+    try expect(cubs_scope_add_symbol(&scope, symbol));
 
-//     const symbol = ScopeSymbol{
-//         .symbolType = c.scopeSymbolTypeFunction,
-//         .data = ScopeSymbolData{ .functionSymbol = symbolName },
-//     };
+    try expect(scope.len == 1);
+    try expect(scope.symbols != null);
+    try expect(scope.hashCodes != null);
 
-//     var scope = Scope{};
-//     defer cubs_scope_deinit(&scope);
+    const found = cubs_scope_find_symbol(&scope, symbolName);
+    try expect(found.didFind);
+    try expect(found.symbol.*.symbolType == c.scopeSymbolTypeFunction);
+    try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice("someFunc"));
+    try expect(found.owningScope == &scope);
 
-//     try expect(cubs_scope_add_symbol(&scope, symbol));
+    var index: usize = undefined;
+    try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
+    try expect(index == 0);
+}
 
-//     try expect(scope.len == 1);
-//     try expect(scope.symbols != null);
-//     try expect(scope.hashCodes != null);
+test "struct symbol" {
+    const symbolName = makeSlice("someStruct");
 
-//     const found = cubs_scope_find_symbol(&scope, symbolName);
-//     try expect(found.didFind);
-//     try expect(found.symbol.*.symbolType == c.scopeSymbolTypeFunction);
-//     try expect(cubs_string_slice_eql(found.symbol.*.data.functionSymbol, symbolName));
-//     try expect(found.owningScope == &scope);
+    const symbol = ScopeSymbol{
+        .symbolType = c.scopeSymbolTypeStruct,
+        .data = ScopeSymbolData{ .structSymbol = @bitCast(String.initUnchecked("someStruct")) },
+    };
 
-//     var index: usize = undefined;
-//     try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
-//     try expect(index == 0);
-// }
+    var scope = Scope{};
+    defer cubs_scope_deinit(&scope);
 
-// test "struct symbol" {
-//     const symbolName = makeSlice("someStruct");
+    try expect(cubs_scope_add_symbol(&scope, symbol));
 
-//     const symbol = ScopeSymbol{
-//         .symbolType = c.scopeSymbolTypeStruct,
-//         .data = ScopeSymbolData{ .structSymbol = symbolName },
-//     };
+    try expect(scope.len == 1);
+    try expect(scope.symbols != null);
+    try expect(scope.hashCodes != null);
 
-//     var scope = Scope{};
-//     defer cubs_scope_deinit(&scope);
+    const found = cubs_scope_find_symbol(&scope, symbolName);
+    try expect(found.didFind);
+    try expect(found.symbol.*.symbolType == c.scopeSymbolTypeStruct);
+    try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice("someStruct"));
+    try expect(found.owningScope == &scope);
 
-//     try expect(cubs_scope_add_symbol(&scope, symbol));
-
-//     try expect(scope.len == 1);
-//     try expect(scope.symbols != null);
-//     try expect(scope.hashCodes != null);
-
-//     const found = cubs_scope_find_symbol(&scope, symbolName);
-//     try expect(found.didFind);
-//     try expect(found.symbol.*.symbolType == c.scopeSymbolTypeStruct);
-//     try expect(cubs_string_slice_eql(found.symbol.*.data.structSymbol, symbolName));
-//     try expect(found.owningScope == &scope);
-
-//     var index: usize = undefined;
-//     try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
-//     try expect(index == 0);
-// }
+    var index: usize = undefined;
+    try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
+    try expect(index == 0);
+}
