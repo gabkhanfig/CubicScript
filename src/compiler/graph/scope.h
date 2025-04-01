@@ -11,12 +11,14 @@ typedef union ScopeSymbolData {
     CubsString variableSymbol;
     CubsString functionSymbol;
     CubsString structSymbol;
+    CubsString globalSymbol;
 } ScopeSymbolData;
 
 typedef enum ScopeSymbolType {
     scopeSymbolTypeVariable = 0,
     scopeSymbolTypeFunction = 1,
     scopeSymbolTypeStruct = 2,
+    scopeSymbolTypeGlobal = 3,
 } ScopeSymbolType;
 
 /// A symbol found within a given scope. Only for named symbols. Unnamed ones

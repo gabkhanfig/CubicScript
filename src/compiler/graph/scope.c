@@ -32,6 +32,12 @@ static size_t find_in_scope_no_parent(const Scope* self, const CubsString* symbo
                     return i;
                 }
             } break;
+            case scopeSymbolTypeGlobal: {
+                const bool equalName = cubs_string_eql(&symbol->data.globalSymbol, symbolName);
+                if(equalName) {
+                    return i;
+                }
+            } break;
             default: {
                 unreachable();
             }
@@ -105,6 +111,11 @@ bool cubs_scope_add_symbol(Scope *self, ScopeSymbol symbol)
         case scopeSymbolTypeStruct: {
             assert(symbol.data.structSymbol.len > 0);
             symbolName = &symbol.data.structSymbol;
+            hash = cubs_string_hash(symbolName);
+        } break;
+        case scopeSymbolTypeGlobal: {
+            assert(symbol.data.globalSymbol.len > 0);
+            symbolName = &symbol.data.globalSymbol;
             hash = cubs_string_hash(symbolName);
         } break;
         default: {

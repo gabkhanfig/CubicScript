@@ -291,3 +291,31 @@ test "struct symbol" {
     try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
     try expect(index == 0);
 }
+
+test "global symbol" {
+    const symbolName = makeSlice("someGlobal");
+
+    const symbol = ScopeSymbol{
+        .symbolType = c.scopeSymbolTypeGlobal,
+        .data = ScopeSymbolData{ .structSymbol = @bitCast(String.initUnchecked("someGlobal")) },
+    };
+
+    var scope = Scope{};
+    defer cubs_scope_deinit(&scope);
+
+    try expect(cubs_scope_add_symbol(&scope, symbol));
+
+    try expect(scope.len == 1);
+    try expect(scope.symbols != null);
+    try expect(scope.hashCodes != null);
+
+    const found = cubs_scope_find_symbol(&scope, symbolName);
+    try expect(found.didFind);
+    try expect(found.symbol.*.symbolType == c.scopeSymbolTypeGlobal);
+    try expect(@as(*const String, @ptrCast(&found.symbol.*.data.variableSymbol)).eqlSlice("someGlobal"));
+    try expect(found.owningScope == &scope);
+
+    var index: usize = undefined;
+    try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
+    try expect(index == 0);
+}
