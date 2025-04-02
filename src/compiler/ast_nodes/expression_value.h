@@ -9,6 +9,7 @@ struct CubsProgram;
 struct FunctionBuilder;
 struct FunctionDependencies;
 struct StackVariablesAssignment;
+struct Scope;
 
 struct ExprValueBoolLiteral {
     bool literal;
@@ -116,7 +117,11 @@ inline static void expr_value_deinit(ExprValue* self) {
 /// Resolves the type of the actual expression value, and returns the type
 /// context.
 const struct CubsTypeContext* cubs_expr_node_resolve_type(
-    ExprValue* self, struct CubsProgram* program, const struct FunctionBuilder* builder, struct StackVariablesArray* variables
+    ExprValue* self,
+    struct CubsProgram* program,
+    const struct FunctionBuilder* builder,
+    struct StackVariablesArray* variables,
+    const struct Scope* scope
 );
 
 typedef struct ExprValueDst {

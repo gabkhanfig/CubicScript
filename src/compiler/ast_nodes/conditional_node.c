@@ -112,13 +112,13 @@ static void conditional_node_build_function(
 }
 
 static void conditional_node_resolve_types(
-    ConditionalNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables
+    ConditionalNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables, const Scope* scope
 ) {
     // conditions first
     for(size_t i = 0; i < self->conditionsLen; i++) {
         ExprValue* conditionExpr = &self->conditions[i];
         const CubsTypeContext* conditionContext = 
-            cubs_expr_node_resolve_type(conditionExpr, program, builder, variables);
+            cubs_expr_node_resolve_type(conditionExpr, program, builder, variables, scope);
         assert(conditionContext == &CUBS_BOOL_CONTEXT);
     }
 
@@ -129,7 +129,7 @@ static void conditional_node_resolve_types(
             AstNode* node = &statements->nodes[statementIter];
             if(node->vtable->resolveTypes == NULL) continue;
 
-            ast_node_resolve_types(node, program, builder, variables);
+            ast_node_resolve_types(node, program, builder, variables, scope);
         }
     }
 }

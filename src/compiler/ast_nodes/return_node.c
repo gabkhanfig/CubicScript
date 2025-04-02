@@ -11,6 +11,7 @@
 #include "binary_expression.h"
 #include "../../program/program_internal.h"
 #include "../graph/function_dependency_graph.h"
+#include "../graph/scope.h"
 
 static void return_node_deinit(ReturnNode* self) {
     //cubs_string_deinit(&self->variableName);
@@ -41,7 +42,7 @@ static void return_node_build_function(
 }
 
 static void return_node_resolve_types(
-    ReturnNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables
+    ReturnNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables, const Scope* scope
 ) {
     if(self->hasReturn && builder->optReturnType == NULL) {
         fprintf(stderr, "Function \'%s\' has no return type, but a value is attempting to be returned",
@@ -58,7 +59,7 @@ static void return_node_resolve_types(
     }
 
     const CubsTypeContext* retValueContext = 
-        cubs_expr_node_resolve_type(&self->retValue, program, builder, variables);
+        cubs_expr_node_resolve_type(&self->retValue, program, builder, variables, scope);
     assert(builder->optReturnType == retValueContext);
 }
 

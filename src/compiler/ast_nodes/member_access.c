@@ -9,6 +9,7 @@
 #include "../../interpreter/bytecode.h"
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
+#include "../graph/scope.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -62,7 +63,8 @@ static void member_access_node_resolve_types(
     MemberAccessNode* self,
     CubsProgram* program,
     const FunctionBuilder* builder,
-    StackVariablesArray* variables
+    StackVariablesArray* variables,
+    const Scope* scope
 ) {
     TypeResolutionInfo* typeInfo = &variables->variables[self->sourceVariableIndex].typeInfo;
     assert(typeInfo->tag != TypeInfoUnknown);

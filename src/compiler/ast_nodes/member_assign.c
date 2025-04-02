@@ -10,6 +10,7 @@
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include "../graph/function_dependency_graph.h"
+#include "../graph/scope.h"
 #include <stdio.h>
 
 static void member_assign_node_deinit(MemberAssignNode* self) {
@@ -79,7 +80,8 @@ static void member_assign_node_resolve_types(
     MemberAssignNode* self,
     CubsProgram* program,
     const FunctionBuilder* builder,
-    StackVariablesArray* variables
+    StackVariablesArray* variables,
+    const Scope* scope
 ) {
     TypeResolutionInfo* typeInfo = &variables->variables[self->variableIndex].typeInfo;
 

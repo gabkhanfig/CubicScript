@@ -5,6 +5,7 @@
 #include "../../interpreter/interpreter.h"
 #include "../../interpreter/operations.h"
 #include "../../program/program_internal.h"
+#include "../graph/scope.h"
 
 static void binary_expr_node_deinit(BinaryExprNode* self) {
     expr_value_deinit(&self->lhs);
@@ -36,10 +37,10 @@ static void binary_expr_node_build_function(
 }
 
 static void binary_expr_node_resolve_types(
-    BinaryExprNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables
+    BinaryExprNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables, const Scope* scope 
 ) {
-    const CubsTypeContext* lhsContext = cubs_expr_node_resolve_type(&self->lhs, program, builder, variables);
-    const CubsTypeContext* rhsContext = cubs_expr_node_resolve_type(&self->rhs, program, builder, variables);
+    const CubsTypeContext* lhsContext = cubs_expr_node_resolve_type(&self->lhs, program, builder, variables, scope);
+    const CubsTypeContext* rhsContext = cubs_expr_node_resolve_type(&self->rhs, program, builder, variables, scope);
     
     { // validate types
         if(self->lhs.tag == Reference) {

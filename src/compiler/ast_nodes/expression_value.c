@@ -11,34 +11,7 @@
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include "../graph/function_dependency_graph.h"
-
-// struct ParsedExprValue;
-
-// typedef struct {
-
-// } ;
-
-// enum ParsedExprValueTag {
-//     ParsedVariableName,
-//     ParsedBoolLiteral,
-//     ParsedIntLiteral,
-//     ParsedFloatLiteral,
-//     ParsedFunctionName,
-// };
-
-// union ParsedExprValueMetadata {
-//     CubsStringSlice variableName;
-//     bool boolLit;
-//     int64_t intLit;
-//     double floatLit;
-//     CubsStringSlice functionName;
-// };
-
-// /// 
-// typedef struct ParsedExprValue {
-//     enum ParsedExprValueTag tag;
-//     union ParsedExprValueMetadata value;
-// } ParsedExprValue;
+#include "../graph/scope.h"
 
 /// Steps the iterator forward to after the value.
 static ExprValue parse_expression_value(
@@ -332,7 +305,7 @@ ExprValue cubs_parse_expression(
     return firstValue;
 }
 
-const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram *program, const FunctionBuilder* builder, StackVariablesArray *variables)
+const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram *program, const FunctionBuilder* builder, StackVariablesArray *variables, const Scope* scope)
 {
     switch(self->tag) {
         case BoolLit: {
@@ -379,7 +352,7 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
         } break;
         case Expression: {
             AstNode* exprNode = &self->value.expression;
-            ast_node_resolve_types(exprNode, program, builder, variables);
+            ast_node_resolve_types(exprNode, program, builder, variables, scope);
             
             assert(exprNode->vtable->nodeType == astNodeBinaryExpression);
             const size_t index = ((const BinaryExprNode*)exprNode->ptr)->outputVariableIndex;            
@@ -390,7 +363,7 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
         } break;
         case FunctionCall: { 
             AstNode* exprNode = &self->value.functionCall;
-            ast_node_resolve_types(exprNode, program, builder, variables);
+            ast_node_resolve_types(exprNode, program, builder, variables, scope);
 
             const FunctionCallNode* callNode = (const FunctionCallNode*)exprNode->ptr;
             if(!callNode->hasReturnVariable) {
@@ -405,7 +378,7 @@ const CubsTypeContext *cubs_expr_node_resolve_type(ExprValue *self, CubsProgram 
         } break;
         case StructMember: {
             AstNode* accessNode = &self->value.structMember;
-            ast_node_resolve_types(accessNode, program, builder, variables);
+            ast_node_resolve_types(accessNode, program, builder, variables, scope);
             
             assert(accessNode->vtable->nodeType == astNodeTypeMemberAccess);
             const MemberAccessNode* obj = (const MemberAccessNode*)accessNode->ptr;

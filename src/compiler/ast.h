@@ -12,6 +12,7 @@ struct FunctionBuilder;
 struct StackVariablesArray;
 struct StackVariablesAssignment;
 struct TypeMap;
+struct Scope;
 
 enum AstNodeType {
     astNodeTypeFile,
@@ -42,7 +43,11 @@ typedef void(*AstNodeDefineType)(
     struct CubsProgram* program
 );
 typedef void(*AstNodeResolveTypes)(
-    void* self, struct CubsProgram* program, const struct FunctionBuilder* builder, struct StackVariablesArray* variables
+    void* self,
+    struct CubsProgram* program,
+    const struct FunctionBuilder* builder,
+    struct StackVariablesArray* variables,
+    const struct Scope* scope
 );
 typedef bool(*AstNodeStatementsEndWithReturn)(const void* self);
 
@@ -92,9 +97,10 @@ inline static void ast_node_resolve_types(
     AstNode* self, 
     struct CubsProgram* program, 
     const struct FunctionBuilder* builder, 
-    struct StackVariablesArray* variables
+    struct StackVariablesArray* variables,
+    const struct Scope* scope
 ) {
-    self->vtable->resolveTypes(self->ptr, program, builder, variables);
+    self->vtable->resolveTypes(self->ptr, program, builder, variables, scope);
 }
 
 inline static bool ast_node_statements_end_with_return(const AstNode* self) {

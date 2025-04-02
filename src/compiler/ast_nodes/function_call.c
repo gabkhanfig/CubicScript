@@ -11,6 +11,7 @@
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include "../graph/function_dependency_graph.h"
+#include "../graph/scope.h"
 
 static void function_call_node_deinit(FunctionCallNode* self) {
     if(self->argsCapacity > 0) {
@@ -81,7 +82,8 @@ static void function_call_node_resolve_types(
     FunctionCallNode* self,
     CubsProgram* program,
     const FunctionBuilder* builder,
-    StackVariablesArray* variables
+    StackVariablesArray* variables,
+    const Scope* scope
 ) {
     CubsFunction actualFunction = {0};
     const bool found = cubs_program_find_function(program, &actualFunction, self->functionName);

@@ -78,7 +78,7 @@ static void function_node_compile(FunctionNode* self, CubsProgram* program) {
         AstNode* node = &self->items.nodes[i];
         if(node->vtable->resolveTypes == NULL) continue;
 
-        ast_node_resolve_types(node, program, &builder, &self->variables);
+        ast_node_resolve_types(node, program, &builder, &self->variables, self->scope);
     }
 
     StackVariablesAssignment stackAssignment = cubs_stack_assignment_init(&self->variables, program);

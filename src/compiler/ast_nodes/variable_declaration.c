@@ -25,7 +25,7 @@ static void variable_declaration_node_build_function(
 }
 
 static void variable_declaration_resolve_types(
-    VariableDeclarationNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables
+    VariableDeclarationNode* self, CubsProgram* program, const FunctionBuilder* builder, StackVariablesArray* variables, const Scope* scope
 ) {
     // TypeResolutionInfo* typeInfo = &variables->variables[self->variableNameIndex].typeInfo;
     // if(typeInfo->knownContext != NULL) return;
