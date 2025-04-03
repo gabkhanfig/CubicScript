@@ -15,7 +15,7 @@ struct Scope;
 /// contain RwLocks, so the `isMutable` flag specifies for read-only (shared),
 /// or read-write (exclusive) lock acquisition.
 typedef struct SyncVariable {
-    CubsStringSlice variableName;
+    CubsStringSlice name;
     bool isMutable;
 } SyncVariable;
 
