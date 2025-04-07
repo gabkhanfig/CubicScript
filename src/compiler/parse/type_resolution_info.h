@@ -21,17 +21,32 @@ enum TypeResolutionInfoTag {
     TypeInfoString,
     TypeInfoStruct,
     TypeInfoReference,
+    TypeInfoUnique,
+    TypeInfoShared,
+    TypeInfoWeak,
     TypeInfoKnownContext,
 };
 
-struct TypeInfoStructData {
+typedef struct TypeInfoStructData {
     CubsStringSlice typeName;
-};
+} TypeInfoStructData;
 
-struct TypeInfoReferenceData {
+typedef struct TypeInfoReferenceData {
     bool isMutable;
     struct TypeResolutionInfo* child;
-};
+} TypeInfoReferenceData;
+
+typedef struct TypeInfoUniqueData {
+    struct TypeResolutionInfo* child;
+} TypeInfoUniqueData;
+
+typedef struct TypeInfoSharedData {
+    struct TypeResolutionInfo* child;
+} TypeInfoSharedData;
+
+typedef struct TypeInfoWeakData {
+    struct TypeResolutionInfo* child;
+} TypeInfoWeakData;
 
 union TypeResolutionInfoData {
     _type_resolution_info_unused_t  _unknown;
@@ -40,8 +55,11 @@ union TypeResolutionInfoData {
     _type_resolution_info_unused_t  _float;
     _type_resolution_info_unused_t  _char;
     _type_resolution_info_unused_t  _string;
-    struct TypeInfoReferenceData    reference;
-    struct TypeInfoStructData       structType;
+    TypeInfoStructData              structType;
+    TypeInfoReferenceData           reference;
+    TypeInfoUniqueData              unique;
+    TypeInfoSharedData              shared;
+    TypeInfoWeakData                weak;
     const struct CubsTypeContext*   knownContext;
 };
 
@@ -72,6 +90,13 @@ const struct CubsTypeContext* cubs_type_resolution_info_get_context(
     const TypeResolutionInfo* self,
     const struct CubsProgram* program
 );
+
+static inline bool cubs_type_resolution_info_is_reference_type(const TypeResolutionInfo* self) {
+    return  self->tag == TypeInfoReference || 
+            self->tag == TypeInfoUnique ||
+            self->tag == TypeInfoShared ||
+            self->tag == TypeInfoWeak;
+}
 
 //TypeResolutionInfo cubs_type_resolution_info_from_context(const struct CubsTypeContext* context);
 

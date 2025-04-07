@@ -6,16 +6,56 @@
 #include "../../platform/mem.h"
 #include "../../util/unreachable.h"
 #include "../parse/parse_statements.h"
+#include "../../program/program.h"
+#include "../../program/program_internal.h"
+#include "../../interpreter/function_definition.h"
 #include <assert.h>
 #include <stdio.h>
 
-void sync_block_node_deinit(SyncBlockNode* self) {
+static void sync_block_node_deinit(SyncBlockNode* self) {
     FREE_TYPE_ARRAY(SyncVariable, self->variablesToSync, self->variablesLen);
+    if(self->resolvedVariablesToSync != NULL) {
+        FREE_TYPE_ARRAY(ResolvedSyncVariable, self->resolvedVariablesToSync, self->variablesLen);
+    }
     ast_node_array_deinit(&self->statements);
     cubs_scope_deinit(self->scope);
     
     *self = (SyncBlockNode){0};
     FREE_TYPE(SyncBlockNode, self);
+}
+
+static ResolvedSyncVariable resolve_sync_variable(const SyncVariable* variable, const StackVariablesArray* stackVariables) {
+    size_t index = -1;
+    const bool success = cubs_stack_variables_array_find(stackVariables, &index, variable->name);
+    assert(success);
+
+    return (ResolvedSyncVariable){.index = index, .isMutable = variable->isMutable};
+}
+
+static void sync_block_node_resolve_types(
+    SyncBlockNode* self, 
+    CubsProgram* program,
+    const FunctionBuilder* builder,
+    struct StackVariablesArray* variables,
+    const Scope* scope
+) {
+    assert(self->variablesLen > 0);
+
+    ResolvedSyncVariable* resolved = MALLOC_TYPE_ARRAY(ResolvedSyncVariable, self->variablesLen);
+    for(size_t i = 0; i < self->variablesLen; i++) {
+        ResolvedSyncVariable variable = resolve_sync_variable(&self->variablesToSync[i], variables);
+
+        const StackVariableInfo* info = &variables->variables[variable.index];
+        const TypeResolutionInfo* typeInfo = &info->typeInfo;
+
+        if(typeInfo->tag)
+    
+        if(variable.isMutable) {
+            assert(info->isMutable && "Cannot read-write sync non mutable variable");
+        }
+
+        assert(typeInfo->tag != TypeInfoUnknown);
+    }
 }
 
 static AstNodeVTable sync_node_node_vtable = {
@@ -182,8 +222,9 @@ AstNode cubs_sync_block_node_init(
 
     SyncBlockNode* self = MALLOC_TYPE(SyncBlockNode);
     *self = (SyncBlockNode){
-        .variablesToSync = parsedVariables.toSync,
         .variablesLen = parsedVariables.len,
+        .variablesToSync = parsedVariables.toSync,
+        .resolvedVariablesToSync = NULL,
         .scope = scope,
         .statements = statements,
     };

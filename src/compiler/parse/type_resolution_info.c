@@ -144,6 +144,11 @@ const CubsTypeContext *cubs_type_resolution_info_get_context(const TypeResolutio
         case TypeInfoFloat: return &CUBS_FLOAT_CONTEXT;
         case TypeInfoChar: return &CUBS_CHAR_CONTEXT;
         case TypeInfoString: return &CUBS_STRING_CONTEXT;
+        case TypeInfoStruct: {
+            const CubsTypeContext* foundContext = cubs_program_find_type_context(program, self->value.structType.typeName);
+            assert(foundContext != NULL);
+            return foundContext;
+        }
         case TypeInfoReference: {
             if(self->value.reference.isMutable) {
                 return &CUBS_MUT_REF_CONTEXT;
@@ -151,11 +156,15 @@ const CubsTypeContext *cubs_type_resolution_info_get_context(const TypeResolutio
                 return &CUBS_CONST_REF_CONTEXT;
             }
         } 
-        case TypeInfoStruct: {
-            const CubsTypeContext* foundContext = cubs_program_find_type_context(program, self->value.structType.typeName);
-            assert(foundContext != NULL);
-            return foundContext;
-        }
+        case TypeInfoUnique: {
+            return &CUBS_UNIQUE_CONTEXT;
+        } break;
+        case TypeInfoShared: {
+            return &CUBS_SHARED_CONTEXT;
+        } break;
+        case TypeInfoWeak: {
+            return &CUBS_WEAK_CONTEXT;
+        } break;
         case TypeInfoKnownContext: {
             return self->value.knownContext;
         }
@@ -164,11 +173,3 @@ const CubsTypeContext *cubs_type_resolution_info_get_context(const TypeResolutio
         }
     }
 }
-
-// TypeResolutionInfo cubs_type_resolution_info_from_context(const struct CubsTypeContext* context) {
-//     TypeResolutionInfo self = {0};
-//     self.knownContext = context;
-//     const CubsStringSlice typeName = {.str = context->name, .len = context->nameLength};
-//     self.typeName = typeName;
-//     return self;
-// }

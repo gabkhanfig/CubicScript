@@ -19,14 +19,25 @@ typedef struct SyncVariable {
     bool isMutable;
 } SyncVariable;
 
+typedef struct ResolvedSyncVariable {
+    size_t index;
+    bool isMutable;
+} ResolvedSyncVariable;
+
 typedef struct SyncBlockNode {
+    /// Valid elements and allocation capacity of `variablesToSync`.
+    size_t variablesLen;
     /// An array of length `variablesLen`. Signifies which variables within
     /// the sync blocks outer scope (not `self->scope`) get synchronized,
     /// as well as if they are read-only or read-write synced for the objects'
     /// RwLocks.
     SyncVariable* variablesToSync;
-    /// Valid elements and allocation capacity of `variablesToSync`.
-    size_t variablesLen;
+    /// An array of length `variablesLen`. Stores the indices of the variables
+    /// that will get synchronized, as well as if they are read-only or 
+    /// read-write synced for the objects' RwLocks. Is NULL upon
+    /// `cubs_sync_block_node_init(...)`, however is set when this node is
+    /// resolved.
+    ResolvedSyncVariable* resolvedVariablesToSync;
     AstNodeArray statements;
     struct Scope* scope;
 } SyncBlockNode;
