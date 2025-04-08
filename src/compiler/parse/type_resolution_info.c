@@ -60,12 +60,39 @@ TypeResolutionInfo cubs_type_resolution_info_clone(const TypeResolutionInfo *sel
 
             const TypeResolutionInfo clone = {
                 .tag = TypeInfoReference,
-                .value.reference = (struct TypeInfoReferenceData){
+                .value.reference = (TypeInfoReferenceData){
                     .isMutable = self->value.reference.isMutable,
                     .child = child,    
                 }
             };
             return clone;
+        } break;
+        case TypeInfoUnique: {
+            TypeResolutionInfo* child = MALLOC_TYPE(TypeResolutionInfo);
+            *child = cubs_type_resolution_info_clone(self->value.unique.child);
+
+            return (TypeResolutionInfo){
+                .tag = TypeInfoUnique,
+                .value.unique = (TypeInfoUniqueData){.child = child}
+            };
+        } break;
+        case TypeInfoShared: {
+            TypeResolutionInfo* child = MALLOC_TYPE(TypeResolutionInfo);
+            *child = cubs_type_resolution_info_clone(self->value.shared.child);
+
+            return (TypeResolutionInfo){
+                .tag = TypeInfoShared,
+                .value.shared = (TypeInfoSharedData){.child = child}
+            };
+        } break;
+        case TypeInfoWeak: {
+            TypeResolutionInfo* child = MALLOC_TYPE(TypeResolutionInfo);
+            *child = cubs_type_resolution_info_clone(self->value.weak.child);
+
+            return (TypeResolutionInfo){
+                .tag = TypeInfoWeak,
+                .value.weak = (TypeInfoWeakData){.child = child}
+            };
         } break;
         default: {
             unreachable();
@@ -162,7 +189,7 @@ TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
             referenceData.isMutable = true;
             (void)cubs_token_iter_next(iter);
         }
-        
+
         TypeResolutionInfo childType = {0};
         bool success = false;
         switch(iter->current.tag) {
