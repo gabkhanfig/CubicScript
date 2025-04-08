@@ -112,6 +112,9 @@ typedef enum TokenType {
     AND_KEYWORD,
     OR_KEYWORD,
     NULL_KEYWORD,
+    UNIQUE_KEYWORD,
+    SHARED_KEYWORD,
+    WEAK_KEYWORD,
     
     // TODO should modulo be an operator? also should there be a distinction between modulo and remainder?
     // TODO also power?

@@ -397,6 +397,9 @@ TOKEN_CONSTANT(EXTERN_KEYWORD_SLICE, "extern");
 TOKEN_CONSTANT(AND_KEYWORD_SLICE, "and");
 TOKEN_CONSTANT(OR_KEYWORD_SLICE, "or");
 TOKEN_CONSTANT(NULL_KEYWORD_SLICE, "null");
+TOKEN_CONSTANT(UNIQUE_KEYWORD_SLICE, "unique");
+TOKEN_CONSTANT(SHARED_KEYWORD_SLICE, "shared");
+TOKEN_CONSTANT(WEAK_KEYWORD_SLICE, "weak");
 
 TOKEN_CONSTANT(EQUAL_OPERATOR_SLICE, "==");
 TOKEN_CONSTANT(ASSIGN_OPERATOR_SLICE, "=");
@@ -569,6 +572,15 @@ static NextToken get_next_token(const TokenIter* self) {
         } else if(starts_with_keyword_substring(tokenStart, NULL_KEYWORD_SLICE)) {
             found = NULL_KEYWORD;
             foundSlice = NULL_KEYWORD_SLICE;
+        } else if(starts_with_keyword_substring(tokenStart, UNIQUE_KEYWORD_SLICE)) {
+            found = UNIQUE_KEYWORD;
+            foundSlice = UNIQUE_KEYWORD_SLICE;
+        } else if(starts_with_keyword_substring(tokenStart, SHARED_KEYWORD_SLICE)) {
+            found = SHARED_KEYWORD;
+            foundSlice = SHARED_KEYWORD_SLICE;
+        } else if(starts_with_keyword_substring(tokenStart, WEAK_KEYWORD_SLICE)) {
+            found = WEAK_KEYWORD;
+            foundSlice = WEAK_KEYWORD_SLICE;
         } 
         // Operators
         // The bitshift ones must come first

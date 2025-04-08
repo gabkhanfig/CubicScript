@@ -569,6 +569,18 @@ test "null" {
     validateParseKeyword("null", c.NULL_KEYWORD);
 }
 
+test "unique" {
+    validateParseKeyword("unique", c.UNIQUE_KEYWORD);
+}
+
+test "shared" {
+    validateParseKeyword("shared", c.SHARED_KEYWORD);
+}
+
+test "weak" {
+    validateParseKeyword("weak", c.WEAK_KEYWORD);
+}
+
 test "equal" {
     validateParseOperatorOrSymbol("==", c.EQUAL_OPERATOR);
 }
