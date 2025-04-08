@@ -23,6 +23,21 @@ void cubs_type_resolution_info_deinit(TypeResolutionInfo *self)
             cubs_type_resolution_info_deinit(childType);
             FREE_TYPE(TypeResolutionInfo, childType);
         } break;
+        case TypeInfoUnique: {
+            TypeResolutionInfo* childType = self->value.unique.child;
+            cubs_type_resolution_info_deinit(childType);
+            FREE_TYPE(TypeResolutionInfo, childType);
+        } break;
+        case TypeInfoShared: {
+            TypeResolutionInfo* childType = self->value.shared.child;
+            cubs_type_resolution_info_deinit(childType);
+            FREE_TYPE(TypeResolutionInfo, childType);
+        } break;
+        case TypeInfoWeak: {
+            TypeResolutionInfo* childType = self->value.weak.child;
+            cubs_type_resolution_info_deinit(childType);
+            FREE_TYPE(TypeResolutionInfo, childType);
+        } break;
         default: {}
     }
 }
@@ -100,6 +115,36 @@ static bool try_parse_normal_type(TypeResolutionInfo* out, const TokenIter* iter
     return true;
 }
 
+static bool try_parse_sync_type(TypeResolutionInfo* out, TokenIter* iter) {
+    TypeResolutionInfo* child = MALLOC_TYPE(TypeResolutionInfo);
+    const TokenType syncType = iter->current.tag;
+
+    (void)cubs_token_iter_next(iter);
+    bool success = try_parse_normal_type(child, iter);
+    if(!success) {
+        FREE_TYPE(TypeResolutionInfo, child);
+        return false;
+    }
+
+    switch(syncType) {
+        case UNIQUE_KEYWORD: {
+            out->tag = TypeInfoUnique;
+            out->value.unique = (TypeInfoUniqueData){.child = child};
+        } break;
+        case SHARED_KEYWORD: {
+            out->tag = TypeInfoShared;
+            out->value.shared = (TypeInfoSharedData){.child = child};
+        } break;
+        case WEAK_KEYWORD: {
+            out->tag = TypeInfoWeak;
+            out->value.weak = (TypeInfoWeakData){.child = child};
+        } break;
+        default: unreachable();
+    }
+
+    return true;
+}
+
 TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
 {
     TypeResolutionInfo self = {0};
@@ -117,8 +162,17 @@ TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
             referenceData.isMutable = true;
             (void)cubs_token_iter_next(iter);
         }
+        
         TypeResolutionInfo childType = {0};
-        const bool success = try_parse_normal_type(&childType, iter);
+        bool success = false;
+        switch(iter->current.tag) {
+            case UNIQUE_KEYWORD: case SHARED_KEYWORD: case WEAK_KEYWORD: {
+                success = try_parse_sync_type(&childType, iter);
+            } break;
+            default: {
+                success = try_parse_normal_type(&childType, iter);
+            }
+        }
         assert(success);
         referenceData.child = MALLOC_TYPE(TypeResolutionInfo);
         *referenceData.child = childType;
