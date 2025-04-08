@@ -790,14 +790,14 @@ test "deinit" {
 
 test "sync / unsync one thread one read" {
     var bytecode: [2]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
+    try expect(c.cubs_operands_make_sync(
         &bytecode,
         1,
         c.SYNC_TYPE_SYNC,
         1,
         &[_]c.SyncLockSource{.{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ }},
-    );
-    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+    ) == 1);
+    try expect(c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null) == 1);
 
     c.cubs_interpreter_push_frame(2, null, null);
     defer c.cubs_interpreter_pop_frame();
@@ -848,14 +848,14 @@ test "sync / unsync one thread one read" {
 
 test "sync / unsync one thread one write" {
     var bytecode: [2]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
+    try expect(c.cubs_operands_make_sync(
         &bytecode,
         1,
         c.SYNC_TYPE_SYNC,
         1,
         &[_]c.SyncLockSource{.{ .src = 0, .lock = c.SYNC_LOCK_TYPE_WRITE }},
-    );
-    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+    ) == 1);
+    try expect(c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null) == 1);
 
     c.cubs_interpreter_push_frame(2, null, null);
     defer c.cubs_interpreter_pop_frame();
@@ -906,14 +906,14 @@ test "sync / unsync one thread one write" {
 
 test "sync / unsync one thread two values" {
     var bytecode: [2]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
+    try expect(c.cubs_operands_make_sync(
         &bytecode,
         1,
         c.SYNC_TYPE_SYNC,
         2,
         &[_]c.SyncLockSource{ .{ .src = 0, .lock = c.SYNC_LOCK_TYPE_READ }, .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE } },
-    );
-    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+    ) == 1);
+    try expect(c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null) == 1);
 
     c.cubs_interpreter_push_frame(4, null, null);
     defer c.cubs_interpreter_pop_frame();
@@ -939,7 +939,7 @@ test "sync / unsync one thread two values" {
 
 test "sync / unsync one thread 3 values" {
     var bytecode: [3]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
+    try expect(c.cubs_operands_make_sync(
         &bytecode,
         2,
         c.SYNC_TYPE_SYNC,
@@ -949,8 +949,8 @@ test "sync / unsync one thread 3 values" {
             .{ .src = 2, .lock = c.SYNC_LOCK_TYPE_WRITE },
             .{ .src = 4, .lock = c.SYNC_LOCK_TYPE_READ },
         },
-    );
-    c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+    ) == 2);
+    try expect(c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null) == 1);
 
     c.cubs_interpreter_push_frame(6, null, null);
     defer c.cubs_interpreter_pop_frame();
@@ -985,7 +985,7 @@ test "sync / unsync one thread 3 values" {
 
 test "sync / unsync one thread 6 values (2 inline bytecode, 4 extended bytecode)" {
     var bytecode: [3]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
+    try expect(c.cubs_operands_make_sync(
         &bytecode,
         2,
         c.SYNC_TYPE_SYNC,
@@ -998,8 +998,8 @@ test "sync / unsync one thread 6 values (2 inline bytecode, 4 extended bytecode)
             .{ .src = 8, .lock = c.SYNC_LOCK_TYPE_READ },
             .{ .src = 10, .lock = c.SYNC_LOCK_TYPE_WRITE },
         },
-    );
-    c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+    ) == 2);
+    try expect(c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null) == 1);
 
     c.cubs_interpreter_push_frame(12, null, null);
     defer c.cubs_interpreter_pop_frame();
@@ -1031,7 +1031,7 @@ test "sync / unsync one thread 6 values (2 inline bytecode, 4 extended bytecode)
 
 test "sync / unsync one thread 7 values (2 inline bytecode, 4 extended bytecode, 1 extra extended bytecode)" {
     var bytecode: [4]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
+    try expect(c.cubs_operands_make_sync(
         &bytecode,
         3,
         c.SYNC_TYPE_SYNC,
@@ -1045,8 +1045,8 @@ test "sync / unsync one thread 7 values (2 inline bytecode, 4 extended bytecode,
             .{ .src = 10, .lock = c.SYNC_LOCK_TYPE_WRITE },
             .{ .src = 12, .lock = c.SYNC_LOCK_TYPE_WRITE },
         },
-    );
-    c.cubs_operands_make_sync(&bytecode[3], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+    ) == 3);
+    try expect(c.cubs_operands_make_sync(&bytecode[3], 1, c.SYNC_TYPE_UNSYNC, 0, null) == 1);
 
     c.cubs_interpreter_push_frame(14, null, null);
     defer c.cubs_interpreter_pop_frame();
@@ -1078,14 +1078,14 @@ test "sync / unsync one thread 7 values (2 inline bytecode, 4 extended bytecode,
 
 test "sync / unsync multithread one value write" {
     var bytecode: [2]c.Bytecode = undefined;
-    c.cubs_operands_make_sync(
+    try expect(c.cubs_operands_make_sync(
         &bytecode,
         1,
         c.SYNC_TYPE_SYNC,
         1,
         &[_]c.SyncLockSource{.{ .src = 0, .lock = c.SYNC_LOCK_TYPE_WRITE }},
-    );
-    c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+    ) == 1);
+    try expect(c.cubs_operands_make_sync(&bytecode[1], 1, c.SYNC_TYPE_UNSYNC, 0, null) == 1);
 
     const ThreadTest = struct {
         fn add(s: Shared(i64), n: usize, b: []const c.Bytecode) void {
@@ -1142,8 +1142,8 @@ test "sync / unsync multithread many value write random" {
             }
 
             var bytecode: [3]c.Bytecode = undefined;
-            c.cubs_operands_make_sync(&bytecode, 2, c.SYNC_TYPE_SYNC, COUNT, &lockSources);
-            c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null);
+            expect(c.cubs_operands_make_sync(&bytecode, 2, c.SYNC_TYPE_SYNC, COUNT, &lockSources) == 2) catch unreachable;
+            expect(c.cubs_operands_make_sync(&bytecode[2], 1, c.SYNC_TYPE_UNSYNC, 0, null) == 1) catch unreachable;
 
             c.cubs_interpreter_push_frame(COUNT * 2, null, null);
             defer c.cubs_interpreter_pop_frame();
