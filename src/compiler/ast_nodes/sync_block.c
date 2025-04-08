@@ -48,14 +48,31 @@ static void sync_block_node_resolve_types(
         const StackVariableInfo* info = &variables->variables[variable.index];
         const TypeResolutionInfo* typeInfo = &info->typeInfo;
 
-        if(typeInfo->tag)
-    
-        if(variable.isMutable) {
-            assert(info->isMutable && "Cannot read-write sync non mutable variable");
+        switch(typeInfo->tag) {
+            case TypeInfoUnique: case TypeInfoShared: case TypeInfoWeak: {
+                if(variable.isMutable) {
+                    assert(info->isMutable && "Cannot read-write sync non mutable variable");
+                }
+            } break;
+            case TypeInfoReference: {
+                if(variable.isMutable) {
+                    assert(typeInfo->value.reference.isMutable && "Cannot read-write sync non mutable reference");
+                }
+                const TypeResolutionInfo* childType = typeInfo->value.reference.child;
+                if( childType->tag != TypeInfoUnique &&
+                    childType->tag != TypeInfoShared && 
+                    childType->tag != TypeInfoWeak) 
+                {
+                    assert(false && "Cannot sync reference to non sync type");
+                }
+            } break;
+            default: {
+                assert(false && "Expected sync type or reference to sync type");
+            }
         }
-
-        assert(typeInfo->tag != TypeInfoUnknown);
     }
+
+    self->resolvedVariablesToSync = resolved;
 }
 
 static AstNodeVTable sync_node_node_vtable = {
@@ -65,7 +82,7 @@ static AstNodeVTable sync_node_node_vtable = {
     .toString = NULL,
     .buildFunction = NULL,
     .defineType = NULL,
-    .resolveTypes = NULL,
+    .resolveTypes = (AstNodeResolveTypes)&sync_block_node_resolve_types,
     .endsWithReturn = NULL,
 };
 
