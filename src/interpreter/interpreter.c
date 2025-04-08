@@ -266,26 +266,45 @@ static void execute_deinit(const Bytecode bytecode) {
 }
 
 static void sync_value_at(OperandsSyncLockSource src) {
-    const CubsTypeContext* context = cubs_interpreter_stack_context_at(src.src);
+    const CubsTypeContext* srcContext = cubs_interpreter_stack_context_at(src.src);
     const enum SyncLockType lockType = (enum SyncLockType)src.lock;
-    void* value = cubs_interpreter_stack_value_at(src.src);
-    if(context == &CUBS_UNIQUE_CONTEXT) {
+    void* srcValue = cubs_interpreter_stack_value_at(src.src);
+    bool canExclusiveLock = true;
+
+    const CubsTypeContext* actualContext = srcContext;
+    void* actualValue = srcValue;
+    if(srcContext == &CUBS_CONST_REF_CONTEXT) {
+        // const references cannot be written to, therefore cannot be exclusively locked
+        canExclusiveLock = false;
+        CubsConstRef* ref = (CubsConstRef*)srcValue;
+        actualContext = ref->context;
+        actualValue = ref->ref;
+    } else if(srcContext == &CUBS_MUT_REF_CONTEXT) {
+        CubsMutRef* ref = (CubsMutRef*)srcValue;
+        actualContext = ref->context;
+        actualValue = ref->ref;
+    }
+
+    if(actualContext == &CUBS_UNIQUE_CONTEXT) {
         if(src.lock == SYNC_LOCK_TYPE_READ) {
-            cubs_sync_queue_unique_add_shared((const struct CubsUnique*)value);
+            cubs_sync_queue_unique_add_shared((const struct CubsUnique*)actualValue);
         } else {
-            cubs_sync_queue_unique_add_exclusive((struct CubsUnique*)value);
+            assert(canExclusiveLock);
+            cubs_sync_queue_unique_add_exclusive((struct CubsUnique*)actualValue);
         }
-    } else if(context == &CUBS_SHARED_CONTEXT) {
+    } else if(actualContext == &CUBS_SHARED_CONTEXT) {
         if(src.lock == SYNC_LOCK_TYPE_READ) {
-            cubs_sync_queue_shared_add_shared((const struct CubsShared*)value);
+            cubs_sync_queue_shared_add_shared((const struct CubsShared*)actualValue);
         } else {
-            cubs_sync_queue_shared_add_exclusive((struct CubsShared*)value);
+            assert(canExclusiveLock);
+            cubs_sync_queue_shared_add_exclusive((struct CubsShared*)actualValue);
         }
-    } else if(context == &CUBS_WEAK_CONTEXT) {
+    } else if(actualContext == &CUBS_WEAK_CONTEXT) {
         if(src.lock == SYNC_LOCK_TYPE_READ) {
-            cubs_sync_queue_weak_add_shared((const struct CubsWeak*)value);
+            cubs_sync_queue_weak_add_shared((const struct CubsWeak*)actualValue);
         } else {
-            cubs_sync_queue_weak_add_exclusive((struct CubsWeak*)value);
+            assert(canExclusiveLock);
+            cubs_sync_queue_weak_add_exclusive((struct CubsWeak*)actualValue);
         }
     } else {
         cubs_panic("Cannot sync non-sync type");
