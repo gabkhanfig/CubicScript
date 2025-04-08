@@ -193,8 +193,11 @@ typedef struct {
 } OperandsSync;
 VALIDATE_SIZE_ALIGN_OPERANDS(OperandsSync);
 
+size_t cubs_operands_sync_bytecode_required(uint16_t numSources);
+
 /// Reads up to `sources[num - 1]`
-void cubs_operands_make_sync(Bytecode* bytecodeArr, size_t availableBytecode, enum SyncType syncType, uint16_t num, const SyncLockSource* sources);
+/// @return The number of bytecode actually used. See `cubs_operands_sync_bytecode_required(...)`.
+size_t cubs_operands_make_sync(Bytecode* bytecodeArr, size_t availableBytecode, enum SyncType syncType, uint16_t num, const SyncLockSource* sources);
 
 #pragma endregion
 

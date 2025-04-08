@@ -132,31 +132,39 @@ Bytecode cubs_operands_make_jump(enum JumpType jumpType, int32_t jumpAmount, uin
     return b;
 }
 
-void cubs_operands_make_sync(Bytecode *bytecodeArr, size_t availableBytecode, enum SyncType syncType, uint16_t num, const SyncLockSource *sources)
+size_t cubs_operands_sync_bytecode_required(uint16_t numSources) {
+    /// Initial bytecode
+    if(numSources > 2) {
+        size_t requiredBytecode = 1;
+        const size_t extendedRequired = numSources - 2; // 2 sources are stored inline the bytecode
+        if((extendedRequired % 4) == 0) {
+            requiredBytecode += (extendedRequired / 4);
+        } else {
+            requiredBytecode += (extendedRequired / 4) + 1;
+        }
+        return requiredBytecode;
+    } else {
+        return 1;
+    }
+}
+
+size_t cubs_operands_make_sync(Bytecode *bytecodeArr, size_t availableBytecode, enum SyncType syncType, uint16_t num, const SyncLockSource *sources)
 {
     assert(availableBytecode >= 1);
     if(syncType == SYNC_TYPE_UNSYNC) {
         BYTECODE_ALIGN const OperandsSync operands = {.reserveOpcode = OpCodeSync, .opType = SYNC_TYPE_UNSYNC};
         const Bytecode b = *(const Bytecode*)&operands;
         bytecodeArr[0] = b;
+        return 1;
     } else {
+        size_t usedBytecode = cubs_operands_sync_bytecode_required(num);
+
         { // validation
             assert(num != 0);
             for(uint16_t i = 0; i < num; i++) {
                 assert(sources[i].src <= MAX_FRAME_LENGTH);
             }
-
-            /// Initial bytecode
-            if(num > 2) {
-                size_t requiredBytecode = 1;
-                const size_t extendedRequired = num - 2; // 2 sources are stored inline the bytecode
-                if((extendedRequired % 4) == 0) {
-                    requiredBytecode += (extendedRequired / 4);
-                } else {
-                    requiredBytecode += (extendedRequired / 4) + 1;
-                }
-                assert(availableBytecode >= requiredBytecode);
-            }
+            assert(availableBytecode >= usedBytecode);
         }
 
         if(num == 1) {
@@ -191,6 +199,8 @@ void cubs_operands_make_sync(Bytecode *bytecodeArr, size_t availableBytecode, en
                 }
             }
         }
+
+        return usedBytecode;
     }
 }
 
