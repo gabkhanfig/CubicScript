@@ -120,15 +120,34 @@ static ExprValue parse_expression_value(
                 const AstNode memberAccess = cubs_member_access_node_init(iter, variables);
                 value.tag = StructMember;
                 value.value.structMember = memberAccess;
-            } else if(didFindVariable && (variables->variables[foundVariableIndex].typeInfo.tag == TypeInfoReference)) {
+                
+            } else if(didFindVariable &&  cubs_type_resolution_info_is_reference_type(&variables->variables[foundVariableIndex].typeInfo)) {
                 const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpDeref", .len = 9});
             
+                        const TypeResolutionInfo* childType = NULL;
+                switch(variables->variables[foundVariableIndex].typeInfo.tag) {
+                    case TypeInfoReference: {
+                        childType = variables->variables[foundVariableIndex].typeInfo.value.reference.child;
+                    } break;
+                    case TypeInfoUnique: {
+                        childType = variables->variables[foundVariableIndex].typeInfo.value.unique.child;
+                    } break;
+                    case TypeInfoShared: {
+                        childType = variables->variables[foundVariableIndex].typeInfo.value.shared.child;
+                    } break;
+                    case TypeInfoWeak: {
+                        childType = variables->variables[foundVariableIndex].typeInfo.value.weak.child;
+                    } break;
+                    default: {
+                        unreachable();
+                    }
+                }
                 StackVariableInfo temporaryVariable = {
                     .name = variableName,
                     .isTemporary = true,
                     .isMutable = false,
                     //.typeInfo = NULL,          
-                    .typeInfo = cubs_type_resolution_info_clone(variables->variables[foundVariableIndex].typeInfo.value.reference.child),
+                    .typeInfo = cubs_type_resolution_info_clone(childType),
                 };
 
                 const size_t tempIndex = variables->len;
