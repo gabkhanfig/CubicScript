@@ -1657,3 +1657,40 @@ test "function sync" {
         }
     }
 }
+
+test "function write sync" {
+    const source =
+        \\fn testFunc(testVar: shared int) {
+        \\  sync mut testVar {
+        \\      testVar = 800;
+        \\  }
+        \\}
+    ;
+
+    std.debug.print("HELLO\n\n", .{});
+
+    const tokenIter = tokenIterInit(source, null);
+    var program = c.cubs_program_init(.{});
+    defer c.cubs_program_deinit(&program);
+
+    var ast = c.cubs_ast_init(tokenIter, &program);
+    defer c.cubs_ast_deinit(&ast);
+
+    c.cubs_ast_codegen(&ast);
+
+    if (findFunction(&program, "testFunc")) |func| {
+        var call = c.cubs_function_start_call(&func);
+
+        var num: i64 = 10;
+        var arg = c.cubs_shared_init(@ptrCast(&num), &c.CUBS_INT_CONTEXT);
+        var clone = c.cubs_shared_clone(&arg);
+        defer c.cubs_shared_deinit(&clone);
+
+        c.cubs_function_push_arg(&call, @ptrCast(&arg), &c.CUBS_SHARED_CONTEXT);
+
+        try expect(c.cubs_function_call(call, .{}) == 0);
+        try expect(@as(*const i64, @ptrCast(@alignCast(c.cubs_shared_get(&clone)))).* == 800);
+    } else {
+        try expect(false);
+    }
+}

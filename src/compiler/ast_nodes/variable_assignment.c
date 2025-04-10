@@ -23,7 +23,7 @@ static void variable_assignment_node_build_function(
 ) {
     const ExprValueDst expressionSrc = cubs_expr_value_build_function(&self->newValue, builder, stackAssignment);
     assert(expressionSrc.hasDst);
-    if(self->updatingReference) {
+    if(self->updateType != VariableAssignmentUpdateTypeValue) {
         const size_t actualRefDst = stackAssignment->positions[self->variableIndex];
         const Bytecode setRef = cubs_operands_make_set_reference(actualRefDst, expressionSrc.dst);
         cubs_function_builder_push_bytecode(builder, setRef);
@@ -53,14 +53,28 @@ struct AstNode cubs_variable_assignment_node_init(
         assert(false && "Cannot assign to variable that hasn't been declared");
     }
 
-    bool updatingReference = false;
+    VariableAssignmentUpdateType updateType = VariableAssignmentUpdateTypeValue;
     { // validate mutable
         const StackVariableInfo* variableInfo = &variables->variables[foundVariableIndex];
-        if(variableInfo->typeInfo.tag == TypeInfoReference) {
-            assert(variableInfo->typeInfo.value.reference.isMutable);
-            updatingReference = true;
-        } else {
-            assert(variableInfo->isMutable);
+        const enum TypeResolutionInfoTag tag = variableInfo->typeInfo.tag;
+        switch(tag) {
+            case TypeInfoReference: {
+                assert(variableInfo->typeInfo.value.reference.isMutable);
+                updateType = VariableAssignmentUpdateTypeReference;
+            } break;
+            // TODO sync block mutable access validation
+            case TypeInfoUnique: {
+                updateType = VariableAssignmentUpdateTypeUnique;
+            } break;
+            case TypeInfoShared: {
+                updateType = VariableAssignmentUpdateTypeShared;
+            } break;
+            case TypeInfoWeak: {
+                updateType = VariableAssignmentUpdateTypeWeak;
+            } break;
+            default: {
+                assert(variableInfo->isMutable);
+            }
         }
     }
 
@@ -71,15 +85,33 @@ struct AstNode cubs_variable_assignment_node_init(
 
     (void)cubs_token_iter_next(iter); // step over to next
     ExprValue expression = cubs_parse_expression(iter, variables, dependencies, true, foundVariableIndex);
-    if(updatingReference) {
+    if(updateType != VariableAssignmentUpdateTypeValue) {
         const CubsString variableName = cubs_string_init_unchecked((CubsStringSlice){.str = "_tmpDeref", .len = 9});
             
+        const TypeResolutionInfo* childType = NULL;
+        switch(variables->variables[foundVariableIndex].typeInfo.tag) {
+            case TypeInfoReference: {
+                childType = variables->variables[foundVariableIndex].typeInfo.value.reference.child;
+            } break;
+            case TypeInfoUnique: {
+                childType = variables->variables[foundVariableIndex].typeInfo.value.unique.child;
+            } break;
+            case TypeInfoShared: {
+                childType = variables->variables[foundVariableIndex].typeInfo.value.shared.child;
+            } break;
+            case TypeInfoWeak: {
+                childType = variables->variables[foundVariableIndex].typeInfo.value.weak.child;
+            } break;
+            default: {
+                unreachable();
+            }
+        }
         StackVariableInfo temporaryVariable = {
             .name = variableName,
             .isTemporary = true,
             .isMutable = false,
             //.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT),
-            .typeInfo = cubs_type_resolution_info_clone(variables->variables[foundVariableIndex].typeInfo.value.reference.child),
+            .typeInfo = cubs_type_resolution_info_clone(childType),
         };
 
         // Variable order is preserved
@@ -96,7 +128,7 @@ struct AstNode cubs_variable_assignment_node_init(
     *self = (VariableAssignmentNode){
         .variableIndex = foundVariableIndex,
         .newValue = expression,
-        .updatingReference = updatingReference
+        .updateType = updateType
     };
 
     const AstNode node = {.ptr = (void*)self, .vtable = &variable_assignment_node_vtable};
