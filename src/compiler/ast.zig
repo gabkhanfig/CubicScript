@@ -1786,3 +1786,78 @@ test "sync multithread" {
     // Runs 3 times.
     try expect(@as(*const i64, @ptrCast(@alignCast(c.cubs_shared_get(&sharedPtr)))).* == 40);
 }
+
+test "multiple sync/unsync multithread" {
+    const ScriptExec = struct {
+        fn run(shared: *c.CubsShared) void {
+            const source =
+                \\fn testFunc(testVar: shared int) {
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\  sync mut testVar {
+                \\      testVar = testVar + 1;
+                \\  }
+                \\}
+            ;
+
+            const tokenIter = tokenIterInit(source, null);
+            var program = c.cubs_program_init(.{});
+            defer c.cubs_program_deinit(&program);
+
+            var ast = c.cubs_ast_init(tokenIter, &program);
+            defer c.cubs_ast_deinit(&ast);
+
+            c.cubs_ast_codegen(&ast);
+
+            if (findFunction(&program, "testFunc")) |func| {
+                var call = c.cubs_function_start_call(&func);
+                var arg = c.cubs_shared_clone(shared);
+                c.cubs_function_push_arg(&call, @ptrCast(&arg), &c.CUBS_SHARED_CONTEXT);
+
+                expect(c.cubs_function_call(call, .{}) == 0) catch unreachable;
+            } else {
+                expect(false) catch unreachable;
+            }
+        }
+    };
+
+    var num: i64 = 10;
+    var sharedPtr = c.cubs_shared_init(@ptrCast(&num), &c.CUBS_INT_CONTEXT);
+    defer c.cubs_shared_deinit(&sharedPtr);
+
+    const t1 = std.Thread.spawn(.{}, ScriptExec.run, .{&sharedPtr}) catch unreachable;
+    const t2 = std.Thread.spawn(.{}, ScriptExec.run, .{&sharedPtr}) catch unreachable;
+
+    ScriptExec.run(&sharedPtr);
+
+    t1.join();
+    t2.join();
+
+    // Runs 3 times.
+    try expect(@as(*const i64, @ptrCast(@alignCast(c.cubs_shared_get(&sharedPtr)))).* == 40);
+}
