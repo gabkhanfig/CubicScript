@@ -9,6 +9,8 @@
 #include "../../program/program.h"
 #include "../../program/program_internal.h"
 #include "../../interpreter/function_definition.h"
+#include "../../interpreter/bytecode.h"
+#include "../../interpreter/operations.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -22,6 +24,49 @@ static void sync_block_node_deinit(SyncBlockNode* self) {
     
     *self = (SyncBlockNode){0};
     FREE_TYPE(SyncBlockNode, self);
+}
+
+static void sync_block_node_build_function(
+    const SyncBlockNode* self,
+    FunctionBuilder* builder,
+    const StackVariablesAssignment* stackAssignment
+) {
+    { // bytecode to acquire all locks
+        OperandsSyncLockSource* lockSources = MALLOC_TYPE_ARRAY(OperandsSyncLockSource, self->variablesLen);
+        for(size_t i = 0; i < self->variablesLen; i++) {
+            const ResolvedSyncVariable resolved = self->resolvedVariablesToSync[i];
+            const uint16_t src = stackAssignment->positions[resolved.index];
+            assert(src < MAX_FRAME_LENGTH);
+            const uint16_t syncLockType = resolved.isMutable ? SYNC_LOCK_TYPE_WRITE : SYNC_LOCK_TYPE_READ;
+            lockSources[i] = (OperandsSyncLockSource){.src = src, .lock = syncLockType};
+        }
+
+        const uint16_t lockCount = (uint16_t)self->variablesLen;
+        const size_t requiredBytecode = cubs_operands_sync_bytecode_required(lockCount);
+        Bytecode* bytecode = MALLOC_TYPE_ARRAY(Bytecode, requiredBytecode);
+        const size_t usedBytecode = cubs_operands_make_sync(
+            bytecode, requiredBytecode, SYNC_TYPE_SYNC, lockCount, lockSources);
+        assert(usedBytecode == requiredBytecode);
+
+        cubs_function_builder_push_bytecode_many(builder, bytecode, requiredBytecode);
+
+        FREE_TYPE_ARRAY(OperandsSyncLockSource, lockSources, self->variablesLen);
+        FREE_TYPE_ARRAY(Bytecode, bytecode, requiredBytecode);
+    }
+
+    // statements within block
+    for(size_t i = 0; i < self->statements.len; i++) {
+        const AstNode node = self->statements.nodes[i];
+        // TODO allow nodes that don't just do code gen, such as nested structs maybe? or lambdas? to determine
+        assert(node.vtable->buildFunction != NULL);
+        ast_node_build_function(&node, builder, stackAssignment);
+    }
+    
+    { // unsync
+        Bytecode bytecode = {0};
+        const size_t usedBytecode = cubs_operands_make_sync(&bytecode, 1, SYNC_TYPE_UNSYNC, 0, NULL);
+        cubs_function_builder_push_bytecode(builder, bytecode);
+    }
 }
 
 static ResolvedSyncVariable resolve_sync_variable(const SyncVariable* variable, const StackVariablesArray* stackVariables) {
