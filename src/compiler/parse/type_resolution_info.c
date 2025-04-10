@@ -206,6 +206,9 @@ TypeResolutionInfo cubs_parse_type_resolution_info(TokenIter *iter)
 
         self.tag = TypeInfoReference;
         self.value.reference = referenceData;
+    } else if(startToken.tag == UNIQUE_KEYWORD || startToken.tag == SHARED_KEYWORD || startToken.tag == WEAK_KEYWORD) {     
+        const bool success = try_parse_sync_type(&self, iter);
+        assert(success);
     } else {
         fprintf(stderr, "Expected type. Found %d\n", startToken.tag);
         cubs_panic("Unexpected token encountered");
