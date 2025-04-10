@@ -21,6 +21,7 @@ static void sync_block_node_deinit(SyncBlockNode* self) {
     }
     ast_node_array_deinit(&self->statements);
     cubs_scope_deinit(self->scope);
+    FREE_TYPE(Scope, self->scope);
     
     *self = (SyncBlockNode){0};
     FREE_TYPE(SyncBlockNode, self);
@@ -32,13 +33,13 @@ static void sync_block_node_build_function(
     const StackVariablesAssignment* stackAssignment
 ) {
     { // bytecode to acquire all locks
-        OperandsSyncLockSource* lockSources = MALLOC_TYPE_ARRAY(OperandsSyncLockSource, self->variablesLen);
+        SyncLockSource* lockSources = MALLOC_TYPE_ARRAY(SyncLockSource, self->variablesLen);
         for(size_t i = 0; i < self->variablesLen; i++) {
             const ResolvedSyncVariable resolved = self->resolvedVariablesToSync[i];
             const uint16_t src = stackAssignment->positions[resolved.index];
             assert(src < MAX_FRAME_LENGTH);
-            const uint16_t syncLockType = resolved.isMutable ? SYNC_LOCK_TYPE_WRITE : SYNC_LOCK_TYPE_READ;
-            lockSources[i] = (OperandsSyncLockSource){.src = src, .lock = syncLockType};
+            const enum SyncLockType syncLockType = resolved.isMutable ? SYNC_LOCK_TYPE_WRITE : SYNC_LOCK_TYPE_READ;
+            lockSources[i] = (SyncLockSource){.src = src, .lock = syncLockType};
         }
 
         const uint16_t lockCount = (uint16_t)self->variablesLen;
@@ -50,7 +51,7 @@ static void sync_block_node_build_function(
 
         cubs_function_builder_push_bytecode_many(builder, bytecode, requiredBytecode);
 
-        FREE_TYPE_ARRAY(OperandsSyncLockSource, lockSources, self->variablesLen);
+        FREE_TYPE_ARRAY(SyncLockSource, lockSources, self->variablesLen);
         FREE_TYPE_ARRAY(Bytecode, bytecode, requiredBytecode);
     }
 
@@ -115,6 +116,8 @@ static void sync_block_node_resolve_types(
                 assert(false && "Expected sync type or reference to sync type");
             }
         }
+
+        resolved[i] = variable;
     }
 
     self->resolvedVariablesToSync = resolved;
@@ -125,7 +128,7 @@ static AstNodeVTable sync_node_node_vtable = {
     .deinit = (AstNodeDeinit)&sync_block_node_deinit,
     .compile = NULL,
     .toString = NULL,
-    .buildFunction = NULL,
+    .buildFunction = (AstNodeBuildFunction)&sync_block_node_build_function,
     .defineType = NULL,
     .resolveTypes = (AstNodeResolveTypes)&sync_block_node_resolve_types,
     .endsWithReturn = NULL,
@@ -150,7 +153,7 @@ static SyncVariablesParseError try_parse_sync_variables(
     const StackVariablesArray* variables,
     const Scope* outerScope
 ) {
-    if(iter->current.tag != IDENTIFIER || iter->current.tag != MUT_KEYWORD) {
+    if(iter->current.tag != IDENTIFIER && iter->current.tag != MUT_KEYWORD) {
         return syncVariablesParseErrorExpectedIdentifierOrMut;
     }
 
@@ -182,7 +185,7 @@ static SyncVariablesParseError try_parse_sync_variables(
         variable.name = identifier;
 
         (void)cubs_token_iter_next(iter);
-        if(iter->current.tag != COMMA_SYMBOL || iter->current.tag != LEFT_BRACE_SYMBOL) {
+        if(iter->current.tag != COMMA_SYMBOL && iter->current.tag != LEFT_BRACE_SYMBOL) {
             FREE_TYPE_ARRAY(SyncVariable, toSync, capacity);
             return syncVariablesParseErrorExpectedCommaOrLeftBrace;
         }
@@ -248,8 +251,8 @@ AstNode cubs_sync_block_node_init(
         } break;
 
         case syncVariablesParseErrorExpectedCommaOrLeftBrace: {
-            fprintf(stderr, "Expected comma `,` left brace `{`, instead found %d\n", iter->current.tag);
-            assert(false && "Expected comma `,` left brace `{`");
+            fprintf(stderr, "Expected comma `,` or left brace `{`, instead found %d\n", iter->current.tag);
+            assert(false && "Expected comma `,` or left brace `{`");
         } break;
 
         case syncVariablesParseErrorNotAVariable: { // this one may not be necessary later

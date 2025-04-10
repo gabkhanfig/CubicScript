@@ -8,6 +8,7 @@
 #include "../ast_nodes/conditional_node.h"
 #include "../ast_nodes/function_call.h"
 #include "../ast_nodes/member_assign.h"
+#include "../ast_nodes/sync_block.h"
 #include "../stack_variables.h"
 #include "../graph/function_dependency_graph.h"
 #include "../graph/scope.h"
@@ -34,6 +35,11 @@ bool parse_next_statement(AstNode *outNode, TokenIter *iter, StackVariablesArray
             case IF_KEYWORD: {
                 AstNode conditionalNode = cubs_conditional_node_init(iter, variables, dependencies, outerScope);
                 *outNode = conditionalNode;
+            } break;
+
+            case SYNC_KEYWORD: {
+                AstNode syncNode = cubs_sync_block_node_init(iter, variables, dependencies, outerScope);
+                *outNode = syncNode;
             } break;
 
             case IDENTIFIER: {
