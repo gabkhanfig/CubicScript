@@ -342,6 +342,38 @@ test "sync variable find in same scope" {
     try expect(out.isMutable == variables[0].isMutable);
 }
 
+test "sync variable not find but scope has other symbols" {
+    const variables = &[1]c.SyncVariable{c.SyncVariable{ .name = makeSlice("someVar") }};
+
+    var scope = Scope{
+        .isSync = true,
+        .syncVariablesLen = 1,
+        .syncVariables = variables,
+    };
+
+    var out: c.SyncVariable = undefined;
+    try expect(c.cubs_scope_is_symbol_synced(&scope, &out, makeSlice("otherVar")) == false);
+}
+
+test "sync variable find in same scope with many symbols" {
+    const variables = &[3]c.SyncVariable{
+        c.SyncVariable{ .name = makeSlice("someVar0") },
+        c.SyncVariable{ .name = makeSlice("someVar1") },
+        c.SyncVariable{ .name = makeSlice("someVar2") },
+    };
+
+    var scope = Scope{
+        .isSync = true,
+        .syncVariablesLen = 3,
+        .syncVariables = variables,
+    };
+
+    var out: c.SyncVariable = undefined;
+    try expect(c.cubs_scope_is_symbol_synced(&scope, &out, variables[2].name));
+    try expect(c.cubs_string_slice_eql(out.name, variables[2].name));
+    try expect(out.isMutable == variables[2].isMutable);
+}
+
 test "sync variable in parent scope" {
     const variables = &[1]c.SyncVariable{c.SyncVariable{ .name = makeSlice("someVar") }};
 
