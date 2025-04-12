@@ -272,7 +272,9 @@ AstNode cubs_sync_block_node_init(
     *scope = (Scope){
         .isInFunction = true,
         .isSync = true,
-        .optionalParent = outerScope
+        .optionalParent = outerScope,
+        .syncVariablesLen = parsedVariables.len,
+        .syncVariables = parsedVariables.toSync,
     };
 
     AstNodeArray statements = {0};

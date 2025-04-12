@@ -7,6 +7,8 @@
 #include "../../primitives/string/string_slice.h"
 #include "../../primitives/string/string.h"
 
+struct SyncVariable;
+
 typedef union ScopeSymbolData {
     CubsString variableSymbol;
     CubsString functionSymbol;
@@ -39,6 +41,11 @@ typedef struct Scope {
     /// Notes that this is a sync block, allowing the accessing of `unique`,
     /// `shared`, and `weak` types.
     bool isSync;
+    /// Amount of elements in `syncVariables`. Only used if `isSync` is true.
+    size_t syncVariablesLen;
+    /// Non-owned reference to the variables that will be synchronized. Only
+    /// used is `isSync` is true.
+    const struct SyncVariable* syncVariables;
     /// Array that's valid up to `len`.
     ScopeSymbol* symbols;
     /// Hash codes that correspond to `symbols` elements.
@@ -75,5 +82,11 @@ FoundScopeSymbol cubs_scope_find_symbol(const Scope* self, CubsStringSlice symbo
 /// If the symbol is found, `outIndex` will be set to the index where the
 /// symbol is within `scope->symbols`. Otherwise, the value will be unmodified.
 bool cubs_scope_symbol_defined_in(const Scope* scope, size_t* outIndex, CubsStringSlice symbolName);
+
+/// Returns true if the symbol named `symbolName` is found and synchronized
+/// within this scope, or it's parents scopes, otherwise returns false.
+/// If it is found, `outVariable` will be set to be the corresponding data.
+/// If `self->isSync == false`, returns false.
+bool cubs_scope_is_symbol_synced(const Scope* self, struct SyncVariable* outVariable, CubsStringSlice symbolName);
 
 #endif

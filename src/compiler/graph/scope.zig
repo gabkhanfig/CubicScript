@@ -2,6 +2,7 @@ const std = @import("std");
 const expect = std.testing.expect;
 const c = @cImport({
     @cInclude("compiler/graph/scope.h");
+    @cInclude("compiler/ast_nodes/sync_block.h");
 });
 const string = @import("../../primitives/string/string.zig");
 const String = string.String;
@@ -318,4 +319,42 @@ test "global symbol" {
     var index: usize = undefined;
     try expect(cubs_scope_symbol_defined_in(&scope, &index, symbolName));
     try expect(index == 0);
+}
+
+test "sync variable not find" {
+    var scope = Scope{};
+    var out: c.SyncVariable = undefined;
+    try expect(c.cubs_scope_is_symbol_synced(&scope, &out, makeSlice("someVar")) == false);
+}
+
+test "sync variable find in same scope" {
+    const variables = &[1]c.SyncVariable{c.SyncVariable{ .name = makeSlice("someVar") }};
+
+    var scope = Scope{
+        .isSync = true,
+        .syncVariablesLen = 1,
+        .syncVariables = variables,
+    };
+
+    var out: c.SyncVariable = undefined;
+    try expect(c.cubs_scope_is_symbol_synced(&scope, &out, variables[0].name));
+    try expect(c.cubs_string_slice_eql(out.name, variables[0].name));
+    try expect(out.isMutable == variables[0].isMutable);
+}
+
+test "sync variable in parent scope" {
+    const variables = &[1]c.SyncVariable{c.SyncVariable{ .name = makeSlice("someVar") }};
+
+    var parent = Scope{
+        .isSync = true,
+        .syncVariablesLen = 1,
+        .syncVariables = variables,
+    };
+
+    var child = Scope{ .isSync = true, .optionalParent = &parent };
+
+    var out: c.SyncVariable = undefined;
+    try expect(c.cubs_scope_is_symbol_synced(&child, &out, variables[0].name));
+    try expect(c.cubs_string_slice_eql(out.name, variables[0].name));
+    try expect(out.isMutable == variables[0].isMutable);
 }

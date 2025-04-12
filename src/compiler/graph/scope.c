@@ -1,6 +1,7 @@
 #include "scope.h"
 #include "../../util/unreachable.h"
 #include "../../platform/mem.h"
+#include "../ast_nodes/sync_block.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -144,7 +145,6 @@ bool cubs_scope_add_symbol(Scope *self, ScopeSymbol symbol)
 
 FoundScopeSymbol cubs_scope_find_symbol(const Scope *self, CubsStringSlice symbolName)
 {
-    
     assert(symbolName.len > 0);
     assert(symbolName.str != NULL);
 
@@ -180,4 +180,28 @@ bool cubs_scope_symbol_defined_in(const Scope *scope, size_t *outIndex, CubsStri
     }
     *outIndex = foundIndex;
     return true;
+}
+
+bool cubs_scope_is_symbol_synced(const Scope *self, SyncVariable *outVariable, CubsStringSlice symbolName)
+{
+    assert(symbolName.len > 0);
+    assert(symbolName.str != NULL);
+    
+    if(!self->isSync) {
+        return false;
+    }
+
+    const Scope* checking = self;
+    while(checking != NULL) {
+        for(size_t i = 0; i < checking->syncVariablesLen; i++) {
+            if(cubs_string_slice_eql(symbolName, checking->syncVariables[i].name)) {
+                *outVariable = checking->syncVariables[i];
+                return true;
+            }
+        }
+        // May set to NULL, stopping the loop
+        checking = checking->optionalParent;
+    }
+
+    return false;
 }
