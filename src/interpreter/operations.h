@@ -258,6 +258,10 @@ typedef struct {
 
 typedef OperandsUnknownCompare OperandsEqual;
 typedef OperandsUnknownCompare OperandsNotEqual;
+typedef OperandsUnknownCompare OperandsLess;
+typedef OperandsUnknownCompare OperandsLessOrEqual;
+typedef OperandsUnknownCompare OperandsGreater;
+typedef OperandsUnknownCompare OperandsGreaterOrEqual;
 
 Bytecode cubs_operands_make_compare(enum CompareOperationType compareType, uint16_t dst, uint16_t src1, uint16_t src2);
 

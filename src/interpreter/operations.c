@@ -247,9 +247,25 @@ Bytecode cubs_operands_make_compare(enum CompareOperationType compareType, uint1
             BYTECODE_ALIGN const OperandsNotEqual operands = {.reserveOpcode = OpCodeNotEqual, .dst = dst, .src1 = src1, .src2 = src2};
             b = *(const Bytecode*)&operands;
         } break;
-        default: {
-            cubs_panic("not implemented compare operation yet");
+        case COMPARE_OP_LESS: {
+            BYTECODE_ALIGN const OperandsLess operands = {.reserveOpcode = OpCodeLess, .dst = dst, .src1 = src1, .src2 = src2};
+            b = *(const Bytecode*)&operands;
         } break;
+        case COMPARE_OP_LESS_OR_EQUAL: {
+            BYTECODE_ALIGN const OperandsLessOrEqual operands = {.reserveOpcode = OpCodeLessOrEqual, .dst = dst, .src1 = src1, .src2 = src2};
+            b = *(const Bytecode*)&operands;
+        } break;
+        case COMPARE_OP_GREATER: {
+            BYTECODE_ALIGN const OperandsGreater operands = {.reserveOpcode = OpCodeGreater, .dst = dst, .src1 = src1, .src2 = src2};
+            b = *(const Bytecode*)&operands;
+        } break;
+        case COMPARE_OP_GREATER_OR_EQUAL: {
+            BYTECODE_ALIGN const OperandsGreaterOrEqual operands = {.reserveOpcode = OpCodeGreaterOrEqual, .dst = dst, .src1 = src1, .src2 = src2};
+            b = *(const Bytecode*)&operands;
+        } break;
+        default: {
+            unreachable();
+        };
     }
     return b;
 }
