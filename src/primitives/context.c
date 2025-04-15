@@ -57,6 +57,31 @@ static int bool_eql(CubsCFunctionHandler handler) {
     return 0;
 }
 
+static int bool_compare(CubsCFunctionHandler handler) {
+    CubsConstRef lhs = {0};
+    const CubsTypeContext* lhsContext = NULL;
+    CubsConstRef rhs = {0};
+    const CubsTypeContext* rhsContext = NULL;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&lhs, &lhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_BOOL_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_BOOL_CONTEXT);
+    
+    const bool lhsVal = (*(const bool*)lhs.ref);
+    const bool rhsVal = (*(const bool*)rhs.ref);
+    CubsOrdering ordering = {0};
+    if(lhsVal == rhsVal) ordering = cubsOrderingEqual;
+    else if(lhsVal < rhsVal) ordering =  cubsOrderingLess;
+    else ordering = cubsOrderingGreater;
+    
+    cubs_function_return_set_value(handler, (void*)&ordering, &CUBS_ORDERING_CONTEXT);
+    return 0;
+}
+
 static int bool_hash(CubsCFunctionHandler handler) {
     CubsConstRef self;
     const CubsTypeContext* context;
@@ -73,6 +98,7 @@ const CubsTypeContext CUBS_BOOL_CONTEXT = {
     .destructor = {0},
     .clone = {.func = {.externC = &bool_clone}, .funcType = cubsFunctionPtrTypeC},
     .eql = {.func = {.externC = &bool_eql}, .funcType = cubsFunctionPtrTypeC},
+    .compare = {.func = {.externC = &bool_compare}, .funcType = cubsFunctionPtrTypeC},
     .hash = {.func = {.externC = &bool_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "bool",
     .nameLength = 4,
@@ -113,6 +139,31 @@ static int int_eql(CubsCFunctionHandler handler) {
     return 0;
 }
 
+static CubsOrdering int_compare(CubsCFunctionHandler handler) {
+    CubsConstRef lhs = {0};
+    const CubsTypeContext* lhsContext = NULL;
+    CubsConstRef rhs = {0};
+    const CubsTypeContext* rhsContext = NULL;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_INT_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_INT_CONTEXT);
+    
+    const int64_t lhsVal = (*(const int64_t*)lhs.ref);
+    const int64_t rhsVal = (*(const int64_t*)rhs.ref);
+    CubsOrdering ordering = {0};
+    if(lhsVal == rhsVal) ordering = cubsOrderingEqual;
+    else if(lhsVal < rhsVal) ordering =  cubsOrderingLess;
+    else ordering = cubsOrderingGreater;
+    
+    cubs_function_return_set_value(handler, (void*)&ordering, &CUBS_ORDERING_CONTEXT);
+    return 0;
+}
+
 static int int_hash(CubsCFunctionHandler handler) {
     CubsConstRef self;
     const CubsTypeContext* context;
@@ -129,6 +180,7 @@ const CubsTypeContext CUBS_INT_CONTEXT = {
     .destructor = {0}, 
     .clone = {.func = {.externC = &int_clone}, .funcType = cubsFunctionPtrTypeC},
     .eql = {.func = {.externC = &int_eql}, .funcType = cubsFunctionPtrTypeC},
+    .compare = {.func = {.externC = &int_compare}, .funcType = cubsFunctionPtrTypeC},
     .hash = {.func = {.externC = &int_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "int",
     .nameLength = 3,
@@ -169,6 +221,31 @@ static int float_eql(CubsCFunctionHandler handler) {
     return 0;
 }
 
+static CubsOrdering float_compare(CubsCFunctionHandler handler) {
+    CubsConstRef lhs = {0};
+    const CubsTypeContext* lhsContext = NULL;
+    CubsConstRef rhs = {0};
+    const CubsTypeContext* rhsContext = NULL;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_FLOAT_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_FLOAT_CONTEXT);
+    
+    const double lhsVal = (*(const double*)lhs.ref);
+    const double rhsVal = (*(const double*)rhs.ref);
+    CubsOrdering ordering = {0};
+    if(lhsVal == rhsVal) ordering = cubsOrderingEqual;
+    else if(lhsVal < rhsVal) ordering =  cubsOrderingLess;
+    else ordering = cubsOrderingGreater;
+    
+    cubs_function_return_set_value(handler, (void*)&ordering, &CUBS_ORDERING_CONTEXT);
+    return 0;
+}
+
 static int float_hash(CubsCFunctionHandler handler) {
     CubsConstRef self;
     const CubsTypeContext* context;
@@ -185,6 +262,7 @@ const CubsTypeContext CUBS_FLOAT_CONTEXT = {
     .destructor = {0}, 
     .clone = {.func = {.externC = &float_clone}, .funcType = cubsFunctionPtrTypeC},
     .eql = {.func = {.externC = &float_eql}, .funcType = cubsFunctionPtrTypeC},
+    .compare = {.func = {.externC = &float_compare}, .funcType = cubsFunctionPtrTypeC},
     .hash = {.func = {.externC = &float_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "float",
     .nameLength = 5,
@@ -225,6 +303,31 @@ static int char_eql(CubsCFunctionHandler handler) {
     return 0;
 }
 
+static CubsOrdering char_compare(CubsCFunctionHandler handler) {
+    CubsConstRef lhs = {0};
+    const CubsTypeContext* lhsContext = NULL;
+    CubsConstRef rhs = {0};
+    const CubsTypeContext* rhsContext = NULL;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_CHAR_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_CHAR_CONTEXT);
+    
+    const CubsChar lhsVal = (*(const CubsChar*)lhs.ref);
+    const CubsChar rhsVal = (*(const CubsChar*)rhs.ref);
+    CubsOrdering ordering = {0};
+    if(lhsVal == rhsVal) ordering = cubsOrderingEqual;
+    else if(lhsVal < rhsVal) ordering =  cubsOrderingLess;
+    else ordering = cubsOrderingGreater;
+    
+    cubs_function_return_set_value(handler, (void*)&ordering, &CUBS_ORDERING_CONTEXT);
+    return 0;
+}
+
 static int char_hash(CubsCFunctionHandler handler) {
     CubsConstRef self;
     const CubsTypeContext* context;
@@ -241,6 +344,7 @@ const CubsTypeContext CUBS_CHAR_CONTEXT = {
     .destructor = {0}, 
     .clone = {.func = {.externC = &char_clone}, .funcType = cubsFunctionPtrTypeC},
     .eql = {.func = {.externC = &char_eql}, .funcType = cubsFunctionPtrTypeC},  
+    .compare = {.func = {.externC = &char_compare}, .funcType = cubsFunctionPtrTypeC},
     .hash = {.func = {.externC = &char_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "char",
     .nameLength = 4,
@@ -291,6 +395,25 @@ static int string_eql(CubsCFunctionHandler handler) {
     return 0;
 }
 
+static CubsOrdering string_compare(CubsCFunctionHandler handler) {
+    CubsConstRef lhs = {0};
+    const CubsTypeContext* lhsContext = NULL;
+    CubsConstRef rhs = {0};
+    const CubsTypeContext* rhsContext = NULL;
+
+    cubs_function_take_arg(&handler, 0, (void*)&lhs, &lhsContext);
+    cubs_function_take_arg(&handler, 1, (void*)&rhs, &rhsContext);
+
+    assert(lhsContext == &CUBS_CONST_REF_CONTEXT || lhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(lhs.context == &CUBS_STRING_CONTEXT);
+    assert(rhsContext == &CUBS_CONST_REF_CONTEXT || rhsContext == &CUBS_MUT_REF_CONTEXT);
+    assert(rhs.context == &CUBS_STRING_CONTEXT);
+    
+    CubsOrdering ordering = cubs_string_cmp((const CubsString*)lhs.ref, (const CubsString*)rhs.ref);
+    cubs_function_return_set_value(handler, (void*)&ordering, &CUBS_ORDERING_CONTEXT);
+    return 0;
+}
+
 static int string_hash(CubsCFunctionHandler handler) {
     CubsConstRef self;
     const CubsTypeContext* context;
@@ -307,9 +430,26 @@ const CubsTypeContext CUBS_STRING_CONTEXT = {
     .destructor = {.func = {.externC = &string_deinit}, .funcType = cubsFunctionPtrTypeC},
     .clone = {.func = {.externC = &string_clone}, .funcType = cubsFunctionPtrTypeC},
     .eql = {.func = {.externC = &string_eql}, .funcType = cubsFunctionPtrTypeC},
+    .compare = {.func = {.externC = &string_compare}, .funcType = cubsFunctionPtrTypeC},
     .hash = {.func = {.externC = &string_hash}, .funcType = cubsFunctionPtrTypeC},
     .name = "string",
     .nameLength = 6,
+    .members = NULL,
+    .membersLen = 0,
+};
+
+#pragma endregion
+
+#pragma region Ordering
+
+const CubsTypeContext CUBS_ORDERING_CONTEXT = {
+    .sizeOfType = sizeof(CubsOrdering),
+    .destructor = {0},
+    .clone = {0},
+    .eql = {0},
+    .hash = {0},
+    .name = "Ordering",
+    .nameLength = 8,
     .members = NULL,
     .membersLen = 0,
 };
@@ -1121,9 +1261,60 @@ bool cubs_context_fast_eql(const void *lhs, const void *rhs, const CubsTypeConte
     }
 }
 
+CubsOrdering cubs_context_fast_compare(const void *lhs, const void *rhs, const CubsTypeContext *context)
+{
+    assert(context->compare.func.externC != NULL && "Cannot do comparison on type that doesn't have a valid externC or script function");
+    if(context == &CUBS_BOOL_CONTEXT) {
+        const bool lhsVal = *(const bool*)lhs;
+        const bool rhsVal = *(const bool*)rhs;
+        if(lhsVal == rhsVal) return cubsOrderingEqual;
+        if(lhsVal < rhsVal) return cubsOrderingLess;
+        return cubsOrderingGreater;
+    }
+    else if(context == &CUBS_INT_CONTEXT) {
+        const int64_t lhsVal = *(const int64_t*)lhs;
+        const int64_t rhsVal = *(const int64_t*)rhs;
+        if(lhsVal == rhsVal) return cubsOrderingEqual;
+        if(lhsVal < rhsVal) return cubsOrderingLess;
+        return cubsOrderingGreater;
+    }
+    else if(context == &CUBS_FLOAT_CONTEXT) {
+        const double lhsVal = *(const double*)lhs;
+        const double rhsVal = *(const double*)rhs;
+        if(lhsVal == rhsVal) return cubsOrderingEqual;
+        if(lhsVal < rhsVal) return cubsOrderingLess;
+        return cubsOrderingGreater;
+    }
+    else if(context == &CUBS_CHAR_CONTEXT) {
+        const CubsChar lhsVal = *(const CubsChar*)lhs;
+        const CubsChar rhsVal = *(const CubsChar*)rhs;
+        if(lhsVal == rhsVal) return cubsOrderingEqual;
+        if(lhsVal < rhsVal) return cubsOrderingLess;
+        return cubsOrderingGreater;
+    }
+    else if(context == &CUBS_STRING_CONTEXT) {
+        return cubs_string_cmp((const CubsString*)lhs, (const CubsString*)rhs);
+    }
+    else {
+        CubsFunctionCallArgs args = cubs_function_start_call(&context->eql);
+
+        CubsConstRef argLhs = {.ref = lhs, .context = context};
+        CubsConstRef argRhs = {.ref = rhs, .context = context};
+        cubs_function_push_arg(&args, (void*)&argLhs, &CUBS_CONST_REF_CONTEXT);
+        cubs_function_push_arg(&args, (void*)&argRhs, &CUBS_CONST_REF_CONTEXT);
+
+        CubsOrdering out;
+        const CubsTypeContext* outContext = NULL;
+        const CubsFunctionReturn ret = {.value = (void*)&out, .context = &outContext};
+        const int result = cubs_function_call(args, ret);
+        assert(outContext == &CUBS_ORDERING_CONTEXT && "expected Ordering return type for comparison");
+        return out;
+    }
+}
+
 size_t cubs_context_fast_hash(const void *value, const CubsTypeContext *context)
 {
-    assert(context->eql.func.externC != NULL && "Cannot do hash on type that doesn't have a valid externC or script function");
+    assert(context->hash.func.externC != NULL && "Cannot do hash on type that doesn't have a valid externC or script function");
     if(context == &CUBS_BOOL_CONTEXT) {
         return (size_t)(*(const bool*)value);
     } else if(context == &CUBS_INT_CONTEXT) {
