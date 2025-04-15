@@ -265,6 +265,11 @@ ExprValue cubs_parse_expression(
     if(is_token_operator(tokenAfterFirst)) {
         switch(tokenAfterFirst) {
             case EQUAL_OPERATOR:
+            case NOT_EQUAL_OPERATOR:
+            case LESS_OPERATOR:
+            case LESS_EQUAL_OPERATOR:
+            case GREATER_OPERATOR:
+            case GREATER_EQUAL_OPERATOR:
             case ADD_OPERATOR: {
                 size_t outSrc;
                 if(hasDestination) {
@@ -278,12 +283,20 @@ ExprValue cubs_parse_expression(
                         .isMutable = false,
                         .typeInfo = {0},
                     };
-                    if(tokenAfterFirst == EQUAL_OPERATOR) {
-                        //temporaryVariable.typeInfo = cubs_type_resolution_info_from_context(&CUBS_BOOL_CONTEXT);
-                        temporaryVariable.typeInfo = (TypeResolutionInfo){.tag = TypeInfoBool, .value._bool = NULL};
-                    } else if(tokenAfterFirst == ADD_OPERATOR) {
-                        //temporaryVariable.typeInfo = cubs_type_resolution_info_from_context(&CUBS_INT_CONTEXT);
-                        temporaryVariable.typeInfo = (TypeResolutionInfo){.tag = TypeInfoInt, .value._int = NULL};
+               
+                    switch(tokenAfterFirst) {
+                        case EQUAL_OPERATOR: 
+                        case NOT_EQUAL_OPERATOR:
+                        case LESS_OPERATOR:
+                        case LESS_EQUAL_OPERATOR:
+                        case GREATER_OPERATOR:
+                        case GREATER_EQUAL_OPERATOR: {
+                            temporaryVariable.typeInfo = (TypeResolutionInfo){.tag = TypeInfoBool, .value._bool = NULL};
+                        } break;
+                        case ADD_OPERATOR: {
+                            // TODO should be type independent
+                            temporaryVariable.typeInfo = (TypeResolutionInfo){.tag = TypeInfoInt, .value._int = NULL};
+                        } break;
                     }
                     // order is preserved
                     outSrc = variables->len;
@@ -292,11 +305,21 @@ ExprValue cubs_parse_expression(
                 }
                 (void)cubs_token_iter_next(iter); // step to next
 
-                BinaryExprOp binaryExpressionOperator;
+                BinaryExprOp binaryExpressionOperator = -1;
                 if(tokenAfterFirst == EQUAL_OPERATOR) {
-                    binaryExpressionOperator = Equal;
+                    binaryExpressionOperator = BinaryExprOpEqual;
+                } else if(tokenAfterFirst == NOT_EQUAL_OPERATOR) {
+                    binaryExpressionOperator = BinaryExprOpNotEqual;
+                } else if(tokenAfterFirst == LESS_OPERATOR) {
+                    binaryExpressionOperator = BinaryExprOpLess;
+                } else if(tokenAfterFirst == LESS_EQUAL_OPERATOR) {
+                    binaryExpressionOperator = BinaryExprOpLessOrEqual;
+                } else if(tokenAfterFirst == GREATER_OPERATOR) {
+                    binaryExpressionOperator = BinaryExprOpGreater;
+                } else if(tokenAfterFirst == GREATER_EQUAL_OPERATOR) {
+                    binaryExpressionOperator = BinaryExprOpGreaterOrEqual;
                 } else if(tokenAfterFirst == ADD_OPERATOR) {
-                    binaryExpressionOperator = Add;
+                    binaryExpressionOperator = BinaryExprOpAdd;
                 }
                 const ExprValue secondValue = parse_expression_value(
                     iter, variables, dependencies);

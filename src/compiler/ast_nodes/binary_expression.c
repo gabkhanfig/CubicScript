@@ -25,11 +25,31 @@ static void binary_expr_node_build_function(
     const uint16_t dst = stackAssignment->positions[self->outputVariableIndex];
 
     switch(self->operation) {
-        case Equal: {
+        case BinaryExprOpEqual: {
             const Bytecode equalBytecode = cubs_operands_make_compare(COMPARE_OP_EQUAL, dst, lhsSrc.dst, rhsSrc.dst);
             cubs_function_builder_push_bytecode(builder, equalBytecode);
         } break;
-        case Add: {
+        case BinaryExprOpNotEqual: {
+            const Bytecode notEqualBytecode = cubs_operands_make_compare(COMPARE_OP_NOT_EQUAL, dst, lhsSrc.dst, rhsSrc.dst);
+            cubs_function_builder_push_bytecode(builder, notEqualBytecode);
+        } break;
+        case BinaryExprOpLess: {
+            const Bytecode bytecode = cubs_operands_make_compare(COMPARE_OP_LESS, dst, lhsSrc.dst, rhsSrc.dst);
+            cubs_function_builder_push_bytecode(builder, bytecode);
+        } break;
+        case BinaryExprOpLessOrEqual: {
+            const Bytecode bytecode = cubs_operands_make_compare(COMPARE_OP_LESS_OR_EQUAL, dst, lhsSrc.dst, rhsSrc.dst);
+            cubs_function_builder_push_bytecode(builder, bytecode);
+        } break;
+        case BinaryExprOpGreater: {
+            const Bytecode bytecode = cubs_operands_make_compare(COMPARE_OP_GREATER, dst, lhsSrc.dst, rhsSrc.dst);
+            cubs_function_builder_push_bytecode(builder, bytecode);
+        } break;
+        case BinaryExprOpGreaterOrEqual: {
+            const Bytecode bytecode = cubs_operands_make_compare(COMPARE_OP_GREATER_OR_EQUAL, dst, lhsSrc.dst, rhsSrc.dst);
+            cubs_function_builder_push_bytecode(builder, bytecode);
+        } break;
+        case BinaryExprOpAdd: {
             const Bytecode addBytecode = operands_make_add_dst(false, dst, lhsSrc.dst, rhsSrc.dst);
             cubs_function_builder_push_bytecode(builder, addBytecode);
         } break;
@@ -57,7 +77,12 @@ static void binary_expr_node_resolve_types(
     TypeResolutionInfo* typeInfo = &variables->variables[self->outputVariableIndex].typeInfo;
 
     switch(self->operation) {
-        case Equal: {
+        case BinaryExprOpEqual:
+        case BinaryExprOpNotEqual:
+        case BinaryExprOpLess:
+        case BinaryExprOpLessOrEqual:
+        case BinaryExprOpGreater:
+        case BinaryExprOpGreaterOrEqual: {
             // if(typeInfo->knownContext != NULL) {
             //     assert(typeInfo->knownContext == &CUBS_BOOL_CONTEXT);
             if(typeInfo->tag != TypeInfoUnknown) {
@@ -68,7 +93,7 @@ static void binary_expr_node_resolve_types(
                 //typeInfo->knownContext = &CUBS_BOOL_CONTEXT;
             }
         } break;
-        case Add: {
+        case BinaryExprOpAdd: {
             //if(typeInfo->knownContext != NULL) {
             //    assert(typeInfo->knownContext == lhsContext);
             if(typeInfo->tag != TypeInfoUnknown) {
@@ -80,6 +105,7 @@ static void binary_expr_node_resolve_types(
             //     typeInfo->knownContext = resultingContext;
             } else {
                 // TODO actual type inference
+                assert(false);
                 typeInfo->tag = TypeInfoInt;
             }
         } break;
