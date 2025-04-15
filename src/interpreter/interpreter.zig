@@ -1503,6 +1503,270 @@ test "not equal" {
     }
 }
 
+test "less" {
+    { // i64 less false cause equal
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_LESS, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == false);
+    }
+    { // i64 less false cause greater
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_LESS, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 24;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == false);
+    }
+    { // i64 less true
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_LESS, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 26;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+    }
+}
+
+test "less or equal" {
+    { // i64 less or equal true cause equal
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_LESS_OR_EQUAL, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+    }
+    { // i64 less or equal false cause greater
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_LESS_OR_EQUAL, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 24;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == false);
+    }
+    { // i64 less or equal true cause less
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_LESS_OR_EQUAL, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 26;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+    }
+}
+
+test "greater" {
+    { // i64 greater false cause equal
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_GREATER, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == false);
+    }
+    { // i64 greater false cause less
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_GREATER, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 24;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == false);
+    }
+    { // i64 greater true
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_GREATER, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 26;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+    }
+}
+
+test "greater or equal" {
+    { // i64 greater or equal true cause equal
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_GREATER_OR_EQUAL, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 25;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+    }
+    { // i64 greater or equal false cause less
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_GREATER_OR_EQUAL, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 24;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == false);
+    }
+    { // i64 greater or equal true cause greater
+        const bytecode = c.cubs_operands_make_compare(c.COMPARE_OP_GREATER_OR_EQUAL, 2, 0, 1);
+        c.cubs_interpreter_push_frame(3, null, null);
+        defer c.cubs_interpreter_pop_frame();
+
+        const src1 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(0))));
+        const src2 = @as(*i64, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(1))));
+        const dst = @as(*bool, @ptrCast(@alignCast(c.cubs_interpreter_stack_value_at(2))));
+
+        c.cubs_interpreter_stack_set_context_at(0, &c.CUBS_INT_CONTEXT);
+        c.cubs_interpreter_stack_set_context_at(1, &c.CUBS_INT_CONTEXT);
+
+        src1.* = 26;
+        src2.* = 25;
+
+        c.cubs_interpreter_set_instruction_pointer(@ptrCast(&bytecode));
+        try expect(c.cubs_interpreter_execute_operation(null) == 0);
+
+        try expect(c.cubs_interpreter_stack_context_at(2) == &c.CUBS_BOOL_CONTEXT);
+        try expect(dst.* == true);
+    }
+}
+
 test "dereference" {
     { // const ref
         const bytecode = c.cubs_operands_make_dereference(2, 0);

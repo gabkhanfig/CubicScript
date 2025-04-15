@@ -67,13 +67,13 @@ typedef enum OpCode {
     OpCodeEqual,
     /// Performs `src1 != src2`, storing the bool result in dst.
     OpCodeNotEqual,
-    // TODO this operation
+    /// Performs `src < src2`, storing the bool result in dst.
     OpCodeLess,
-    // TODO this operation
+    /// Performs `src > src2`, storing the bool result in dst.
     OpCodeGreater,
-    // TODO this operation
+    /// Performs `src <= src2`, storing the bool result in dst.
     OpCodeLessOrEqual,
-    // TODO this operation
+    /// Performs `src >= src2`, storing the bool result in dst.
     OpCodeGreaterOrEqual,
     /// Increments an integer or iterator
     OpCodeIncrement,
