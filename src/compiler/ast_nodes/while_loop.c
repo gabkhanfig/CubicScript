@@ -52,13 +52,15 @@ static void while_loop_node_build_function(
         const int32_t jumpOffset = ((int32_t)loopCheckStart) - ((int32_t)builder->bytecodeLen);
         assert(jumpOffset < 0);
         const Bytecode jumpToLoopCheck = cubs_operands_make_jump(
-            JUMP_TYPE_DEFAULT, jumpOffset, 0); 
+            JUMP_TYPE_DEFAULT, jumpOffset, 0);
+        cubs_function_builder_push_bytecode(builder, jumpToLoopCheck);
     }
     { // set jump to after loop body finishes if condition is false
         const int32_t jumpOffset = ((int32_t)builder->bytecodeLen) - ((int32_t)tempJumpIndex);
         assert(jumpOffset > 0);
         OperandsJump jumpOperands = *(const OperandsJump*)&builder->bytecode[tempJumpIndex];
         jumpOperands.jumpAmount = jumpOffset;
+        builder->bytecode[tempJumpIndex] = *(const Bytecode*)&jumpOperands;
     }
 }
 
