@@ -152,6 +152,8 @@
         "function_call.h": "c",
         "bytecode_array.h": "c",
         "member_assign.h": "c",
-        "sync_ptr.h": "c"
+        "sync_ptr.h": "c",
+        "sync_block.h": "c",
+        "scope.h": "c"
     }
 }

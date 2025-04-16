@@ -50,6 +50,7 @@ add_library(CubicScript STATIC
     "src/compiler/ast_nodes/member_access.c"
     "src/compiler/ast_nodes/member_assign.c"
     "src/compiler/ast_nodes/sync_block.c"
+    "src/compiler/ast_nodes/while_loop.c"
     "src/compiler/graph/function_dependency_graph.c"
     "src/compiler/graph/scope.c"
 
