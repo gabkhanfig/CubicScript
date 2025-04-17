@@ -15,9 +15,9 @@ const c = @cImport({
 const TokenIter = c.TokenIter;
 const Token = c.Token;
 
-fn tokenIterInit(s: []const u8, errCallback: c.CubsSyntaxErrorCallback) TokenIter {
+fn tokenIterInit(s: []const u8) TokenIter {
     const slice = c.CubsStringSlice{ .str = s.ptr, .len = s.len };
-    return c.cubs_token_iter_init(std.mem.zeroes(c.CubsStringSlice), slice, errCallback);
+    return c.cubs_token_iter_init(std.mem.zeroes(c.CubsStringSlice), slice);
 }
 
 fn findFunction(program: *const c.CubsProgram, name: []const u8) ?c.CubsFunction {
@@ -45,7 +45,7 @@ fn memberContextNameIs(member: *const c.CubsTypeMemberContext, name: []const u8)
 
 test "function no args no return no statement ast init" {
     const source = "fn testFunc() {}";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -55,7 +55,7 @@ test "function no args no return no statement ast init" {
 
 test "function no args no return no statement compile" {
     const source = "fn testFunc() {}";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -73,7 +73,7 @@ test "function no args no return no statement compile" {
 
 test "function no args no return no statement run" {
     const source = "fn testFunc() {}";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -92,7 +92,7 @@ test "function no args no return no statement run" {
 
 test "function no args no return 1 return statement" {
     const source = "fn testFunc() { return; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -102,7 +102,7 @@ test "function no args no return 1 return statement" {
 
 test "function no args no return 1 return statement compile" {
     const source = "fn testFunc() { return; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -120,7 +120,7 @@ test "function no args no return 1 return statement compile" {
 
 test "function no args no return 1 return statement run" {
     const source = "fn testFunc() { return; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -139,7 +139,7 @@ test "function no args no return 1 return statement run" {
 
 test "function no args int return 1 return statement" {
     const source = "fn testFunc() int { return 5; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -149,7 +149,7 @@ test "function no args int return 1 return statement" {
 
 test "function no args int return 1 return statement compile" {
     const source = "fn testFunc() int { return 5; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -167,7 +167,7 @@ test "function no args int return 1 return statement compile" {
 
 test "function no args int return 1 return statement run" {
     const source = "fn testFunc() int { return 5; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -189,7 +189,7 @@ test "function no args int return 1 return statement run" {
 
 test "function 1 arg no return no statement ast" {
     const source = "fn testFunc(arg: int) {}";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -210,7 +210,7 @@ test "function 1 arg no return no statement ast" {
 
 test "function 1 arg 1 return ast" {
     const source = "fn testFunc(arg: int) int { return arg; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -239,7 +239,7 @@ test "function 1 arg 1 return ast" {
 
 test "function no arg no return 1 mut variable declaration" {
     const source = "fn testFunc() { mut testVar: int; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -258,7 +258,7 @@ test "function no arg no return 1 mut variable declaration" {
 
 test "function no arg no return 1 const variable declaration" {
     const source = "fn testFunc() { const testVar: int; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -277,7 +277,7 @@ test "function no arg no return 1 const variable declaration" {
 
 test "function no arg no return 1 mut variable declaration with initial value" {
     const source = "fn testFunc() { mut testVar: int = 6; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -296,7 +296,7 @@ test "function no arg no return 1 mut variable declaration with initial value" {
 
 test "function no arg no return 1 const variable declaration with initial value" {
     const source = "fn testFunc() { const testVar: int = 6; }";
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -320,7 +320,7 @@ test "function no arg no return 2 statements variable declaration" {
         \\  mut testVar2: int;
         \\}
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -344,7 +344,7 @@ test "function no args int 2 statement return stack variable" {
         \\  return testVar;
         \\}
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -372,7 +372,7 @@ test "function no args one add binary expression" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -399,7 +399,7 @@ test "function return binary expression" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -426,7 +426,7 @@ test "simple struct" {
         \\};
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -459,7 +459,7 @@ test "struct two member both int" {
         \\};
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -498,7 +498,7 @@ test "bool false" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -527,7 +527,7 @@ test "bool true" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -558,7 +558,7 @@ test "if true no else with return" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -588,7 +588,7 @@ test "if false no else with return" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -618,7 +618,7 @@ test "if no else with user argument" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -660,7 +660,7 @@ test "equality operator true simple" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -688,7 +688,7 @@ test "equality operator false simple" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -720,7 +720,7 @@ test "equality operator in if statement" {
             \\}
         ;
 
-        const tokenIter = tokenIterInit(source, null);
+        const tokenIter = tokenIterInit(source);
         var program = c.cubs_program_init(.{});
         defer c.cubs_program_deinit(&program);
 
@@ -748,7 +748,7 @@ test "equality operator in if statement" {
             \\}
         ;
 
-        const tokenIter = tokenIterInit(source, null);
+        const tokenIter = tokenIterInit(source);
         var program = c.cubs_program_init(.{});
         defer c.cubs_program_deinit(&program);
 
@@ -778,7 +778,7 @@ test "equality operator int in if statement" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -825,7 +825,7 @@ test "if with else if" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -881,7 +881,7 @@ test "if with else" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -929,7 +929,7 @@ test "if/else if/else" {
         \\  }
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -982,7 +982,7 @@ test "assign variable simple" {
         \\  return testVar;
         \\}
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1006,7 +1006,7 @@ test "two functions" {
         \\fn testFunc1() {}
         \\fn testFunc2() {}
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1038,7 +1038,7 @@ test "two functions one calls the other" {
         \\fn testFunc2() {}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1069,7 +1069,7 @@ test "two functions returning a returned value" {
         \\}
         \\fn testFunc2() int { return 5; }
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1106,7 +1106,7 @@ test "function calling another with one arg" {
         \\}
         \\fn testFunc2(arg: int) int { return arg + 5; }
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1150,7 +1150,7 @@ test "function calling another with two args" {
         \\  return testVar + arg2; 
         \\}
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1192,7 +1192,7 @@ test "function take immutable reference" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1223,7 +1223,7 @@ test "function modify mutable reference" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1255,7 +1255,7 @@ test "function create immutable reference within script" {
         \\  return arg + 5; 
         \\}
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1286,7 +1286,7 @@ test "function create mutable reference within script" {
         \\  arg = 20; 
         \\}
     ;
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1317,7 +1317,7 @@ test "function take struct" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1361,7 +1361,7 @@ test "function access struct member" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1404,7 +1404,7 @@ test "function access nested struct member" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1444,7 +1444,7 @@ test "function assign to struct member" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1488,7 +1488,7 @@ test "function assign to nested struct member" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1522,7 +1522,7 @@ test "function sync ptr type declaration" {
             \\fn testFunc(testVar: unique int) {}
         ;
 
-        const tokenIter = tokenIterInit(source, null);
+        const tokenIter = tokenIterInit(source);
         var program = c.cubs_program_init(.{});
         defer c.cubs_program_deinit(&program);
 
@@ -1548,7 +1548,7 @@ test "function sync ptr type declaration" {
             \\fn testFunc(testVar: shared int) {}
         ;
 
-        const tokenIter = tokenIterInit(source, null);
+        const tokenIter = tokenIterInit(source);
         var program = c.cubs_program_init(.{});
         defer c.cubs_program_deinit(&program);
 
@@ -1574,7 +1574,7 @@ test "function sync ptr type declaration" {
             \\fn testFunc(testVar: shared int) {}
         ;
 
-        const tokenIter = tokenIterInit(source, null);
+        const tokenIter = tokenIterInit(source);
         var program = c.cubs_program_init(.{});
         defer c.cubs_program_deinit(&program);
 
@@ -1607,7 +1607,7 @@ test "function sync" {
             \\}
         ;
 
-        const tokenIter = tokenIterInit(source, null);
+        const tokenIter = tokenIterInit(source);
         var program = c.cubs_program_init(.{});
         defer c.cubs_program_deinit(&program);
 
@@ -1635,7 +1635,7 @@ test "function sync" {
             \\}
         ;
 
-        const tokenIter = tokenIterInit(source, null);
+        const tokenIter = tokenIterInit(source);
         var program = c.cubs_program_init(.{});
         defer c.cubs_program_deinit(&program);
 
@@ -1667,7 +1667,7 @@ test "function write sync" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1704,7 +1704,7 @@ test "function read sync" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1750,7 +1750,7 @@ test "sync multithread" {
                 \\}
             ;
 
-            const tokenIter = tokenIterInit(source, null);
+            const tokenIter = tokenIterInit(source);
             var program = c.cubs_program_init(.{});
             defer c.cubs_program_deinit(&program);
 
@@ -1825,7 +1825,7 @@ test "multiple sync/unsync multithread" {
                 \\}
             ;
 
-            const tokenIter = tokenIterInit(source, null);
+            const tokenIter = tokenIterInit(source);
             var program = c.cubs_program_init(.{});
             defer c.cubs_program_deinit(&program);
 
@@ -1872,7 +1872,7 @@ test "binary expression not equal" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1917,7 +1917,7 @@ test "binary expression less" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -1972,7 +1972,7 @@ test "binary expression less or equal" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -2027,7 +2027,7 @@ test "binary expression greater" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -2082,7 +2082,7 @@ test "binary expression greater or equal" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 
@@ -2138,7 +2138,7 @@ test "while loop" {
         \\}
     ;
 
-    const tokenIter = tokenIterInit(source, null);
+    const tokenIter = tokenIterInit(source);
     var program = c.cubs_program_init(.{});
     defer c.cubs_program_deinit(&program);
 

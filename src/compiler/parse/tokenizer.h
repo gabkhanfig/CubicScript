@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../compiler_callbacks.h"
+#include "../compiler.h"
 #include "../../primitives/string/string.h"
 
 /* ==== TOKENS ====
@@ -80,6 +80,7 @@ string literal
 
 typedef enum TokenType {
     TOKEN_NONE = 0,
+    TOKEN_ERROR = 1,
 
     CONST_KEYWORD,
     MUT_KEYWORD,
@@ -234,13 +235,22 @@ typedef struct Token {
     TokenMetadata value;
 } Token;
 
+typedef enum CubsSyntaxErrorType {
+    cubsSyntaxErrorNone = 0,
+    cubsSyntaxErrNumLiteralInvalidChar,
+    cubsSyntaxErrNumLiteralTooManyDecimal,
+    cubsSyntaxErrTerminatedStringLiteral,
+    // Enforce enum size is at least 32 bits, which is `int` on most platforms
+    _CUBS_SYNTAX_ERROR_TYPE_MAX_VALUE = 0x7FFFFFFF,
+} CubsSyntaxErrorType;
+
 /// A very simple walkthrough tokenizer that allocates no memory.
 typedef struct TokenIter {
     /// Name of the source. Generally it's the file name.
     CubsStringSlice name;
     /// The actual source code.
     CubsStringSlice source;
-    CubsSyntaxErrorCallback errCallback;
+    CubsSyntaxErrorType err;
     CubsSourceFileCharPosition position;
     Token previous;
     Token current;
@@ -248,7 +258,7 @@ typedef struct TokenIter {
 
 /// # Debug asserts
 /// Must be valid utf8
-TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback);
+TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source);
 
 /// Returns `TOKEN_NONE` if there is no next. Moves the iterator forward.
 TokenType cubs_token_iter_next(TokenIter* self);

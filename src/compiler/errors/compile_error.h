@@ -3,12 +3,7 @@
 #define COMPILE_ERROR_H
 
 #include "../../primitives/string/string_slice.h"
-#include "../compiler_callbacks.h"
-
-typedef struct CubsCompileErrorLocation {
-    CubsStringSlice fileName;
-    CubsSourceFileCharPosition position;
-} CubsCompileErrorLocation;
+#include "../compiler.h"
 
 typedef void(*CompileErrorDeinit)(void* self);
 /// Gets the source file location of the error.

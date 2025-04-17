@@ -15,6 +15,7 @@ typedef struct NextToken {
     bool hasNextToken;
     Token next;
     CubsSourceFileCharPosition newPosition;
+    CubsSyntaxErrorType syntaxErr;
 } NextToken;
 
 static bool is_space(char c) {
@@ -124,6 +125,7 @@ typedef struct TokenLiteralOrIdentifier {
     TokenType token;
     CubsStringSlice slice;
     TokenMetadata metadata;
+    CubsSyntaxErrorType syntaxErr;
 } TokenLiteralOrIdentifier;
 
 static TokenLiteralOrIdentifier try_parse_num_literal(const TokenIter* self, const CubsSourceFileCharPosition pos, const CubsStringSlice tokenStart) {
@@ -176,9 +178,7 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const TokenIter* self, con
         } else if(is_space(c) || c == '\0' || c == ';' || c == ',' || c == ')' || c == '}') {
             break;
         } else {
-            const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
-            self->errCallback(cubsSyntaxErrNumLiteralInvalidChar, self->name, self->source, errPos);
-            return emptyTokenLiteralOrIdentifier;
+            return (TokenLiteralOrIdentifier){.syntaxErr = cubsSyntaxErrNumLiteralInvalidChar};
         }
         i++;
     }
@@ -223,13 +223,9 @@ static TokenLiteralOrIdentifier try_parse_num_literal(const TokenIter* self, con
             }  else if(is_space(c) || c == '\0' || c == ';' || c == ',') {
                 break;
             } else if(c == '.') {
-                const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
-                self->errCallback(cubsSyntaxErrNumLiteralTooManyDecimal, self->name, self->source, errPos);
-                return emptyTokenLiteralOrIdentifier;
+                return (TokenLiteralOrIdentifier){.syntaxErr = cubsSyntaxErrNumLiteralTooManyDecimal};
             } else {
-                const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
-                self->errCallback(cubsSyntaxErrNumLiteralInvalidChar, self->name, self->source, errPos);
-                return emptyTokenLiteralOrIdentifier;
+                return (TokenLiteralOrIdentifier){.syntaxErr = cubsSyntaxErrNumLiteralInvalidChar};
             }
             i++;
         }
@@ -258,18 +254,14 @@ static TokenLiteralOrIdentifier try_parse_string_literal(const TokenIter* self, 
     
     const TokenLiteralOrIdentifier emptyTokenLiteralOrIdentifier = {0};
     if(tokenStart.len == 1) { // must have start and end quotation marks, which is 2 characters
-        const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, 0);
-        self->errCallback(cubsSyntaxErrTerminatedStringLiteral, self->name, self->source, errPos);
-        return emptyTokenLiteralOrIdentifier;
+        return (TokenLiteralOrIdentifier){.syntaxErr = cubsSyntaxErrTerminatedStringLiteral};
     }
 
     const char* start = &tokenStart.str[1];
     size_t i = 0;
     while(true) {
         if(i >= (tokenStart.len - 1)) {
-            const CubsSourceFileCharPosition errPos = get_updated_position(pos, tokenStart.str, i);
-            self->errCallback(cubsSyntaxErrTerminatedStringLiteral, self->name, self->source, errPos);
-            return emptyTokenLiteralOrIdentifier;
+            return (TokenLiteralOrIdentifier){.syntaxErr = cubsSyntaxErrTerminatedStringLiteral};
         }
         const char c = start[i];
         assert(c != '\0');
@@ -731,6 +723,12 @@ static NextToken get_next_token(const TokenIter* self) {
         }  
         else {
             const TokenLiteralOrIdentifier parsedLiteralOrIdentifier = try_parse_literal_or_identifier(self, pastWhitespacePos, tokenStart);
+            if(parsedLiteralOrIdentifier.syntaxErr != cubsSyntaxErrorNone) {
+                next.hasNextToken = true;
+                next.syntaxErr = parsedLiteralOrIdentifier.syntaxErr;
+                next.next.tag = TOKEN_ERROR;
+                return next;
+            }  
             if(parsedLiteralOrIdentifier.token == TOKEN_NONE) {
                 return next;
             } else {
@@ -747,13 +745,13 @@ static NextToken get_next_token(const TokenIter* self) {
     return next;
 }
 
-TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source, CubsSyntaxErrorCallback errCallback)
+TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source)
 {
     const CubsSourceFileCharPosition pos = {.index = 0, .line = 1, .column = 1};
     const TokenIter self = {
         .name = name,
         .source = source,
-        .errCallback = errCallback,
+        .err = cubsSyntaxErrorNone,
         .position = pos,
         .previous = {0},
         .current = {0},
@@ -766,7 +764,11 @@ TokenType cubs_token_iter_next(TokenIter *self)
 {
     const NextToken next = get_next_token(self);
     self->previous = self->current;
-    if(next.hasNextToken) {
+    if(next.syntaxErr != cubsSyntaxErrorNone) {  
+        self->position = next.newPosition;
+        self->current.tag = TOKEN_ERROR;
+        self->err = next.syntaxErr;
+    } else if(next.hasNextToken) {
         self->position = next.newPosition;
         self->current = next.next;
     } else {
