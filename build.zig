@@ -140,6 +140,7 @@ pub const cubic_script_c_sources = [_][]const u8{
     "src/compiler/ast_nodes/sync_block.c",
     "src/compiler/ast_nodes/while_loop.c",
     "src/compiler/errors/compile_error.c",
+    "src/compiler/errors/unexpected_token.c",
     "src/compiler/graph/function_dependency_graph.c",
     "src/compiler/graph/scope.c",
 
