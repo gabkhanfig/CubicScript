@@ -53,6 +53,7 @@ add_library(CubicScript STATIC
     "src/compiler/ast_nodes/while_loop.c"
     "src/compiler/errors/compile_error.c"
     "src/compiler/errors/unexpected_token.c"
+    "src/compiler/errors/cannot_find_symbol.c"
     "src/compiler/graph/function_dependency_graph.c"
     "src/compiler/graph/scope.c"
 

@@ -8,6 +8,7 @@
 
 typedef enum CompileErrorType {
     compileErrorTypeUnexpectedToken,
+    compileErrorTypeCannotFindSymbol,
 } CompileErrorType;
 
 typedef void(*CompileErrorDeinit)(void* self);

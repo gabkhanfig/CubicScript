@@ -4,7 +4,6 @@
 
 #include "compile_error.h"
 #include "../parse/tokenizer.h"
-#include "../../primitives/string/string.h"
 
 struct TokenIter;
 
