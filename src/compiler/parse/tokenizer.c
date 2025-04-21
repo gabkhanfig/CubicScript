@@ -745,6 +745,91 @@ static NextToken get_next_token(const TokenIter* self) {
     return next;
 }
 
+CubsStringSlice cubs_token_type_to_string_slice(TokenType tokenType)
+{
+    switch(tokenType) {
+        case TOKEN_NONE: return (CubsStringSlice){0};
+        case TOKEN_ERROR: return (CubsStringSlice){.str = "ERROR", .len = 5};
+        case CONST_KEYWORD: return CONST_KEYWORD_SLICE;
+        case MUT_KEYWORD: return MUT_KEYWORD_SLICE;
+        case RETURN_KEYWORD: return RETURN_KEYWORD_SLICE;
+        case FN_KEYWORD: return FN_KEYWORD_SLICE;
+        case PUB_KEYWORD: return PUB_KEYWORD_SLICE;
+        case IF_KEYWORD: return IF_KEYWORD_SLICE;
+        case ELSE_KEYWORD: return ELSE_KEYWORD_SLICE;
+        case SWITCH_KEYWORD: return SWITCH_KEYWORD_SLICE;
+        case WHILE_KEYWORD: return WHILE_KEYWORD_SLICE;
+        case FOR_KEYWORD: return FOR_KEYWORD_SLICE;
+        case BREAK_KEYWORD: return BREAK_KEYWORD_SLICE;
+        case CONTINUE_KEYWORD: return CONTINUE_KEYWORD_SLICE;
+        case STRUCT_KEYWORD: return STRUCT_KEYWORD_SLICE;
+        case INTERFACE_KEYWORD: return INTERFACE_KEYWORD_SLICE;
+        case ENUM_KEYWORD: return ENUM_KEYWORD_SLICE;
+        case UNION_KEYWORD: return UNION_KEYWORD_SLICE;
+        case SYNC_KEYWORD: return SYNC_KEYWORD_SLICE;
+        case UNSAFE_KEYWORD: return UNSAFE_KEYWORD_SLICE;
+        case TRUE_KEYWORD: return TRUE_KEYWORD_SLICE;
+        case FALSE_KEYWORD: return FALSE_KEYWORD_SLICE;
+        case BOOL_KEYWORD: return BOOL_KEYWORD_SLICE;
+        case INT_KEYWORD: return INT_KEYWORD_SLICE;
+        case FLOAT_KEYWORD: return FLOAT_KEYWORD_SLICE;
+        case STRING_KEYWORD: return STRING_KEYWORD_SLICE;
+        case CHAR_KEYWORD: return CHAR_KEYWORD_SLICE;
+        case IMPORT_KEYWORD: return IMPORT_KEYWORD_SLICE;
+        case MOD_KEYWORD: return MOD_KEYWORD_SLICE;
+        case EXTERN_KEYWORD: return EXTERN_KEYWORD_SLICE;
+        case AND_KEYWORD: return AND_KEYWORD_SLICE;
+        case OR_KEYWORD: return OR_KEYWORD_SLICE;
+        case NULL_KEYWORD: return NULL_KEYWORD_SLICE;
+        case UNIQUE_KEYWORD: return UNIQUE_KEYWORD_SLICE;
+        case SHARED_KEYWORD: return SHARED_KEYWORD_SLICE;
+        case WEAK_KEYWORD: return WEAK_KEYWORD_SLICE;
+        case ASSIGN_OPERATOR: return ASSIGN_OPERATOR_SLICE;
+        case EQUAL_OPERATOR: return EQUAL_OPERATOR_SLICE;
+        case NOT_EQUAL_OPERATOR: return NOT_EQUAL_OPERATOR_SLICE;
+        case LESS_OPERATOR: return LESS_OPERATOR_SLICE;
+        case LESS_EQUAL_OPERATOR: return LESS_EQUAL_OPERATOR_SLICE;
+        case GREATER_OPERATOR: return GREATER_OPERATOR_SLICE;
+        case GREATER_EQUAL_OPERATOR: return GREATER_EQUAL_OPERATOR_SLICE;
+        case ADD_OPERATOR: return ADD_OPERATOR_SLICE;
+        case ADD_ASSIGN_OPERATOR: return ADD_ASSIGN_OPERATOR_SLICE;
+        case SUBTRACT_OPERATOR: return SUBTRACT_OPERATOR_SLICE;
+        case SUBTRACT_ASSIGN_OPERATOR: return SUBTRACT_ASSIGN_OPERATOR_SLICE;
+        case MULTIPLY_OPERATOR: return MULTIPLY_OPERATOR_SLICE;
+        case MULTIPLY_ASSIGN_OPERATOR: return MULTIPLY_ASSIGN_OPERATOR_SLICE;
+        case DIVIDE_OPERATOR: return DIVIDE_OPERATOR_SLICE;
+        case DIVIDE_ASSIGN_OPERATOR: return DIVIDE_ASSIGN_OPERATOR_SLICE;
+        case BITSHIFT_LEFT_OPERATOR: return BITSHIFT_LEFT_OPERATOR_SLICE;
+        case BITSHIFT_LEFT_ASSIGN_OPERATOR: return BITSHIFT_LEFT_ASSIGN_OPERATOR_SLICE;
+        case BITSHIFT_RIGHT_OPERATOR: return BITSHIFT_RIGHT_OPERATOR_SLICE;
+        case BITSHIFT_RIGHT_ASSIGN_OPERATOR: return BITSHIFT_RIGHT_ASSIGN_OPERATOR_SLICE;
+        case BIT_COMPLEMENT_OPERATOR: return BIT_COMPLEMENT_OPERATOR_SLICE;
+        case BIT_OR_OPERATOR: return BIT_OR_OPERATOR_SLICE;
+        case BIT_OR_ASSIGN_OPERATOR: return BIT_OR_ASSIGN_OPERATOR_SLICE;
+        case BIT_AND_OPERATOR: return BIT_AND_OPERATOR_SLICE;
+        case BIT_AND_ASSIGN_OPERATOR: return BIT_AND_ASSIGN_OPERATOR_SLICE;
+        case BIT_XOR_OPERATOR: return BIT_XOR_OPERATOR_SLICE;
+        case BIT_XOR_ASSIGN_OPERATOR: return BIT_XOR_ASSIGN_OPERATOR_SLICE;
+        case LEFT_PARENTHESES_SYMBOL: return LEFT_PARENTHESES_SYMBOL_SLICE;
+        case RIGHT_PARENTHESES_SYMBOL: return RIGHT_PARENTHESES_SYMBOL_SLICE;
+        case LEFT_BRACKET_SYMBOL: return LEFT_BRACKET_SYMBOL_SLICE;
+        case RIGHT_BRACKET_SYMBOL: return RIGHT_BRACKET_SYMBOL_SLICE;
+        case LEFT_BRACE_SYMBOL: return LEFT_BRACE_SYMBOL_SLICE;
+        case RIGHT_BRACE_SYMBOL: return RIGHT_BRACE_SYMBOL_SLICE;
+        case COLON_SYMBOL: return COLON_SYMBOL_SLICE;
+        case SEMICOLON_SYMBOL: return SEMICOLON_SYMBOL_SLICE;
+        case PERIOD_SYMBOL: return PERIOD_SYMBOL_SLICE;
+        case COMMA_SYMBOL: return COMMA_SYMBOL_SLICE;
+        case REFERENCE_SYMBOL: return REFERENCE_SYMBOL_SLICE;
+        case POINTER_SYMBOL: return POINTER_SYMBOL_SLICE;
+        case INT_LITERAL: return (CubsStringSlice){.str = "int_literal", .len = 11};
+        case FLOAT_LITERAL: return (CubsStringSlice){.str = "float_literal", .len = 13};
+        case CHAR_LITERAL: return (CubsStringSlice){.str = "char_literal", .len = 12};
+        case STR_LITERAL: return (CubsStringSlice){.str = "str_literal", .len = 11};
+        case IDENTIFIER: return (CubsStringSlice){.str = "identifier", .len = 10};
+    }
+}
+
 TokenIter cubs_token_iter_init(CubsStringSlice name, CubsStringSlice source)
 {
     const CubsSourceFileCharPosition pos = {.index = 0, .line = 1, .column = 1};

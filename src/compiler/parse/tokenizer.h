@@ -170,6 +170,8 @@ typedef enum TokenType {
 
 } TokenType;
 
+CubsStringSlice cubs_token_type_to_string_slice(TokenType tokenType);
+
 static inline bool is_token_operator(enum TokenType tokenType) {
     switch(tokenType) {
         case ASSIGN_OPERATOR:
